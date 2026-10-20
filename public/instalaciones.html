@@ -787,7 +787,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <!-- PENDIENTES -->
   <div role="tabpanel" id="v-pendientes" aria-labelledby="tab-pendientes" hidden style="flex-direction:column;gap:22px">
     <section class="sec" aria-labelledby="t-pfil">
-      <div class="sec-cab"><div><h2 id="t-pfil" class="sr">Filtros de pendientes</h2><p class="sub" style="margin:0">Segmentadores · aplican a toda la pestaña (resumen, comparativa y detalle)</p></div><div class="pen-acc"><button type="button" class="btn-out" id="pen-ajustes">Metas, EECC y gestores</button><button type="button" class="btn-out" id="pen-limpiar">Limpiar filtros</button></div></div>
+      <div class="sec-cab"><div><h2 id="t-pfil" class="sr">Filtros de pendientes</h2><p class="sub" style="margin:0">Segmentadores · aplican a toda la pestaña (resumen, comparativa y detalle)</p></div><div class="pen-acc"><button type="button" class="btn-out" id="pen-tecnicos" title="Cambiar a qué EECC pertenece cada técnico (usuario master)">Técnicos y EECC</button><button type="button" class="btn-out" id="pen-ajustes">Metas, EECC y gestores</button><button type="button" class="btn-out" id="pen-limpiar">Limpiar filtros</button></div></div>
       <div class="segs" id="pen-segs-ge"></div>
       <div class="f-mas" id="pen-fmas" tabindex="0" aria-label="Más filtros: pasa el puntero para verlos">
         <div class="f-mas-cab"><span class="seg-t">Más filtros</span><span class="f-mas-que">EECC · Tipo · Programación · Antigüedad · Gestionado · Fecha</span><span class="f-mas-act" id="pen-activos"></span><span class="f-mas-fl" aria-hidden="true">▾</span></div>
@@ -967,7 +967,7 @@ async function traer(f = filialSel()) {
   return j;
 }
 /* Ajustes que operaciones edita en el portal (metas, nombres de EECC, gestores y rutas del día) */
-const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {} });
+const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {}, tecnicos: {} });
 let AJ = AJ_VACIO(), ajOk = false;
 const urlAj = (f) => '/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f);
 async function traerAjustes(f = filialSel()) {
@@ -1062,6 +1062,9 @@ function kpi(l, v, s, cls = '', extra = '') { return `<div class="kpi ${cls}"><s
 
 /* Metas editadas sobre las del robot; nombres de EECC renombrados (ec0 = nombre original de ScordSoft) */
 const nomEc = (c) => AJ.nombres[c] || c;
+/* EECC asignada a mano a un técnico (Técnicos y EECC, usuario master). ecR = EECC que trajo el robot; ec0 = EECC efectiva. */
+const tecEc = (tec) => (tec && AJ.tecnicos && AJ.tecnicos[tec]) || null;
+const fijarEc = (x) => { if (x.ecR === undefined) x.ecR = x.ec0 !== undefined ? x.ec0 : x.ec; x.ec0 = tecEc(x.tec) || x.ecR; x.ec = nomEc(x.ec0); };
 const gestorDe = (x) => AJ.gestores[x.ec0 ?? x.ec] || 'SIN GESTOR';
 const hayGestores = () => Object.keys(AJ.gestores).length > 0;
 /* Metas del canal elegido en la cabecera: lo vacío en el canal usa la meta de «Todos» (y lo vacío en «Todos», la del robot).
@@ -1075,10 +1078,10 @@ const cfgDe = (c = canal) => {
 };
 function aplicarAjustes() {
   CFG = cfgDe();
-  [D.ing, D.liq, D.pend, D.pendx, D.progRaw || D.prog].forEach(L => (L || []).forEach(x => { if (x.ec0 === undefined) x.ec0 = x.ec; x.ec = nomEc(x.ec0); }));
+  [D.ing, D.liq, D.pend, D.pendx, D.progRaw || D.prog].forEach(L => (L || []).forEach(fijarEc));
   aplicarAgendas();
   // Pendientes usa siempre el mes en curso completo (DP): se le aplican los mismos ajustes.
-  if (DP && DP !== D) { const g = D; D = DP; try { [D.ing, D.liq, D.progRaw].forEach(L => (L || []).forEach(x => { if (x.ec0 === undefined) x.ec0 = x.ec; x.ec = nomEc(x.ec0); })); aplicarAgendas(); } finally { D = g; } }
+  if (DP && DP !== D) { const g = D; D = DP; try { [D.ing, D.liq, D.progRaw].forEach(L => (L || []).forEach(fijarEc)); aplicarAgendas(); } finally { D = g; } }
 }
 /* ---------- Periodo (mes · semana · desde/hasta): filtra todo el portal menos Pendientes ---------- */
 let DC = D, DP = null;          // DC = tablero del mes en curso tal como llega · DP = vista del mes en curso completo (para Pendientes)
@@ -2087,7 +2090,7 @@ function pintarAvt() {
     $('avt-mat').innerHTML = '<p class="nota">Aún no hay datos de avance total: aparecen después de la próxima actualización del robot.</p>'; return; }
   const dias = [...new Set(A.r.map(x => x[0]))].sort((a, b) => a - b);
   if (!avt.dia || !dias.includes(avt.dia)) avt.dia = dias[dias.length - 1];
-  const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], sv: A.s[x[2]], ec: nomEc(A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
+  const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], sv: A.s[x[2]], ec: nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
   const ecsAll = [...new Set(R0.map(x => x.ec))].sort(); avtR = null;
   const R = R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec);
   const sum = (L) => L.reduce((a, x) => a + x.n, 0);
@@ -2632,6 +2635,66 @@ function abrirAjustes() {
   if (!ajOk) $('modal-aviso').textContent = 'Aún no se pudieron leer los ajustes guardados; lo que guardes ahora los reemplazará.';
 }
 $('pen-ajustes').addEventListener('click', abrirAjustes);
+/* ---------- Técnicos y EECC: el usuario master cambia a qué EECC pertenece cada técnico (aplica en Instalaciones y Averías) ---------- */
+function abrirTecnicos() {
+  const listas = [DC, DP].filter(Boolean).flatMap(b => [b.ing, b.liq, b.pend, b.pendx, b.progRaw || b.prog]).filter(Boolean);
+  const porTec = {}, nOs = {};
+  listas.forEach(L => L.forEach(x => { if (!x.tec || !String(x.tec).trim()) return; const e = x.ecR ?? x.ec0 ?? x.ec; const m = porTec[x.tec] || (porTec[x.tec] = {}); m[e] = (m[e] || 0) + 1; nOs[x.tec] = (nOs[x.tec] || 0) + 1; }));
+  const A = DC && DC.avt; if (A && A.o) A.o.forEach(x => { const t = A.k[x[4]], e = A.e[x[3]]; if (!t) return; const m = porTec[t] || (porTec[t] = {}); m[e] = (m[e] || 0) + 1; });
+  const robot = (t) => { const m = porTec[t] || {}; return Object.keys(m).sort((a, b) => m[b] - m[a] || (a < b ? -1 : 1))[0] || 'POR ASIGNAR'; };
+  const NO_EC = ['POR ASIGNAR', 'SIN EECC', ''];
+  const ops = [...new Set([...Object.values(porTec).flatMap(m => Object.keys(m)), ...Object.values(AJ.tecnicos || {})].filter(e => !NO_EC.includes(e)))].sort((a, b) => nomEc(a).localeCompare(nomEc(b), 'es'));
+  const tecs = [...new Set([...Object.keys(porTec), ...Object.keys(AJ.tecnicos || {})])].sort((a, b) => a.localeCompare(b, 'es'));
+  const sel = { ...(AJ.tecnicos || {}) };
+  const html = `<form id="f-tec" class="f-tec">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><input id="tec-buscar" type="search" placeholder="Buscar técnico o EECC" style="flex:1 1 220px;font:inherit;padding:8px 12px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg)">
+      <label class="seg-t" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tec-solo"> Solo cambiados</label></div>
+    <div class="scroll" style="max-height:52vh;overflow:auto"><table class="aj-tb" id="tb-tec"><thead><tr><th>Técnico</th><th>EECC de ScordSoft</th><th>EECC asignada</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="fi-nota" id="tec-n"></p>
+    ${claveMaster() ? `<p class="fi-nota">🔒 Sesión de usuario master activa · <button type="button" class="lnk num" data-tec-salir>cerrar sesión master</button></p>`
+      : `<label class="seg-t" style="display:flex;flex-direction:column;gap:6px;margin-top:6px">Clave de usuario master<input type="password" name="master" autocomplete="current-password" placeholder="Solo el usuario master puede guardar cambios" style="font:inherit;padding:8px 12px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg)"></label>`}
+    <div class="aj-pie"><button type="button" class="btn-out" data-tec-reset>Restablecer todo</button><button type="button" class="btn-out" data-tec-cancelar>Cancelar</button><button type="submit" class="btn-pri">Guardar para todos</button></div>
+    <p class="fi-nota">La EECC elegida reemplaza a la de ScordSoft para ese técnico en todo Instalaciones (pendientes, liquidadas, ingresos, agendas, avance y gráficos) y en Averías, para todo el equipo. El robot no la borra.</p></form>`;
+  abrirFichaModal('Técnicos y EECC', `${D.filial || 'LIMA'} · ${tecs.length} técnicos del periodo · los cambios se guardan para todos los usuarios del portal`, html);
+  $('modal-copiar').hidden = true;
+  const f = $('f-tec'), tb = f.querySelector('tbody');
+  const pintar = () => {
+    const q = $('tec-buscar').value.trim().toUpperCase(), solo = $('tec-solo').checked;
+    const filas = tecs.filter(t => { const r = robot(t), a = sel[t]; if (solo && !(a && a !== r)) return false; return !q || t.toUpperCase().includes(q) || nomEc(r).toUpperCase().includes(q) || (a && nomEc(a).toUpperCase().includes(q)); });
+    tb.innerHTML = filas.map(t => { const r = robot(t), a = sel[t] && sel[t] !== r ? sel[t] : '';
+      return `<tr><td>${esc(t)}<small>${nOs[t] || 0} OS</small></td><td>${esc(nomEc(r))}</td>
+        <td><select class="aj-in" data-tec="${esc(t)}" aria-label="EECC asignada a ${esc(t)}"><option value="">Como ScordSoft (${esc(nomEc(r))})</option>${ops.map(o => `<option value="${esc(o)}"${o === a ? ' selected' : ''}>${esc(nomEc(o))}</option>`).join('')}</select></td>
+        <td>${a ? '<span class="b coo">Cambiado</span>' : ''}</td></tr>`; }).join('') || '<tr><td colspan="4">Sin técnicos con estos filtros.</td></tr>';
+    const n = Object.keys(sel).filter(t => sel[t] && sel[t] !== robot(t)).length;
+    $('tec-n').textContent = n ? `${n} técnico${n === 1 ? '' : 's'} con EECC cambiada.` : 'Ningún técnico cambiado: todos usan la EECC de ScordSoft.';
+  };
+  pintar();
+  $('tec-buscar').addEventListener('input', pintar); $('tec-solo').addEventListener('change', pintar);
+  tb.addEventListener('change', (e) => { const s2 = e.target.closest('[data-tec]'); if (!s2) return; const t = s2.dataset.tec; if (s2.value) sel[t] = s2.value; else delete sel[t]; pintar(); });
+  f.addEventListener('click', (e) => {
+    if (e.target.closest('[data-tec-cancelar]')) { cerrarModal(); return; }
+    if (e.target.closest('[data-tec-salir]')) { ponerMaster(''); abrirTecnicos(); return; }
+    if (e.target.closest('[data-tec-reset]')) { Object.keys(sel).forEach(k => delete sel[k]); pintar(); }
+  });
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const clave = f.master ? f.master.value.trim() : claveMaster();
+    if (!clave) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'Ingresa la clave de usuario master.'; f.master && f.master.focus(); return; }
+    const tecnicos = {}; Object.keys(sel).forEach(t => { if (sel[t] && sel[t] !== robot(t)) tecnicos[t] = sel[t]; });
+    const bt = f.querySelectorAll('button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
+    try {
+      const r = await fetch(urlAj(D.filial || filialSel()) + '&accion=tecnicos', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave }, body: JSON.stringify({ tecnicos }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Solo el usuario master puede cambiar la EECC de los técnicos.'); }
+      if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
+      ponerMaster(clave); AJ = { ...AJ_VACIO(), ...j }; ajOk = true; CACHE.set('aj:' + (D.filial || filialSel()), AJ);
+      filtro.penEc = 'TODOS'; aplicarAjustes(); pintarFiltros(); pintarTodo(); cerrarModal();
+      const n = Object.keys(tecnicos).length; avisoGlobal(n ? `${n} técnico${n === 1 ? '' : 's'} con EECC cambiada. Ya lo ve todo el equipo.` : 'Todos los técnicos vuelven a la EECC de ScordSoft.');
+    } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message || 'No se pudo guardar.'; bt.forEach(b => b.disabled = false); }
+  });
+}
+$('pen-tecnicos').addEventListener('click', abrirTecnicos);
 $('modal-cuerpo').addEventListener('click', async (e) => {
   if (e.target.closest('#aj-cancelar')) { cerrarModal(); return; }
   const cb = e.target.closest('[data-aj-cn]');

@@ -463,8 +463,8 @@ const _visDe = (p) => { const L = [...p.obs.matchAll(new RegExp(RE_VISD.source, 
 const visTxt = (v) => v.n === 'VD' ? 'VD' : `${v.n}° visita`;
 const visV = (v) => v ? (v.n === 'VD' ? 3 : v.n) : 9;
 const vis1 = (p) => !!visDe(p);
-let GEST = {}, NOMS = {};   // gestores y nombres de EECC (los mismos de Instalaciones › Metas, EECC y gestores)
-async function traerGestores(f) { try { const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); GEST = j.gestores || {}; NOMS = j.nombres || {}; } catch { /* sin gestores */ } }
+let GEST = {}, NOMS = {}, TECS = {};   // gestores y nombres de EECC (los mismos de Instalaciones › Metas, EECC y gestores)
+async function traerGestores(f) { try { const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); GEST = j.gestores || {}; NOMS = j.nombres || {}; const antesT = JSON.stringify(TECS); TECS = j.tecnicos || {}; if (JSON.stringify(TECS) !== antesT && typeof repintarPer === 'function' && DC) repintarPer(); } catch { /* sin gestores */ } }
 const gestorDe = (ec) => { if (GEST[ec]) return GEST[ec]; const k = Object.keys(NOMS).find(c => NOMS[c] === ec || c.replace('EECC ', '') === ec); return (k && GEST[k]) || ''; };
 const tokenPortal = () => { try { return sessionStorage.getItem(CLAVE_SESION) || ''; } catch { return ''; } };
 const CLAVE_FILIAL = 'mifibra_filial';
@@ -513,7 +513,15 @@ async function traerMes(mes) {
   return DMES[kMes(mes)] = j;
 }
 /* D = mes elegido recortado a los días [a, b] + los pendientes de hoy */
+/* EECC asignada a mano a un técnico (Instalaciones › Técnicos y EECC, usuario master): reemplaza la de ScordSoft. ecR = la del robot. */
+function aplicarTecs(b) {
+  if (!b) return;
+  [b.liq, b.cien, b.ing, b.pend, b.pendx, b.agd].forEach(L => (Array.isArray(L) ? L : []).forEach(x => {
+    if (!x || typeof x !== 'object' || Array.isArray(x)) return;
+    if (x.ecR === undefined) x.ecR = x.ec; x.ec = (x.tec && TECS[x.tec]) || x.ecR; }));
+}
 function vistaPeriodo() {
+  aplicarTecs(DC); if (PER.mes && DMES[kMes(PER.mes)]) aplicarTecs(DMES[kMes(PER.mes)]);
   const base = (PER.mes && DMES[kMes(PER.mes)]) || DC;
   const enR = (x) => x.d >= PER.a && x.d <= PER.b;
   D = Object.assign({}, base, { liq: (base.liq || []).filter(enR), cien: (base.cien || []).filter(enR), ing: (base.ing || []).filter(enR),

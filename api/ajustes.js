@@ -68,6 +68,13 @@ function podarCien(c) {
   return o;
 }
 
+// EECC asignada a mano a cada técnico (Técnicos y EECC): { "NOMBRE DEL TÉCNICO": "EECC" }. Aplica en Instalaciones y Averías.
+function limpiarTecnicos(t) {
+  const o = {};
+  Object.entries(t && typeof t === 'object' ? t : {}).slice(0, 1500).forEach(([k, v]) => { const kk = texto(k, 100), vv = texto(v, 80); if (kk && vv) o[kk] = vv; });
+  return o;
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = '';
@@ -110,9 +117,14 @@ module.exports = async (req, res) => {
         const cien = { ...(previo.cien || {}) };
         if (a) cien[os] = { ...a, por: 'master' }; else delete cien[os];
         nuevo = { ...previo, cien: podarCien(cien) };
+      } else if (accion === 'tecnicos') {
+        // EECC de cada técnico: solo el usuario master. Reemplaza la lista completa.
+        if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
+        if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar la EECC de los técnicos.' });
+        nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos) };
       } else {
-        // Metas, nombres, gestores y rutas; las agendas y resultados de 100 min guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien) };
+        // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos) };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
