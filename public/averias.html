@@ -1295,7 +1295,7 @@ function pintarPendientes() {
       <td class="izq" title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
       <td data-v="${rec || ''}">${rec ? `${ddmes(rec)} ${hhmm(rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td>
       <td data-v="${p.ags === 'ok' ? 'A ' + p.ag : p.ags === 'vacio' ? 'C' : 'B'}">${ag}</td><td class="vis" data-v="${visV(vv)}" title="${vv ? esc(visTxt(vv)) : ''}">${vis}</td><td class="tm" data-v="${tiempoV}">${celdaTiempo(p)}</td><td data-v="${hll || ''}">${hll ? hhmm(hll) + (mas1 ? ' <small>+1d</small>' : '') : sinCont(p) ? '-' : '—'}</td>
-      <td data-v="${p.ini ? 1 : 0}">${p.ini ? '<span class="b si">Sí</span>' : '<span class="b no">No</span>'}</td><td data-v="${cumpleV}">${cumple}</td></tr>`;
+      <td data-v="${p.ini ? 1 : 0}"><span class="b ${p.ini ? 'si' : 'no'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'Sí' : 'No'}</span></td><td data-v="${cumpleV}">${cumple}</td></tr>`;
   }).join('') || '<tr><td colspan="17">No hay pendientes con este filtro.</td></tr>';
   prepararOrden($('tb-pend')); marcarFiltrosCol();
 }
@@ -1452,6 +1452,70 @@ setInterval(async () => {
 const repintar = () => { pintarLiq(); pintarCien(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repintar);
 new MutationObserver(repintar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
+<!-- Ventana flotante de inicio de atención: pasa el mouse o toca el Sí / No de cualquier columna de inicio. -->
+<style>
+.ini-pop { cursor: pointer; }
+.ini-txt { text-decoration: underline dotted; text-underline-offset: 3px; }
+.ini-flot { position: fixed; z-index: 9999; min-width: 220px; max-width: 280px; background: var(--sup, #fff); color: var(--fg, #1d1d1f);
+  border: 1px solid var(--borde-2, #d9d9de); border-radius: 12px; padding: 10px 12px; font: 400 13px/1.5 var(--f-txt, system-ui, sans-serif);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .14); pointer-events: none; }
+.ini-flot .ini-t { font-weight: 700; margin: 0 0 6px; }
+.ini-flot .ini-r { display: flex; justify-content: space-between; gap: 14px; color: var(--fg-3, #6b6b73); }
+.ini-flot .ini-r b { color: var(--fg, #1d1d1f); font-weight: 700; }
+.ini-flot .ini-s { color: var(--fg-3, #6b6b73); }
+</style>
+<script>
+(function () {
+  'use strict';
+  const caja = document.createElement('div');
+  caja.className = 'ini-flot'; caja.setAttribute('role', 'tooltip'); caja.id = 'ini-flot'; caja.hidden = true;
+  document.body.appendChild(caja);
+  const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  let fijo = null;
+  const hace = (min) => {
+    if (!(min >= 0)) return null;
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60), m = min % 60;
+    if (h < 24) return `${h} h${m ? ' ' + m + ' min' : ''}`;
+    const d = Math.floor(h / 24), hh = h % 24;
+    return `${d} d${hh ? ' ' + hh + ' h' : ''}`;
+  };
+  function contenido(iso) {
+    if (!iso) return '<p class="ini-t">Sin inicio registrado</p><div class="ini-s">El técnico aún no inicia la atención.</div>';
+    const s = String(iso).slice(0, 16);
+    const dia = DIAS[new Date(s.slice(0, 10) + 'T12:00:00-05:00').getUTCDay()];
+    const min = Math.round((Date.now() - new Date(s + ':00-05:00').getTime()) / 60000);
+    const h = hace(min);
+    return '<p class="ini-t">Inicio de atención</p>'
+      + `<div class="ini-r"><span>Fecha</span><b>${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)} · ${dia}</b></div>`
+      + `<div class="ini-r"><span>Hora</span><b>${s.slice(11, 16)}</b></div>`
+      + (h ? `<div class="ini-r"><span>Hace</span><b>${h}</b></div>` : '');
+  }
+  function mostrar(el) {
+    caja.innerHTML = contenido(el.getAttribute('data-ini'));
+    caja.hidden = false;
+    el.setAttribute('aria-describedby', 'ini-flot');
+    const r = el.getBoundingClientRect(), w = caja.offsetWidth, hgt = caja.offsetHeight;
+    let top = r.bottom + 6; if (top + hgt > window.innerHeight - 8) top = r.top - hgt - 6;
+    let left = r.left + r.width / 2 - w / 2; left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    caja.style.top = Math.max(8, top) + 'px'; caja.style.left = left + 'px';
+  }
+  function ocultar() { caja.hidden = true; fijo = null; }
+  const objetivo = (e) => e.target && e.target.closest ? e.target.closest('[data-ini]') : null;
+  document.addEventListener('mouseover', (e) => { const el = objetivo(e); if (el && !fijo) mostrar(el); });
+  document.addEventListener('mouseout', (e) => { const el = objetivo(e); if (el && !fijo && !el.contains(e.relatedTarget)) caja.hidden = true; });
+  document.addEventListener('focusin', (e) => { const el = objetivo(e); if (el) mostrar(el); });
+  document.addEventListener('focusout', (e) => { if (objetivo(e) && !fijo) caja.hidden = true; });
+  // Clic o toque: fija la ventana (en celular no hay "pasar el mouse"). Se detiene el clic para no abrir otras fichas de la fila.
+  document.addEventListener('click', (e) => {
+    const el = objetivo(e);
+    if (el) { e.stopPropagation(); e.preventDefault(); if (fijo === el) { ocultar(); } else { fijo = el; mostrar(el); } return; }
+    if (fijo) ocultar();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ocultar(); });
+  window.addEventListener('scroll', () => { if (!caja.hidden) ocultar(); }, true);
 })();
 </script>
 </body>
