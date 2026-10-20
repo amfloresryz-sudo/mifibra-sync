@@ -162,8 +162,15 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:  # noqa: BLE001 - sin mapas se conservan las cajas ya guardadas
             print(f"Aviso: no se cargaron los mapas de cajas: {e}", flush=True)
         filas_por_id: dict[int, dict] = {}
+        diag = None
         for archivo in archivos:
-            for fila in procesar.procesar(archivo, inicio, indice_cajas):
+            df0 = procesar.leer_excel(archivo)
+            if diag is None:
+                try:
+                    diag = procesar.diagnostico_speedtest(df0)
+                except Exception as e:  # noqa: BLE001 - el diagnóstico nunca detiene la corrida
+                    print(f"Aviso: diagnóstico de Speedtest falló: {e}", flush=True)
+            for fila in procesar.a_filas(df0, inicio, indice_cajas):
                 filas_por_id[fila["id_os"]] = fila
         filas = list(filas_por_id.values())
         if not filas:
@@ -203,6 +210,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{borradas} órdenes que ya no están en el reporte se borraron de la base.", flush=True)
         estado["arranque"] = False
         subir.guardar_estado(ESTADO, estado)
+        if diag is not None:
+            tableros["diag:speedtest"] = diag
         n_tab = subir.guardar_tableros(tableros, estado, inicio)
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)

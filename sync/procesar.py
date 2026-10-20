@@ -167,6 +167,16 @@ def _hora(v) -> str | None:
 _RE_VISITA_TEC = re.compile(r"#\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*(?:(\d{1,2}):?(\d{2})\d?)?\s*(?:#|%(?=\s))?\s*(?:%([^%]*)%\s*)?(.*?)\s*(?:%([^%]*)%|(?=#\s*\d{1,2}/)|$)", re.S)
 _RE_TEC_SUELTO = re.compile(r"%([^%]*)%")
 _RE_TELEFONO = re.compile(r"\+?(?=(?:[\s-]?\d){7})\d{1,3}(?:[\s-]?\d{3,})+")  # 7+ dígitos en grupos de 3+ (no confunde "15-10 14")
+_RE_URL = re.compile(r"https?://\S+", re.I)
+
+
+def _sin_tel(t: str) -> str:
+    """Oculta los teléfonos (•••) sin tocar los enlaces: los números de un enlace de Speedtest no son teléfonos."""
+    partes, ult = [], 0
+    for m in _RE_URL.finditer(t):
+        partes.append(_RE_TELEFONO.sub("•••", t[ult:m.start()])); partes.append(m.group(0)); ult = m.end()
+    partes.append(_RE_TELEFONO.sub("•••", t[ult:]))
+    return "".join(partes)
 
 
 # Agenda dentro de un comentario del técnico: día ("16/10", "HOY", "MAÑANA", "JUEVES") y franja ("8 A 10", "2-4PM", "DE 4 A 6").
@@ -316,7 +326,7 @@ def _obs_visita(v, base_sin_fecha: datetime | None = None) -> dict:
         texto, en = m[7].strip(" ,;"), f"{int(m[1]):02d}/{int(m[2]):02d}/{m[3]}" + (f" {int(m[4]):02d}:{m[5]}" if m[4] else "") + (f" · {tec}" if tec else "")
     else:  # sin fecha: '%TÉCNICO% texto, %TÉCNICO% texto' → la última anotación es la que sigue al último %TÉCNICO%
         texto, en = _ultima_sin_fecha(t)
-    return {"obs_visita": _RE_TELEFONO.sub("•••", texto)[:600] or None, "obs_visita_en": en, "visita_agenda": _agenda_visita(t, base_sin_fecha)}
+    return {"obs_visita": _sin_tel(texto)[:600] or None, "obs_visita_en": en, "visita_agenda": _agenda_visita(t, base_sin_fecha)}
 
 
 def _inicio_fachada(v) -> str | None:
@@ -442,7 +452,7 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
         fila["inicio_fachada"] = _inicio_fachada(registro.get("FechaInicioFachada"))
         fila.update(_agenda(registro.get("Observaciones")))
         # Observaciones de la OS (llamada de ATC), todos los tipos de orden: ficha del AB y 1.ª/2.ª visita o VD; teléfonos ocultos.
-        fila["observaciones"] = _RE_TELEFONO.sub("•••", str(_texto(registro.get("Observaciones")) or "").strip())[:2000] or None
+        fila["observaciones"] = _sin_tel(str(_texto(registro.get("Observaciones")) or "").strip())[:2000] or None
         # Comentario sin fecha (#dd/mm/aaaa#): HOY / MAÑANA / día de semana se cuentan desde la última modificación de
         # la OS, solo si sigue pendiente (en las ya descargadas esa fecha es posterior al comentario).
         _fm = pd.to_datetime(registro.get("Fecha Mod"), errors="coerce", dayfirst=isinstance(registro.get("Fecha Mod"), str)) \
@@ -451,7 +461,7 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
         # Comentario completo del técnico (todas las anotaciones), solo para las altas; teléfonos ocultos.
         _todo = str(_texto(registro.get("OBS VISITA TÉCNICO")) or "").strip()
         fila["detalle"] = detalle_de(fila.get("tipo_orden"), fila.get("motivo"), fila.get("lugar_averia"))
-        fila["obs_visita_todo"] = (_RE_TELEFONO.sub("•••", _todo)[:4000] or None) if fila.get("tipo_orden") in ("INSTALACION SERVICIO", "SERVICIO TECNICO") else None
+        fila["obs_visita_todo"] = (_sin_tel(_todo)[:4000] or None) if fila.get("tipo_orden") in ("INSTALACION SERVICIO", "SERVICIO TECNICO") else None
         # Coordenadas del abonado (Latitud MAPS / Longitud MAPS): solo para las altas (INSTALACION SERVICIO),
         # limpias y en el formato "-12.092068781701789,<tab>-77.01055209096951" (todos los decimales).
         lat, lon, txt_coord = _coordenadas(registro.get("Latitud MAPS"), registro.get("Longitud MAPS"))
@@ -465,6 +475,21 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
             continue
         filas.append(fila)
     return filas
+
+
+_RE_SPEED = re.compile(r"speedtest|ookla|fast\.com|nperf|testdevelocidad", re.I)
+
+
+def diagnostico_speedtest(df: pd.DataFrame) -> dict:
+    """Temporal: qué columnas del Excel traen enlaces de pruebas de velocidad, con unos ejemplos (teléfonos ocultos)."""
+    cols = {}
+    inst = df[df.get("Tipo Orden", pd.Series(dtype=str)).astype(str).str.upper().eq("INSTALACION SERVICIO")] if "Tipo Orden" in df else df
+    for c in df.columns:
+        s = inst[c].dropna().astype(str)
+        m = s[s.str.contains(_RE_SPEED)]
+        if len(m):
+            cols[str(c)] = {"filas": int(len(m)), "ejemplos": [_sin_tel(v)[:500] for v in m.head(12).tolist()]}
+    return {"columnas_excel": [str(c) for c in df.columns], "instalaciones": int(len(inst)), "con_speedtest": cols}
 
 
 def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:
