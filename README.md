@@ -20,7 +20,8 @@ Todo funciona en planes gratuitos: GitHub Actions (repositorio público = minuto
 |---|---|
 | 8:00, 8:20, 8:40 … 23:40 y 0:00 | Descarga el reporte del periodo y actualiza el portal (49 veces al día) |
 
-Tres turnos encadenados de ~5 h 30 min (7:40, 12:55 y 18:25) cubren el día aunque GitHub retrase un cron.
+Cuatro turnos encadenados de hasta ~5 h 30 min (arrancan 7:00, 11:30, 16:00 y 20:30) cubren el día aunque GitHub
+retrase un cron: el primero espera despierto hasta las 8:00.
 
 ## Qué descarga
 
