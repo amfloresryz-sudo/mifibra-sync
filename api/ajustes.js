@@ -75,6 +75,11 @@ function limpiarTecnicos(t) {
   return o;
 }
 
+// EECC creadas a mano en «Técnicos y EECC» (no vienen de ScordSoft): lista de nombres.
+function limpiarEeccs(l) {
+  return [...new Set((Array.isArray(l) ? l : []).map(v => texto(v, 60).toUpperCase()).filter(Boolean))].slice(0, 100);
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = '';
@@ -121,10 +126,10 @@ module.exports = async (req, res) => {
         // EECC de cada técnico: solo el usuario master. Reemplaza la lista completa.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
         if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar la EECC de los técnicos.' });
-        nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos) };
+        nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos), eeccs: limpiarEeccs(cuerpo?.eeccs) };
       } else {
         // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos) };
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs) };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');

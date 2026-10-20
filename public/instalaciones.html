@@ -967,7 +967,7 @@ async function traer(f = filialSel()) {
   return j;
 }
 /* Ajustes que operaciones edita en el portal (metas, nombres de EECC, gestores y rutas del día) */
-const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {}, tecnicos: {} });
+const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {}, tecnicos: {}, eeccs: [] });
 let AJ = AJ_VACIO(), ajOk = false;
 const urlAj = (f) => '/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f);
 async function traerAjustes(f = filialSel()) {
@@ -2643,13 +2643,19 @@ function abrirTecnicos() {
   const A = DC && DC.avt; if (A && A.o) A.o.forEach(x => { const t = A.k[x[4]], e = A.e[x[3]]; if (!t) return; const m = porTec[t] || (porTec[t] = {}); m[e] = (m[e] || 0) + 1; });
   const robot = (t) => { const m = porTec[t] || {}; return Object.keys(m).sort((a, b) => m[b] - m[a] || (a < b ? -1 : 1))[0] || 'POR ASIGNAR'; };
   const NO_EC = ['POR ASIGNAR', 'SIN EECC', ''];
-  const ops = [...new Set([...Object.values(porTec).flatMap(m => Object.keys(m)), ...Object.values(AJ.tecnicos || {})].filter(e => !NO_EC.includes(e)))].sort((a, b) => nomEc(a).localeCompare(nomEc(b), 'es'));
-  const tecs = [...new Set([...Object.keys(porTec), ...Object.keys(AJ.tecnicos || {})])].sort((a, b) => a.localeCompare(b, 'es'));
+  const nuevas = [...(AJ.eeccs || [])];
+  const delRobot = new Set(Object.values(porTec).flatMap(m => Object.keys(m)));
+  const opsDe = () => [...new Set([...delRobot, ...Object.values(sel), ...nuevas].filter(e => !NO_EC.includes(e)))].sort((a, b) => nomEc(a).localeCompare(nomEc(b), 'es'));
   const sel = { ...(AJ.tecnicos || {}) };
+  const tecs = [...new Set([...Object.keys(porTec), ...Object.keys(AJ.tecnicos || {})])].sort((a, b) => a.localeCompare(b, 'es'));
   const html = `<form id="f-tec" class="f-tec">
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><input id="tec-buscar" type="search" placeholder="Buscar técnico o EECC" style="flex:1 1 220px;font:inherit;padding:8px 12px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg)">
       <label class="seg-t" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="tec-solo"> Solo cambiados</label></div>
-    <div class="scroll" style="max-height:52vh;overflow:auto"><table class="aj-tb" id="tb-tec"><thead><tr><th>Técnico</th><th>EECC de ScordSoft</th><th>EECC asignada</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="tec-nueva" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;padding:10px 12px;border:1px dashed var(--borde-2);border-radius:12px">
+      <span class="seg-t">Nueva EECC</span><input id="tec-nueva" type="text" maxlength="60" placeholder="Nombre de la EECC (ej.: TELCONET)" style="flex:1 1 220px;font:inherit;padding:8px 12px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg);text-transform:uppercase">
+      <button type="button" class="btn-out" data-tec-agregar>Agregar EECC</button>
+      <div id="tec-nuevas" style="flex-basis:100%;display:flex;gap:6px;flex-wrap:wrap"></div></div>
+    <div class="scroll" style="max-height:48vh;overflow:auto"><table class="aj-tb" id="tb-tec"><thead><tr><th>Técnico</th><th>EECC de ScordSoft</th><th>EECC asignada</th><th></th></tr></thead><tbody></tbody></table></div>
     <p class="fi-nota" id="tec-n"></p>
     ${claveMaster() ? `<p class="fi-nota">🔒 Sesión de usuario master activa · <button type="button" class="lnk num" data-tec-salir>cerrar sesión master</button></p>`
       : `<label class="seg-t" style="display:flex;flex-direction:column;gap:6px;margin-top:6px">Clave de usuario master<input type="password" name="master" autocomplete="current-password" placeholder="Solo el usuario master puede guardar cambios" style="font:inherit;padding:8px 12px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg)"></label>`}
@@ -2658,7 +2664,12 @@ function abrirTecnicos() {
   abrirFichaModal('Técnicos y EECC', `${D.filial || 'LIMA'} · ${tecs.length} técnicos del periodo · los cambios se guardan para todos los usuarios del portal`, html);
   $('modal-copiar').hidden = true;
   const f = $('f-tec'), tb = f.querySelector('tbody');
+  const pintarNuevas = () => {
+    const usadas = new Set(Object.values(sel));
+    $('tec-nuevas').innerHTML = nuevas.length ? '<span class="fi-nota" style="margin:0">EECC creadas:</span>' + nuevas.map(e => `<span class="b coo">${esc(e)}${usadas.has(e) ? '' : ` <button type="button" class="lnk num" data-tec-quitar="${esc(e)}" title="Quitar ${esc(e)}" aria-label="Quitar ${esc(e)}">✕</button>`}</span>`).join('') : '';
+  };
   const pintar = () => {
+    const ops = opsDe(); pintarNuevas();
     const q = $('tec-buscar').value.trim().toUpperCase(), solo = $('tec-solo').checked;
     const filas = tecs.filter(t => { const r = robot(t), a = sel[t]; if (solo && !(a && a !== r)) return false; return !q || t.toUpperCase().includes(q) || nomEc(r).toUpperCase().includes(q) || (a && nomEc(a).toUpperCase().includes(q)); });
     tb.innerHTML = filas.map(t => { const r = robot(t), a = sel[t] && sel[t] !== r ? sel[t] : '';
@@ -2670,11 +2681,21 @@ function abrirTecnicos() {
   };
   pintar();
   $('tec-buscar').addEventListener('input', pintar); $('tec-solo').addEventListener('change', pintar);
+  const agregarNueva = () => {
+    const inp = $('tec-nueva'), v = inp.value.replace(/[\u0000-\u001f<>]/g, '').trim().toUpperCase().slice(0, 60);
+    $('modal-aviso').style.color = 'var(--mal)';
+    if (!v) { $('modal-aviso').textContent = 'Escribe el nombre de la nueva EECC.'; inp.focus(); return; }
+    if (opsDe().some(o => o.toUpperCase() === v || nomEc(o).toUpperCase() === v)) { $('modal-aviso').textContent = `La EECC ${v} ya existe en la lista.`; inp.select(); return; }
+    nuevas.push(v); inp.value = ''; $('modal-aviso').style.color = ''; $('modal-aviso').textContent = `${v} agregada: elígela en «EECC asignada» y pulsa «Guardar para todos».`; pintar();
+  };
+  $('tec-nueva').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); agregarNueva(); } });
   tb.addEventListener('change', (e) => { const s2 = e.target.closest('[data-tec]'); if (!s2) return; const t = s2.dataset.tec; if (s2.value) sel[t] = s2.value; else delete sel[t]; pintar(); });
   f.addEventListener('click', (e) => {
     if (e.target.closest('[data-tec-cancelar]')) { cerrarModal(); return; }
     if (e.target.closest('[data-tec-salir]')) { ponerMaster(''); abrirTecnicos(); return; }
     if (e.target.closest('[data-tec-reset]')) { Object.keys(sel).forEach(k => delete sel[k]); pintar(); }
+    if (e.target.closest('[data-tec-agregar]')) { agregarNueva(); }
+    const qx = e.target.closest('[data-tec-quitar]'); if (qx) { const i = nuevas.indexOf(qx.dataset.tecQuitar); if (i >= 0) nuevas.splice(i, 1); pintar(); }
   });
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2684,7 +2705,7 @@ function abrirTecnicos() {
     const bt = f.querySelectorAll('button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
     try {
       const r = await fetch(urlAj(D.filial || filialSel()) + '&accion=tecnicos', { method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave }, body: JSON.stringify({ tecnicos }) });
+        headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave }, body: JSON.stringify({ tecnicos, eeccs: nuevas }) });
       const j = await r.json().catch(() => ({}));
       if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Solo el usuario master puede cambiar la EECC de los técnicos.'); }
       if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
