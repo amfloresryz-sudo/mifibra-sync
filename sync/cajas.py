@@ -13,9 +13,26 @@ import xml.etree.ElementTree as ET
 
 import requests
 
-# IDs de los mapas de Google My Maps (separados por coma) en la variable CAJAS_MAPAS de GitHub Actions.
-# No van en el código porque el repositorio es público y los mapas muestran la ubicación de la planta.
-MAPAS = [m.strip() for m in os.environ.get("CAJAS_MAPAS", "").split(",") if m.strip()]
+# IDs de los mapas de Google My Maps. No van en el código porque el repositorio es público y los mapas muestran la
+# ubicación de la planta: se guardan en Supabase (tabla ajustes, clave "robot:cajas_mapas", solo con la clave de
+# servicio). La variable CAJAS_MAPAS (separados por coma), si existe, tiene prioridad.
+CLAVE_AJUSTE = "robot:cajas_mapas"
+
+
+def _mapas() -> list[str]:
+    env = [m.strip() for m in os.environ.get("CAJAS_MAPAS", "").split(",") if m.strip()]
+    if env:
+        return env
+    try:
+        url = os.environ["SUPABASE_URL"].rstrip("/") + f"/rest/v1/ajustes?select=datos&clave=eq.{CLAVE_AJUSTE}"
+        clave = os.environ["SUPABASE_SERVICE_KEY"]
+        r = requests.get(url, headers={"apikey": clave, "Authorization": f"Bearer {clave}"}, timeout=60)
+        r.raise_for_status()
+        filas = r.json()
+        return [str(m) for m in (filas[0]["datos"].get("mapas") or [])] if filas else []
+    except Exception as e:  # noqa: BLE001
+        print(f"Aviso: no se leyó la lista de mapas de cajas: {e}", flush=True)
+        return []
 RADIO_M = 200
 MAXIMO = 15
 _CELDA = 0.002  # grados (~220 m): con la celda vecina basta para un radio de 200 m
@@ -86,12 +103,13 @@ class Indice:
 def cargar(timeout: int = 60) -> Indice | None:
     """Descarga los mapas. Si alguno no se pudo leer devuelve None y no se tocan las cajas guardadas: con mapas a
     medias cambiarían las cajas de miles de altas y se reescribirían todas sin motivo."""
-    if not MAPAS:
-        print("Aviso: falta la variable CAJAS_MAPAS; se conservan las cajas ya guardadas.", flush=True)
+    mapas = _mapas()
+    if not mapas:
+        print("Aviso: no hay lista de mapas de cajas; se conservan las cajas ya guardadas.", flush=True)
         return None
     puntos = []
     fallos = 0
-    for mid in MAPAS:
+    for mid in mapas:
         try:
             r = requests.get(f"https://www.google.com/maps/d/kml?mid={mid}&forcekml=1", timeout=timeout)
             r.raise_for_status()

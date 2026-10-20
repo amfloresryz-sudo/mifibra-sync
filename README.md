@@ -66,7 +66,9 @@ se agota el presupuesto de E/S y el portal deja de responder ("Supabase 504 / st
 | Secret | `SCORDSOFT_USUARIO`, `SCORDSOFT_CLAVE` | usuario de servicio de ScordSoft |
 | Secret | `SCORDSOFT_TOTP_SECRETO` | solo si usa app autenticadora |
 | Secret | `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Project URL y service_role key de Supabase |
-| Variable | `CAJAS_MAPAS` | IDs de los mapas de cajas, separados por coma (no van en el código: el repo es público) |
+
+Los IDs de los mapas de cajas no van en el código (el repo es público): están en Supabase, tabla `ajustes`,
+clave `robot:cajas_mapas` (`{"mapas": ["id1", "id2", …]}`). Opcionalmente, la variable `CAJAS_MAPAS` tiene prioridad.
 
 **Vercel → Settings → Environment Variables:** `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `PORTAL_TOKEN` (clave del portal)
 y `MASTER_TOKEN` (clave master para editar agendas).
