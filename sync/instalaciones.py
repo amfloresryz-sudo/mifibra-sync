@@ -21,13 +21,20 @@ from .averias import TZ, _canal, _contrata, _iso, _lima, _txt, inicio_periodo  #
 from .zonas import ZONAS
 
 COLUMNAS_BD = (
-    "id_os,nro_os,estado_os,abonado_codigo,distrito,segmento,servicio,plano,tipo_vivienda,fecha_registro,hora_recepcion,"
+    "id_os,nro_os,estado_os,abonado_codigo,distrito,segmento,categoria,servicio,plano,tipo_vivienda,fecha_registro,hora_recepcion,"
     "fecha_atencion,fecha_programada,fecha_cita,atencion_inicio,atencion_fin,horario_atencion,tecnico_ejecutor,tecnico_responsable,contrata,"
     "tarifa_servicio,cajas_cerca,obs_visita,obs_visita_en,coordenadas,visita_agenda,inicio_fachada,obs_visita_todo,canal_atencion,observaciones"
 )
 
 # 1.ª / 2.ª visita o VD (visita directa) mencionada en el comentario; se toma la última mención.
 _RE_VISITA = re.compile(r"(?:(PRIMERA|SEGUNDA|[12])\s*(?:ERA|RA|ER|DA|DO|°|º|\.ª|ª)?\s*VISI?T[AO]S?\b|(VISITA\s+DIRECTA|\bVD)\b)", re.I)
+
+
+def _seg(r) -> str:
+    """Segmento que se muestra (SEG. y filtro Segmento): REF si la Categoría es REFERIDOS; si no, el Segmento (B2C, B2B…)."""
+    if _txt(r.get("categoria")).strip().upper() == "REFERIDOS":
+        return "REF"
+    return _txt(r.get("segmento"))
 
 
 def _visita(*textos) -> str | None:
@@ -186,7 +193,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
                 tec, ec = t, _contrata(tec_contrata.get(t)) or ec
         return tec, ec or "POR ASIGNAR"
 
-    ing = [{"d": int(r["fr"].day), "di": _txt(r["distrito"]) or "SIN DISTRITO", "seg": _txt(r["segmento"]),
+    ing = [{"d": int(r["fr"].day), "di": _txt(r["distrito"]) or "SIN DISTRITO", "seg": _seg(r),
             "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "rec": _iso(r["rec"]),
             "e": E.get(r["estado_os"], "R"), "pl": r["pl"], "ec": eecc_ingreso(r)[1], "tec": eecc_ingreso(r)[0],
             "cn": _canal(r.get("canal_atencion"))} for _, r in df[del_mes(df["fr"])].iterrows()]
@@ -194,7 +201,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
     L = df[(df["estado_os"] == "DESCARGADA") & del_mes(df["fa"])]
     liq = [{
         "d": int(r["fa"].day), "ec": _txt(r["ec"]) or "SIN EECC", "tec": r["tec"], "di": _txt(r["distrito"]) or "SIN DISTRITO",
-        "seg": _txt(r["segmento"]), "pl": r["pl"], "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "rec": _iso(r["rec"]),
+        "seg": _seg(r), "pl": r["pl"], "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "rec": _iso(r["rec"]),
         "hi": r["hi"].strftime("%H:%M") if pd.notna(r["hi"]) else "", "hf": r["hf"].strftime("%H:%M") if pd.notna(r["hf"]) else "",
         "fr": _txt(r["horario_atencion"]), "t": r["tp"], "fo": r["org"],
         "fp": r["fp"].strftime("%Y-%m-%d") if pd.notna(r["fp"]) else None, "cn": _canal(r.get("canal_atencion")),
@@ -218,7 +225,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
         return bool(_txt(r.get("obs_visita_todo")).strip() or _txt(r.get("obs_visita")).strip())
 
     pend = [{
-        "di": _txt(r["distrito"]), "seg": _txt(r["segmento"]), "viv": viv(r.get("tipo_vivienda")), "pl": r["pl"],
+        "di": _txt(r["distrito"]), "seg": _seg(r), "viv": viv(r.get("tipo_vivienda")), "pl": r["pl"],
         "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "ec": tecnico_pend(r)[1], "tec": tecnico_pend(r)[0], "ges": gestionado(r),
         "rec": _iso(r["rec"]), "cita": r["fc"].strftime("%Y-%m-%d") if pd.notna(r["fc"]) else None, "fp": r["fp"].strftime("%Y-%m-%d") if pd.notna(r["fp"]) else None, "fr": _txt(r["horario_atencion"]),
         "plano": _txt(r.get("plano")), "plan": _txt(r.get("tarifa_servicio")), "cj": _lista(r.get("cajas_cerca")),
@@ -244,7 +251,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
     prog = [{
         "d": int(r["fp"].day), "t": r["tp"], "fo": r["org"], "pl": r["pl"],
         "fr": _txt(r["horario_atencion"]), "ec": _txt(r["ec"]) or "POR ASIGNAR", "tec": r["tec"], "di": _txt(r["distrito"]),
-        "seg": _txt(r["segmento"]), "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "e": E.get(r["estado_os"], "R"),
+        "seg": _seg(r), "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "e": E.get(r["estado_os"], "R"),
         "rec": _iso(r["rec"]), "ini": _iso(r["hi"]), "k": cumplimiento(r),
         "cita": r["fc"].strftime("%Y-%m-%d") if pd.notna(r["fc"]) else None, "cn": _canal(r.get("canal_atencion")),
         "fpo": r["fpo"].strftime("%Y-%m-%d") if pd.notna(r["fpo"]) else None, "fro": r["fro"], 
