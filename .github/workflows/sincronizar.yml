@@ -1,0 +1,98 @@
+name: Sincronizar ScordSoft
+
+# Horario (hora de Lima): primera actualización a las 8:00 a. m. y luego cada 20 minutos hasta las 12:00 a. m.
+#   8:00, 8:20, 8:40 … 23:20, 23:40 y 0:00.
+# El horario de GitHub (cron) se retrasa o se salta corridas, así que cada turno se queda despierto ~5 h 30 min y
+# actualiza en cada :00, :20 y :40. Hay 3 turnos al día; cada uno se programa antes de que termine el anterior y espera
+# en cola (concurrency) hasta que el otro termina, así no quedan huecos aunque GitHub se atrase.
+# Cada actualización descarga UN reporte: Filial SELECCIONE, por Registro, del 1 del mes anterior al fin del mes en curso.
+on:
+  schedule:
+    - cron: "40 12 * * *"   # turno 1 · 7:40 Lima (primera actualización a las 8:00)
+    - cron: "55 17 * * *"   # turno 2 · 12:55 Lima (espera en cola al turno 1)
+    - cron: "25 23 * * *"   # turno 3 · 18:25 Lima (espera en cola al turno 2; termina con la de las 0:00)
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "una (una actualización ahora), turno (cada 20 min durante ~5 h 30 min) o reescribir (reescribe todas las órdenes)"
+        default: "una"
+        type: choice
+        options: [una, turno, reescribir]
+
+concurrency:
+  group: sincronizar-scordsoft
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350   # un turno dura como máximo ~5 h 30 min (límite de GitHub: 6 h)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      # Huellas de las órdenes ya guardadas: así cada corrida escribe en Supabase solo lo que cambió.
+      - name: Recuperar estado del robot
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado
+          key: robot-estado-${{ github.run_id }}
+          restore-keys: robot-estado-
+
+      - name: Descargar, procesar y guardar
+        env:
+          SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
+          SCORDSOFT_USUARIO: ${{ secrets.SCORDSOFT_USUARIO }}
+          SCORDSOFT_CLAVE: ${{ secrets.SCORDSOFT_CLAVE }}
+          SCORDSOFT_TOTP_SECRETO: ${{ secrets.SCORDSOFT_TOTP_SECRETO }}
+          SCORDSOFT_SEL_USUARIO: ${{ vars.SCORDSOFT_SEL_USUARIO }}
+          SCORDSOFT_SEL_CLAVE: ${{ vars.SCORDSOFT_SEL_CLAVE }}
+          SCORDSOFT_SEL_INGRESAR: ${{ vars.SCORDSOFT_SEL_INGRESAR }}
+          SCORDSOFT_SEL_CODIGO: ${{ vars.SCORDSOFT_SEL_CODIGO }}
+          SCORDSOFT_SEL_VERIFICAR: ${{ vars.SCORDSOFT_SEL_VERIFICAR }}
+          CAJAS_MAPAS: ${{ vars.CAJAS_MAPAS }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          MODO: ${{ github.event_name == 'workflow_dispatch' && inputs.modo || 'turno' }}
+        run: |
+          case "$MODO" in
+            una)        python -m sync.main; exit $? ;;
+            reescribir) python -m sync.main --reescribir-todo; exit $? ;;
+          esac
+          # Turno: actualiza en cada :00, :20 y :40 de Lima, de 8:00 a 0:00, durante ~5 h 30 min como máximo.
+          fin=$(( $(date +%s) + 330*60 ))
+          errores=0
+          while :; do
+            ahora=$(date +%s); [ "$ahora" -ge "$fin" ] && break
+            h=$((10#$(TZ=America/Lima date +%H))); m=$((10#$(TZ=America/Lima date +%M)))
+            # Se actualiza de 8:00 a 23:59 y una última vez a las 0:00 (hasta 0:15 si GitHub se atrasó).
+            if [ "$h" -ge 8 ] || { [ "$h" -eq 0 ] && [ "$m" -lt 15 ]; }; then
+              echo "::group::Actualización $(TZ=America/Lima date '+%d/%m %H:%M') (hora de Lima)"
+              if python -m sync.main; then errores=0; else errores=$((errores+1)); echo "La actualización falló ($errores seguidas); se reintenta en la siguiente marca de 20 min."; fi
+              echo "::endgroup::"
+              [ "$errores" -ge 3 ] && { echo "3 fallas seguidas: se corta el turno."; exit 1; }
+              [ "$h" -eq 0 ] && { echo "Última actualización del día (0:00) hecha."; break; }
+            elif [ "$h" -ge 1 ] && [ "$h" -lt 7 ]; then
+              echo "Fuera de horario (1:00–7:00): el turno termina."; break
+            fi
+            # Espera hasta el siguiente :00, :20 o :40 (si la actualización se pasó de la marca, sigue en la siguiente).
+            ahora=$(date +%s); prox=$(( (ahora/1200 + 1) * 1200 ))
+            [ "$prox" -ge "$fin" ] && break
+            sleep $(( prox - ahora ))
+          done
+
+      - name: Guardar estado del robot
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .estado
+          key: robot-estado-${{ github.run_id }}-${{ github.run_attempt }}

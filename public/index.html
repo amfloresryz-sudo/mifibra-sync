@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Mi Fibra · Operaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="cabecera">
+  <div class="contenedor">
+    <a class="marca" href="#inicio"><b>mifibra</b><span>Operaciones</span></a>
+    <nav class="nav" aria-label="Módulos">
+      <a href="/instalaciones.html" data-ruta="instalaciones">INSTALACIONES</a>
+      <a href="/averias.html" data-ruta="averias">AVERÍAS</a>
+      <a href="#observadas" data-ruta="observadas">OBSERVADAS</a>
+      <a href="#anuladas" data-ruta="anuladas">ANULADAS</a>
+      <a href="#dashboard" data-ruta="dashboard" class="dash">DASHBOARD</a>
+      <select id="filial" class="filial" aria-label="Filial" title="Filial"><option>LIMA</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select>
+      <button type="button" class="salir" id="salir">Salir</button>
+    </nav>
+  </div>
+</header>
+
+<main id="vista" aria-live="polite"></main>
+
+<footer class="pie">
+  <div class="contenedor">
+    <span><b>mifibra</b> · Plataforma de operaciones</span>
+    <span id="actualizado">Datos: ScordSoft</span>
+  </div>
+</footer>
+
+<div class="acceso" id="acceso" hidden>
+  <form id="form-acceso">
+    <div class="marca"><b>mifibra</b><span>Operaciones</span></div>
+    <h1>Ingresa al portal</h1>
+    <label>Contraseña del portal
+      <input type="password" id="clave" autocomplete="current-password" required>
+    </label>
+    <p class="error" id="error-acceso" role="alert"></p>
+    <button class="btn" type="submit">Ingresar</button>
+  </form>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

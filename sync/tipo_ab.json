@@ -1,0 +1,180 @@
+{
+ "fuente": "MF_V2.1/ADICIONALES/TIPO_AB.xlsx (columna DETALLE)",
+ "reglas": [
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "SIN SERVICIO DE INTERNET",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "RETENCIONES",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "MESA CONTROL DESPACHO",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "LENTITUD",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "PROBLEMA TV",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "CLIENTE ONLINE",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "PROBLEMAS CON JUEGOS",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "INTERMITENCIA",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "INSTALACION SERVICIO",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "INTERNET",
+   "detalle": "INSTALACION"
+  },
+  {
+   "tipo": "REINSTALACION SERVICIO",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "INTERNET",
+   "detalle": "REINSTALACION"
+  },
+  {
+   "tipo": "TRASLADO EXTERNO",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "",
+   "detalle": "TRASLADO EXT"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "TC SIN SERVICIO",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "TC"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "TC LOS 180",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "TC"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "TC CRITICO RDC",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "TC"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "TC GARANTIA RDC",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "TC"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "TC TRASU",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "TC"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "TC PRIMERA LINEA",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "TC"
+  },
+  {
+   "tipo": "CAMBIO DE EQUIPO",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "INTERNET",
+   "detalle": "CAMBIO DE EQUIPO"
+  },
+  {
+   "tipo": "OTROS",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "INTERNET",
+   "detalle": "OTROS"
+  },
+  {
+   "tipo": "OTROS",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "OTT",
+   "detalle": "OTROS"
+  },
+  {
+   "tipo": "TRASLADO INTERNO",
+   "motivo": "",
+   "lugar": "",
+   "servicio": "INTERNET",
+   "detalle": "TRASLADO INT"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "RED CLIENTE",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "ALCANCE DE WIFI",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "PROBLEMA TV",
+   "lugar": "RED CLIENTE",
+   "servicio": "SERVICIO OTT",
+   "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "PROBLEMA CON ACCESORIOS",
+   "lugar": "RED CLIENTE",
+   "servicio": "INTERNET",
+   "detalle": "AVERIA"
+  }
+ ]
+}

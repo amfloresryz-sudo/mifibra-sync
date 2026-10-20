@@ -1,0 +1,1458 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Averías y TC · Mi Fibra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: módulo Averías del portal Mi Fibra — cabecera, franja noche con filtro de tipo, pestañas Panel / Ingresos / Detalle / Pendientes */
+:root {
+  --magenta: #FF0091; --magenta-txt: #B0005F; --rosa: #FFF0F7; --rosa-2: #FFD6EA;
+  --noche: #1A1A2E; --bg: #F6F7F9; --sup: #FFFFFF; --fg: #1F2937; --fg-2: #374151; --fg-3: #4B5563; --fg-4: #6B7280;
+  --borde: #E5E7EB; --borde-2: #D1D5DB; --ok: #157A4A; --ok-bg: #E3F4EA; --mal: #B42318; --mal-bg: #FDE8E7; --mid: #9A5B00; --mid-bg: #FDF1DC;
+  --gris: #9CA3AF; --gris-bg: #EEF0F3; --barra: #FF0091; --aviso-bg: #FFF6D6; --aviso-fg: #6B4E00;
+  --calor-1: #FFE3F1; --calor-2: #FFB8DC; --calor-3: #FF6CB8; --calor-txt: #5A0031;
+  --edad-1: #FDEBC8; --edad-2: #F6B26B; --edad-3: #C2410C; --edad-txt3: #FFFFFF;
+  --sobre: #FFFFFF;
+  --f-disp: Montserrat, system-ui, sans-serif; --f-txt: 'DM Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --magenta: #FF3DAA; --magenta-txt: #FF8CCB; --rosa: #3A1430; --rosa-2: #4E1A40; --noche: #0E0E1A; --bg: #14141F; --sup: #1D1D2B;
+  --fg: #ECEDF2; --fg-2: #D4D6DE; --fg-3: #B4B7C3; --fg-4: #9497A6; --borde: #2E2F40; --borde-2: #3C3E52;
+  --ok: #5FD08F; --ok-bg: #173527; --mal: #FF8A80; --mal-bg: #3D1C1C; --mid: #F2B54A; --mid-bg: #3A2C12;
+  --gris: #6B6F80; --gris-bg: #262838; --barra: #FF3DAA; --aviso-bg: #3A3214; --aviso-fg: #F4DC8A;
+  --calor-1: #3A1430; --calor-2: #6A1E52; --calor-3: #B0287A; --calor-txt: #FFE3F1;
+  --edad-1: #3A2C12; --edad-2: #7A4A12; --edad-3: #C2410C; --edad-txt3: #FFFFFF; --sobre: #10101A; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --magenta: #FF3DAA; --magenta-txt: #FF8CCB; --rosa: #3A1430; --rosa-2: #4E1A40; --noche: #0E0E1A; --bg: #14141F; --sup: #1D1D2B;
+  --fg: #ECEDF2; --fg-2: #D4D6DE; --fg-3: #B4B7C3; --fg-4: #9497A6; --borde: #2E2F40; --borde-2: #3C3E52;
+  --ok: #5FD08F; --ok-bg: #173527; --mal: #FF8A80; --mal-bg: #3D1C1C; --mid: #F2B54A; --mid-bg: #3A2C12;
+  --gris: #6B6F80; --gris-bg: #262838; --barra: #FF3DAA; --aviso-bg: #3A3214; --aviso-fg: #F4DC8A;
+  --calor-1: #3A1430; --calor-2: #6A1E52; --calor-3: #B0287A; --calor-txt: #FFE3F1;
+  --edad-1: #3A2C12; --edad-2: #7A4A12; --edad-3: #C2410C; --edad-txt3: #FFFFFF; --sobre: #10101A; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-txt); font-size: 15px; }
+.w { max-width: 1760px; margin: 0 auto; padding-left: max(clamp(16px, 2vw, 32px), env(safe-area-inset-left, 0px)); padding-right: max(clamp(16px, 2vw, 32px), env(safe-area-inset-right, 0px)); }  /* ancho: usa casi toda la pantalla (hasta 1760 px) */
+h1, h2, .chip, th, .kv, .tabs button { font-family: var(--f-disp); }
+h2 { margin: 0; font-size: 20px; font-weight: 700; text-wrap: balance; }
+.sub { margin: 4px 0 0; color: var(--fg-3); font-size: 14px; }
+.aviso { background: var(--aviso-bg); color: var(--aviso-fg); font-size: 14px; }
+.aviso .w { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cab { background: #FFFFFF; border-bottom: 1px solid #E5E7EB; }
+.cab .w { padding-block: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.marca { font-family: var(--f-disp); font-weight: 800; font-size: 26px; color: #FF0091; letter-spacing: -.5px; }
+.marca small { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; color: #374151; margin-left: 8px; }
+.nav { display: flex; flex-wrap: wrap; gap: 4px; font-family: var(--f-disp); font-size: 13px; font-weight: 600; }
+.nav span, .nav a { padding: 10px 12px; border-radius: 25px; color: #1F2937; text-decoration: none; }
+.nav a:hover { background: #FFF0F7; color: #B0005F; }
+a.marca { text-decoration: none; }
+.franja a.vol { text-decoration: none; } .franja a.vol:hover { text-decoration: underline; }
+.cargando { padding: 48px 0; text-align: center; color: var(--fg-3); }
+.nav .on { background: #FFF0F7; color: #B0005F; font-weight: 700; }
+.franja { background: #1A1A2E; color: #FFFFFF; }
+.franja .w { padding-block: 26px 0; display: flex; flex-direction: column; gap: 18px; }
+.franja .fila { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.franja h1 { margin: 4px 0; font-size: clamp(28px, 4vw, 38px); font-weight: 800; }
+.franja p { margin: 0; color: #D1D5DB; }
+.franja .vol { color: #FFD6EA; font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 13px; font-weight: 600; padding: 9px 15px; border-radius: 25px; border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); cursor: pointer; min-height: 38px; }
+.chip[aria-pressed="true"] { background: var(--magenta); border-color: var(--magenta); color: #FFFFFF; }
+.franja .chip { background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.35); }
+.franja .chip[aria-pressed="true"] { background: #FF0091; border-color: #FF0091; }
+/* Periodo (mes · semana · desde/hasta) */
+.per { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.per .chip { padding: 7px 12px; min-height: 34px; font-size: 12.5px; }
+.sel-per, .per-f input { font: 600 13px var(--f-cuerpo, inherit); color: #FFFFFF; background: transparent; border: 1px solid rgba(255,255,255,.35); border-radius: 25px; padding: 7px 12px; min-height: 34px; color-scheme: dark; }
+.sel-per option { color: #0B0B0B; }
+.per-f { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #B9BCCB; font-weight: 600; }
+.per-nota { font-weight: 500; text-transform: none; letter-spacing: 0; color: #9CA3AF; }
+.kpi .kv small { font-size: 14px; font-weight: 600; color: var(--fg-3); }
+#liq-kpis { grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 10px; } #liq-kpis .kpi { padding: 12px 13px; } #liq-kpis .kv { font-size: 25px; } #liq-kpis .s { font-size: 12px; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; }
+.tabs button { font-size: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #B9BCCB; background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 16px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: #FFFFFF; border-bottom-color: #FF0091; }
+.tabs .cuenta { font-size: 11px; background: #FF0091; color: #FFFFFF; border-radius: 10px; padding: 2px 7px; margin-left: 6px; letter-spacing: 0; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--magenta); outline-offset: 2px; }
+main .w { padding-block: 24px 56px; display: flex; flex-direction: column; gap: 22px; }
+.sec { background: var(--sup); border: 1px solid var(--borde); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sec-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; background: var(--sup); }
+.kpi .l { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
+.kpi .kv { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 13px; color: var(--fg-3); }
+.kpi.ok { background: var(--ok-bg); border-color: transparent; } .kpi.ok .kv { color: var(--ok); }
+.kpi.mal { background: var(--mal-bg); border-color: transparent; } .kpi.mal .kv { color: var(--mal); }
+.kpi.mid { background: var(--mid-bg); border-color: transparent; } .kpi.mid .kv { color: var(--mid); }
+.kpi.acento { background: var(--rosa); border-color: var(--magenta); } .kpi.acento .kv, .kpi.acento .l { color: var(--magenta-txt); }
+.vistas { display: inline-flex; border: 1px solid var(--borde-2); border-radius: 25px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.vistas button { font: 600 13px var(--f-disp); border: 0; background: none; color: var(--fg-2); padding: 8px 14px; border-radius: 20px; cursor: pointer; min-height: 36px; }
+.vistas button[aria-pressed="true"] { background: var(--noche); color: #FFFFFF; }
+.nota { margin: 0; font-size: 13px; color: var(--fg-3); }
+.scroll { overflow-x: auto; }
+.agd-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 22px; }
+.agd-dos .sec { min-width: 0; }
+.tb-agr { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; table-layout: fixed; }
+.tb-agr th, .tb-agr td { padding: 7px 4px; text-align: center; border-bottom: 1px solid var(--borde); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-agr thead th { font: 800 10.5px var(--f-disp); letter-spacing: .3px; text-transform: uppercase; color: #FFFFFF; background: var(--noche, #1A1A2E); }
+.tb-agr col.c-n { width: 28px; } .tb-agr col.c-ec { width: 32%; } .tb-agr col.c-bar { width: 15%; } .tb-agr col.c-pc { width: 62px; }
+.tb-agr col.c-ecd { width: 24%; }
+.tb-agr td:first-child, .tb-agr th:first-child { text-align: left; }
+.tb-agr tfoot td { font-weight: 800; border-top: 2px solid var(--fg); }
+.tb-agr .clicn { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.tb-agr .clicn:hover, .tb-agr .clicn:focus-visible { color: var(--magenta-txt); }
+.tb-agr .bar { display: flex; align-items: center; gap: 8px; padding-right: 4px; } .tb-agr .bar i { height: 8px; border-radius: 4px; display: block; }
+.tb-agr .bar span { flex: 1; height: 8px; background: var(--gris-bg); border-radius: 4px; overflow: hidden; display: flex; }
+.tb-agr td.ok { color: var(--ok); font-weight: 800; } .tb-agr td.mid { color: var(--mid); font-weight: 800; } .tb-agr td.mal { color: var(--mal); font-weight: 800; }
+.tb-agr td.c1 { background: var(--calor-1, #FFE3F1); } .tb-agr td.c2 { background: var(--calor-2, #FFB8DC); } .tb-agr td.c3 { background: var(--calor-3, #FF6CB8); color: #FFFFFF; }
+.graf { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(26px, 1fr); gap: 4px; min-width: 520px; align-items: end; }
+.col { display: flex; flex-direction: column; gap: 3px; }
+.col .tot { text-align: center; font: 700 13px var(--f-disp); color: var(--fg); font-variant-numeric: tabular-nums; background: none; border: 0; padding: 2px 0; border-radius: 6px; }
+.col .stk { height: 236px; justify-content: flex-start; display: flex; flex-direction: column-reverse; gap: 2px; }
+.col .stk .sg { display: flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; padding: 0; font: 700 12px var(--f-disp); font-variant-numeric: tabular-nums; width: 100%; }
+.clic { cursor: pointer; }
+.clic:hover { filter: brightness(1.08); outline: 2px solid var(--fg); outline-offset: 1px; }
+.col .tot.clic:hover { outline: 0; text-decoration: underline; }
+.col .stk .sg.sel, .col .tot.sel { outline: 3px solid var(--magenta); outline-offset: 1px; }
+.drill { border: 1px solid var(--magenta); border-radius: 14px; overflow: hidden; }
+.drill-cab { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; background: var(--rosa); padding: 10px 14px; }
+.drill-cab b { font-family: var(--f-disp); color: var(--magenta-txt); }
+.drill-cab button { font: 600 13px var(--f-disp); border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); border-radius: 20px; padding: 6px 14px; cursor: pointer; }
+.drill .det { min-width: 900px; }
+.excl span.c.clic { border: 0; font: inherit; }
+th.ordenable { cursor: pointer; user-select: none; }
+th.ordenable:hover { text-decoration: underline; }
+th.ordenable[aria-sort="none"]::after { content: " ↕"; font-size: 10px; opacity: .45; }
+th[aria-sort="ascending"]::after { content: " ▲"; font-size: 9px; }
+th[aria-sort="descending"]::after { content: " ▼"; font-size: 9px; }
+/* Cuadro emergente de detalle */
+.modal-fondo { position: fixed; inset: 0; z-index: 50; background: rgba(15, 15, 30, .55); display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.modal { background: var(--sup); color: var(--fg); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); width: min(1500px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+.modal-fondo[hidden] { display: none; }
+.modal-cab { display: flex; flex-wrap: wrap; gap: 12px 16px; justify-content: space-between; align-items: flex-start; padding: 22px 24px 14px; }
+.modal-cab h3 { margin: 0; font: 700 22px var(--f-disp); text-wrap: balance; }
+.modal-cab p { margin: 4px 0 0; color: var(--fg-3); font-size: 14px; }
+.modal-acc { display: flex; gap: 10px; align-items: center; }
+.modal-acc .btn-sec { font: 600 13px var(--f-disp); border: 1px solid var(--fg); background: var(--sup); color: var(--fg); border-radius: 22px; padding: 9px 16px; cursor: pointer; min-height: 40px; }
+.modal-acc .btn-x { width: 40px; height: 40px; border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); border-radius: 8px; font-size: 18px; cursor: pointer; }
+.modal-cuerpo { overflow-y: auto; overflow-x: hidden; padding: 0 20px 20px; }
+/* Tablas que caben en el ancho: sin ancho mínimo, texto que se parte en dos líneas si hace falta */
+.det { width: 100%; min-width: 0 !important; table-layout: auto; font-size: 12.5px; }
+.det thead th { white-space: normal !important; line-height: 1.2; padding: 9px 5px !important; font-size: 10.5px !important; letter-spacing: .3px !important; vertical-align: bottom; }
+.det td { white-space: normal !important; padding: 8px 5px !important; line-height: 1.3; overflow-wrap: anywhere; }
+.det td .b { white-space: nowrap; }
+.modal .det thead th { position: sticky; top: 0; background: var(--sup); color: var(--fg-3); border-bottom: 1px solid var(--borde-2); text-align: center; }
+.modal .det td { text-align: center; vertical-align: middle; }
+.modal .det { width: 100%; table-layout: auto; }
+.modal .det th, .modal .det td { padding-left: 4px !important; padding-right: 4px !important; }
+.modal .det thead th { text-wrap: balance; }
+.mat { width: 100%; font-size: 12px; }
+.mat th, .mat td { padding: 6px 3px !important; }
+.mat th.vert { min-width: 0 !important; padding: 6px 2px !important; }
+.mat th:first-child, .mat td:first-child { padding-left: 6px !important; padding-right: 8px !important; }
+.modal-aviso { font-size: 13px; color: var(--ok); min-height: 18px; padding: 0 24px 6px; }
+/* Ficha de AB / OS / Infancia / Reiterada (clic en Pendientes) */
+.lnk { all: unset; cursor: pointer; border-radius: 6px; }
+.lnk:hover, .lnk:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+.lnk.num { color: var(--magenta-txt); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.modal.ficha { width: min(820px, 100%); }
+.fi-sec { margin: 4px 0 18px; }
+.fi-sec h4 { margin: 0 0 10px; font: 700 12px var(--f-disp); letter-spacing: .8px; text-transform: uppercase; color: var(--magenta-txt); }
+.fi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px 18px; }
+.fi-grid div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fi-grid span { font: 700 10.5px var(--f-disp); letter-spacing: .5px; text-transform: uppercase; color: var(--fg-4); }
+.fi-grid b { font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
+.fi-nota { margin: 6px 0 0; font-size: 13px; color: var(--fg-3); }
+.fcol { margin-left: 4px; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 6px; border: 1px solid transparent; background: none; color: var(--magenta-txt); cursor: pointer; vertical-align: middle; padding: 0; }
+.fcol svg { width: 12px; height: 12px; } .fcol:hover, .fcol:focus-visible { border-color: var(--magenta); } .fcol.on { background: var(--magenta); color: #FFFFFF; }
+.fpop { position: absolute; z-index: 60; width: 270px; background: var(--sup); color: var(--fg); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 12px; font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.fpop input[type=search] { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--borde-2); border-radius: 8px; font: inherit; background: var(--sup); color: var(--fg); }
+.fpop .fl { max-height: 260px; overflow: auto; margin: 8px 0; border-top: 1px solid var(--borde); border-bottom: 1px solid var(--borde); padding: 4px 0; }
+.fpop label { display: flex; align-items: center; gap: 8px; padding: 5px 4px; cursor: pointer; border-radius: 6px; } .fpop label:hover { background: var(--gris-bg); }
+.fpop label small { margin-left: auto; color: var(--fg-3); } .fpop label.todo { font-weight: 700; }
+.fpop .fb { display: flex; gap: 8px; justify-content: flex-end; } .fpop .fb button { min-height: 34px; padding: 6px 14px; }
+.fi-obs { background: var(--gris-bg); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.5; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.fi-obs small { display: block; margin-top: 6px; color: var(--fg-3); font-size: 12px; }
+.fi-obs .fi-ag { color: var(--magenta-txt); }
+.fi-obs mark.fi-v1 { background: #FFE58A; color: #3D2E00; font-weight: 800; border-radius: 4px; padding: 0 3px; }
+.fi-v1-aviso { margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: #FFF3C4; color: #5A4300; font-size: 13.5px; border-left: 4px solid #E0A800; }
+.b.v1 { background: #FFE58A; color: #3D2E00; }
+.fi-grid a { color: var(--magenta-txt); font-weight: 700; }
+.fi-agl { margin: -8px 0 18px; font-size: 13px; color: var(--fg-3); } .fi-agl b { color: var(--magenta-txt); }
+.fi-coin { margin: 0 0 18px; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; text-align: center; }
+.fi-coin.si { background: var(--ok-bg); color: var(--ok); } .fi-coin.no { background: var(--mal-bg); color: var(--mal); } .fi-coin.nd { background: var(--gris-bg); color: var(--fg-3); }
+.fi-ok { background: var(--ok-bg); color: var(--ok); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.fi-mal { background: var(--mal-bg); color: var(--mal); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.fi-tab { width: 100%; font-size: 12.5px; }
+/* Modificar resultado de 100 min (usuario master) y ficha del AB desde el gráfico */
+.ed-ag { all: unset; cursor: pointer; width: 28px; height: 28px; display: inline-grid; place-items: center; border-radius: 8px; border: 1px solid var(--borde-2); color: var(--magenta-txt); font-size: 13px; }
+.ed-ag:hover { background: var(--gris-bg); } .ed-ag:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+.b.aj { background: #FCE4F1; color: #A3005A; margin-left: 4px; }
+.f-ag { display: flex; flex-direction: column; gap: 14px; }
+.f-ag-auto { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 10px; background: var(--gris-bg); }
+.f-ag-auto span { font: 700 11px var(--f-disp); letter-spacing: 1px; text-transform: uppercase; color: var(--fg-3); } .f-ag-auto small { color: var(--fg-3); }
+.f-ag-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.f-ag-campos label { display: flex; flex-direction: column; gap: 6px; font: 700 12px var(--f-disp); color: var(--fg-3); }
+.f-ag-campos label.ancho, .f-ag-master { grid-column: 1 / -1; }
+.f-ag-campos input, .f-ag-campos select { font: 500 14px inherit; color: var(--fg); padding: 9px 10px; border: 1px solid var(--borde-2); border-radius: 10px; background: var(--sup); min-height: 40px; }
+.f-ag-master { margin: 0; font-size: 13px; color: var(--fg-3); }
+.f-ag-acc { display: flex; gap: 8px; flex-wrap: wrap; } .f-ag-ok { background: var(--magenta) !important; border-color: var(--magenta) !important; color: #FFF !important; }
+.fi-volver { margin: 0 0 14px; }
+.aviso-flot { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--fg); color: var(--sup); padding: 10px 18px; border-radius: 10px; font: 600 14px var(--f-disp); opacity: 0; pointer-events: none; transition: .2s; z-index: 99; }
+.aviso-flot.on { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 700px) { .f-ag-campos { grid-template-columns: 1fr; } }
+.fi-tab th { text-align: left; font: 700 10.5px var(--f-disp); letter-spacing: .5px; text-transform: uppercase; color: var(--fg-4); padding: 6px 8px; border-bottom: 1px solid var(--borde-2); }
+.fi-tab td { padding: 7px 8px; border-bottom: 1px solid var(--borde); color: var(--fg-2); }
+.mat.altas { width: auto; min-width: min(100%, 560px); }
+.mat.altas .hoy-c { color: var(--magenta-txt); font-weight: 700; }
+.mat.altas th.ant-h { background: var(--aviso-bg); color: var(--aviso-fg); }
+.mat.altas td.ant-c { font-weight: 700; }
+.mat tr.zona td.e1 { background: var(--edad-1); } .mat tr.zona td.e2 { background: var(--edad-2); color: #2A1400; } .mat tr.zona td.e3 { background: var(--edad-3); color: var(--edad-txt3); }
+body.con-modal { overflow: hidden; }
+.mat thead tr.grupo th { background: var(--noche); color: #FFFFFF; font-size: 11px; letter-spacing: .8px; border-left: 2px solid var(--sup); }
+.mat thead tr.grupo th:first-child { background: var(--noche); }
+.mat .zi { border-left: 2px solid var(--borde-2); }
+.mat th.vert { vertical-align: bottom; padding: 8px 4px; min-width: 30px; }
+.mat th.vert span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; white-space: nowrap; max-height: 150px; overflow: hidden; text-overflow: ellipsis; }
+.col .dia { text-align: center; font-size: 11px; color: var(--fg-4); line-height: 1.25; }
+.col .dia b { display: block; font-size: 13px; color: var(--fg-2); }
+.col .dia.fin b { color: var(--fg-4); }
+.pct { text-align: center; font: 700 11px var(--f-disp); border-radius: 6px; padding: 3px 0; display: block; }
+.pct.ok { background: var(--ok-bg); color: var(--ok); } .pct.mid { background: var(--mid-bg); color: var(--mid); } .pct.mal { background: var(--mal-bg); color: var(--mal); } .pct.na { color: var(--fg-4); }
+.ley { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--fg-2); }
+.ley span { display: inline-flex; align-items: center; gap: 6px; }
+.ley b { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.excl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.excl .t, .seg-t { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
+.excl span.c { background: var(--gris-bg); color: var(--fg-2); padding: 6px 10px; border-radius: 12px; }
+.dist { display: flex; flex-direction: column; gap: 6px; }
+.dist .f { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 40px; gap: 10px; align-items: center; font-size: 13px; }
+.dist .f span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dist .f i { height: 14px; border-radius: 3px; background: var(--barra); display: block; }
+.dist .f b { text-align: right; font-variant-numeric: tabular-nums; }
+.segs { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.segs .g { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.segs .chip { padding: 6px 12px; min-height: 32px; font-size: 12px; }
+table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.mat { min-width: 100%; }
+.mat th, .mat td { padding: 7px 8px; text-align: center; border-bottom: 1px solid var(--borde); white-space: nowrap; }
+.mat thead th { background: var(--rosa); color: var(--magenta-txt); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; position: sticky; top: 0; }
+.mat th:first-child, .mat td:first-child { text-align: left; position: sticky; left: 0; background: var(--sup); font-weight: 600; z-index: 1; }
+.mat thead th:first-child { background: var(--rosa); z-index: 2; }
+.mat td.cero { color: var(--fg-4); }
+.mat .t-col { font-weight: 700; background: var(--gris-bg); }
+.mat tfoot td { font-weight: 700; background: var(--gris-bg); }
+.mat tfoot tr.prom td { font-weight: 500; color: var(--fg-3); background: var(--sup); }
+.mat tr.zona td { background: var(--gris-bg); font-family: var(--f-disp); font-weight: 700; }
+.mat tr.zona td:first-child { background: var(--gris-bg); }
+.mat tr.distr td:first-child { padding-left: 22px; font-weight: 500; }
+.h1c { background: var(--calor-1); color: var(--calor-txt); } .h2c { background: var(--calor-2); color: var(--calor-txt); } .h3c { background: var(--calor-3); color: #FFFFFF; font-weight: 700; }
+.e1 { background: var(--edad-1); } .e2 { background: var(--edad-2); color: #2A1400; } .e3 { background: var(--edad-3); color: var(--edad-txt3); font-weight: 700; }
+.det { min-width: 1240px; width: 100%; }
+.det thead th { position: sticky; top: 0; background: var(--rosa); color: var(--magenta-txt); text-align: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 11px 8px; white-space: nowrap; }
+.det td { padding: 9px 8px; border-top: 1px solid var(--borde); color: var(--fg-2); white-space: nowrap; text-align: center; }
+.det td.izq { text-align: left; }
+.modal .det td.izq { text-align: center; }
+.b { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; }
+.b.av { background: var(--mal-bg); color: var(--mal); } .b.tc { background: var(--gris-bg); color: var(--fg); }
+.b.si { background: var(--ok-bg); color: var(--ok); } .b.no { background: var(--mal-bg); color: var(--mal); }
+.b.inf { background: var(--mid-bg); color: var(--mid); } .b.vac { background: var(--gris-bg); color: var(--fg-3); }
+.b.seg { border: 1px solid var(--borde-2); color: var(--fg-2); background: var(--sup); }
+.b.edad { background: var(--ok-bg); color: var(--ok); margin-left: 6px; } .b.edad.v { background: var(--mid-bg); color: var(--mid); } .b.edad.r { background: var(--mal-bg); color: var(--mal); }
+.b.sf { background: var(--mid-bg); color: var(--mid); }
+.late { color: var(--mal); font-weight: 700; }
+.t-ok { color: var(--ok); font-weight: 700; }
+.det td.t-ok { color: var(--ok); } .det td.late { color: var(--mal); }
+.modal.ficha #modal-img { display: none; }
+.encurso { color: var(--fg-3); font-size: 12px; }
+.herr { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.herr input { font: inherit; padding: 10px 12px; border: 1px solid var(--borde-2); border-radius: 12px; background: var(--sup); color: var(--fg); min-width: 0; width: min(340px, 100%); }
+.pie { background: #1A1A2E; color: #D1D5DB; font-size: 13px; }
+.pie .w { padding-block: 18px; }
+@media (prefers-reduced-motion: no-preference) { .col .stk i { transition: height .25s; } }
+
+#tb-pend { min-width: 0 !important; width: 100%; table-layout: auto; font-size: 12px; }
+#tb-pend th, #tb-pend td { white-space: nowrap !important; text-align: center !important; padding: 7px 2px !important; overflow-wrap: normal !important; }
+#tb-pend thead th { font-size: 10.5px !important; letter-spacing: .2px !important; }
+#tb-pend .b { padding: 2px 6px; font-size: 10.5px; }
+#tb-pend .b.edad { margin-left: 4px; }
+.pen-scroll { overflow-x: hidden; }
+/* Detalle de pendientes: ancho fijo por columna, se ajusta a la pantalla sin scroll horizontal */
+#tb-pend { table-layout: fixed !important; }
+#tb-pend td { overflow: hidden; text-overflow: ellipsis; }
+#tb-pend thead th { overflow: hidden; text-overflow: clip; padding: 7px 1px !important; }
+#tb-pend thead th .fcol { width: 16px; height: 18px; margin-left: 1px; }
+#tb-pend thead th .fcol svg { width: 10px; height: 10px; }
+#tb-pend th.ordenable[aria-sort="none"]::after { font-size: 9px; }
+#tb-pend td small { font-size: 10px; color: var(--fg-3); }
+@media (max-width: 1500px) {
+  #tb-pend { font-size: 11px; }
+  #tb-pend thead th { font-size: 9.5px !important; letter-spacing: 0 !important; }
+  #tb-pend .b { padding: 1px 4px; font-size: 9.5px; }
+  #tb-pend th.ordenable[aria-sort="none"]::after { content: ""; }
+  #tb-pend td.vis small { display: none; }
+}
+@media (max-width: 1200px) {
+  #tb-pend { font-size: 10px; }
+  #tb-pend thead th { font-size: 8.5px !important; }
+  #tb-pend .b { font-size: 9px; padding: 1px 3px; }
+  #tb-pend .b.edad { display: none; }
+}
+.pen-acc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn-out { font: 600 13px var(--f-disp); border: 1px solid var(--fg); background: var(--sup); color: var(--fg); border-radius: 22px; padding: 8px 14px; cursor: pointer; min-height: 38px; display: inline-flex; gap: 6px; align-items: center; }
+.btn-out:hover { background: var(--gris-bg); }
+.btn-out[disabled] { opacity: .55; cursor: wait; }
+.pen-aviso:empty { display: none; }
+.sel-filial { font: 600 13px var(--f-disp); min-height: 38px; padding: 8px 34px 8px 14px; border-radius: 25px; border: 1px solid #FF0091; background: #FF0091; color: #FFFFFF; cursor: pointer; }
+.sel-filial option { color: #1F2937; background: #FFFFFF; }
+.pen-aviso { margin: 0; font-size: 13px; color: var(--ok); min-height: 18px; }
+</style>
+</head>
+<body>
+
+<div class="aviso"><div class="w"><span id="estado-datos">Cargando datos de ScordSoft…</span></div></div>
+
+<header class="cab"><div class="w">
+  <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
+  <nav class="nav" aria-label="Módulos"><a href="/instalaciones.html">INSTALACIONES</a><span class="on" aria-current="page">AVERÍAS</span><a href="/#observadas">OBSERVADAS</a><a href="/#anuladas">ANULADAS</a><a href="/#dashboard">DASHBOARD</a></nav>
+</div></header>
+
+<section class="franja"><div class="w">
+  <div class="fila">
+    <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Averías y TC</h1><p><span id="nom-filial">Lima</span> · visitas a red del cliente · resultados, ingresos y pendientes</p></div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px 28px">
+      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Tipo</div><div class="chips" role="group" aria-label="Tipo" id="tipos"></div></div>
+      <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
+      <div id="grupo-zona"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Zona</div><div class="chips" role="group" aria-label="Zona" id="zonas"></div></div>
+      <div id="grupo-per"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Periodo <span class="per-nota">· no aplica a Pendientes</span></div>
+        <div class="per"><select id="per-mes" class="sel-per" aria-label="Mes"></select><div class="chips" role="group" aria-label="Semana" id="per-sem"></div>
+          <label class="per-f">Desde <input type="date" id="per-desde"></label><label class="per-f">Hasta <input type="date" id="per-hasta"></label></div></div>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Secciones" id="tabs">
+    <button type="button" role="tab" id="tab-panel" aria-controls="v-panel" aria-selected="true" data-t="panel">Panel</button>
+    <button type="button" role="tab" id="tab-ingresos" aria-controls="v-ingresos" aria-selected="false" data-t="ingresos">Ingresos</button>
+    <button type="button" role="tab" id="tab-agendas" aria-controls="v-agendas" aria-selected="false" data-t="agendas">Agendas</button>
+    <button type="button" role="tab" id="tab-pendientes" aria-controls="v-pendientes" aria-selected="false" data-t="pendientes">Pendientes <span class="cuenta" id="n-pend"></span></button>
+  </div>
+</div></section>
+
+<main><div class="w"><p class="cargando" id="cargando" role="status">Cargando el tablero de averías…</p>
+
+  <!-- PANEL -->
+  <div role="tabpanel" id="v-panel" aria-labelledby="tab-panel" hidden style="flex-direction:column;gap:22px">
+    <section class="sec" aria-labelledby="t-liq">
+      <div class="sec-cab">
+        <div><h2 id="t-liq">Averías liquidadas por día</h2><p class="sub"><span id="liq-tipo">Tipo: averías, TC y misceláneos</span> · <span class="mes-anio"></span> · por fecha de atención</p></div>
+        <div class="vistas" role="group" aria-label="Vista" id="liq-vistas">
+          <button type="button" data-v="dia" aria-pressed="true">Por día</button>
+          <button type="button" data-v="eecc" aria-pressed="false">Por día y EECC</button>
+          <button type="button" data-v="zona" aria-pressed="false">Por día y zona</button>
+          <button type="button" data-v="dist" aria-pressed="false">Por distrito</button>
+        </div>
+      </div>
+      <div class="kpis" id="liq-kpis"></div>
+      <div id="liq-graf"></div>
+      <p class="nota">Liquidada = OS en estado DESCARGADA · el día es la fecha de atención (F. Atenc.) · TMI = Hora F − Hora I (duración de la atención en campo), en [H]:mm:ss; si Hora F es anterior a Hora I la orden no entra al promedio · Reiterada = mismo abonado con otra avería o TC en los 30 días previos · Infancia = avería a 30 días o menos de la instalación.</p>
+    </section>
+    <section class="sec" aria-labelledby="t-cien">
+      <div class="sec-cab"><div><h2 id="t-cien">Averías por día · meta 100 min</h2><p class="sub">Solo AVERÍA de RED CLIENTE con los motivos de la tabla TIPO_AB (servicio INTERNET; PROBLEMA TV también con SERVICIO OTT) · recibidas en <span class="mes-anio"></span> · por fecha de recepción</p></div></div>
+      <div class="kpis" id="cien-kpis"></div>
+      <div class="excl" id="cien-excl"></div>
+      <div class="ley"><span><b style="background:var(--ok)"></b>Cumplió ≤ 100 min</span><span><b style="background:var(--mal)"></b>No cumplió &gt; 100 min</span><span><b style="background:var(--gris)"></b>Sin medir</span></div>
+      <div class="scroll"><div id="cien-graf"></div></div>
+      <p class="nota">Clic en un número, en una barra o en un recuadro de “No se consideran” para ver los abonados · Cumplió = inició la atención en 100 min o menos desde la recepción · No cumplió = más de 100 min o sin iniciar pasados los 100 · Sin medir = en curso dentro de los 100 min o sin dato · Con franja OS: si cumple se considera; si pasa de 100 min se excluye · Con agenda (#AGENDA ATC dd/mm hh-hh#) o con 1° visita, 2° visita o VD en el comentario: no se consideran · Universo: SERVICIO TECNICO · LUGAR AVERIA = RED CLIENTE · motivos SIN SERVICIO DE INTERNET, RETENCIONES, MESA CONTROL DESPACHO, LENTITUD, PROBLEMA TV, CLIENTE ONLINE, PROBLEMAS CON JUEGOS, INTERMITENCIA, RED CLIENTE, ALCANCE DE WIFI y PROBLEMA CON ACCESORIOS con servicio INTERNET, y PROBLEMA TV con SERVICIO OTT · Bajo cada día: % que cumplió.</p>
+    </section>
+  </div>
+
+  <!-- INGRESOS -->
+  <div role="tabpanel" id="v-ingresos" aria-labelledby="tab-ingresos" hidden style="flex-direction:column;gap:22px">
+    <section class="sec" aria-labelledby="t-ing">
+      <div><h2 id="t-ing">Distrito y fechas de ingreso</h2><p class="sub" id="ing-sub"></p></div>
+      <p class="nota">Ingresos por día de F. Recep (filas) y distrito (columnas), del 01 a la fecha de corte. El promedio por día es el total ÷ días transcurridos del mes. Respeta el filtro de Tipo.</p>
+      <div class="scroll" id="ing-mat"></div>
+    </section>
+    <section class="sec" aria-labelledby="t-eecc">
+      <div><h2 id="t-eecc">EECC y distritos</h2><p class="sub">Solo pendientes (REGISTRADA) por EECC (filas) y distrito (columnas). Respeta el filtro de Tipo.</p></div>
+      <div class="segs" id="eecc-segs"></div>
+      <div class="scroll" id="eecc-mat"></div>
+    </section>
+    <section class="sec" aria-labelledby="t-altas">
+      <div class="sec-cab"><div><h2 id="t-altas">Altas pendientes</h2><p class="sub" id="altas-sub"></p></div>
+        <div class="pen-acc"><button type="button" class="btn-out" data-copiar-tabla="tb-altas">Copiar tabla</button><button type="button" class="btn-out" data-copiar-img="tb-altas">Copiar imagen</button></div></div>
+      <p class="nota">Pendientes (REGISTRADA) por zona y distrito (filas) y fecha de F. Recep (columnas). Cada distrito se agrupa en su zona. Respeta los filtros de la franja; puedes acotar por EECC y agenda.</p>
+      <div class="segs" id="altas-segs"></div>
+      <div class="ley"><span><b class="e3"></b>8+ días</span><span><b class="e2"></b>4 a 7 días</span><span><b class="e1"></b>3 días · desde 3 días cuentan en % antiguas</span><span><b style="background:var(--magenta)"></b>Hoy</span></div>
+      <p class="pen-aviso" id="aviso-tb-altas" role="status" aria-live="polite"></p>
+      <div class="scroll" id="altas-mat"></div>
+    </section>
+  </div>
+
+  <!-- AGENDAS -->
+  <div role="tabpanel" id="v-agendas" aria-labelledby="tab-agendas" hidden style="flex-direction:column;gap:22px">
+    <section class="sec" aria-labelledby="t-agd">
+      <div class="sec-cab"><div><h2 id="t-agd">Agendas de averías y TC</h2><p class="sub" id="agd-sub"></p></div></div>
+      <div class="kpis" id="agd-kpis"></div>
+      <div class="ley"><span><b style="background:var(--ok)"></b>Cumplió</span><span><b style="background:var(--mal)"></b>No cumplió</span><span><b style="background:var(--gris)"></b>Por atender (aún no descargadas, no cuentan en el %)</span></div>
+      <div class="scroll" id="agd-graf"></div>
+      <p class="nota">Agendas del mes por día de agenda (sin anuladas) · se respetan la Fecha Asignacion y la franja de la OS; solo si la OS no tiene franja se toma #AGENDA ATC dd/mm h1-h2# de las observaciones · solo se mide la OS DESCARGADA: Cumplió = el inicio de atención fue el día agendado, dentro de la franja o antes (8 - 10 con inicio 10:00 cumple; 10:01 no) · No cumplió = después de la franja o en otro día · bajo cada día: % de cumplimiento · clic en una barra para ver los abonados.</p>
+    </section>
+    <div class="agd-dos">
+      <section class="sec" aria-labelledby="t-agd-ec"><div><h2 id="t-agd-ec">Ranking por EECC</h2><p class="sub">Del mes · Sí = cumplió · No = no cumplió · % de cumplimiento sobre descargadas</p></div><div id="agd-ec"></div></section>
+      <section class="sec" aria-labelledby="t-agd-dia"><div class="sec-cab"><div><h2 id="t-agd-dia">Agendas del día por franja</h2><p class="sub" id="agd-dia-sub"></p></div>
+        <label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="agd-dia" class="sel-dia"></select></label></div><div id="agd-fr"></div></section>
+    </div>
+    <section class="sec" aria-labelledby="t-agd-det">
+      <div class="sec-cab"><div><h2 id="t-agd-det">Detalle de agendas</h2><p class="sub">Cada agenda con su técnico, franja, inicio de atención y resultado</p></div>
+        <div class="pen-acc"><span class="nota" id="agd-n"></span></div></div>
+      <div class="segs" id="agd-segs"></div>
+      <div class="herr"><label class="seg-t" for="agd-buscar" style="display:flex;flex-direction:column;gap:6px;flex:1 1 260px;max-width:420px">Buscar<input id="agd-buscar" type="search" placeholder="AB, OS, técnico o distrito"></label></div>
+      <div class="pen-scroll"><table class="det ord" id="tb-agd"><thead><tr><th>F. AG</th><th>Franja</th><th>Origen</th><th>Tipo</th><th>Zona</th><th>Distrito</th><th>AB</th><th>OS</th><th>EECC_F</th><th>Técnico</th><th>F. Recep</th><th>Inicio</th><th>Estado OS</th><th>Resultado</th></tr></thead><tbody id="agd-filas"></tbody></table></div>
+    </section>
+  </div>
+
+  <!-- PENDIENTES -->
+  <div role="tabpanel" id="v-pendientes" aria-labelledby="tab-pendientes" hidden style="flex-direction:column;gap:22px">
+    <section class="sec" aria-labelledby="t-pen">
+      <div><h2 id="t-pen">Detalle de abonados pendientes</h2><p class="sub">Cada OS pendiente con su estado individual · más antiguas primero · el tiempo corre desde la recepción hasta el inicio de la atención</p></div>
+      <div class="segs" id="pen-to"></div>
+      <div class="segs" id="pen-segs"></div>
+      <div class="herr"><label class="seg-t" for="buscar" style="display:flex;flex-direction:column;gap:6px;flex:1 1 260px">Buscar<input id="buscar" type="search" placeholder="Abonado, OS, distrito o técnico"></label><div class="pen-acc"><span class="nota" id="pen-n"></span><button type="button" class="btn-out" id="pen-img">Copiar imagen</button><button type="button" class="btn-out" id="pen-xls">Descargar Excel</button></div></div>
+      <p class="pen-aviso" id="pen-aviso" role="status" aria-live="polite"></p>
+      <div class="pen-scroll" id="pen-caja"><table class="det ord" id="tb-pend">
+        <colgroup><col style="width:4.5%"><col style="width:7.2%"><col style="width:3.6%"><col style="width:5%"><col style="width:4.4%"><col style="width:5.2%"><col style="width:4.6%"><col style="width:5%"><col style="width:8.6%"><col style="width:7%"><col style="width:9.2%"><col style="width:6.6%"><col style="width:8.2%"><col style="width:7.2%"><col style="width:4.0%"><col style="width:4.2%"><col style="width:5.5%"></colgroup>
+        <thead><tr><th>Zona</th><th>Distrito</th><th>Seg.</th><th>AB</th><th>OS</th><th>Tipo</th><th title="Infancia">Infan.</th><th title="Reiterada">Reiter.</th><th>EECC_F</th><th>Técnico</th><th>F. Recep</th><th>Agenda</th><th>Visita</th><th>Tiempo</th><th>H.LL</th><th>Inicio</th><th>Cumplió</th></tr></thead>
+        <tbody id="pen-filas"></tbody>
+      </table></div>
+      <p class="nota">Clic en cualquier encabezado para ordenar (otro clic invierte el orden) · H.LL = hora límite de llegada (recepción + 100 min) · Agenda: con formato #AGENDA ATC dd/mm h1-h2# no se mide tiempo · Visita: si el comentario indica 1° visita, 2° visita o VD (visita directa) tampoco corre el contador (sin visita se muestra -) · Reiterada: n.º de OS del abonado en 30 días · EECC_F: contrata del técnico asignado, o POR ASIGNAR.</p>
+    </section>
+  </div>
+
+</div></main>
+<div class="modal-fondo" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-tit" aria-describedby="modal-sub">
+    <div class="modal-cab">
+      <div><h3 id="modal-tit"></h3><p id="modal-sub"></p></div>
+      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-img">Copiar imagen</button><button type="button" class="btn-sec" id="modal-copiar">Copiar tabla</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
+    </div>
+    <div class="modal-aviso" id="modal-aviso" role="status"></div>
+    <div class="modal-cuerpo" id="modal-cuerpo"></div>
+  </div>
+</div>
+
+<footer class="pie"><div class="w">mifibra · Plataforma de operaciones · Fuente: ScordSoft, cronograma de trabajo (órdenes de servicio)</div></footer>
+
+<script>
+(async () => {
+const CLAVE_SESION = 'mifibra_portal_token';
+/* «1.ª visita» en las observaciones (PRIMERA VISITA, 1ERA VISITA, 1RA VISITA, PRIMERA VISTA…) */
+const RE_VIS1 = /#?\s*(?:(?:PRIMERA|SEGUNDA|[12]\s*(?:ERA|RA|ER|DA|DO|°|º|\.ª|ª)?)\s*VISI?T[AO]S?\b|VISITA\s+DIRECTA\b|\bVD\b)[^#\n]*#?/i;
+// Última mención: 1.ª / 2.ª visita, o VD / VISITA DIRECTA
+const RE_VISD = /(?:(PRIMERA|SEGUNDA|[12])\s*(?:ERA|RA|ER|DA|DO|°|º|\.ª|ª)?\s*VISI?T[AO]S?\b|(VISITA\s+DIRECTA|\bVD)\b)/i;
+/* Visita mencionada en el comentario: { n: 1 | 2, f: 'dd/mm', h: 'hh:mm' } (se toma la última mención) */
+const _visM = new WeakMap();
+const visDe = (p) => { if (!p || !p.obs) return null; if (_visM.has(p)) return _visM.get(p); const r = _visDe(p); _visM.set(p, r); return r; };
+const _visDe = (p) => { const L = [...p.obs.matchAll(new RegExp(RE_VISD.source, 'gi'))]; if (!L.length) return null;
+  const m = L[L.length - 1]; if (m[2]) return { n: 'VD' }; const k = m[1].toUpperCase(); return { n: k === 'SEGUNDA' || k === '2' ? 2 : 1 }; };
+const visTxt = (v) => v.n === 'VD' ? 'VD' : `${v.n}° visita`;
+const visV = (v) => v ? (v.n === 'VD' ? 3 : v.n) : 9;
+const vis1 = (p) => !!visDe(p);
+let GEST = {}, NOMS = {};   // gestores y nombres de EECC (los mismos de Instalaciones › Metas, EECC y gestores)
+async function traerGestores(f) { try { const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); GEST = j.gestores || {}; NOMS = j.nombres || {}; } catch { /* sin gestores */ } }
+const gestorDe = (ec) => { if (GEST[ec]) return GEST[ec]; const k = Object.keys(NOMS).find(c => NOMS[c] === ec || c.replace('EECC ', '') === ec); return (k && GEST[k]) || ''; };
+const tokenPortal = () => { try { return sessionStorage.getItem(CLAVE_SESION) || ''; } catch { return ''; } };
+const CLAVE_FILIAL = 'mifibra_filial';
+const filialSel = () => { try { return sessionStorage.getItem(CLAVE_FILIAL) || 'LIMA'; } catch { return 'LIMA'; } };
+const guardarFilial = (f) => { try { sessionStorage.setItem(CLAVE_FILIAL, f); } catch { /* sin almacenamiento */ } };
+/* Copia local del último tablero (IndexedDB del navegador): la página se dibuja al instante con lo último que se vio
+   y se actualiza sola en cuanto responde el servidor. Solo se usa con sesión iniciada y si tiene menos de 36 h. */
+const CACHE = (() => {
+  let dbp;
+  const db = () => dbp || (dbp = new Promise((ok, mal) => { const r = indexedDB.open('mifibra-portal', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('t'); r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error); }));
+  return {
+    get: async (k) => { try { const d = await db(); return await new Promise(ok => { const q = d.transaction('t').objectStore('t').get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); } catch { return null; } },
+    set: async (k, v) => { try { const d = await db(); d.transaction('t', 'readwrite').objectStore('t').put(v, k); } catch { /* sin almacenamiento */ } },
+  };
+})();
+const reciente = (x) => x && x.actualizado && Date.now() - new Date(x.actualizado).getTime() < 36 * 3600e3;
+async function traer(f = filialSel()) {
+  const r = await fetch('/api/averias?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } });
+  if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+  CACHE.set('averias:' + f, j);
+  return j;
+}
+let D, frescoP = null;
+const enCache = tokenPortal() ? await CACHE.get('averias:' + filialSel()) : null;
+if (reciente(enCache)) { D = enCache; frescoP = traer(); }   // se dibuja ya con lo guardado; lo nuevo llega en segundo plano
+else try { D = await traer(); }
+catch (e) { if (filialSel() !== 'LIMA') { guardarFilial('LIMA'); try { D = await traer('LIMA'); } catch { /* se informa abajo */ } } }
+if (!D) try { D = await traer(); }
+catch (e) { document.getElementById('cargando').textContent = 'No se pudo cargar el tablero: ' + e.message; return; }
+if (D) traerGestores(D.filial || filialSel());
+/* ---------- Periodo (mes · semana · desde/hasta): filtra todo el portal menos Pendientes ---------- */
+let DC = D;                      // tablero del mes en curso: Pendientes siempre usa este
+const DMES = {};                 // tableros de meses cerrados ya traídos (clave filial:AAAA-MM)
+const PER = { mes: '', a: 1, b: 31, sem: 'MES' };
+const p2 = (v) => String(v).padStart(2, '0');
+const mesAnt = () => { const m = DC.mes === 1 ? 12 : DC.mes - 1, y = DC.mes === 1 ? DC.anio - 1 : DC.anio; return `${y}-${p2(m)}`; };
+const kMes = (mes) => (DC.filial || filialSel()) + ':' + mes;
+async function traerMes(mes) {
+  if (DMES[kMes(mes)]) return DMES[kMes(mes)];
+  const r = await fetch('/api/averias?filial=' + encodeURIComponent(DC.filial || filialSel()) + '&mes=' + mes, { headers: { 'x-portal-token': tokenPortal() } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(r.status === 404 ? 'Ese mes aún no está guardado: aparece después de la próxima actualización del robot.' : (j.error || `Error ${r.status}`));
+  return DMES[kMes(mes)] = j;
+}
+/* D = mes elegido recortado a los días [a, b] + los pendientes de hoy */
+function vistaPeriodo() {
+  const base = (PER.mes && DMES[kMes(PER.mes)]) || DC;
+  const enR = (x) => x.d >= PER.a && x.d <= PER.b;
+  D = Object.assign({}, base, { liq: (base.liq || []).filter(enR), cien: (base.cien || []).filter(enR), ing: (base.ing || []).filter(enR),
+    agd: base.agd ? base.agd.filter(enR) : base.agd, alta: (base.alta || []).filter(x => x[0] >= PER.a && x[0] <= PER.b), pend: DC.pend, pendx: DC.pendx, actualizado: DC.actualizado, filial: DC.filial || base.filial });
+}
+vistaPeriodo();
+/* Resultados de 100 min corregidos a mano por el usuario master (se guardan por OS y los ve todo el equipo) */
+let AJC = {};
+const urlAjAv = (f) => '/api/ajustes?modulo=averias&filial=' + encodeURIComponent(f);
+async function traerAjCien(f) { try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; AJC = (await r.json()).cien || {}; } catch { /* sin ajustes */ } }
+const CLAVE_MASTER = 'mf_master';
+const claveMaster = () => { try { return sessionStorage.getItem(CLAVE_MASTER) || ''; } catch { return ''; } };
+const ponerMaster = (v) => { try { v ? sessionStorage.setItem(CLAVE_MASTER, v) : sessionStorage.removeItem(CLAVE_MASTER); } catch { /* sin almacenamiento */ } };
+const ajCienP = D ? traerAjCien(D.filial || filialSel()) : Promise.resolve();
+const ahora = () => Date.now();
+const SLA = 100, WD = ['dom','lun','mar','mié','jue','vie','sáb'], MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const CORTOS = { 'SAN JUAN DE LURIGANCHO':'SJL','SAN MARTIN DE PORRES':'SMP','SAN JUAN DE MIRAFLORES':'SJM','PUENTE PIEDRA':'P. PIEDRA','JESUS MARIA':'JESÚS M.','VILLA MARIA DEL TRIUNFO':'VMT','VILLA SALVADOR':'VES','VILLA EL SALVADOR':'VES','CARMEN DE LA LEGUA REYNOSO':'C. LEGUA','SANTIAGO DE SURCO':'SURCO' };
+const corto = (d) => CORTOS[d] || d;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n = (v) => Number(v).toLocaleString('es-PE');
+const dur = (m, seg) => { const t = Math.floor(m * 60), h = Math.floor(t / 3600), mi = Math.floor((t % 3600) / 60), s = t % 60; return (h ? `${h} h ` : '') + `${String(mi).padStart(h ? 2 : 1, '0')} min` + (seg ? ` ${String(s).padStart(2, '0')} s` : ''); };
+const hms = (s) => { s = Math.round(s); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: WD[f.getDay()], fin: f.getDay() === 0 || f.getDay() === 6 }; };
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+let DIAS = [], MC = '', MESL = '';
+const MESES_L = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function prepararDatos() {
+  DIAS = []; for (let d = PER.a; d <= Math.min(PER.b, D.dias); d++) DIAS.push(d);
+  MC = MES[D.mes - 1]; MESL = MESES_L[D.mes - 1];
+  document.querySelectorAll('.mes-anio').forEach(x => x.textContent = `${MESL} ${D.anio}`);
+  const act = D.actualizado ? new Date(D.actualizado) : null;
+  const txt = act ? act.toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+  const fil = D.filial || 'LIMA';
+  document.getElementById('filial').value = fil;
+  document.getElementById('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
+  document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length ? 'visible' : 'hidden';  // ocupa su lugar para que Filial no se mueva
+  document.getElementById('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 20 min.`;
+  aplicarAjCien();
+}
+/* El resultado corregido por el master reemplaza al del robot (k0 guarda lo calculado) */
+function aplicarAjCien() {
+  (D.cien || []).forEach(x => { if (x.k0 === undefined) x.k0 = x.k; const a = (typeof AJC !== 'undefined') && AJC[x.os]; x.k = a ? a.k : x.k0; x.aj = a || null; });
+}
+prepararDatos();
+const PAL = ['#2A78D6','#EB6834','#1BAF7A','#EDA100','#E87BA4','#6250D6','#008300'];
+const fLima = (ms, op) => new Date(ms).toLocaleString('es-PE', Object.assign({ timeZone: 'America/Lima' }, op));
+const hhmm = (ms) => fLima(ms, { hour: '2-digit', minute: '2-digit', hour12: false });
+const ddmes = (ms) => { const p = fLima(ms, { day: '2-digit', month: 'numeric' }).split('/'); return `${p[0]}-${MES[+p[1] - 1]}.`; };
+const diaLima = (ms) => fLima(ms, { year: 'numeric', month: '2-digit', day: '2-digit' });
+const edad = (rec) => { const a = new Date(diaLima(ahora()).split('/').reverse().join('-')), b = new Date(diaLima(rec).split('/').reverse().join('-')); return Math.round((a - b) / 86400000); };
+let tipo = 'TODOS', vista = 'dia', tab = 'panel';
+const filtro = { ingEc: 'TODOS', ingAg: 'TODOS', detEc: 'TODOS', detAg: 'TODOS', altEc: 'TODOS', altAg: 'TODOS', penZona: 'TODOS', penEc: 'TODOS', penAg: 'TODOS', buscar: '' };
+const ZORD = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'];
+const ZCOL = { NORTE: '#2A78D6', SUR: '#EB6834', ESTE: '#1BAF7A', OESTE: '#EDA100', PREMIUM: '#6250D6' };
+const ZTXT = { NORTE: '#FFFFFF', SUR: '#FFFFFF', ESTE: '#0B0B0B', OESTE: '#0B0B0B', PREMIUM: '#FFFFFF' };
+let zona = 'TODAS', canal = 'TODOS';
+const CANALES = [['TODOS','Todos'],['IC','Integral de campo'],['VI','Ventas inbound'],['OT','Otros canales']];
+const okCn = (x, c = canal) => c === 'TODOS' || x.cn === c;
+const enZona = (x) => (zona === 'TODAS' || x.z === zona) && okCn(x);
+const zIdx = (z) => { const i = ZORD.indexOf(z); return i < 0 ? 99 : i; };
+const deTipo = (x) => (tipo === 'TODOS' || x.t === tipo) && enZona(x);
+const TIPO_CHIP = { TODOS: 'TODOS', AVERIA: 'AVERÍA', TC: 'TC', MISC: 'MISCELÁNEOS' };
+const TIPO_TXT = () => ({ TODOS: 'averías, TC y misceláneos', AVERIA: 'avería', TC: 'TC', MISC: 'misceláneos (traslados, reinstalación y cambio de equipo)' }[tipo]);
+const conAgenda = (p) => p.ags === 'ok';
+// Sin contador: con #AGENDA ATC con formato o con 1.ª / 2.ª visita en el comentario.
+const sinCont = (p) => conAgenda(p) || !!visDe(p);
+
+function kpi(l, v, s, cls = '') { return `<div class="kpi ${cls}"><span class="l">${l}</span><span class="kv">${v}</span>${s ? `<span class="s">${s}</span>` : ''}</div>`; }
+
+/* ---------- tipo + pestañas ---------- */
+function pintarTipos() {
+  const c = (t) => D.pend.filter(p => (t === 'TODOS' || p.t === t) && enZona(p)).length;
+  $('tipos').innerHTML = ['TODOS','AVERIA','TC','MISC'].map(k => `<button type="button" class="chip" data-t="${k}" aria-pressed="${k === tipo}" ${k === 'MISC' ? 'title="Traslado interno, traslado externo, reinstalación y cambio de equipo"' : ''}>${TIPO_CHIP[k]} (${c(k)})</button>`).join('');
+  const cc = (k) => D.pend.filter(p => (tipo === 'TODOS' || p.t === tipo) && okCn(p, k) && (zona === 'TODAS' || p.z === zona)).length;
+  $('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${k === canal}">${t} (${cc(k)})</button>`).join('');
+  const cz = (z) => D.pend.filter(p => (tipo === 'TODOS' || p.t === tipo) && okCn(p) && (z === 'TODAS' || p.z === z)).length;
+  $('zonas').innerHTML = ['TODAS', ...ZORD].map(z => `<button type="button" class="chip" data-z="${z}" aria-pressed="${z === zona}">${z === 'TODAS' ? 'Todas' : z} (${cz(z)})</button>`).join('');
+  $('n-pend').textContent = c(tipo);
+}
+$('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (!b) return; tipo = b.dataset.t; pintarTipos(); pintarLiq(); pintarTodo(); });
+$('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = b.dataset.cn; pintarTipos(); pintarLiq(); pintarCien(); pintarTodo(); });
+$('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = b.dataset.z; pintarTipos(); pintarLiq(); pintarCien(); pintarTodo(); });
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-t]'); if (!b) return; tab = b.dataset.t;
+  document.querySelectorAll('#tabs [role="tab"]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+  ['panel','ingresos','agendas','pendientes'].forEach(k => { const v = $('v-' + k); v.hidden = k !== tab; v.style.display = v.hidden ? 'none' : 'flex'; });
+});
+
+/* ---------- PANEL ---------- */
+/* Columnas apiladas: cada tramo lleva su número dentro y abre el detalle de AB al hacer clic (ch = gráfica, k = categoría). */
+const ALTO = 200, MIN_TRAMO = 18;
+function columnas(dias, segs, extra, ch) {
+  const mx = Math.max(1, ...dias.map(d => segs(d).reduce((a, s) => a + s.n, 0)));
+  return `<div class="graf">${dias.map(d => {
+    const sg = segs(d), tot = sg.reduce((a, s) => a + s.n, 0), di = diaInfo(d);
+    const vivos = sg.filter(s => s.n), dentro = vivos.length > 1;
+    const tramos = vivos.map(s => {
+      const h = Math.max(dentro ? MIN_TRAMO : 4, Math.round(s.n / mx * ALTO));
+      return `<button type="button" class="sg clic" data-ch="${ch}" data-d="${d}" data-k="${esc(s.k)}" title="${d}-${MC}. · ${esc(s.l)} · ${s.n} · clic: ver los AB" aria-label="${esc(s.l)}: ${s.n}" style="height:${h}px;background:${s.c};color:${s.t || css('--sobre')}">${dentro ? s.n : ''}</button>`;
+    }).join('');
+    const arriba = tot ? `<button type="button" class="tot clic" data-ch="${ch}" data-d="${d}" data-k="ALL" title="${d}-${MC}. · total ${tot} · clic: ver los AB">${tot}</button>` : '<span class="tot" style="color:var(--fg-4)">0</span>';
+    return `<div class="col"><div class="stk">${tramos}${arriba}</div>
+      <span class="dia${di.fin ? ' fin' : ''}"><b>${d}</b>${di.wd}</span>${extra ? extra(d) : ''}</div>`;
+  }).join('')}</div>`;
+}
+function pintarLiq() {
+  const L = D.liq.filter(deTipo), por = {}; L.forEach(x => por[x.d] = (por[x.d] || 0) + 1);
+  $('liq-tipo').textContent = 'Tipo: ' + TIPO_TXT();
+  pintarIndLiq(L);
+  const g = $('liq-graf');
+  if (vista === 'dia') {
+    g.innerHTML = `<div class="scroll">${columnas(DIAS, d => [{ n: por[d] || 0, c: css('--barra'), l: 'Liquidadas', k: 'ALL' }], null, 'liq')}</div>`;
+  } else if (vista === 'eecc') {
+    const tot = {}; L.forEach(x => tot[x.ec] = (tot[x.ec] || 0) + 1);
+    const rk = Object.keys(tot).sort((a, b) => tot[b] - tot[a]), top = rk.slice(0, PAL.length);
+    const col = (k) => top.includes(k) ? PAL[top.indexOf(k)] : css('--gris');
+    const txt = (k) => top.includes(k) ? PAL_TXT[top.indexOf(k)] : '#0B0B0B';
+    const seg = (d) => { const o = {}; L.filter(x => x.d === d).forEach(x => { const k = top.includes(x.ec) ? x.ec : 'Otros'; o[k] = (o[k] || 0) + 1; }); return [...top, 'Otros'].map(k => ({ n: o[k] || 0, c: col(k), t: txt(k), l: k, k: k === 'Otros' ? '__O' : k })); };
+    liqTop = top;
+    const otros = rk.slice(PAL.length).reduce((a, k) => a + tot[k], 0);
+    g.innerHTML = `<div class="ley">${top.map(k => `<span><b style="background:${col(k)}"></b>${esc(k)} · ${tot[k]}</span>`).join('')}${otros ? `<span><b style="background:${css('--gris')}"></b>Otros · ${otros}</span>` : ''}</div><div class="scroll" style="margin-top:12px">${columnas(DIAS, seg, null, 'liq')}</div>`;
+  } else if (vista === 'zona') {
+    const tot = {}; L.forEach(x => tot[x.z] = (tot[x.z] || 0) + 1);
+    const zs = ZORD.filter(z => tot[z]);
+    const seg = (d) => zs.map(z => ({ n: L.filter(x => x.d === d && x.z === z).length, c: ZCOL[z], t: ZTXT[z], l: z, k: 'Z:' + z }));
+    g.innerHTML = `<div class="ley">${zs.map(z => `<span><b style="background:${ZCOL[z]}"></b>${z} · ${tot[z]}</span>`).join('')}</div><div class="scroll" style="margin-top:12px">${columnas(DIAS, seg, null, 'liq')}</div>`;
+  } else {
+    const tot = {}; L.forEach(x => tot[x.di] = (tot[x.di] || 0) + 1);
+    const rk = Object.keys(tot).sort((a, b) => tot[b] - tot[a]), mx = tot[rk[0]];
+    g.innerHTML = `<div class="dist">${rk.slice(0, 15).map(k => `<div class="f"><span title="${esc(k)}">${esc(k)}</span><i style="width:${(tot[k] / mx * 100).toFixed(1)}%"></i><button type="button" class="clic" data-ch="liq" data-d="ALL" data-k="DI:${esc(k)}" style="border:0;background:none;font:700 13px var(--f-disp);color:var(--fg);text-align:right">${tot[k]}</button></div>`).join('')}</div>${rk.length > 15 ? `<p class="nota" style="margin-top:8px">Se muestran los 15 distritos con más liquidadas de ${rk.length}.</p>` : ''}`;
+  }
+}
+let liqTop = [];
+/* ---------- Indicadores sobre «Averías liquidadas por día» ---------- */
+const META_IND = { ag: 95, tlc: 95, inf: 4, rei: 8, tif: 2.8 };
+const pctTxt = (v) => v == null ? '—' : v.toFixed(1).replace('.', ',') + '%';
+const semMas = (v, m) => v == null ? '' : v >= m ? 'ok' : v >= m - 10 ? 'mid' : 'mal';     // mayor es mejor
+const semMenos = (v, m) => v == null ? '' : v <= m ? 'ok' : v <= m * 1.5 ? 'mid' : 'mal';  // menor es mejor
+let LS = null, REI_AB = new Set();   // líneas en servicio por mes (pestaña LS_TIF de la hoja de operaciones): { 'AAAA-MM': total }
+const URL_LS = 'https://docs.google.com/spreadsheets/d/1TNEWHaO0oK9CPjk561hKQGBGDCqo-2iAK6ax_buzWGc/gviz/tq?tqx=out:csv&sheet=LS_TIF';
+async function traerLS() {
+  try {
+    const t = await (await fetch(URL_LS)).text(), F = t.trim().split(/\r?\n/).map(l => l.split('","').map(c => c.replace(/^"|"$/g, '')));
+    const cab = F[0], o = {};
+    cab.forEach((h, i) => { if (/^\d{4}-\d{2}$/.test(h)) o[h] = F.slice(1).reduce((a, r) => a + (Number(String(r[i] || '').replace(/[^\d.]/g, '')) || 0), 0); });
+    LS = o;
+  } catch { LS = {}; }
+  pintarLiq();
+}
+const lsDe = (mes) => { if (!LS) return null; const ks = Object.keys(LS).filter(k => LS[k] > 0 && k <= mes).sort(); return ks.length ? { mes: ks[ks.length - 1], v: LS[ks[ks.length - 1]] } : null; };
+function pintarIndLiq(L) {
+  const btn = (txt, k) => `<button type="button" class="clic" data-ch="liq" data-d="ALL" data-k="${k}" style="all:unset;cursor:pointer">${txt}</button>`;
+  const dias = DIAS.length, mesIso = `${D.anio}-${p2(D.mes)}`, rangoTxt = PER.sem === 'MES' && PER.a === 1 ? MESL : `${p2(PER.a)} al ${p2(Math.min(PER.b, D.dias))}-${MC}.`;
+  // Cumplimiento de agendas (mismo cálculo que la pestaña Agendas): cumplió ÷ descargadas
+  const A = (D.agd || []).filter(deTipo).filter(x => x.e === 'D'), siA = A.filter(x => kMedA(x) === 'si').length, qAg = A.length ? siA / A.length * 100 : null;
+  const T = L.filter(x => x.tmr != null), tmr = T.length ? T.reduce((a, x) => a + x.tmr, 0) / T.length : null;
+  // TLC = % de cumplimiento de los 100 min (mismo cálculo que «Averías por día · meta 100 min»: cumplió ÷ (cumplió + no cumplió))
+  const C = D.cien.filter(enZona), cSi = C.filter(x => x.k === 'si').length, cNo = C.filter(x => x.k === 'no').length, tlc = cSi + cNo ? cSi / (cSi + cNo) * 100 : null;
+  // Infancia, Reiteradas y TIF: mismo cálculo que el tablero anterior (sección Averías). Base = «Total de Averías»:
+  // OS AVERÍA en DESCARGADA por fecha de atención en el periodo (zona y canal de la cabecera).
+  const TA = D.liq.filter(x => x.t === 'AVERIA' && enZona(x)), ta = TA.length;
+  const alta = (D.alta || []).filter(x => (zona === 'TODAS' || x[1] === zona) && (canal === 'TODOS' || x[2] === canal)).reduce((a, x) => a + x[3], 0);
+  const ctdInf = TA.filter(x => x.inf).length, qInf = alta ? ctdInf / alta * 100 : null;                 // % Infancia = Ctd Infancia ÷ Total de Alta
+  const porAb = {}; TA.forEach(x => porAb[x.ab] = (porAb[x.ab] || 0) + 1);
+  REI_AB = new Set(Object.keys(porAb).filter(k => porAb[k] >= 2).map(Number));                            // AB con 2 o más averías en el periodo
+  const qRei = ta ? REI_AB.size / ta * 100 : null;                                                     // % Reiteradas = Ctd de repetidas ÷ Total de Averías
+  const P = DC.pend.filter(deTipo), P48 = P.filter(p => p.rec && (ahora() - new Date(p.rec + '-05:00')) / 36e5 > 48).length;
+  const ls = lsDe(mesIso), tif = ls ? ta / ls.v * 100 : null;                                          // % TIF = Total de Averías ÷ LS
+  const enCurso = !PER.mes && PER.a === 1 && PER.b >= D.dias;
+  const proy = ls && enCurso ? Math.round(ta / 20 * 30) / ls.v * 100 : null;                           // Proyección (igual que el tablero anterior: TA ÷ 20 × 30)
+  $('liq-kpis').innerHTML =
+    kpi('Liquidadas en ' + rangoTxt, btn(n(L.length), 'ALL'), `${TIPO_TXT()}${zona === 'TODAS' ? '' : ' · zona ' + zona}`, 'acento') +
+    kpi('Promedio por día', dias ? (L.length / dias).toFixed(1).replace('.', ',') : '—', `liquidaciones ÷ ${dias} ${dias === 1 ? 'día' : 'días'}`) +
+    kpi('Cumplimiento de AG', pctTxt(qAg), `meta ${META_IND.ag}% · ${n(siA)} de ${n(A.length)} agendas descargadas`, semMas(qAg, META_IND.ag)) +
+    kpi('TMR', tmr == null ? '—' : dur(tmr), `recepción → fin de la atención · promedio de ${n(T.length)} OS`) +
+    kpi('Pendientes', n(P.length), `hoy · ${n(P48)} con más de 48 h · no cambia con el periodo`) +
+    kpi('TLC', `<button type="button" class="clic" data-ch="cien" data-d="ALL" data-k="no" style="all:unset;cursor:pointer" title="Ver las que no cumplieron">${pctTxt(tlc)}</button>`, `meta ${META_IND.tlc}% · cumplimiento de los 100 min · ${n(cSi)} de ${n(cSi + cNo)}`, semMas(tlc, META_IND.tlc)) +
+    kpi('Infancia', btn(pctTxt(qInf), 'INF'), `meta ${META_IND.inf}% o menos · ${n(ctdInf)} averías en infancia ÷ ${n(alta)} altas del periodo`, semMenos(qInf, META_IND.inf)) +
+    kpi('Reiteradas', btn(pctTxt(qRei), 'REI'), `meta ${META_IND.rei}% o menos · ${n(REI_AB.size)} AB con 2 o más averías ÷ ${n(ta)} averías`, semMenos(qRei, META_IND.rei)) +
+    kpi('TIF', pctTxt(tif), ls ? `meta ${META_IND.tif}% o menos · ${n(ta)} averías ÷ ${n(ls.v)} líneas (LS ${ls.mes})${proy != null ? ' · proyección del mes ' + pctTxt(proy) : ''}` : (LS ? 'falta LS en la pestaña LS_TIF' : 'cargando líneas en servicio…'), semMenos(tif, META_IND.tif));
+}
+const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#FFFFFF'];
+$('liq-vistas').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vista = b.dataset.v; document.querySelectorAll('#liq-vistas button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarLiq(); });
+function pintarCien() {
+  const C = D.cien.filter(enZona), t = {}; C.forEach(x => t[x.k] = (t[x.k] || 0) + 1);
+  const si = t.si || 0, no = t.no || 0, sm = (t.sin || 0) + (t.curso || 0), p = si + no ? si / (si + no) * 100 : null;
+  $('cien-kpis').innerHTML =
+    kpi('% cumplió 100 min', p == null ? '—' : p.toFixed(1) + '%', `${si + no + sm} averías medidas en ${MESL}`, p == null ? '' : p >= 90 ? 'ok' : p >= 75 ? 'mid' : 'mal') +
+    kpi('Cumplió ≤ 100 min', n(si), 'iniciaron atención a tiempo') +
+    kpi('No cumplió > 100 min', n(no), 'más de 100 min o sin iniciar') +
+    kpi('Sin medir', n(sm), `${t.curso || 0} en curso · ${t.sin || 0} sin dato`);
+  const chipEx = (k, txt) => (t[k] ? `<button type="button" class="c clic" data-ch="cien" data-d="ALL" data-k="${k}"><b>${t[k]}</b> ${txt}</button>` : `<span class="c"><b>0</b> ${txt}</span>`);
+  $('cien-excl').innerHTML = `<span class="t">No se consideran</span>${chipEx('agenda', 'con agenda o visita en el comentario')}${chipEx('tarde', 'recibidas después de las 19:00')}${chipEx('temprano', 'recibidas antes de las 8:00')}${chipEx('fexcl', 'con franja OS y más de 100 min')}${t.excl ? chipEx('excl', 'excluidas por ajuste master') : ''}`;
+  const por = (d, k) => C.filter(x => x.d === d && x.k === k).length;
+  $('cien-graf').innerHTML = columnas(DIAS, d => [{ n: por(d, 'si'), c: css('--ok'), l: 'Cumplió', k: 'si' }, { n: por(d, 'no'), c: css('--mal'), l: 'No cumplió', k: 'no' }, { n: por(d, 'sin') + por(d, 'curso'), c: css('--gris'), t: css('--fg'), l: 'Sin medir', k: 'sm' }],
+    d => { const a = por(d, 'si'), b = por(d, 'no'); if (!a && !b) return '<span class="pct na">—</span>'; const q = a / (a + b) * 100; return `<span class="pct ${q >= 90 ? 'ok' : q >= 75 ? 'mid' : 'mal'}">${q.toFixed(1)}%</span>`; }, 'cien');
+}
+
+/* ---------- Detalle de AB al hacer clic en la gráfica ---------- */
+const NOM_K = { INF: 'Averías en infancia', REI: 'Reiteradas (AB con 2 o más averías)', ALL: 'Todas', si: 'Cumplió', no: 'No cumplió', sm: 'Sin medir', agenda: 'Con agenda, 1° visita, 2° visita o VD', tarde: 'Recibidas después de las 19:00', temprano: 'Recibidas antes de las 8:00', fexcl: 'Con franja OS y más de 100 min', excl: 'Excluidas por ajuste master', __O: 'Otros' };
+const RES = { si: '<span class="b si">Cumplió</span>', no: '<span class="b no">No cumplió</span>', curso: '<span class="encurso">En curso</span>', sin: '<span class="b vac">Sin dato</span>', agenda: '<span class="b vac">Agenda</span>', tarde: '<span class="b vac">Después de 19:00</span>', temprano: '<span class="b vac">Antes de 8:00</span>', fexcl: '<span class="b vac">Franja OS</span>', excl: '<span class="b vac">Excluida (master)</span>' };
+const fechaHora = (iso) => iso ? `${ddmes(new Date(iso + '-05:00').getTime())} ${iso.slice(11, 16)}` : '—';
+const msIso = (iso) => iso ? new Date(iso + '-05:00').getTime() : '';
+const ESTADO_TXT = { DESCARGADA: 'Descargada', REGISTRADA: 'Registrada', OBSERVADA: 'Observada', ANULADA: 'Anulada' };
+const SUB_K = {
+  ALL: 'cumplió, no cumplió y sin medir', si: 'inició en 100 min o menos desde la recepción', no: 'inició en más de 100 min o sigue sin iniciar pasados los 100',
+  sm: 'en curso dentro de los 100 min o sin dato', agenda: 'observación con “agenda”, primera o segunda visita · no se consideran', tarde: 'recibidas después de las 19:00 · no se consideran',
+  temprano: 'recibidas antes de las 8:00 · no se consideran', fexcl: 'con franja OS y más de 100 min · no se consideran', excl: 'el usuario master las sacó del cálculo · no se consideran' };
+let modalOrigen = null, modalDatos = { cab: [], filas: [] }, ultLista = null;
+const motCien = (k) => ({ si: 'Cumplió', no: 'Más de 100 min', curso: 'En curso', sin: 'Sin dato', agenda: 'Con agenda / visita', tarde: 'Después de 19:00', temprano: 'Antes de 8:00', fexcl: 'Franja OS', excl: 'Excluida (master)' }[k] || k);
+function abrirDetalle(ch, d, k) {
+  if (ch === 'agd') return abrirAgd(d, k);
+  const dia = d === 'ALL' ? null : +d;
+  let L, cab, filas, filasTxt, sub;
+  if (ch === 'cien') {
+    const consid = ['si', 'no', 'sin', 'curso'];
+    L = D.cien.filter(enZona).filter(x => (dia == null || x.d === dia) && (k === 'ALL' ? consid.includes(x.k) : k === 'sm' ? (x.k === 'sin' || x.k === 'curso') : x.k === k));
+    cab = ['AB', 'OS', 'Zona', 'Distrito', 'EECC_F', 'Técnico', 'Franja OS', 'Recepción', 'Inicio de atención', 'Tiempo', 'Estado OS', 'Motivo', 'Ajuste'];
+    const mot = (x) => motCien(x.k) + (x.aj ? ' (ajustado)' : '');
+    filasTxt = L.map(x => [x.ab, x.os, x.z, x.di, x.ec, tecCorto(x.tec), x.fr && x.fr !== 'NO DEFINE' ? x.fr : '—', fechaHora(x.rec), fechaHora(x.ini), x.min == null ? '—' : dur(x.min), ESTADO_TXT[x.e] || x.e, mot(x), x.aj ? 'Master' : '']);
+    ultLista = [ch, d, k];
+    filas = L.map((x, i) => `<tr><td data-v="${x.ab}"><button type="button" class="lnk num" data-cien-ab="${x.os}" title="Ver cómo se solucionó y los comentarios">${x.ab}</button></td><td data-v="${x.os}">${x.os}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(corto(x.di))}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
+      <td>${esc(filasTxt[i][6])}</td><td data-v="${msIso(x.rec)}">${fechaHora(x.rec)}</td><td data-v="${msIso(x.ini)}">${fechaHora(x.ini)}</td>
+      <td data-v="${x.min ?? -1}" class="${x.min == null ? '' : x.min > SLA ? 'late' : 't-ok'}">${x.min == null ? '—' : dur(x.min)}</td><td>${esc(filasTxt[i][10])}</td><td data-v="${x.k}"${x.aj ? ` title="${esc('Robot: ' + motCien(x.k0) + (x.aj.nota ? ' · ' + x.aj.nota : ''))}"` : ''}>${esc(motCien(x.k))}${x.aj ? '<span class="b aj">ajustado</span>' : ''}</td>
+      <td><button type="button" class="ed-ag" data-cien-ed="${x.os}" title="Modificar el resultado de 100 min (usuario master)" aria-label="Modificar resultado del AB ${x.ab}">✎</button></td></tr>`);
+    sub = `${L.length} ${L.length === 1 ? 'avería' : 'averías'} (solo AVERÍA) · ${SUB_K[k] || ''}`;
+  } else {
+    L = D.liq.filter(k === 'INF' || k === 'REI' ? enZona : deTipo).filter(x => (dia == null || x.d === dia) && (k === 'ALL' ? true : k === 'INF' ? x.inf && x.t === 'AVERIA' : k === 'REI' ? x.t === 'AVERIA' && REI_AB.has(x.ab) : k.startsWith('DI:') ? x.di === k.slice(3) : k.startsWith('Z:') ? x.z === k.slice(2) : k === '__O' ? !liqTop.includes(x.ec) : x.ec === k));
+    cab = ['AB', 'OS', 'Tipo', 'F. atención', 'Zona', 'Distrito', 'EECC_F', 'Técnico', 'Franja OS', 'Recepción', 'Inicio de atención', 'TMI', 'TMR', 'Reiterada', 'Infancia', 'Causa', 'Solución'];
+    const tipoL = (x) => x.t === 'MISC' ? (x.ts || 'MISC') : x.t === 'AVERIA' ? 'AVERÍA' : (x.t || 'AVERÍA');
+    const fat = (x) => { const [, m, dd] = x.fat.split('-'); return `${dd}-${MES[+m - 1]}.`; };
+    const franja = (x) => x.fr && x.fr !== 'NO DEFINE' ? x.fr : '—';
+    filasTxt = L.map(x => [x.ab, x.os, tipoL(x), fat(x), x.z, x.di, x.ec, tecCorto(x.tec), franja(x), fechaHora(x.rec), x.hi || '—', x.m == null ? 'Sin dato' : hms(x.m), x.tmr == null ? '—' : dur(x.tmr), x.rei ? 'Sí' : 'No', x.inf ? 'Sí' : 'No', x.ca || '—', x.sol || '—']);
+    filas = L.map(x => `<tr><td data-v="${x.ab}">${x.ab}</td><td data-v="${x.os}">${x.os}</td><td>${esc(tipoL(x))}</td><td data-v="${x.fat}">${fat(x)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(corto(x.di))}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
+      <td>${esc(franja(x))}</td><td data-v="${msIso(x.rec)}">${fechaHora(x.rec)}</td><td>${esc(x.hi || '—')}</td>
+      <td data-v="${x.m ?? -1}" title="Hora I ${esc(x.hi || '—')} · Hora F ${esc(x.hf || '—')}">${x.m == null ? '<span class="b vac" title="Hora F anterior a Hora I o sin hora">Sin dato</span>' : hms(x.m)}</td>
+      <td data-v="${x.tmr ?? -1}" class="${x.tmr == null ? '' : x.tmr > 1440 ? 'late' : ''}" title="Recepción → fin de la atención">${x.tmr == null ? '—' : dur(x.tmr)}</td>
+      <td data-v="${+x.rei}">${x.rei ? '<span class="b no">Sí</span>' : '<span class="b vac">No</span>'}</td><td data-v="${+x.inf}">${x.inf ? '<span class="b inf">Sí</span>' : '<span class="b vac">No</span>'}</td>
+      <td title="${esc(x.sca ? 'Sub causa: ' + x.sca : '')}">${esc(x.ca || '—')}</td><td>${esc(x.sol || '—')}</td></tr>`);
+    sub = `${L.length} ${L.length === 1 ? 'liquidada' : 'liquidadas'} (${TIPO_TXT()}) · estado DESCARGADA por fecha de atención · TMI = Hora F − Hora I`;
+  }
+  const nomK = k.startsWith('DI:') ? k.slice(3) : k.startsWith('Z:') ? 'Zona ' + k.slice(2) : ch === 'liq' && k === 'ALL' ? 'Liquidadas' : (NOM_K[k] || k);
+  const nomD = dia == null ? MESL : `${diaInfo(dia).wd} ${String(dia).padStart(2, '0')}-${MC}.`;
+  $('modal-tit').textContent = `${nomK} · ${nomD}`;
+  $('modal-sub').textContent = sub + (zona === 'TODAS' || k.startsWith('Z:') ? '' : ` · zona ${zona}`);
+  $('modal-aviso').textContent = '';
+  $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`;
+  orden['tb-modal'] = null;
+  prepararOrden($('tb-modal'));
+  modalDatos = { cab, filas: filasTxt };
+  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar tabla';
+  if ($('modal').hidden) modalOrigen = document.activeElement;
+  $('modal').hidden = false; document.body.classList.add('con-modal');
+  $('modal-cerrar').focus();
+}
+/* ---------- Ficha al hacer clic en AB, OS, Infancia o Reiterada (Pendientes) ---------- */
+const fIsoD = (s) => { if (!s) return '—'; const [, m, d] = s.slice(0, 10).split('-'); return `${d}-${MES[+m - 1]}.`; };
+const val = (v) => v === null || v === undefined || v === '' ? '—' : esc(v);
+const grilla = (pares) => `<div class="fi-grid">${pares.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
+const sec = (t, html) => `<div class="fi-sec"><h4>${t}</h4>${html}</div>`;
+const VIV_TXT = (v) => !v ? '—' : v.replace('HORIZONTAL', 'Horizontal').replace('VERTICAL', 'Vertical').replace(' MULTIFAMILIAR', ' multifamiliar').replace(' HABITACION', ' habitación');
+const obsHtmlG = (t) => esc(t).replace(/(#\s*AGENDA(?:\s+ATC)?[^#\n]*#)/gi, '<b class="fi-ag">$1</b>')
+  .replace(new RegExp(RE_VIS1.source, 'gi'), (m) => `<mark class="fi-v1">${m}</mark>`)
+  .replace(/(#[^#\n]{3,40}#)/g, (m) => m.includes('fi-ag') || m.includes('fi-v1') ? m : `<b>${m}</b>`);
+const obsTecG = (t) => esc(t).replace(/\s*(#\s*\d{1,2}\/\d{1,2}\/\d{4}\s*\d{1,2}:\d{2}\s*#)/g, '\n$1').replace(/^\n/, '').replace(/#\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*(\d{1,2}:\d{2})\s*#/g, '<b>$1 $2</b>').replace(/%([^%]*)%/g, '<b>$1</b>');
+function abrirFicha(tipoF, os) {
+  const p = D.pend.concat(pendOtros()).find(x => String(x.os) === String(os)); if (!p) return;
+  const rec = p.rec ? fechaHora(p.rec) : '—', tipoTxt = p.otro ? p.to : p.t === 'TC' ? 'TC' : 'AVERÍA';
+  const cab = `AB ${p.ab} · OS ${p.os} · ${tipoTxt} · ${p.di || '—'} · ${p.ec}`;
+  const siNo = (b, txt) => b ? `<span class="b ${txt === 'inf' ? 'inf' : 'no'}">Sí</span>` : '<span class="b vac">No</span>';
+  let tit, sub, html;
+  if (tipoF === 'ab') {
+    const ge = gestorDe(p.ec);
+    tit = `AB ${p.ab}`; sub = `${ge ? ge + ' · ' : ''}${p.ec} · ${p.di || '—'} · ${tipoTxt}`;
+    const agd = p.ags === 'ok' && p.ag;
+    const obsHtml = obsHtmlG, obsTec = obsTecG;
+    const coin = !p.ecp ? '<div class="fi-coin nd">Sin EECC registrado para este plano.</div>' : p.ecp === String(p.ec).toUpperCase() || NOMS[p.ecp] === p.ec ? '<div class="fi-coin si">El EECC del plano coincide con el EECC_F asignado.</div>' : `<div class="fi-coin no">El EECC del plano (${esc(p.ecp)}) no coincide con el EECC_F asignado (${esc(p.ec)}).</div>`;
+    const vv = visDe(p);
+    html = (vv ? `<div class="fi-v1-aviso">⚑ El comentario indica <b>${esc(visTxt(vv))}</b> (${vv.n === 'VD' ? 'visita directa' : vv.n === 1 ? 'primera visita del técnico' : 'segunda visita del técnico'})${p.ags !== 'ok' ? ' · no corre el contador de 100 min' : ''}.</div>` : '')
+      + (p.otro ? '' : sec('Observaciones de la OS', p.obs ? `<div class="fi-obs">${obsHtml(p.obs)}</div>` : '<p class="fi-nota">Sin observaciones registradas (o aún no sincronizadas) para esta OS.</p>')
+        + `<p class="fi-agl">${agd ? `Agenda leída: <b>${esc(p.ag.replace(/\s+(\d{1,2}\s*-\s*\d{1,2})$/, ' · franja $1'))} (ATC)</b> · no corre el contador de 100 min` : p.ags === 'sinformato' ? 'Sin agenda con formato <b>#AGENDA ATC dd/mm hh-hh#</b>: el contador de 100 min corre desde la recepción' : 'Sin agenda: el contador de 100 min corre desde la recepción'}</p>`)
+      + sec('Datos del abonado y la OS', grilla([
+        ['OS', p.os], ['Plano', val(p.pl)], ['Plan', val(p.plan)], ['Vivienda', val(VIV_TXT(p.viv))],
+        ['Coordenadas', p.co ? `${esc(p.co.replace(/\s+/g, ' '))}<br><a href="https://www.google.com/maps?q=${encodeURIComponent(p.co.replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver en Google Maps</a>` : '—'], ['Técnico', val(p.tec)],
+        ['Distrito', val(p.di)], ['Zona', val(p.z)], ['Segmento', val(p.seg)], ['Franja OS', p.fr && /\d/.test(p.fr) ? esc(p.fr) : '—'],
+        ['Agenda', agd ? esc(p.ag) : vv ? esc(visTxt(vv)) + ' <small>(del comentario)</small>' : p.otro && p.ag && p.ag !== '—' ? esc(p.ag) : 'Sin agenda'], ['Recepción', rec], ['Motivo', val(p.mot)], ['Tipo', esc(tipoTxt)],
+        ['EECC según plano (ZONA.1.EECC)', val(p.ecp)], ['EECC_F (asignado)', val(p.ec)] ]))
+      + coin
+      + (p.otro ? '' : sec('Condición', grilla([['Infancia', siNo(p.inf, 'inf') + (p.inf ? ` <small>${p.infd} días</small>` : '')], ['Reiterada', p.rei ? `<span class="b no">Sí · ${p.rei + 1}.ª</span>` : '<span class="b vac">No</span>']])))
+      + sec('Observación del técnico · OBS VISITA TÉCNICO (completo)', p.ovt ? `<div class="fi-obs">${obsTec(p.ovt)}${p.ove ? `<small>Última anotación: ${esc(p.ove)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
+      + '<p class="fi-nota">Los teléfonos de las observaciones se ocultan (•••).</p>';
+  } else if (tipoF === 'os') {
+    tit = `OS ${p.os} · FFTT`; sub = `AB ${p.ab} · ${tipoTxt} · ${p.di || '—'} · ${p.ec} · ${tecCorto(p.tec)}`;
+    html = sec('Condición del abonado', grilla([['Infancia', siNo(p.inf, 'inf')], ['Reiterada', p.rei ? `<span class="b no">Sí · ${p.rei + 1}.ª</span>` : '<span class="b vac">No</span>']]))
+      + sec('Facilidades técnicas (FFTT)', grilla([['Plano', val(p.pl)], ['Zona', val(p.zf)], ['NAP', val(p.nap)], ['Borne', val(p.bor)], ['Dispositivo', val(p.dis)]]))
+      + sec('Trabajo realizado', grilla([['Causa', val(p.ca)], ['Solución', val(p.sol)]]))
+      + '<p class="fi-nota">Datos registrados en ScordSoft para esta OS. El reporte no trae el detalle de materiales.</p>';
+  } else if (tipoF === 'inf') {
+    tit = `Infancia · AB ${p.ab}`; sub = cab;
+    const i = p.inst, fi = (i && i.f) || p.fi;
+    const dias = p.infd ?? (fi && p.rec ? Math.round((new Date(p.rec.slice(0, 10)) - new Date(fi)) / 86400000) : null);
+    html = sec('Resultado', grilla([['Infancia', siNo(p.inf, 'inf')], ['Regla', 'Avería/TC recibida a 30 días o menos de la instalación']]))
+      + sec('Instalación del abonado', grilla([['OS de instalación', i ? i.os : '—'], ['Fecha de instalación', fIsoD(fi)], ['EECC', i ? val(i.ec) : '—'], ['Técnico', i ? esc(tecCorto(i.tec)) : '—'],
+          ['Días de instalado al reclamo', dias == null ? '—' : dias + ' días'], ['F. recepción de esta OS', p.rec ? fIsoD(p.rec) : '—']]))
+      + (fi ? `<p class="${p.inf ? 'fi-mal' : 'fi-ok'}">${p.inf ? 'La avería llegó dentro de los 30 días desde la instalación: abonado en infancia.' : 'La avería llegó después de los 30 días desde la instalación: no está en infancia.'}</p>` : '<p class="fi-nota">ScordSoft no trae la fecha de instalación de este abonado.</p>');
+  } else {
+    tit = `Reiterada · AB ${p.ab}`; sub = cab;
+    const L = p.prev || [];
+    html = sec('Resultado', grilla([['Reiterada', p.rei ? `<span class="b no">Sí</span> <small>${p.rei + 1}.ª avería/TC en 30 días</small>` : '<span class="b vac">No</span>'], ['Regla', 'Otra avería/TC del mismo AB en los 30 días anteriores']]))
+      + sec(`OS anteriores del abonado (${L.length})`, L.length ? `<div class="scroll"><table class="fi-tab"><thead><tr><th>OS</th><th>Tipo</th><th>F. recep.</th><th>Hace</th><th>Estado</th><th>EECC</th><th>Técnico</th><th>Causa</th><th>Solución</th></tr></thead><tbody>${L.map(x => {
+          const hace = p.rec ? Math.round((new Date(p.rec.slice(0, 10)) - new Date(x.fr)) / 86400000) : null;
+          return `<tr><td>${x.os}</td><td>${x.t === 'TC' ? 'TC' : 'AVERÍA'}</td><td>${fIsoD(x.fr)}</td><td>${hace == null ? '—' : hace + ' d'}</td><td>${esc(ESTADO_TXT[x.e] || x.e)}</td><td>${val(x.ec)}</td><td>${esc(tecCorto(x.tec))}</td><td>${val(x.ca)}</td><td>${val(x.sol)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="fi-nota">Sin otras averías ni TC del abonado en los 30 días anteriores.</p>')
+      + '<p class="fi-nota">Se cuentan las OS de avería y TC del mismo abonado (registradas, descargadas u observadas; no las anuladas) recibidas hasta 30 días antes de esta OS.</p>';
+  }
+  $('modal-tit').textContent = tit; $('modal-sub').textContent = sub; $('modal-aviso').textContent = '';
+  $('modal-copiar').textContent = 'Copiar';
+  $('modal-cuerpo').innerHTML = html;
+  document.querySelector('#modal .modal').classList.add('ficha');
+  modalOrigen = document.activeElement; $('modal').hidden = false; document.body.classList.add('con-modal'); $('modal-cerrar').focus();
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-ficha]'); if (b) { e.stopPropagation(); abrirFicha(b.dataset.ficha, b.dataset.os); } });
+/* ---------- Gráfico de 100 min: ficha del AB (cómo se solucionó) y modificar resultado (usuario master) ---------- */
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-cien-ab]'), ed = e.target.closest('[data-cien-ed]'), v = e.target.closest('[data-cien-volver]');
+  if (a) { e.stopPropagation(); abrirFichaCien(a.dataset.cienAb); }
+  else if (ed) { e.stopPropagation(); abrirEditarCien(ed.dataset.cienEd); }
+  else if (v) { e.stopPropagation(); if (ultLista) abrirDetalle(...ultLista); }
+});
+const cienDe = (os) => (D.cien || []).find(x => String(x.os) === String(os));
+const badgeCien = (k) => k === 'si' ? '<span class="b si">Cumplió</span>' : k === 'no' ? '<span class="b no">No cumplió</span>' : `<span class="b vac">${esc(motCien(k))}</span>`;
+const fechaAj = (iso) => iso ? new Date(iso).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+const tsTxt = (t) => { if (!t) return '—'; const m = String(t).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/); return m ? `${m[3]}-${MES[+m[2] - 1]}. ${m[4]}:${m[5]}` : esc(t); };
+function mostrarEnModal(tit, sub, html, ficha = true) {
+  $('modal-tit').textContent = tit; $('modal-sub').textContent = sub; $('modal-aviso').textContent = ''; $('modal-aviso').style.color = '';
+  $('modal-cuerpo').innerHTML = html; $('modal-copiar').textContent = 'Copiar'; $('modal-copiar').hidden = !ficha;
+  document.querySelector('#modal .modal').classList.add('ficha');
+  if ($('modal').hidden) modalOrigen = document.activeElement;
+  $('modal').hidden = false; document.body.classList.add('con-modal'); $('modal-cerrar').focus();
+}
+const btnVolver = () => ultLista ? '<p class="fi-volver"><button type="button" class="btn-out" data-cien-volver>← Volver a la lista</button></p>' : '';
+async function abrirFichaCien(os) {
+  const x = cienDe(os); if (!x) return;
+  const sub = `OS ${x.os} · ${x.di || '—'} · ${x.ec} · ${tecCorto(x.tec)}`;
+  const res = sec('Resultado · meta 100 min', grilla([
+      ['Resultado', badgeCien(x.k) + (x.aj ? ` <span class="b aj">ajustado</span>` : '')], ['Recepción', fechaHora(x.rec)], ['Inicio de atención', fechaHora(x.ini)],
+      ['Tiempo', x.min == null ? '—' : dur(x.min)], ['Franja OS', x.fr && /\d/.test(x.fr) ? esc(x.fr) : '—'], ['Estado OS', esc(ESTADO_TXT[x.e] || x.e)]]))
+    + (x.aj ? `<p class="fi-nota">Ajustado por el usuario master el ${fechaAj(x.aj.en)} · el robot calculó: <b>${esc(motCien(x.k0))}</b>${x.aj.nota ? ` · motivo: ${esc(x.aj.nota)}` : ''}</p>` : '')
+    + `<p class="fi-volver"><button type="button" class="btn-out" data-cien-ed="${x.os}">✎ Modificar resultado</button></p>`;
+  mostrarEnModal(`AB ${x.ab}`, sub, btnVolver() + res + '<p class="fi-nota" id="fc-carga">Cargando cómo se solucionó y los comentarios…</p>');
+  let f = null, err = '';
+  try { const r = await fetch(`/api/ordenes?ficha=${encodeURIComponent(x.os)}&filial=${encodeURIComponent(D.filial || filialSel())}`, { headers: { 'x-portal-token': tokenPortal() } });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`); f = j.fila; }
+  catch (e2) { err = e2.message; }
+  const el = $('fc-carga'); if (!el || $('modal-tit').textContent !== `AB ${x.ab}`) return;  // el usuario ya cambió de vista
+  if (!f) { el.textContent = err ? `No se pudo traer el detalle de la OS: ${err}` : 'No se encontró el detalle de esta OS.'; return; }
+  const vv = visDe({ obs: f.observaciones });
+  el.outerHTML = (vv ? `<div class="fi-v1-aviso">⚑ El comentario indica <b>${esc(visTxt(vv))}</b> · no entra al cálculo de 100 min.</div>` : '')
+    + sec('Cómo se solucionó', grilla([['Causa', val(f.causa)], ['Sub causa', val(f.sub_causa)], ['Solución', val(f.solucion)],
+        ['Inicio de atención', tsTxt(f.atencion_inicio)], ['Fin de atención', tsTxt(f.atencion_fin)], ['Técnico', val(f.tecnico_ejecutor || f.tecnico_responsable)]]))
+    + sec('Observación del técnico · OBS VISITA TÉCNICO (completo)', f.obs_visita_todo ? `<div class="fi-obs">${obsTecG(f.obs_visita_todo)}${f.obs_visita_en ? `<small>Última anotación: ${esc(f.obs_visita_en)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
+    + sec('Observaciones de la OS', f.observaciones ? `<div class="fi-obs">${obsHtmlG(f.observaciones)}</div>` : '<p class="fi-nota">Sin observaciones registradas (o aún no sincronizadas) para esta OS.</p>')
+    + sec('Datos del abonado y la OS', grilla([['OS', x.os], ['Motivo', val(f.motivo)], ['Servicio', val(f.servicio)], ['Lugar avería', val(f.lugar_averia)],
+        ['Plano', val(f.plano)], ['Plan', val(f.tarifa_servicio)], ['Vivienda', val(VIV_TXT(f.tipo_vivienda))], ['Segmento', val(f.segmento)],
+        ['Distrito', val(f.distrito)], ['Zona', val(x.z)], ['EECC_F', val(x.ec)],
+        ['Coordenadas', f.coordenadas ? `${esc(f.coordenadas.replace(/\s+/g, ' '))}<br><a href="https://www.google.com/maps?q=${encodeURIComponent(f.coordenadas.replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver en Google Maps</a>` : '—']]))
+    + '<p class="fi-nota">Los teléfonos de las observaciones se ocultan (•••).</p>';
+}
+function abrirEditarCien(os, msg = '') {
+  const x = cienDe(os); if (!x) return;
+  const a = x.aj, v = a ? a.k : (['si', 'no'].includes(x.k0) ? x.k0 : 'excl');
+  const OPC = [['si', 'Cumplió (cuenta como cumplida)'], ['no', 'No cumplió (cuenta como incumplida)'], ['excl', 'No se considera (sale del cálculo)']];
+  const html = btnVolver() + `<form class="f-ag" id="f-cien" novalidate>
+    ${grilla([['AB', x.ab], ['OS', x.os], ['EECC', esc(x.ec)], ['Técnico', esc(tecCorto(x.tec))], ['Recepción', fechaHora(x.rec)], ['Inicio de atención', fechaHora(x.ini)], ['Tiempo', x.min == null ? '—' : dur(x.min)], ['Estado OS', esc(ESTADO_TXT[x.e] || x.e)]])}
+    <div class="f-ag-auto"><span>Calculado por el robot</span><b>${esc(motCien(x.k0))}</b><small>${x.min == null ? 'sin inicio de atención registrado' : `${dur(x.min)} desde la recepción hasta el inicio de la atención`}</small></div>
+    <div class="f-ag-campos">
+      <label class="ancho">Resultado para la meta de 100 min<select name="k">${OPC.map(([k, t]) => `<option value="${k}"${v === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="ancho">Motivo del cambio<input type="text" name="nota" maxlength="120" value="${esc(a ? a.nota : '')}" placeholder="Ej.: el técnico llegó a tiempo, ScordSoft registró tarde el inicio"></label>
+      ${claveMaster() ? `<p class="f-ag-master">🔒 Sesión de usuario master activa · <button type="button" class="lnk num" data-cien-salir>cerrar sesión master</button></p>`
+        : `<label class="ancho">Clave de usuario master<input type="password" name="master" autocomplete="current-password" required placeholder="Solo el usuario master puede guardar cambios"></label>`}
+    </div>
+    <div class="f-ag-acc"><button type="submit" class="btn-out f-ag-ok">Guardar resultado</button>${a ? '<button type="button" class="btn-out" data-cien-quitar>Quitar ajuste (volver a lo calculado)</button>' : ''}<button type="button" class="btn-out" data-cien-cancelar>Cancelar</button></div>
+    <p class="nota">Solo el usuario master puede guardar. El resultado reemplaza al que calcula el robot para esta OS solo en el gráfico «Averías por día · meta 100 min» (KPIs, columnas, % y detalle), le aparece a todo el equipo y el robot no lo borra en sus actualizaciones.</p></form>`;
+  mostrarEnModal(`Modificar resultado 100 min · AB ${x.ab}`, a ? `Ajustado el ${fechaAj(a.en)}` : 'Sin ajustes: muestra lo calculado por el robot', html, false);
+  if (msg) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = msg; }
+  const f = $('f-cien');
+  const clave = () => f.master ? f.master.value.trim() : claveMaster();
+  f.addEventListener('submit', async (e) => { e.preventDefault();
+    if (!clave()) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'Ingresa la clave de usuario master.'; f.master && f.master.focus(); return; }
+    await guardarCien(x, { k: f.k.value, nota: f.nota.value.trim(), ab: x.ab }, clave(), `AB ${x.ab}: resultado guardado (${motCien(f.k.value)}). Ya lo ve todo el equipo.`); });
+  f.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-cien-cancelar]')) { if (ultLista) abrirDetalle(...ultLista); else cerrarModal(); return; }
+    if (e.target.closest('[data-cien-salir]')) { ponerMaster(''); abrirEditarCien(x.os); return; }
+    if (e.target.closest('[data-cien-quitar]')) {
+      if (!clave()) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'Ingresa la clave de usuario master para quitar el ajuste.'; f.master && f.master.focus(); return; }
+      await guardarCien(x, null, clave(), `AB ${x.ab}: vuelve a lo calculado por el robot.`);
+    }
+  });
+}
+async function guardarCien(x, ajuste, clave, okTxt) {
+  const bt = document.querySelectorAll('#f-cien button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
+  try {
+    const r = await fetch(urlAjAv(D.filial || filialSel()) + '&accion=cien', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave }, body: JSON.stringify({ os: x.os, ajuste }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Solo el usuario master puede modificar resultados.'); }
+    if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
+    ponerMaster(clave); AJC = j.cien || {}; aplicarAjCien(); pintarCien();
+    if (ultLista) abrirDetalle(...ultLista); else cerrarModal();
+    avisoGlobal(okTxt);
+  } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message || 'No se pudo guardar.'; bt.forEach(b => b.disabled = false); }
+}
+function avisoGlobal(t) { let el = $('aviso-flot'); if (!el) { el = document.createElement('div'); el.id = 'aviso-flot'; el.className = 'aviso-flot'; el.setAttribute('role', 'status'); document.body.appendChild(el); } el.textContent = t; el.classList.add('on'); clearTimeout(avisoGlobal.t); avisoGlobal.t = setTimeout(() => el.classList.remove('on'), 3500); }
+function cerrarModal() {
+  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar tabla'; $('modal-copiar').hidden = false; ultLista = null;
+  $('modal').hidden = true; document.body.classList.remove('con-modal');
+  if (modalOrigen && modalOrigen.focus) modalOrigen.focus();
+}
+$('modal-cerrar').addEventListener('click', cerrarModal);
+$('modal').addEventListener('click', (e) => { if (e.target === $('modal')) cerrarModal(); });
+document.addEventListener('keydown', (e) => {
+  if ($('modal').hidden) return;
+  if (e.key === 'Escape') { cerrarModal(); return; }
+  if (e.key === 'Tab') {  // mantener el foco dentro del cuadro
+    const f = [...$('modal').querySelectorAll('button, [tabindex="0"]')].filter(el => !el.disabled);
+    if (!f.length) return;
+    if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+    else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+  }
+});
+/* Copiar imagen de la lista del día (sin la columna de ajuste) */
+$('modal-img').addEventListener('click', async () => {
+  const b = $('modal-img'), t = $('tb-modal'); if (!t) return; b.disabled = true;
+  const av = (m, mal) => { $('modal-aviso').textContent = m; $('modal-aviso').style.color = mal ? 'var(--mal)' : 'var(--ok)'; };
+  const blob = (async () => {
+    await cargar(URL_H2C);
+    const iAj = [...t.tHead.rows[0].cells].findIndex(c => c.textContent.trim().startsWith('Ajuste'));
+    const cv = await html2canvas(t, { backgroundColor: '#FFFFFF', scale: 2, logging: false,
+      ignoreElements: (el) => iAj >= 0 && (el.tagName === 'TD' || el.tagName === 'TH') && el.cellIndex === iAj && t.contains(el) });
+    return await new Promise(r => cv.toBlob(r, 'image/png'));
+  })();
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('sin portapapeles');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); av('Imagen copiada. Pégala con Ctrl+V en WhatsApp, correo o Excel.');
+  } catch (e) {
+    try { await bajar(await blob, nombreArch('png').replace('pendientes', 'lista')); av('El navegador no permitió copiar; se descargó la imagen en PNG.'); }
+    catch (e2) { av('No se pudo generar la imagen. Revisa tu conexión e inténtalo de nuevo.', true); }
+  } finally { b.disabled = false; }
+});
+$('modal-copiar').addEventListener('click', async () => {
+  if (!$('tb-modal')) {  // ficha: se copia como texto
+    const t = $('modal-tit').textContent + '\n' + $('modal-sub').textContent + '\n\n' + $('modal-cuerpo').innerText;
+    try { await navigator.clipboard.writeText(t); $('modal-aviso').textContent = 'Detalle copiado. Pégalo en WhatsApp o correo.'; }
+    catch { $('modal-aviso').textContent = 'Tu navegador no permitió copiar. Selecciona el texto y usa Ctrl+C.'; }
+    return;
+  }
+  // Copia en el orden en que se ve la tabla (respeta el orden por columna elegido).
+  const tb = $('tb-modal'), filasVis = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1).map(r => [...r.cells].map(c => c.textContent.trim()));
+  const txt = [modalDatos.cab, ...filasVis].map(f => f.join('\t')).join('\n');
+  try { await navigator.clipboard.writeText(txt); $('modal-aviso').textContent = `Tabla copiada (${filasVis.length} filas). Pégala en Excel o WhatsApp.`; }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch { ok = false; }
+    ta.remove();
+    $('modal-aviso').textContent = ok ? `Tabla copiada (${filasVis.length} filas).` : 'Tu navegador no permitió copiar. Selecciona la tabla y usa Ctrl+C.';
+  }
+});
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.clic[data-ch]'); if (b) abrirDetalle(b.dataset.ch, b.dataset.d, b.dataset.k);
+});
+/* ---------- Ordenar tablas con clic en el encabezado ---------- */
+const orden = {};
+function valorCelda(td) {
+  if (!td) return '';
+  const v = td.dataset.v ?? td.textContent.trim();
+  if (v === '' || v === '·' || v === '—') return -Infinity;
+  const num = Number(String(v).replace(/,/g, ''));
+  return isNaN(num) ? String(v).toUpperCase() : num;
+}
+const filaCab = (tb) => tb.tHead.rows[tb.tHead.rows.length - 1].cells;
+function aplicarOrden(tb) {
+  const st = orden[tb.id]; const ths = filaCab(tb);
+  [...ths].forEach((th, i) => th.setAttribute('aria-sort', st && st.c === i ? (st.dir > 0 ? 'ascending' : 'descending') : 'none'));
+  if (!st) return;
+  const body = tb.tBodies[0], filas = [...body.rows].filter(r => r.cells.length > 1);
+  filas.sort((a, b) => { const x = valorCelda(a.cells[st.c]), y = valorCelda(b.cells[st.c]); return (x > y ? 1 : x < y ? -1 : 0) * st.dir; });
+  filas.forEach(r => body.appendChild(r));
+}
+function prepararOrden(tb) {
+  if (!tb) return;
+  [...filaCab(tb)].forEach((th, i) => { th.classList.add('ordenable'); th.tabIndex = 0; th.dataset.c = i; });
+  aplicarOrden(tb);
+}
+function alternarOrden(th) {
+  const tb = th.closest('table'), c = +th.dataset.c, st = orden[tb.id];
+  orden[tb.id] = { c, dir: st && st.c === c ? -st.dir : (c === 0 ? 1 : -1) };
+  aplicarOrden(tb);
+}
+document.addEventListener('click', (e) => { const th = e.target.closest('table.ord th.ordenable'); if (th) alternarOrden(th); });
+document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('table.ord th.ordenable')) { e.preventDefault(); alternarOrden(e.target); } });
+/* ---------- segmentadores reutilizables ---------- */
+function segmentos(contenedor, grupos) {
+  $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span>${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${filtro[g.k] === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</div>`).join('');
+}
+['eecc-segs','pen-segs','altas-segs'].forEach(id => $(id).addEventListener('click', (e) => {
+  const b = e.target.closest('[data-v]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
+  filtro[g.dataset.k] = b.dataset.v; pintarTodo();
+}));
+/* Tipo de trabajo pendiente: Averías (por defecto, respeta Tipo y Zona de la cabecera) u otro tipo de orden (sin instalaciones) */
+let penTo = 'AVERIA';
+const ddmmIso = (f) => f ? `${f.slice(8, 10)}/${f.slice(5, 7)}` : '';
+let pendxAv = null;
+const pendOtros = () => (pendxAv && pendxAv.src === D.pendx) ? pendxAv : (pendxAv = Object.assign((D.pendx || []).map(x => ({ ...x, t: x.to, inf: false, infd: null, rei: 0, prev: [], inst: null,
+  ags: 'ok', ag: x.fp ? `${ddmmIso(x.fp)} ${/\d/.test(x.fr || '') ? x.fr : ''}`.trim() : '—', mot: x.to, otro: true })), { src: D.pendx }));
+const esAvTc = () => penTo === 'AVERIA' || penTo === 'TC';
+const pendUni = () => esAvTc() ? D.pend.filter(p => p.t === penTo) : pendOtros().filter(p => p.to === penTo);
+const pendTipo = () => esAvTc() ? D.pend.filter(p => p.t === penTo && enZona(p)) : pendOtros().filter(p => p.to === penTo && enZona(p));
+const ecsDe = (L) => [...new Set(L.map(p => p.ec))].sort((a, b) => a === 'POR ASIGNAR' ? -1 : b === 'POR ASIGNAR' ? 1 : a < b ? -1 : 1);
+const agOk = (p, f) => f === 'TODOS' || (f === 'CON AGENDA') === conAgenda(p);
+
+/* ---------- INGRESOS ---------- */
+const zonaDe = (di) => D.zonas[String(di || '').toUpperCase()] || 'SIN ZONA';
+/* Ordena distritos por zona (NORTE, SUR, ESTE, OESTE, PREMIUM) y dentro de cada zona por total; arma la fila de grupo. */
+/* Distritos de mayor a menor según su total (sin agrupar por zona). */
+function colsPorZona(tot) {
+  const cols = Object.keys(tot).sort((a, b) => tot[b] - tot[a] || (a < b ? -1 : 1));
+  return { cols, fila: '', zi: () => '' };
+}
+function calor(v, mx) { if (!v) return 'cero'; const r = v / mx; return r > .66 ? 'h3c' : r > .33 ? 'h2c' : 'h1c'; }
+function pintarIngresos() {
+  const I = D.ing.filter(deTipo), tot = {}; I.forEach(x => tot[x.di] = (tot[x.di] || 0) + 1);
+  const { cols, fila: grupo, zi } = colsPorZona(tot);
+  const cel = {}; I.forEach(x => { const k = x.d + '|' + x.di; cel[k] = (cel[k] || 0) + 1; });
+  const mx = Math.max(1, ...Object.values(cel));
+  $('ing-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · ${n(I.length)} ingresos · Tipo: ${TIPO_TXT().toUpperCase()}`;
+  const filas = DIAS.map(d => { const tf = cols.reduce((a, c) => a + (cel[d + '|' + c] || 0), 0);
+    return `<tr><td data-v="${d}">${String(d).padStart(2,'0')}-${MC}.</td>${cols.map(c => { const v = cel[d + '|' + c] || 0; return `<td class="${calor(v, mx)}${zi(c)}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tf}</td></tr>`; }).join('');
+  if (!I.length) { $('ing-mat').innerHTML = '<p class="nota">No hay ingresos con este filtro.</p>'; }
+  else $('ing-mat').innerHTML = `<table class="mat ord" id="tb-ing"><thead>${grupo}<tr><th>Fecha</th>${cols.map(c => `<th class="vert${zi(c)}" title="${esc(c)} · ${zonaDe(c)}"><span>${esc(corto(c))}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>${filas}</tbody>
+    <tfoot><tr><td>Total</td>${cols.map(c => `<td class="${zi(c).trim()}">${tot[c]}</td>`).join('')}<td>${I.length}</td></tr><tr class="prom"><td>Promedio por día</td>${cols.map(c => `<td class="${zi(c).trim()}">${(tot[c] / D.dias).toFixed(1)}</td>`).join('')}<td>${(I.length / D.dias).toFixed(1)}</td></tr></tfoot></table>`;
+  prepararOrden($('tb-ing'));
+  // EECC × distrito (pendientes)
+  const P0 = pendTipo();
+  segmentos('eecc-segs', [
+    { k: 'ingEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
+    { k: 'ingAg', t: 'Agenda', ops: ['CON AGENDA','SIN AGENDA'], cnt: (o) => P0.filter(p => agOk(p, o)).length } ]);
+  const P = P0.filter(p => (filtro.ingEc === 'TODOS' || p.ec === filtro.ingEc) && agOk(p, filtro.ingAg));
+  if (!P.length) { $('eecc-mat').innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
+  const dt = {}, et = {}, c2 = {}; P.forEach(p => { dt[p.di] = (dt[p.di] || 0) + 1; et[p.ec] = (et[p.ec] || 0) + 1; c2[p.ec + '|' + p.di] = (c2[p.ec + '|' + p.di] || 0) + 1; });
+  const { cols: dc, fila: grupo2, zi: zi2 } = colsPorZona(dt), er = Object.keys(et).sort((a, b) => et[b] - et[a]);
+  const mx2 = Math.max(1, ...Object.values(c2));
+  $('eecc-mat').innerHTML = `<table class="mat ord" id="tb-eecc"><thead>${grupo2}<tr><th>EECC</th>${dc.map(c => `<th class="vert${zi2(c)}" title="${esc(c)} · ${zonaDe(c)}"><span>${esc(corto(c))}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>
+    ${er.map(e => `<tr><td>${esc(e)}</td>${dc.map(c => { const v = c2[e + '|' + c] || 0; return `<td class="${calor(v, mx2)}${zi2(c)}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${et[e]}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td>${dc.map(c => `<td class="${zi2(c).trim()}">${dt[c]}</td>`).join('')}<td>${P.length}</td></tr></tfoot></table>`;
+  prepararOrden($('tb-eecc'));
+}
+
+/* ---------- AGENDAS DE AVERÍAS ---------- */
+const kMedA = (x) => x.e !== 'D' ? 'pen' : x.k === 'si' ? 'si' : 'no';   // solo se mide la OS DESCARGADA: Cumplió / No cumplió
+const agdF = { ec: 'TODOS', res: 'TODOS', buscar: '' };
+let diaAgd = 0;
+const clsP = (q) => q == null ? '' : q >= 90 ? 'ok' : q >= 75 ? 'mid' : 'mal';
+const fDiaA = (d) => `${String(d).padStart(2, '0')}-${MC}.`;
+function pintarAgendas() {
+  const A = (D.agd || []).filter(deTipo);
+  const T = { n: A.length, D: A.filter(x => x.e === 'D').length, si: A.filter(x => kMedA(x) === 'si').length };
+  T.no = T.D - T.si; T.pen = T.n - T.D; const q = T.D ? T.si / T.D * 100 : null;
+  $('agd-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · por día de agenda · Tipo: ${TIPO_TXT().toUpperCase()}${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
+  if (!D.agd) { $('agd-kpis').innerHTML = ''; $('agd-graf').innerHTML = '<p class="nota">Aún no hay datos de agendas: aparecen después de la próxima actualización del robot.</p>'; return; }
+  const btn = (txt, k) => `<button type="button" class="clic" data-ch="agd" data-d="ALL" data-k="${k}" style="all:unset;cursor:pointer">${txt}</button>`;
+  $('agd-kpis').innerHTML = kpi('Agendas del mes', btn(n(T.n), 'ALL'), `${A.filter(x => x.fo === 'os').length} con franja de la OS · ${A.filter(x => x.fo === 'obs').length} de #AGENDA ATC`, 'acento')
+    + kpi('Descargadas', btn(n(T.D), 'D'), T.n ? `${(T.D / T.n * 100).toFixed(1).replace('.', ',')}% de las agendas` : '—')
+    + kpi('Cumplió', `<span style="color:var(--ok)">${btn(n(T.si), 'si')}</span>`, 'inicio el día agendado, dentro de la franja o antes')
+    + kpi('No cumplió', `<span style="color:var(--mal)">${btn(n(T.no), 'no')}</span>`, 'después de la franja o en otro día')
+    + kpi('% cumplimiento', `<span class="${clsP(q)}" style="color:var(--${q == null ? 'fg-3' : q >= 90 ? 'ok' : q >= 75 ? 'mid' : 'mal'})">${q == null ? '—' : q.toFixed(1).replace('.', ',') + '%'}</span>`, 'cumplió ÷ descargadas')
+    + kpi('Por atender', btn(n(T.pen), 'pen'), 'aún no descargadas');
+  const por = (d, k) => A.filter(x => x.d === d && kMedA(x) === k).length;
+  $('agd-graf').innerHTML = columnas(DIAS, d => [{ n: por(d, 'si'), c: css('--ok'), l: 'Cumplió', k: 'si' }, { n: por(d, 'no'), c: css('--mal'), l: 'No cumplió', k: 'no' }, { n: por(d, 'pen'), c: css('--gris'), t: css('--fg'), l: 'Por atender', k: 'pen' }],
+    d => { const a = por(d, 'si'), b = por(d, 'no'); if (!a && !b) return '<span class="pct na">—</span>'; const p = a / (a + b) * 100; return `<span class="pct ${clsP(p)}">${p.toFixed(1)}%</span>`; }, 'agd');
+  // Ranking por EECC
+  const ecs = {}; A.forEach(x => { const o = ecs[x.ec] || (ecs[x.ec] = { n: 0, D: 0, si: 0 }); o.n++; if (x.e === 'D') { o.D++; if (x.k === 'si') o.si++; } });
+  const rk = Object.keys(ecs).sort((a, b) => ((ecs[b].D ? ecs[b].si / ecs[b].D : -1) - (ecs[a].D ? ecs[a].si / ecs[a].D : -1)) || ecs[b].D - ecs[a].D);
+  const nb = (v, k) => v ? `<button type="button" class="clicn clic" data-ch="agd" data-d="ALL" data-k="${esc(k)}">${v}</button>` : '0';
+  $('agd-ec').innerHTML = !rk.length ? '<p class="nota">Sin agendas con estos filtros.</p>' : `<table class="tb-agr"><colgroup><col class="c-n"><col class="c-ec"><col><col><col><col><col class="c-pc"><col class="c-bar"></colgroup><thead><tr><th>#</th><th style="text-align:left">EECC</th><th title="Agendas">Agend.</th><th title="Descargadas">Desc.</th><th title="Cumplió">Sí</th><th title="No cumplió">No</th><th>%</th><th></th></tr></thead><tbody>
+    ${rk.map((e, i) => { const o = ecs[e], p = o.D ? o.si / o.D * 100 : null; return `<tr><td>${i + 1}</td><td style="text-align:left;font-weight:700" title="${esc(e)}">${esc(e)}</td><td>${nb(o.n, 'EC:' + e)}</td><td>${nb(o.D, 'D|EC:' + e)}</td><td style="color:var(--ok)">${nb(o.si, 'si|EC:' + e)}</td><td style="color:var(--mal)">${nb(o.D - o.si, 'no|EC:' + e)}</td><td class="${clsP(p)}">${p == null ? '—' : p.toFixed(1).replace('.', ',') + '%'}</td>
+      <td><div class="bar"><span><i style="width:${p || 0}%;background:var(--${p == null ? 'gris' : p >= 90 ? 'ok' : p >= 75 ? 'mid' : 'mal'})"></i></span></div></td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td></td><td style="text-align:left">Total</td><td>${nb(T.n, 'ALL')}</td><td>${nb(T.D, 'D')}</td><td>${nb(T.si, 'si')}</td><td>${nb(T.no, 'no')}</td><td class="${clsP(q)}">${q == null ? '—' : q.toFixed(1).replace('.', ',') + '%'}</td><td></td></tr></tfoot></table>`;
+  // Día por franja
+  const diasCon = [...new Set(A.map(x => x.d))].sort((a, b) => a - b);
+  if (!diaAgd || !diasCon.includes(diaAgd)) diaAgd = diasCon.includes(D.dias) ? D.dias : diasCon[diasCon.length - 1] || D.dias;
+  $('agd-dia').innerHTML = diasCon.map(d => `<option value="${d}" ${d === diaAgd ? 'selected' : ''}>${diaInfo(d).wd} ${fDiaA(d)}</option>`).join('');
+  const G = A.filter(x => x.d === diaAgd), FR = ['8 - 10', '10 - 12', '12 - 14', '14 - 16', '16 - 18', '18 - 20'];
+  const frDe = (x) => FR.includes(x.fr) ? x.fr : 'Otra';
+  const cols = FR.concat(G.some(x => frDe(x) === 'Otra') ? ['Otra'] : []);
+  const ecd = [...new Set(G.map(x => x.ec))].sort((a, b) => G.filter(x => x.ec === b).length - G.filter(x => x.ec === a).length);
+  const mx = Math.max(1, ...ecd.flatMap(e => cols.map(f => G.filter(x => x.ec === e && frDe(x) === f).length)));
+  const heat = (v) => !v ? '' : v / mx > .66 ? 'c3' : v / mx > .33 ? 'c2' : 'c1';
+  const celF = (L, k) => { const t = L.length, c = L.filter(x => kMedA(x) === 'si').length, dd = L.filter(x => x.e === 'D').length; return t ? `<button type="button" class="clicn clic" data-ch="agd" data-d="${diaAgd}" data-k="${esc(k)}" title="${t} agendas · ${dd} descargadas · ${c} cumplió">${t}</button>` : ''; };
+  $('agd-dia-sub').textContent = `${G.length} agendas · ${G.filter(x => x.e === 'D').length} descargadas · ${G.filter(x => kMedA(x) === 'si').length} cumplió`;
+  $('agd-fr').innerHTML = !G.length ? '<p class="nota">No hay agendas ese día con estos filtros.</p>' : `<table class="tb-agr"><colgroup><col class="c-ecd">${cols.map(() => '<col>').join('')}<col><col class="c-pc"></colgroup><thead><tr><th style="text-align:left">EECC</th>${cols.map(f => `<th>${f}</th>`).join('')}<th>Total</th><th>%</th></tr></thead><tbody>
+    ${ecd.map(e => { const L = G.filter(x => x.ec === e), D2 = L.filter(x => x.e === 'D'), p = D2.length ? D2.filter(x => x.k === 'si').length / D2.length * 100 : null;
+      return `<tr><td style="font-weight:700;text-align:left" title="${esc(e)}">${esc(e)}</td>${cols.map(f => { const F = L.filter(x => frDe(x) === f); return `<td class="${heat(F.length)}">${celF(F, 'FR:' + f + '|EC:' + e)}</td>`; }).join('')}<td style="font-weight:800">${celF(L, 'EC:' + e)}</td><td class="${clsP(p)}">${p == null ? '—' : p.toFixed(0) + '%'}</td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td>Total</td>${cols.map(f => `<td>${celF(G.filter(x => frDe(x) === f), 'FR:' + f) || 0}</td>`).join('')}<td>${celF(G, 'ALL')}</td><td></td></tr></tfoot></table>`;
+  // Detalle
+  const RES_A = { si: '<span class="b si">Cumplió</span>', no: '<span class="b no">No cumplió</span>' };
+  const resTxt = (x) => kMedA(x) === 'pen' ? (x.k === 'fut' ? 'FUTURA' : x.k === 'hoy' ? 'HOY' : 'NO DESCARGADA') : kMedA(x) === 'si' ? 'CUMPLIÓ' : 'NO CUMPLIÓ';
+  const ecOps = [...new Set(A.map(x => x.ec))].sort();
+  $('agd-segs').innerHTML = `<div class="g"><span class="seg-t">EECC</span>${['TODOS', ...ecOps].map(o => `<button type="button" class="chip" data-agd-ec="${esc(o)}" aria-pressed="${agdF.ec === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o === 'TODOS' ? '' : ` (${A.filter(x => x.ec === o).length})`}</button>`).join('')}</div>
+    <div class="g"><span class="seg-t">Resultado</span>${['TODOS', 'CUMPLIÓ', 'NO CUMPLIÓ', 'NO DESCARGADA', 'HOY', 'FUTURA'].map(o => `<button type="button" class="chip" data-agd-res="${o}" aria-pressed="${agdF.res === o}">${o === 'TODOS' ? 'Todos' : o}${o === 'TODOS' ? '' : ` (${A.filter(x => resTxt(x) === o).length})`}</button>`).join('')}</div>`;
+  const qq = agdF.buscar.trim().toUpperCase();
+  const L = A.filter(x => (agdF.ec === 'TODOS' || x.ec === agdF.ec) && (agdF.res === 'TODOS' || resTxt(x) === agdF.res) && (!qq || [x.ab, x.os, x.tec, x.di].some(v => String(v || '').toUpperCase().includes(qq))))
+    .sort((a, b) => a.d - b.d || String(a.fr).localeCompare(String(b.fr), 'es', { numeric: true }));
+  $('agd-n').textContent = `${n(L.length)} de ${n(A.length)} agendas`;
+  $('agd-filas').innerHTML = L.map(x => `<tr><td data-v="${x.d}">${fDiaA(x.d)}</td><td>${esc(x.fr)}</td><td>${x.fo === 'os' ? 'OS' : '<span title="#AGENDA ATC de las observaciones">Observación</span>'}</td><td><span class="b ${x.t === 'TC' ? 'tc' : 'av'}">${x.t === 'TC' ? 'TC' : 'AVERIA'}</span></td>
+    <td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${x.ab}</td><td>${x.os}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
+    <td data-v="${msIso(x.rec)}">${x.rec ? fechaHora(x.rec) : '—'}</td><td data-v="${msIso(x.ini)}">${x.ini ? fechaHora(x.ini) : '—'}</td><td>${({ D: 'Descargada', R: 'Registrada', O: 'Observada' })[x.e] || x.e}</td>
+    <td>${RES_A[kMedA(x)] || `<span class="b vac">${resTxt(x) === 'NO DESCARGADA' ? 'No descargada' : resTxt(x) === 'HOY' ? 'Hoy' : 'Futura'}</span>`}</td></tr>`).join('') || '<tr><td colspan="14">No hay agendas con estos filtros.</td></tr>';
+  prepararOrden($('tb-agd'));
+}
+$('agd-dia').addEventListener('change', (e) => { diaAgd = +e.target.value; pintarAgendas(); });
+$('agd-segs').addEventListener('click', (e) => { const a = e.target.closest('[data-agd-ec]'), b = e.target.closest('[data-agd-res]'); if (a) agdF.ec = a.dataset.agdEc; else if (b) agdF.res = b.dataset.agdRes; else return; pintarAgendas(); });
+$('agd-buscar').addEventListener('input', (e) => { agdF.buscar = e.target.value; pintarAgendas(); });
+function abrirAgd(d, k) {
+  const dia = d === 'ALL' ? null : +d;
+  const conds = k.split('|');
+  const L = (D.agd || []).filter(deTipo).filter(x => (dia == null || x.d === dia) && conds.every(c => c === 'ALL' ? true : c === 'D' ? x.e === 'D' : c === 'si' || c === 'no' || c === 'pen' ? kMedA(x) === c
+    : c.startsWith('EC:') ? x.ec === c.slice(3) : c.startsWith('FR:') ? (c.slice(3) === 'Otra' ? !['8 - 10', '10 - 12', '12 - 14', '14 - 16', '16 - 18', '18 - 20'].includes(x.fr) : x.fr === c.slice(3)) : true))
+    .sort((a, b) => a.d - b.d || String(a.fr).localeCompare(String(b.fr), 'es', { numeric: true }));
+  const cab = ['F. AG', 'Franja', 'Tipo', 'AB', 'OS', 'Zona', 'Distrito', 'EECC_F', 'Técnico', 'F. Recep', 'Inicio', 'Estado OS', 'Resultado'];
+  const res = (x) => kMedA(x) === 'si' ? 'Cumplió' : kMedA(x) === 'no' ? 'No cumplió' : x.k === 'fut' ? 'Futura' : x.k === 'hoy' ? 'Hoy' : 'No descargada';
+  const filasTxt = L.map(x => [fDiaA(x.d), x.fr, x.t, x.ab, x.os, x.z, x.di, x.ec, tecCorto(x.tec), x.rec ? fechaHora(x.rec) : '—', x.ini ? fechaHora(x.ini) : '—', ({ D: 'Descargada', R: 'Registrada', O: 'Observada' })[x.e] || x.e, res(x)]);
+  const filas = filasTxt.map((f, i) => `<tr>${f.map((v, j) => `<td>${j === 12 ? `<span class="b ${v === 'Cumplió' ? 'si' : v === 'No cumplió' ? 'no' : 'vac'}">${v}</span>` : esc(v)}</td>`).join('')}</tr>`);
+  const NOMS = { ALL: 'Agendas', D: 'Descargadas', si: 'Cumplió', no: 'No cumplió', pen: 'Por atender' };
+  const tit = conds.map(c => NOMS[c] || c.replace('EC:', '').replace('FR:', 'Franja ')).join(' · ');
+  $('modal-tit').textContent = `${tit} · ${dia == null ? MESL : `${diaInfo(dia).wd} ${fDiaA(dia)}`}`;
+  $('modal-sub').textContent = `${L.length} agendas de averías y TC${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
+  $('modal-aviso').textContent = '';
+  $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`;
+  orden['tb-modal'] = null; prepararOrden($('tb-modal')); modalDatos = { cab, filas: filasTxt };
+  modalOrigen = document.activeElement; $('modal').hidden = false; document.body.classList.add('con-modal'); $('modal-cerrar').focus();
+}
+
+/* ---------- DETALLE ---------- */
+function pintarDetalle() {
+  pintarAltas('altas-segs', 'altas-mat', 'altas-sub', 'altEc', 'altAg', 'tb-altas');
+}
+/* Altas pendientes por zona/distrito × F. Recep (se usa en Detalle y en Ingresos) */
+function pintarAltas(segsId, matId, subId, kEc, kAg, tbId) {
+  const P0 = pendTipo();
+  segmentos(segsId, [
+    { k: kEc, t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
+    { k: kAg, t: 'Agenda', ops: ['CON AGENDA','SIN AGENDA'], cnt: (o) => P0.filter(p => agOk(p, o)).length } ]);
+  const P = P0.filter(p => p.rec && (filtro[kEc] === 'TODOS' || p.ec === filtro[kEc]) && agOk(p, filtro[kAg]));
+  $(subId).textContent = `${P.length} AB pendientes · Tipo: ${TIPO_TXT().toUpperCase()}${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
+  if (!P.length) { $(matId).innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
+  const ms = (p) => new Date(p.rec + '-05:00').getTime();
+  const fechas = [...new Set(P.map(p => diaLima(ms(p))))].sort((a, b) => a.split('/').reverse().join() < b.split('/').reverse().join() ? -1 : 1);
+  const fEdad = (f) => { const a = new Date(diaLima(ahora()).split('/').reverse().join('-')), b = new Date(f.split('/').reverse().join('-')); return Math.round((a - b) / 86400000); };
+  const cls = (f) => { const e = fEdad(f); return e >= 8 ? 'e3' : e >= 4 ? 'e2' : e >= 3 ? 'e1' : ''; };
+  const lbl = (f) => { const [d, m] = f.split('/'); return `${d}-${MES[+m - 1]}.`; };
+  const zonas = {}; P.forEach(p => { const z = zonas[p.z] || (zonas[p.z] = {}); (z[p.di] || (z[p.di] = [])).push(p); });
+  const ordenZ = Object.keys(zonas).sort((a, b) => zIdx(a) - zIdx(b));
+  const fila = (nom, L, clase) => {
+    const ant = L.filter(p => fEdad(diaLima(ms(p))) >= 3).length;
+    return `<tr class="${clase}"><td>${esc(nom)}</td>${fechas.map(f => { const v = L.filter(p => diaLima(ms(p)) === f).length; return `<td class="${v ? cls(f) : ''}${fEdad(f) === 0 ? ' hoy-c' : ''}">${v || ''}</td>`; }).join('')}<td class="t-col">${L.length}</td><td class="ant-c">${Math.round(ant / L.length * 100)}%</td></tr>`;
+  };
+  let body = '';
+  ordenZ.forEach(z => { const ds = zonas[z], todos = Object.values(ds).flat(); body += fila(z, todos, 'zona');
+    Object.keys(ds).sort((a, b) => ds[b].length - ds[a].length || (a < b ? -1 : 1)).forEach(d => body += fila(d, ds[d], 'distr')); });
+  const antT = P.filter(p => fEdad(diaLima(ms(p))) >= 3).length;
+  $(matId).innerHTML = `<table class="mat altas" id="${tbId}"><thead><tr><th>Zona / distrito</th>${fechas.map(f => `<th class="${fEdad(f) === 0 ? 'hoy-c' : ''}">${lbl(f)}</th>`).join('')}<th>Total general</th><th class="ant-h">% antiguas</th></tr></thead><tbody>${body}</tbody>
+    <tfoot><tr><td>Total general</td>${fechas.map(f => `<td class="${fEdad(f) === 0 ? 'hoy-c' : ''}">${P.filter(p => diaLima(ms(p)) === f).length}</td>`).join('')}<td>${P.length}</td><td class="ant-c">${Math.round(antT / P.length * 100)}%</td></tr></tfoot></table>`;
+}
+
+/* ---------- PENDIENTES ---------- */
+function estado(p) {
+  if (!p.rec) return { m: null };
+  const st = new Date(p.rec + '-05:00').getTime();
+  if (p.ini) { const m = (new Date(p.ini + '-05:00').getTime() - st) / 60000; return { m, corre: false, ok: m <= SLA, st }; }
+  const m = Math.max(0, (ahora() - st) / 60000); return { m, corre: true, ok: m > SLA ? false : null, st };
+}
+function filasPend() {
+  const q = filtro.buscar.trim().toUpperCase();
+  pendBase = pendTipo().filter(p => (filtro.penEc === 'TODOS' || p.ec === filtro.penEc) && agOk(p, filtro.penAg)
+    && (!q || [p.ab, p.os, p.di, p.tec].some(v => String(v).toUpperCase().includes(q))));
+  return pendBase.filter(p => colOk(p));
+}
+/* ---------- Filtro en cada encabezado del detalle de pendientes (como el autofiltro de Excel) ---------- */
+const hhmmIso = (ms) => ms ? hhmm(ms) : '—';
+const COLS_PEND = [
+  (p) => [p.z || '—', String(zIdx(p.z)).padStart(3, '0')], (p) => [p.di || '—'], (p) => [p.seg || '—'], (p) => [String(p.ab), String(p.ab).padStart(9, '0')], (p) => [String(p.os), String(p.os).padStart(9, '0')],
+  (p) => [p.otro ? p.to : p.t === 'TC' ? 'TC' : 'AVERIA'], (p) => [p.inf ? 'Sí' : 'No'], (p) => [p.rei ? 'Sí' : 'No'], (p) => [p.ec || '—'], (p) => [tecCorto(p.tec) || '—'],
+  (p) => { const st = estado(p).st; return st ? [ddmes(st), new Date(st).toISOString().slice(0, 10)] : ['—', '~']; },
+  (p) => [p.ags === 'ok' ? 'Con agenda' : p.ags === 'vacio' || visDe(p) ? 'Sin agenda' : 'Sin formato'],
+  (p) => { const v = visDe(p); return v ? [visTxt(v), String(visV(v))] : ['-', '9']; },
+  (p) => { if (conAgenda(p)) return ['Con agenda (no se mide)', '3']; if (visDe(p)) return ['Visita (no se mide)', '3']; const e = estado(p); return e.m == null ? ['Sin dato', '4'] : e.m > SLA ? ['Más de 100 min', '2'] : ['Hasta 100 min', '1']; },
+  (p) => { const st = estado(p).st; return st && !p.otro && !sinCont(p) ? [String(new Date(st + SLA * 60000).getHours()).padStart(2, '0') + ' h'] : ['—', '~']; },
+  (p) => [p.ini ? 'Sí' : 'No'],
+  (p) => { if (sinCont(p)) return ['—', '9']; const e = estado(p); return e.ok === true ? ['Sí', '1'] : e.ok === false ? ['No', '2'] : e.corre ? ['En curso', '3'] : ['—', '9']; } ];
+const colFil = {};
+let pendBase = [];
+const colOk = (p, sin = -1) => Object.entries(colFil).every(([c, S]) => +c === sin || S.has(COLS_PEND[c](p)[0]));
+function marcarFiltrosCol() {
+  const ths = $('tb-pend').tHead.rows[0].cells;
+  [...ths].forEach((th, i) => { if (!COLS_PEND[i]) return; let b = th.querySelector('.fcol');
+    if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'fcol'; b.dataset.fcol = i;
+      b.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2h14l-5.5 6.5V14l-3-1.5v-4z"/></svg>'; th.appendChild(b); }
+    const on = !!colFil[i]; b.classList.toggle('on', on); b.setAttribute('aria-label', `Filtrar ${th.firstChild.textContent.trim()}${on ? ' (filtro activo)' : ''}`); b.title = on ? 'Filtro activo · clic para cambiarlo' : 'Filtrar esta columna'; });
+}
+function cerrarFiltroCol() { const f = document.querySelector('.fpop'); if (f) { const b = f._btn; f.remove(); if (b && document.body.contains(b)) b.focus(); } }
+function abrirFiltroCol(btn) {
+  const c = +btn.dataset.fcol, abierto = document.querySelector('.fpop');
+  if (abierto) { const mismo = abierto._col === c; cerrarFiltroCol(); if (mismo) return; }
+  const base = pendBase.filter(p => colOk(p, c)), cnt = new Map();
+  base.forEach(p => { const [t, k] = COLS_PEND[c](p); const o = cnt.get(t) || { n: 0, k: k ?? t }; o.n++; cnt.set(t, o); });
+  const vals = [...cnt.entries()].sort((a, b) => String(a[1].k).localeCompare(String(b[1].k), 'es', { numeric: true }));
+  const sel = colFil[c] ? new Set(colFil[c]) : new Set(vals.map(v => v[0]));
+  const pop = document.createElement('div'); pop.className = 'fpop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Filtro de columna'); pop._col = c; pop._btn = btn;
+  pop.innerHTML = `<input type="search" placeholder="Buscar valor" aria-label="Buscar valor"><div class="fl"></div>
+    <div class="fb"><button type="button" class="btn-out" data-f="limpiar">Quitar filtro</button><button type="button" class="btn-out" data-f="ok" style="background:var(--magenta);color:#fff;border-color:var(--magenta)">Aplicar</button></div>`;
+  const lista = pop.querySelector('.fl'), q = pop.querySelector('input');
+  const vis = () => { const t = q.value.trim().toUpperCase(); return vals.filter(v => !t || v[0].toUpperCase().includes(t)); };
+  const pinta = () => { const V = vis(), todos = V.length && V.every(v => sel.has(v[0]));
+    lista.innerHTML = `<label class="todo"><input type="checkbox" data-todo ${todos ? 'checked' : ''}>(Seleccionar todo${q.value.trim() ? ' lo buscado' : ''})</label>`
+      + V.map(([v, o]) => `<label><input type="checkbox" value="${esc(v)}" ${sel.has(v) ? 'checked' : ''}>${esc(v)}<small>${o.n}</small></label>`).join(''); };
+  pinta(); q.addEventListener('input', pinta);
+  lista.addEventListener('change', (e) => { const i = e.target; if (i.dataset.todo !== undefined) vis().forEach(v => i.checked ? sel.add(v[0]) : sel.delete(v[0])); else i.checked ? sel.add(i.value) : sel.delete(i.value); pinta(); });
+  pop.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; if (b.dataset.f === 'limpiar' || sel.size === vals.length) delete colFil[c]; else colFil[c] = sel; cerrarFiltroCol(); pintarPendientes(); });
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); cerrarFiltroCol(); } });
+  document.body.appendChild(pop);
+  const rc = btn.getBoundingClientRect(), w = pop.offsetWidth;
+  pop.style.top = (rc.bottom + window.scrollY + 6) + 'px'; pop.style.left = Math.max(8, Math.min(rc.left + window.scrollX - 10, window.scrollX + document.documentElement.clientWidth - w - 8)) + 'px';
+  q.focus();
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.fcol'); if (b) { e.stopPropagation(); abrirFiltroCol(b); return; }
+  if (e.target.closest('#fcol-limpiar')) { Object.keys(colFil).forEach(k => delete colFil[k]); cerrarFiltroCol(); pintarPendientes(); return; }
+  if (!e.target.closest('.fpop')) cerrarFiltroCol();
+}, true);
+function tecCorto(t) {
+  if (!t) return '—';
+  const [ape, nom] = t.split(',');
+  return nom ? `${nom.trim().charAt(0)}. ${ape.trim().split(' ')[0]}` : t;
+}
+// Tiempo compacto para que la tabla quepa en una línea: 94h 04m 17s
+const durC = (m, seg) => { const t = Math.floor(m * 60), h = Math.floor(t / 3600), mi = Math.floor((t % 3600) / 60), s = t % 60; return (h ? `${h}h ` : '') + `${String(mi).padStart(h ? 2 : 1, '0')}m` + (seg ? ` ${String(s).padStart(2, '0')}s` : ''); };
+function celdaTiempo(p) {
+  if (sinCont(p)) return '-';
+  const e = estado(p); if (e.m == null) return '—';
+  return `<span class="${e.m > SLA ? 'late' : ''}">${durC(e.m, e.corre)}</span>`;
+}
+function pintarPendientes() {
+  { const cnt = {}; pendOtros().forEach(p => cnt[p.to] = (cnt[p.to] || 0) + 1);
+    const tos = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b));
+    $('pen-to').innerHTML = `<div class="g"><span class="seg-t">Tipo de trabajo</span><button type="button" class="chip" data-pto="AVERIA" aria-pressed="${penTo === 'AVERIA'}">AVERÍA (${D.pend.filter(p => p.t === 'AVERIA' && enZona(p)).length})</button><button type="button" class="chip" data-pto="TC" aria-pressed="${penTo === 'TC'}">TC (${D.pend.filter(p => p.t === 'TC' && enZona(p)).length})</button>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${penTo === t}">${esc(t)} (${cnt[t]})</button>`).join('')}</div>`; }
+  const P0 = pendTipo();
+  segmentos('pen-segs', [
+    { k: 'penEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
+    { k: 'penAg', t: 'Agenda', ops: ['CON AGENDA','SIN AGENDA'], cnt: (o) => P0.filter(p => agOk(p, o)).length } ]);
+  const L = filasPend();
+  const nCol = Object.keys(colFil).length;
+  $('pen-n').innerHTML = `${L.length} de ${pendUni().length} pendientes${esAvTc() ? ' de ' + (penTo === 'TC' ? 'TC' : 'avería') : ' de ' + penTo.toLowerCase()}${zona === 'TODAS' ? '' : ' · zona ' + zona}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
+  $('pen-filas').innerHTML = L.map(p => {
+    const e = estado(p), rec = e.st, ed = rec ? edad(rec) : null;
+    const tag = `<button type="button" class="lnk" data-ficha="rei" data-os="${p.os}" title="Ver detalle de Reiterada">${p.rei ? `<span class="b no">Sí · ${p.rei + 1}.ª</span>` : '<span class="b vac">No</span>'}</button>`;
+    const inf = `<button type="button" class="lnk" data-ficha="inf" data-os="${p.os}" title="Ver detalle de Infancia">${p.inf ? `<span class="b inf">Sí</span>` : '<span class="b vac">No</span>'}</button>`;
+    const vv = visDe(p);
+    // Sin formato #AGENDA pero el comentario trae 1.ª / 2.ª visita: se muestra la visita en lugar de «Sin formato».
+    const ag = p.ags === 'ok' ? esc(String(p.ag).replace(/\s*-\s*/g, '-').replace(/\.(?=\s)/, ''))
+      : p.ags === 'vacio' || vv ? '—' : '<span class="b sf" title="No cumple el formato #AGENDA ATC dd/mm h1-h2#">Sin formato</span>';
+    const vis = vv ? `<span class="b v1" title="${esc(visTxt(vv))} (del comentario)">${esc(visTxt(vv))}</span>` : '-';
+    const hll = rec && !p.otro && !sinCont(p) ? rec + SLA * 60000 : null, mas1 = hll && diaLima(hll) !== diaLima(rec);
+    const cumple = sinCont(p) ? '-' : e.ok === true ? '<span class="b si">Sí</span>' : e.ok === false ? '<span class="b no">No</span>' : (e.corre ? '<span class="encurso">En curso</span>' : '—');
+    const tiempoV = sinCont(p) || e.m == null ? -1 : Math.round(e.m);
+    const cumpleV = sinCont(p) ? 0 : e.ok === true ? 3 : e.ok === false ? 1 : 2;
+    return `<tr data-os="${p.os}"><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${p.ab}"><button type="button" class="lnk num" data-ficha="ab" data-os="${p.os}" title="Ver datos del AB">${p.ab}</button></td><td data-v="${p.os}"><button type="button" class="lnk num" data-ficha="os" data-os="${p.os}" title="Ver las FFTT de la OS">${p.os}</button></td>
+      <td>${p.otro ? `<span class="b vac" title="${esc(p.to)}">${esc(p.to.length > 18 ? p.to.slice(0, 17) + '…' : p.to)}</span>` : `<span class="b ${p.t === 'TC' ? 'tc' : 'av'}">${p.t === 'TC' ? 'TC' : 'AVERIA'}</span>`}</td><td data-v="${p.inf ? 1 : 0}">${inf}</td><td data-v="${p.rei}">${tag}</td><td title="${esc(p.ec)}">${esc(p.ec)}</td>
+      <td class="izq" title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
+      <td data-v="${rec || ''}">${rec ? `${ddmes(rec)} ${hhmm(rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td>
+      <td data-v="${p.ags === 'ok' ? 'A ' + p.ag : p.ags === 'vacio' ? 'C' : 'B'}">${ag}</td><td class="vis" data-v="${visV(vv)}" title="${vv ? esc(visTxt(vv)) : ''}">${vis}</td><td class="tm" data-v="${tiempoV}">${celdaTiempo(p)}</td><td data-v="${hll || ''}">${hll ? hhmm(hll) + (mas1 ? ' <small>+1d</small>' : '') : sinCont(p) ? '-' : '—'}</td>
+      <td data-v="${p.ini ? 1 : 0}">${p.ini ? '<span class="b si">Sí</span>' : '<span class="b no">No</span>'}</td><td data-v="${cumpleV}">${cumple}</td></tr>`;
+  }).join('') || '<tr><td colspan="17">No hay pendientes con este filtro.</td></tr>';
+  prepararOrden($('tb-pend')); marcarFiltrosCol();
+}
+$('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; pintarPendientes(); });
+$('pen-to').addEventListener('click', (e) => { const b = e.target.closest('[data-pto]'); if (!b || penTo === b.dataset.pto) return; penTo = b.dataset.pto; filtro.penEc = filtro.penAg = 'TODOS'; Object.keys(colFil).forEach(k => delete colFil[k]); pintarPendientes(); });
+setInterval(() => {
+  if (tab !== 'pendientes') return;
+  const porOs = {}; pendUni().forEach(p => porOs[p.os] = p);
+  document.querySelectorAll('#pen-filas tr[data-os]').forEach(tr => { const p = porOs[tr.dataset.os]; if (!p) return; const c = tr.querySelector('.tm'); c.innerHTML = celdaTiempo(p); const e = estado(p); c.dataset.v = sinCont(p) || e.m == null ? -1 : Math.round(e.m); });
+}, 1000);
+
+
+/* ---------- Copiar imagen y Excel de Pendientes ---------- */
+const libs = {};
+function cargar(url) {
+  if (!libs[url]) libs[url] = new Promise((ok, mal) => { const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => { delete libs[url]; mal(new Error('No se pudo cargar ' + url)); }; document.head.appendChild(sc); });
+  return libs[url];
+}
+const URL_H2C = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+const URL_XLS = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+const avisoPen = (t, mal) => { const a = $('pen-aviso'); a.textContent = t; a.style.color = mal ? 'var(--mal)' : 'var(--ok)'; clearTimeout(avisoPen.t); avisoPen.t = setTimeout(() => a.textContent = '', 5000); };
+const nombreArch = (ext) => { const f = new Date(); const z = (x) => String(x).padStart(2, '0'); return `pendientes-averias-${f.getFullYear()}${z(f.getMonth() + 1)}${z(f.getDate())}-${z(f.getHours())}${z(f.getMinutes())}.${ext}`; };
+let dlNs; const dlP = (window.claude && claude.use) ? claude.use('downloads').then(x => dlNs = x).catch(() => dlNs = null) : Promise.resolve(null);
+async function bajar(blob, nombre) {
+  await dlP;
+  if (dlNs) { await dlNs.save({ filename: nombre, data: blob }); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+/* Convierte cualquier color CSS (rgba, color-mix…) a hex opaco sobre el fondo de la tabla */
+const lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = 1;
+const ctx1 = lienzo.getContext('2d', { willReadFrequently: true });
+function aHex(color, fondo) {
+  ctx1.clearRect(0, 0, 1, 1); ctx1.fillStyle = fondo || '#FFFFFF'; ctx1.fillRect(0, 0, 1, 1);
+  ctx1.fillStyle = '#000'; ctx1.fillStyle = color; ctx1.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx1.getImageData(0, 0, 1, 1).data; return [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+const transparente = (c) => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+
+$('pen-img').addEventListener('click', async () => {
+  const b = $('pen-img'); b.disabled = true;
+  const fondo = getComputedStyle($('v-pendientes').querySelector('.sec')).backgroundColor;
+  const blob = (async () => {
+    await cargar(URL_H2C);
+    const cv = await html2canvas($('tb-pend'), { backgroundColor: transparente(fondo) ? '#FFFFFF' : fondo, scale: 2, logging: false });
+    return await new Promise(r => cv.toBlob(r, 'image/png'));
+  })();
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('sin portapapeles');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    avisoPen('Imagen de la tabla copiada. Pégala con Ctrl+V en WhatsApp, correo o Excel.');
+  } catch (e) {
+    try { await bajar(await blob, nombreArch('png')); avisoPen('El navegador no permitió copiar; se descargó la imagen en PNG.'); }
+    catch (e2) { avisoPen('No se pudo generar la imagen. Revisa tu conexión e inténtalo de nuevo.', true); }
+  } finally { b.disabled = false; }
+});
+
+$('pen-xls').addEventListener('click', async () => {
+  const b = $('pen-xls'); b.disabled = true;
+  try {
+    await cargar(URL_XLS);
+    const tb = $('tb-pend'), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Pendientes', { views: [{ state: 'frozen', ySplit: 1 }] });
+    const fondoT = getComputedStyle(tb.closest('.sec')).backgroundColor;
+    const base = transparente(fondoT) ? '#FFFFFF' : fondoT;
+    const borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
+    const filas = [tb.tHead.rows[0], ...tb.tBodies[0].rows];
+    const anchos = [];
+    filas.forEach((tr, i) => {
+      const fila = ws.getRow(i + 1);
+      [...tr.cells].forEach((td, j) => {
+        const txt = td.innerText.replace(/\s+/g, ' ').replace(/[↕↑↓▲▼]/g, '').trim();
+        const c = fila.getCell(j + 1);
+        const num = /^\d+$/.test(txt) && j !== 2 ? Number(txt) : null;
+        c.value = num != null ? num : txt;
+        const ins = td.querySelector('.b, .late, .encurso') || td;
+        const csIns = getComputedStyle(ins), csTd = getComputedStyle(td);
+        const bgSrc = !transparente(csIns.backgroundColor) ? csIns.backgroundColor : !transparente(csTd.backgroundColor) ? csTd.backgroundColor : null;
+        if (bgSrc) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + aHex(bgSrc, base) } };
+        c.font = { name: 'Calibri', size: 11, bold: i === 0 || parseInt(csIns.fontWeight) >= 600, color: { argb: 'FF' + aHex(csIns.color, base) } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+        c.border = { top: borde, left: borde, bottom: borde, right: borde };
+        anchos[j] = Math.max(anchos[j] || 6, txt.length + 3);
+      });
+      fila.height = i === 0 ? 22 : 18;
+    });
+    anchos.forEach((w, j) => ws.getColumn(j + 1).width = Math.min(w, 40));
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: anchos.length } };
+    const buf = await wb.xlsx.writeBuffer();
+    await bajar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArch('xlsx'));
+    avisoPen(`Excel descargado con ${filas.length - 1} pendientes, en el mismo orden y colores de la tabla.`);
+  } catch (e) { if (e && e.code === 'declined') { avisoPen('Descarga cancelada.'); return; } avisoPen('No se pudo generar el Excel. Revisa tu conexión e inténtalo de nuevo.', true); }
+  finally { b.disabled = false; }
+});
+
+/* Copiar tabla (texto para Excel) o imagen de cualquier tabla con data-copiar-tabla / data-copiar-img */
+const avisoT = (id, t, mal) => { const a = $('aviso-' + id); if (!a) return; a.textContent = t; a.style.color = mal ? 'var(--mal)' : 'var(--ok)'; clearTimeout(a._t); a._t = setTimeout(() => a.textContent = '', 5000); };
+document.addEventListener('click', async (e) => {
+  const bt = e.target.closest('[data-copiar-tabla]'), bi = e.target.closest('[data-copiar-img]'); if (!bt && !bi) return;
+  const id = (bt || bi).dataset.copiarTabla || (bi && bi.dataset.copiarImg), tb = $(id); if (!tb) { avisoT(id, 'No hay datos para copiar.', true); return; }
+  if (bt) {
+    const txt = [...tb.rows].map(r => [...r.cells].map(c => c.innerText.replace(/[↕▲▼]/g, '').trim()).join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(txt); avisoT(id, 'Tabla copiada. Pégala en Excel o WhatsApp.'); } catch { avisoT(id, 'Tu navegador no permitió copiar.', true); }
+    return;
+  }
+  bi.disabled = true;
+  const fondo = getComputedStyle(tb.closest('.sec')).backgroundColor;
+  const blob = (async () => { await cargar(URL_H2C); const cv = await html2canvas(tb, { backgroundColor: transparente(fondo) ? '#FFFFFF' : fondo, scale: 2, logging: false }); return await new Promise(r => cv.toBlob(r, 'image/png')); })();
+  try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); avisoT(id, 'Imagen copiada. Pégala con Ctrl+V.'); }
+  catch { try { await bajar(await blob, nombreArch('png').replace('pendientes-averias', 'altas-pendientes')); avisoT(id, 'El navegador no permitió copiar; se descargó la imagen.'); } catch { avisoT(id, 'No se pudo generar la imagen.', true); } }
+  finally { bi.disabled = false; }
+});
+function pintarTodo() { pintarIngresos(); pintarDetalle(); pintarAgendas(); pintarPendientes(); }
+/* ---------- Periodo: selector de mes, semanas y desde/hasta ---------- */
+const MESES_C = (iso) => { const [y, m] = iso.split('-').map(Number); const t = MESES_L[m - 1]; return t.charAt(0).toUpperCase() + t.slice(1) + ' ' + y; };
+function pintarPer() {
+  const cur = `${DC.anio}-${p2(DC.mes)}`, ant = mesAnt();
+  $('per-mes').innerHTML = [[cur, MESES_C(cur) + ' (en curso)'], [ant, MESES_C(ant)]].map(([v, t]) => `<option value="${v}"${(PER.mes || cur) === v ? ' selected' : ''}>${t}</option>`).join('');
+  const dm = new Date(D.anio, D.mes, 0).getDate(), hasta = D.dias;
+  const sem = [[1, 7], [8, 14], [15, 21], [22, 28], [29, dm]].filter(([a]) => a <= hasta);
+  $('per-sem').innerHTML = `<button type="button" class="chip" data-sem="MES" aria-pressed="${PER.sem === 'MES'}">Todo el mes</button>` + sem.map(([a, b], i) =>
+    `<button type="button" class="chip" data-sem="${i + 1}" data-a="${a}" data-b="${b}" aria-pressed="${PER.sem === String(i + 1)}" title="Del ${a} al ${Math.min(b, hasta)}">Sem ${i + 1} · ${a}–${Math.min(b, hasta)}</button>`).join('');
+  const iso = (d) => `${D.anio}-${p2(D.mes)}-${p2(d)}`;
+  ['per-desde', 'per-hasta'].forEach(id => { $(id).min = iso(1); $(id).max = iso(hasta); });
+  $('per-desde').value = iso(PER.a); $('per-hasta').value = iso(Math.min(PER.b, hasta));
+}
+function repintarPer() { vistaPeriodo(); prepararDatos(); pintarPer(); pintarTipos(); pintarLiq(); pintarCien(); pintarTodo(); }
+$('per-mes').addEventListener('change', async (e) => {
+  const v = e.target.value, cur = `${DC.anio}-${p2(DC.mes)}`, sel = $('per-mes'); sel.disabled = true;
+  try { if (v !== cur) await traerMes(v); PER.mes = v === cur ? '' : v; PER.a = 1; PER.b = 31; PER.sem = 'MES'; repintarPer(); }
+  catch (err) { $('estado-datos').textContent = err.message; pintarPer(); }
+  finally { sel.disabled = false; }
+});
+$('per-sem').addEventListener('click', (e) => { const b = e.target.closest('[data-sem]'); if (!b) return;
+  PER.sem = b.dataset.sem; PER.a = b.dataset.a ? +b.dataset.a : 1; PER.b = b.dataset.b ? +b.dataset.b : 31; repintarPer(); });
+['per-desde', 'per-hasta'].forEach(id => $(id).addEventListener('change', () => {
+  const a = +($('per-desde').value || '').slice(8, 10) || 1, b = +($('per-hasta').value || '').slice(8, 10) || 31;
+  PER.a = Math.min(a, b); PER.b = Math.max(a, b); PER.sem = 'RANGO'; repintarPer(); }));
+pintarPer(); traerLS();
+pintarTipos(); pintarLiq(); pintarCien(); pintarTodo();
+if (frescoP) frescoP.then((nuevo) => { if (nuevo.actualizado !== DC.actualizado) { DC = nuevo; repintarPer(); } }).catch(() => { /* se reintenta en la recarga de 5 min */ });
+$('filial').addEventListener('change', async (e) => {
+  const f = e.target.value, antes = D.filial || 'LIMA';
+  e.target.disabled = true; $('estado-datos').textContent = `Cargando ${f}…`;
+  try { DC = await traer(f); guardarFilial(f); traerGestores(f); zona = 'TODAS'; Object.assign(PER, { mes: '', a: 1, b: 31, sem: 'MES' }); repintarPer(); }
+  catch (err) { e.target.value = antes; prepararDatos(); $('estado-datos').textContent = err.message; }
+  finally { e.target.disabled = false; }
+});
+ajCienP.then(() => { if (Object.keys(AJC).length) { aplicarAjCien(); pintarCien(); } });
+$('cargando').hidden = true; if (tab === 'panel') { $('v-panel').hidden = false; $('v-panel').style.display = 'flex'; }
+/* Recarga los datos cada 5 minutos sin perder la pestaña ni los filtros. */
+setInterval(async () => {
+  if (document.hidden || !$('modal').hidden) return;
+  try { const nuevo = await traer(); if (nuevo.actualizado === DC.actualizado) return; DC = nuevo; repintarPer(); } catch { /* se reintenta en la próxima vuelta */ }
+}, 5 * 60 * 1000);
+const repintar = () => { pintarLiq(); pintarCien(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repintar);
+new MutationObserver(repintar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
+</body>
+</html>
