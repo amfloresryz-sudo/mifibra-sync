@@ -215,6 +215,10 @@ def main(argv: list[str] | None = None) -> int:
         estado["arranque"] = False
         subir.guardar_estado(ESTADO, estado)
         n_tab = subir.guardar_tableros(tableros, estado, inicio)
+        try:
+            subir.limpiar_diagnosticos()
+        except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
+            print(f"Aviso: no se limpiaron los diagnósticos: {e}", flush=True)
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
         print(f"[tiempo] guardado: {time.time() - t_tab:.0f} s · total {time.time() - t_ini:.0f} s", flush=True)

@@ -212,3 +212,8 @@ def registrar_corrida(modo: str, filas: int | None, ok: bool, mensaje: str, inic
     _pedir("POST", _url("sincronizaciones"), "Registro de corrida",
            json={"modo": modo, "filas": filas, "ok": ok, "mensaje": mensaje[:2000], "inicio": inicio, "fin": fin},
            headers=_cabeceras({"Prefer": "return=minimal"}))
+
+
+def limpiar_diagnosticos() -> None:
+    """Borra los registros de diagnóstico temporales (clave «diag:…») de la tabla tableros, si quedara alguno."""
+    _pedir("DELETE", _url("tableros") + "?clave=like.diag:*", "Limpieza de diagnósticos", headers=_cabeceras({"Prefer": "return=minimal"}))
