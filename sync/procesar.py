@@ -490,23 +490,59 @@ def _st_norm(url: str) -> str:
     return re.split(r"[?#]", u)[0].rstrip("/.:")
 
 
+_RE_ST_NEG = re.compile(r"^\W{0,3}(?:no\b|sin\b|nos?\s+soport|baja\s+gama|de\s+baja|conforme|indic|desea|acept|firm|presente|ausente|se\s+fue)", re.I)
+
+
+def _st_etiqueta(t: str, ini: int, fin: int) -> str:
+    """Etiqueta del enlace que empieza en `fin`: solo cuenta la palabra que lo antecede de cerca (misma línea, hasta 60
+    caracteres antes) o una línea anterior corta (rótulo de hasta 45 caracteres, p. ej. «link abonado»).
+    No cuenta «cliente» seguido de una negación o un comentario («cliente no tiene…», «cliente conforme…»)."""
+    tramo = t[ini:fin]
+    lineas = tramo.split("\n")
+    misma = lineas[-1][-60:]
+    zona = misma
+    if not misma.strip():
+        prev = [ln for ln in lineas[:-1] if ln.strip()]
+        if prev and len(prev[-1].strip()) <= 45:
+            zona = prev[-1]
+    mejor, pos = "", -1
+    for x in _RE_ST_CLI.finditer(zona):
+        if not _RE_ST_NEG.match(zona[x.end():x.end() + 30]) and x.end() > pos:
+            mejor, pos = "C", x.end()
+    for x in _RE_ST_TEC.finditer(zona):
+        if x.end() > pos:
+            mejor, pos = "T", x.end()
+    return mejor
+
+
 def speedtest_links(texto) -> list[list]:
     """Enlaces de Speedtest de un comentario, con de quién es cada prueba según la etiqueta que lo antecede.
 
-    Devuelve [[clave, enlace, quién]] con quién = "C" (cliente), "T" (técnico) o "" (sin etiqueta). La etiqueta se busca
-    en las 2 últimas líneas antes del enlace (sin pasar el enlace anterior); manda la palabra más cercana al enlace."""
+    Devuelve [[clave, enlace, quién]] con quién = "C" (cliente), "T" (técnico) o "" (sin etiqueta)."""
     t = str(_texto(texto) or "")
     out, previo = [], 0
     for m in _RE_ST_URL.finditer(t):
         url = m.group(0).rstrip(".:")
-        tramo = t[previo:m.start()]
-        tramo = "\n".join([ln for ln in tramo.split("\n") if ln.strip()][-2:])
-        c = [x.end() for x in _RE_ST_CLI.finditer(tramo)]
-        k = [x.end() for x in _RE_ST_TEC.finditer(tramo)]
-        quien = "" if not c and not k else ("C" if (max(c) if c else -1) > (max(k) if k else -1) else "T")
-        out.append([_st_norm(url), url if url.lower().startswith("http") else "https://" + url, quien])
+        out.append([_st_norm(url), url if url.lower().startswith("http") else "https://" + url, _st_etiqueta(t, previo, m.start())])
         previo = m.end()
     return out
+
+
+def speedtest_muestra(df: pd.DataFrame, n: int = 400) -> list:
+    """Temporal: muestra de enlaces con el texto que los antecede (teléfonos ocultos) para verificar la regla de etiquetas."""
+    import random
+    x = df[df["Tipo Orden"].astype(str).str.strip().str.upper().eq("INSTALACION SERVICIO")]
+    filas = []
+    for obs in x["Observaciones Tecnico"].dropna().astype(str):
+        previo = 0
+        for m in _RE_ST_URL.finditer(obs):
+            q = _st_etiqueta(obs, previo, m.start())
+            antes = "\n".join([ln for ln in obs[previo:m.start()].split("\n") if ln.strip()][-2:])
+            filas.append([q, _sin_tel(antes)[-160:]])
+            previo = m.end()
+    random.seed(7)
+    por = {k: [f for f in filas if f[0] == k] for k in ("C", "T", "")}
+    return [f for k, cupo in (("C", 200), ("T", 100), ("", 100)) for f in random.sample(por[k], min(cupo, len(por[k])))]
 
 
 def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:

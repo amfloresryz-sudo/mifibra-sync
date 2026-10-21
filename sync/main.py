@@ -168,10 +168,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Aviso: no se cargaron los mapas de cajas: {e}", flush=True)
         filas_por_id: dict[int, dict] = {}
         links_st: dict[int, list] = {}
+        muestra_st: list = []
         for archivo in archivos:
             df0 = procesar.leer_excel(archivo)
             try:
                 links_st.update(procesar.speedtest_por_os(df0))
+                muestra_st = procesar.speedtest_muestra(df0)
             except Exception as e:  # noqa: BLE001 - Speed Test nunca detiene la corrida
                 print(f"Aviso: no se leyeron los enlaces de Speedtest: {e}", flush=True)
             for fila in procesar.a_filas(df0, inicio, indice_cajas):
@@ -214,6 +216,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{borradas} órdenes que ya no están en el reporte se borraron de la base.", flush=True)
         estado["arranque"] = False
         subir.guardar_estado(ESTADO, estado)
+        if muestra_st:
+            tableros["diag:st_muestra"] = {"m": muestra_st}
         n_tab = subir.guardar_tableros(tableros, estado, inicio)
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
