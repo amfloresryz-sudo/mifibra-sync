@@ -252,7 +252,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
     prog = [{
         "d": int(r["fp"].day), "t": r["tp"], "fo": r["org"], "pl": r["pl"],
         "fr": _txt(r["horario_atencion"]), "ec": _txt(r["ec"]) or "POR ASIGNAR", "tec": r["tec"], "di": _txt(r["distrito"]),
-        "seg": _seg(r), "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "e": E.get(r["estado_os"], "R"),
+        "seg": _seg(r), "id": int(r["id_os"]), "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "e": E.get(r["estado_os"], "R"),
         "rec": _iso(r["rec"]), "ini": _iso(r["ifa"] if pd.notna(r["ifa"]) else r["hi"]), "k": cumplimiento(r),   # inicio: fachada (o atención)
         "cita": r["fc"].strftime("%Y-%m-%d") if pd.notna(r["fc"]) else None, "cn": _canal(r.get("canal_atencion")),
         "fpo": r["fpo"].strftime("%Y-%m-%d") if pd.notna(r["fpo"]) else None, "fro": r["fro"], 
