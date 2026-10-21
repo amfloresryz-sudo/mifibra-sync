@@ -479,8 +479,6 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
 
 # ---------- Speed Test: enlaces de speedtest.net en «Observaciones Tecnico» ----------
 _RE_ST_URL = re.compile(r"(?:https?://)?(?:www\.)?speedtest\.net/[^\s,;()\"'<>]+", re.I)
-_RE_ST_CLI = re.compile(r"cliente|abonado|\bab\b|usuario", re.I)
-_RE_ST_TEC = re.compile(r"t[eé]cnico|\bt[eé]c\b|\bt[eé]c\.", re.I)
 
 
 def _st_norm(url: str) -> str:
@@ -490,29 +488,50 @@ def _st_norm(url: str) -> str:
     return re.split(r"[?#]", u)[0].rstrip("/.:")
 
 
-_RE_ST_NEG = re.compile(r"^\W{0,3}(?:no\b|sin\b|nos?\s+soport|baja\s+gama|de\s+baja|conforme|indic|desea|acept|firm|presente|ausente|se\s+fue)", re.I)
+_ST_PRUEBA = r"(?:test|tes[dts]?|teste|twst|speed\s*test|speedtes[dt]?|speed|sp|st|link|enlace|id|prueba|resultado|celular|cel|m[oó]vil|laptop|lapto|pc|computadora|tel[eé]fono|ipad|tablet|dispositivo|equipo)"
+_ST_CLI = r"(?:cliente|abonad[oa]|ab|cl)"
+_ST_TEC = r"(?:t[eé]cnico|t[eé]c|tc|tco)"
+_RE_ST_C1 = re.compile(r"\b" + _ST_PRUEBA + r"\b\W*(?:\w+\W+){0,4}?" + _ST_CLI + r"\b", re.I)   # «test del cliente», «celular cliente»
+_RE_ST_C2 = re.compile(r"\b" + _ST_CLI + r"\b\W*(?:\w+\W+){0,3}?" + _ST_PRUEBA + r"\b", re.I)   # «cliente hizo su test», «ab pc»
+_RE_ST_T = re.compile(r"\b" + _ST_TEC + r"\b", re.I)
+_RE_ST_CSOLO = re.compile(r"^\W*(?:" + _ST_CLI + r")\W*$", re.I)                                # rótulo suelto: «cliente:»
+# Después de «cliente» no debe venir una negación o descripción del equipo («cliente no cuenta…», «de gama baja»).
+_RE_ST_NEG = re.compile(r"^\W*(?:no\b|sin\b|nos?\s+soport|(?:es\s+|de\s+)?(?:baja|media)?\s*gama|de\s+baja|cuenta|solo\s+banda|tiene\b|conforme|desea|indic|explic)", re.I)
+# Comentarios sobre la instalación que mencionan al cliente pero no son una etiqueta de prueba.
+_RE_ST_EXCL = re.compile(r"pedido|solicit|petici|piticion|est[eé]tica|indic|pared|mueble|repisa|explic|conforme|desea|responsab|cable|eternet|instal", re.I)
+_RE_ST_BOILER = re.compile(r"echa un vistazo|check out my|qu[eé] tan r[aá]pido|how fast", re.I)
+
+
+def _st_zona(t: str, ini: int, fin: int) -> str:
+    """Texto donde se busca la etiqueta: lo que va antes del enlace en su misma línea; si el enlace empieza la línea,
+    la línea anterior (sin el texto que agrega la app de Speedtest al compartir). Máximo 90 caracteres."""
+    lineas = t[ini:fin].split("\n")
+    zona = lineas[-1]
+    if not zona.strip() or _RE_ST_BOILER.search(zona):
+        prev = [ln for ln in lineas[:-1] if ln.strip() and not _RE_ST_BOILER.search(ln)]
+        zona = prev[-1] if prev else ""
+    return zona[-90:]
 
 
 def _st_etiqueta(t: str, ini: int, fin: int) -> str:
-    """Etiqueta del enlace que empieza en `fin`: solo cuenta la palabra que lo antecede de cerca (misma línea, hasta 60
-    caracteres antes) o una línea anterior corta (rótulo de hasta 45 caracteres, p. ej. «link abonado»).
-    No cuenta «cliente» seguido de una negación o un comentario («cliente no tiene…», «cliente conforme…»)."""
-    tramo = t[ini:fin]
-    lineas = tramo.split("\n")
-    misma = lineas[-1][-60:]
-    zona = misma
-    if not misma.strip():
-        prev = [ln for ln in lineas[:-1] if ln.strip()]
-        if prev and len(prev[-1].strip()) <= 45:
-            zona = prev[-1]
-    mejor, pos = "", -1
-    for x in _RE_ST_CLI.finditer(zona):
-        if not _RE_ST_NEG.match(zona[x.end():x.end() + 30]) and x.end() > pos:
-            mejor, pos = "C", x.end()
-    for x in _RE_ST_TEC.finditer(zona):
-        if x.end() > pos:
-            mejor, pos = "T", x.end()
-    return mejor
+    """«C» si la prueba es del cliente, «T» si es del técnico, «» si no tiene etiqueta (cuenta como del técnico)."""
+    zona = _st_zona(t, ini, fin)
+    pc = -1
+    for rx in (_RE_ST_C1, _RE_ST_C2):
+        for m in rx.finditer(zona):
+            cli = re.search(r"\b" + _ST_CLI + r"\b", m.group(0), re.I)
+            if not cli:
+                continue
+            fin_cli = m.start() + cli.end()
+            if _RE_ST_NEG.match(zona[fin_cli:fin_cli + 30]) or _RE_ST_EXCL.search(m.group(0)) or len(zona) - m.end() > 30:
+                continue   # negación, comentario o etiqueta lejos del enlace (sigue más texto)
+            pc = max(pc, m.end())
+    if _RE_ST_CSOLO.match(zona):
+        pc = max(pc, len(zona))
+    pt = max((m.end() for m in _RE_ST_T.finditer(zona) if len(zona) - m.end() <= 30), default=-1)
+    if pc < 0 and pt < 0:
+        return ""
+    return "C" if pc > pt else "T"
 
 
 def speedtest_links(texto) -> list[list]:
