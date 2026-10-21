@@ -13,7 +13,7 @@ function esMaster(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-const MODULOS = ['instalaciones', 'averias', 'rutas'];   // rutas: rutas fijas por filial y distrito (una sola fila para todo el portal)
+const MODULOS = ['instalaciones', 'averias', 'rutas'];   // rutas: rutas fijas por filial y EECC (una sola fila para todo el portal)
 const METAS = ['meta_mes', 'meta_conv', 'meta_disp', 'meta_db', 'meta_prod', 'obj_tecnico', 'meta_cumpl'];
 const texto = (v, max = 60) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
 const esFecha = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k);
@@ -116,7 +116,7 @@ module.exports = async (req, res) => {
       const accion = new URL(req.url, 'http://x').searchParams.get('accion');
       let nuevo;
       if (modulo === 'rutas') {
-        // Rutas fijas (técnicos que deben salir a campo) por filial y distrito: solo el usuario master. Se reemplaza la filial enviada.
+        // Rutas fijas (técnicos que deben salir a campo) por filial y EECC: solo el usuario master. Se reemplaza la filial enviada.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
         if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar las rutas.' });
         const fijas = { ...(previo.fijas || {}) };

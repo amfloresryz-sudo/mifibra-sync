@@ -915,7 +915,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-avance" aria-labelledby="tab-avance" hidden style="flex-direction:column;gap:22px">
     <section class="sec" id="sec-av" aria-labelledby="t-av">
       <div class="sec-cab"><div><h2 id="t-av">Avance de producción diaria por EECC</h2><p class="sub" id="av-sub"></p></div>
-        <div class="pen-acc"><label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="av-dia" class="sel-dia"></select></label><button type="button" class="btn-out" id="av-rutas">Rutas por distrito</button><button type="button" class="btn-out" data-img="sec-av" data-nom="avance-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-av" data-nom="avance-eecc">Descargar Excel</button></div></div>
+        <div class="pen-acc"><label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="av-dia" class="sel-dia"></select></label><button type="button" class="btn-out" id="av-rutas">Rutas por EECC</button><button type="button" class="btn-out" data-img="sec-av" data-nom="avance-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-av" data-nom="avance-eecc">Descargar Excel</button></div></div>
       <div class="kpis" id="av-kpis"></div>
       <p class="pen-aviso" id="aviso-tb-av" role="status" aria-live="polite"></p>
       <div id="av-tab" class="scroll"></div><p class="ag-est" id="av-est" role="status" aria-live="polite"></p>
@@ -2528,27 +2528,27 @@ $('co-fr').addEventListener('click', (e) => { const b = e.target.closest('[data-
 $('co-dia').addEventListener('change', (e) => { diaCo = +e.target.value; pintarCoDia(); });
 
 /* ---------- AVANCE ---------- */
-/* ---------- Rutas fijas por filial y distrito (iguales todos los días; solo el usuario master las cambia) ---------- */
+/* ---------- Rutas fijas por filial y EECC (iguales todos los días; solo el usuario master las cambia) ---------- */
 let RF = {};
 async function traerRutasFijas() {
   try { const r = await fetch('/api/ajustes?modulo=rutas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (r.ok) RF = (await r.json()).fijas || {}; } catch { /* sin rutas fijas */ }
 }
 const rfSuma = (f, okD) => { const m = RF[f]; if (!m || !Object.keys(m).length) return null; return Object.entries(m).reduce((a, [d, v]) => a + (okD && !okD(d) ? 0 : v), 0); };
-function gruposRutas() {   // [[filial, título, [distritos]]] según lo elegido: Lima por zona, Provincias por filial, una filial sola
+function gruposRutas() {   // [[filial, título, [EECC]]]: Lima y cada filial con sus EECC; Provincias › Todas, una caja por filial
   const fil = D.filial || 'LIMA', L = [...(D.ing || []), ...(D.liq || []), ...(D.pend || []), ...(D.progRaw || D.prog || [])];
-  const ds = (f) => { const S = new Set(Object.keys(RF[f] || {})); L.forEach(x => { if (x.di && (fil !== 'PROVINCIAS' || (x.fi || '') === f)) S.add(String(x.di).toUpperCase().trim()); }); return [...S].filter(Boolean).sort(); };
-  if (fil === 'PROVINCIAS') return [...new Set(L.map(x => x.fi).filter(Boolean)), ...Object.keys(RF).filter(f => f !== 'LIMA')].filter((v, i, a) => a.indexOf(v) === i).sort().map(f => [f, nomFil(f), ds(f)]);
-  if (fil === 'LIMA') { const todos = ds('LIMA'), z = {}; todos.forEach(d => { const k = (D.zonas || {})[d] || 'SIN ZONA'; (z[k] = z[k] || []).push(d); });
-    return Object.keys(z).sort((a, b) => zIdx(a) - zIdx(b)).map(k => ['LIMA', `Lima · zona ${k}`, z[k]]); }
-  return [[fil, nomFil(fil), ds(fil)]];
+  const ecDe = (x) => fil === 'PROVINCIAS' ? nomEc(tecEc(x.tec) || x.ecR || '') : x.ec;
+  const fuera = (e) => !e || /^(POR ASIGNAR|SIN EECC|SIN TÉCNICO)$/i.test(e);
+  const ecs = (f) => { const S = new Set(Object.keys(RF[f] || {})); L.forEach(x => { if (fil !== 'PROVINCIAS' || (x.fi || '') === f) { const e = String(ecDe(x) || '').toUpperCase().trim(); if (!fuera(e)) S.add(e); } }); return [...S].sort(); };
+  if (fil === 'PROVINCIAS') return [...new Set([...L.map(x => x.fi).filter(Boolean), ...Object.keys(RF).filter(f => f !== 'LIMA')])].sort().map(f => [f, nomFil(f), ecs(f)]);
+  return [[fil, nomFil(fil), ecs(fil)]];
 }
 function abrirRutas() {
   const G = gruposRutas(), tot = (f, L) => L.reduce((a, d) => a + (RF[f]?.[d] || 0), 0);
-  const html = `<p class="fi-nota" style="margin:0 0 10px">Rutas (técnicos) que deben salir a campo cada día en cada distrito. Quedan fijas para todos los días y todos los usuarios; para cambiarlas se necesita la clave master.</p>
+  const html = `<p class="fi-nota" style="margin:0 0 10px">Rutas (técnicos) que cada EECC debe tener en campo cada día. Quedan fijas para todos los días y todos los usuarios; para cambiarlas se necesita la clave master.</p>
     <form id="f-rutas"><div class="rf-grid">${G.map(([f, t, L]) => `<div class="rf-g"><div class="rf-cab"><b>${esc(t)}</b><span data-rf-tot="${esc(t)}">${n(tot(f, L))} rutas</span></div>
-      <table class="mat"><tbody>${L.map(d => `<tr><td>${esc(d)}</td><td style="width:90px"><input type="number" min="0" max="999" class="in-ruta" data-rf-f="${esc(f)}" data-rf-d="${esc(d)}" data-rf-t="${esc(t)}" value="${RF[f]?.[d] ?? ''}" placeholder="—" disabled></td></tr>`).join('') || '<tr><td colspan="2">Sin distritos con datos.</td></tr>'}</tbody></table></div>`).join('')}</div>
+      <table class="mat"><tbody>${L.map(d => `<tr><td>${esc(d)}</td><td style="width:90px"><input type="number" min="0" max="999" class="in-ruta" data-rf-f="${esc(f)}" data-rf-d="${esc(d)}" data-rf-t="${esc(t)}" value="${RF[f]?.[d] ?? ''}" placeholder="—" disabled></td></tr>`).join('') || '<tr><td colspan="2">Sin EECC con datos.</td></tr>'}</tbody></table></div>`).join('')}</div>
     <div class="rf-acc"><label class="seg-t">Clave master <input type="password" id="rf-clave" autocomplete="current-password" value="${esc(claveMaster())}"></label><button type="button" class="btn-out" id="rf-editar">Editar</button><button type="submit" class="btn-out rf-ok" id="rf-guardar" disabled>Guardar rutas</button></div></form>`;
-  abrirFichaModal('Rutas por distrito', `${D.filial === 'PROVINCIAS' ? 'Provincias' : nomFil(D.filial || 'LIMA')} · fijas para todos los días · Rutas declaradas del Avance`, html);
+  abrirFichaModal('Rutas por EECC', `${D.filial === 'PROVINCIAS' ? 'Provincias · por filial' : nomFil(D.filial || 'LIMA')} · fijas para todos los días · Rutas declaradas del Avance`, html);
   const f = $('f-rutas');
   f.addEventListener('input', (e) => { const i = e.target.closest('[data-rf-t]'); if (!i) return; const t = i.dataset.rfT;
     const s = [...f.querySelectorAll(`[data-rf-t="${CSS.escape(t)}"]`)].reduce((a, x) => a + (Number(x.value) || 0), 0); const sp = f.querySelector(`[data-rf-tot="${CSS.escape(t)}"]`); if (sp) sp.textContent = `${n(s)} rutas`; });
@@ -2581,15 +2581,16 @@ function pintarAvance() {
   const falta = (r, t) => r == null ? null : Math.max(0, r - t);
   // Rutas fijas por distrito (botón «Rutas por distrito», clave master): en Provincias › Todas dan las rutas de cada filial;
   // en Lima o una filial dan el total del día. Si no hay rutas fijas se usan las declaradas a mano por EECC.
-  const zOk = (d) => zona === 'TODAS' || ((D.zonas || {})[d] || 'SIN ZONA') === zona;
-  const rutaDe = (k) => porFil ? rfSuma(k.toUpperCase(), zOk) : RD[k];
-  const fijoT = porFil ? null : rfSuma(D.filial || 'LIMA', zOk);
-  const rutasT = fijoT != null ? fijoT : rk.reduce((a, k) => a + (rutaDe(k) || 0), 0), conR = fijoT != null || rk.some(k => rutaDe(k) != null);
-  const faltasT = fijoT != null ? falta(fijoT, tecs.size) : rk.reduce((a, k) => a + (falta(rutaDe(k), ecs[k].tec.size) || 0), 0);
+  // Rutas fijas por EECC (botón «Rutas por EECC», clave master): cada EECC toma su ruta fija salvo que ese día se haya escrito otra a mano;
+  // en Provincias › Todas cada filial suma las rutas fijas de sus EECC.
+  const fijaDe = (k) => RF[D.filial || 'LIMA']?.[String(k).toUpperCase()];
+  const rutaDe = (k) => porFil ? rfSuma(k.toUpperCase()) : (RD[k] != null ? RD[k] : fijaDe(k) ?? null);
+  const rutasT = rk.reduce((a, k) => a + (rutaDe(k) || 0), 0), conR = rk.some(k => rutaDe(k) != null), fijoT = porFil || rk.some(k => RD[k] == null && fijaDe(k) != null) ? 1 : null;
+  const faltasT = rk.reduce((a, k) => a + (falta(rutaDe(k), ecs[k].tec.size) || 0), 0);
   const di = diaInfo(diaAv);
   $('t-av').textContent = porFil ? 'Avance de producción diaria por filial' : 'Avance de producción diaria por EECC';
   $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus E\u200BECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = técnicos × ${obj}`;
-  $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', fijoT != null || porFil ? 'rutas fijas por distrito' : conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
+  $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', fijoT != null ? 'rutas fijas por EECC' : conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
     kpi('Técnicos en campo', n(tecs.size), 'liquidaron al menos una') +
     kpi('Faltas', conR ? n(faltasT) : '—', conR ? `${pct(faltasT, rutasT)} de las rutas declaradas` : 'declara las rutas para calcularlas', !conR ? '' : faltasT === 0 ? 'ok' : faltasT / Math.max(1, rutasT) <= .1 ? 'mid' : 'mal') +
     kpi('Objetivo del día', n(objT), `${obj} por técnico`) +
@@ -2602,7 +2603,7 @@ function pintarAvance() {
     return q >= 90 ? `<span class="ic-av ok" title="${t}">✔</span>` : q >= 50 ? `<span class="ic-av mid" title="${t}">!</span>` : `<span class="ic-av mal" title="${t}">✖</span>`; };
   const filaAv = (k, e) => { const o = Math.round(e.tec.size * obj), av = o ? e.liq / o * 100 : null;
     const r = k ? rutaDe(k) : (conR ? rutasT : null), fa = k ? falta(r, e.tec.size) : (conR ? faltasT : null);
-    const celR = k && !porFil ? `<td class="sep"><input type="number" class="in-ruta" min="0" max="999" inputmode="numeric" data-av-ruta="${esc(k)}" value="${r ?? ''}" aria-label="Rutas declaradas de ${esc(k)}" placeholder="—"></td>` : `<td class="sep">${r ?? '—'}</td>`;
+    const celR = k && !porFil ? `<td class="sep"><input type="number" class="in-ruta" min="0" max="999" inputmode="numeric" data-av-ruta="${esc(k)}" value="${RD[k] ?? ''}" aria-label="Rutas declaradas de ${esc(k)}" placeholder="${fijaDe(k) ?? '—'}" title="${fijaDe(k) != null ? 'Ruta fija: ' + fijaDe(k) + ' (escribe un número solo si hoy es distinto)' : ''}"></td>` : `<td class="sep">${r ?? '—'}</td>`;
     const celF = `<td class="${fa == null ? '' : fa ? 'malo' : 'bien'}">${fa == null ? '—' : fa}</td>`;
     return `${celR}${celF}<td>${n(e.tec.size) || '·'}</td><td>${n(e.bolsa) || '·'}</td><td class="bh">${n(e.hoy) || '·'}</td><td class="bm">${n(e.m24) || '·'}</td><td class="av-prog">${n(e.prog) || '·'}</td><td>${o || '·'}</td><td class="t-col av-liq">${k ? `<button type="button" class="clic" data-ch="liq" data-d="${diaAv}" data-k="EC:${esc(k)}" style="all:unset;cursor:pointer">${e.liq}</button>` : e.liq}${icAv(e.liq, o)}</td><td class="${!o ? '' : o - e.liq > 0 ? 'av-falta' : 'av-ok'}" title="${!o ? '' : o - e.liq > 0 ? 'Faltan ' + (o - e.liq) + ' para el objetivo' : 'Objetivo alcanzado' + (e.liq > o ? ' (+' + (e.liq - o) + ')' : '')}">${!o ? '·' : o - e.liq > 0 ? o - e.liq : (e.liq > o ? '+' + (e.liq - o) : '0')}</td><td>${e.tec.size ? dec(e.liq / e.tec.size) : '—'}</td><td data-v="${av ?? -1}">${barra(av)}</td>`; };
   const T = { tec: tecs, liq: Ld.length, bolsa: P.length, hoy: P.filter(esHoy).length, m24: P.filter(p => !esHoy(p)).length, prog: G.length };
