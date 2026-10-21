@@ -333,9 +333,9 @@ COLUMNAS_AVT = "id_os,filial,tipo_orden,servicio,tecnico_ejecutor,contrata,fecha
 def avance_total(df: pd.DataFrame, anio: int, mes: int) -> dict:
     """Órdenes DESCARGADAS del mes (F. Atenc.) con contrata EECC, una fila por orden en forma compacta:
     tablas de nombres (t tipos, s servicios, e EECC, k técnicos, di distritos) y filas
-    [día, tipo, servicio, eecc, técnico, nro_os, abonado, hora_i, hora_f, distrito] con índices a esas tablas.
+    [día, tipo, servicio, eecc, técnico, nro_os, abonado, hora_i, hora_f, distrito, filial] con índices a esas tablas.
     Las órdenes de OFICINA / áreas internas no entran."""
-    vacio = {"t": [], "s": [], "e": [], "k": [], "di": [], "o": []}
+    vacio = {"t": [], "s": [], "e": [], "k": [], "di": [], "fi": [], "o": []}
     if df is None or df.empty:
         return vacio
     x = df.assign(fa=pd.to_datetime(df["fecha_atencion"], errors="coerce"))
@@ -345,10 +345,10 @@ def avance_total(df: pd.DataFrame, anio: int, mes: int) -> dict:
     hora = lambda v: (lambda t: t.strftime("%H:%M") if pd.notna(t) else "")(pd.to_datetime(v, errors="coerce"))  # noqa: E731
     x = x.assign(d=x["fa"].dt.day, to=x["tipo_orden"].map(_txt).replace("", "SIN TIPO"), sv=x["servicio"].map(_txt).replace("", "SIN SERVICIO"),
                  ec=[_contrata(c) or "SIN EECC" for c in x["contrata"]], tec=x["tecnico_ejecutor"].map(_txt).replace("", "SIN TÉCNICO"),
-                 dis=x["distrito"].map(_txt))
-    tablas = {k: sorted(x[c].unique().tolist()) for k, c in (("t", "to"), ("s", "sv"), ("e", "ec"), ("k", "tec"), ("di", "dis"))}
+                 dis=x["distrito"].map(_txt), fil=x["filial"].map(_txt) if "filial" in x else "")
+    tablas = {k: sorted(x[c].unique().tolist()) for k, c in (("t", "to"), ("s", "sv"), ("e", "ec"), ("k", "tec"), ("di", "dis"), ("fi", "fil"))}
     idx = {k: {v: i for i, v in enumerate(vs)} for k, vs in tablas.items()}
     ent = lambda v: int(v) if pd.notna(v) and str(v).strip() not in ("", "nan") else None  # noqa: E731
     filas = [[int(r.d), idx["t"][r.to], idx["s"][r.sv], idx["e"][r.ec], idx["k"][r.tec], ent(r.nro_os), ent(r.abonado_codigo),
-              hora(r.atencion_inicio), hora(r.atencion_fin), idx["di"][r.dis]] for r in x.sort_values(["fa", "atencion_inicio"]).itertuples()]
+              hora(r.atencion_inicio), hora(r.atencion_fin), idx["di"][r.dis], idx["fi"][r.fil]] for r in x.sort_values(["fa", "atencion_inicio"]).itertuples()]
     return {**tablas, "o": filas}

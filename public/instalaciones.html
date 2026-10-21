@@ -1080,7 +1080,25 @@ function kpi(l, v, s, cls = '', extra = '') { return `<div class="kpi ${cls}"><s
 const nomEc = (c) => AJ.nombres[c] || c;
 /* EECC asignada a mano a un técnico (Técnicos y EECC, usuario master). ecR = EECC que trajo el robot; ec0 = EECC efectiva. */
 const tecEc = (tec) => (tec && AJ.tecnicos && AJ.tecnicos[tec]) || null;
-const fijarEc = (x) => { if (x.ecR === undefined) x.ecR = x.ec0 !== undefined ? x.ec0 : x.ec; x.ec0 = tecEc(x.tec) || x.ecR; x.ec = nomEc(x.ec0); };
+const fijarEc = (x) => { if (x.ecR === undefined) x.ecR = x.ec0 !== undefined ? x.ec0 : x.ec; x.ec0 = tecEc(x.tec) || x.ecR; x.ec = nomEc(x.ec0);
+  if (provTodas() && x.fi !== undefined) { x.ec0 = x.ec = nomFil(x.fi); } };   // Provincias › Todas: se analiza por filial (la filial ocupa el lugar de la EECC)
+/* Provincias › Todas: todos los cuadros se analizan por filial; al elegir una filial, por EECC (detalle). */
+const provTodas = () => (D && D.filial || filialSel()) === 'PROVINCIAS';
+const nomFil = (f) => f ? String(f).split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ') : 'Sin filial';
+const RENOMBRA = [[/de EECC\b/g, 'de E\u200BECC'], [/\b1 EECC\b/g, '1 filial'], [/(\d+) EECC\b/g, '$1 filiales'], [/\bEECC_F\b/g, 'Filial'], [/\bEECC\b/g, 'Filial'], [/\bEECCs\b/g, 'filiales'], [/\bpor EECC\b/gi, 'por filial'], [/\bpor Filial\b/g, 'por filial']];
+function renombrarEecc() {
+  if (!provTodas()) return;
+  const raiz = document.querySelector('main'); if (!raiz) return;
+  const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT, { acceptNode: (t) => {
+    if (!/EECC/.test(t.nodeValue)) return NodeFilter.FILTER_REJECT;
+    const b = t.parentElement && t.parentElement.closest('button, select, option, input, textarea, script, style');
+    return b && !b.matches('.avt-z, [role="tab"], .chip') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
+  const L = []; let t; while ((t = w.nextNode())) L.push(t);
+  L.forEach(t => { let v = t.nodeValue; RENOMBRA.forEach(([re, r]) => v = v.replace(re, r)); if (v !== t.nodeValue) t.nodeValue = v; });
+}
+let renPend = false;
+new MutationObserver(() => { if (!provTodas() || renPend) return; renPend = true; requestAnimationFrame(() => { renPend = false; renombrarEecc(); }); })
+  .observe(document.body, { childList: true, subtree: true, characterData: true });
 const gestorDe = (x) => AJ.gestores[x.ec0 ?? x.ec] || 'SIN GESTOR';
 const hayGestores = () => Object.keys(AJ.gestores).length > 0;
 /* Metas del canal elegido en la cabecera: lo vacío en el canal usa la meta de «Todos» (y lo vacío en «Todos», la del robot).
@@ -2104,12 +2122,12 @@ const avtTrabajo = (to, sv) => to !== 'INSTALACION SERVICIO' ? to : /OTT/.test(s
 const avtEtq = (t) => (t.charAt(0) + t.slice(1).toLowerCase()).replace(/\bott\b/, 'OTT');
 function pintarAvt() {
   const A = D.avt; if (!$('avt-mat')) return;
-  if (A && A.o && !A.r) A.r = A.o.map(x => [x[0], x[1], x[2], x[3], x[4], 1, x[5], x[6], x[7], x[8], x[9]]);
+  if (A && A.o && !A.r) A.r = A.o.map(x => [x[0], x[1], x[2], x[3], x[4], 1, x[5], x[6], x[7], x[8], x[9], x[10]]);
   if (!A || !A.r || !A.r.length) { $('avt-sub').textContent = ''; $('avt-kpis').innerHTML = ''; $('avt-graf').innerHTML = ''; $('avt-segs').innerHTML = '';
     $('avt-mat').innerHTML = '<p class="nota">Aún no hay datos de avance total: aparecen después de la próxima actualización del robot.</p>'; return; }
   const dias = [...new Set(A.r.map(x => x[0]))].sort((a, b) => a - b);
   if (!avt.dia || !dias.includes(avt.dia)) avt.dia = dias[dias.length - 1];
-  const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], tr: avtTrabajo(A.t[x[1]], A.s[x[2]]), sv: A.s[x[2]], ec: nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
+  const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], tr: avtTrabajo(A.t[x[1]], A.s[x[2]]), sv: A.s[x[2]], ec: provTodas() ? nomFil(A.fi ? A.fi[x[11]] : '') : nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
   const ecsAll = [...new Set(R0.map(x => x.ec))].sort(); avtR = null;
   // Trabajos (tipo de orden) que hacen los técnicos: varias opciones a la vez; cuentan con el periodo y la EECC elegidos.
   const toCnt = {}; R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec).forEach(x => toCnt[x.tr] = (toCnt[x.tr] || 0) + x.n);
@@ -2515,7 +2533,6 @@ $('co-fr').addEventListener('click', (e) => { const b = e.target.closest('[data-
 $('co-dia').addEventListener('change', (e) => { diaCo = +e.target.value; pintarCoDia(); });
 
 /* ---------- AVANCE ---------- */
-const nomFil = (f) => f ? f.split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ') : 'Sin filial';
 function pintarAvance() {
   const L = D.liq.filter(ok), Ld = L.filter(x => x.d === diaAv), P = D.pend.filter(ok), G = D.prog.filter(x => ok(x) && x.d === diaAv);
   const obj = CFG.obj_tecnico || 3, ecs = {}, RD = AJ.rutas[isoDia(diaAv)] || {};
