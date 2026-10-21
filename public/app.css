@@ -57,7 +57,6 @@ h1, h2, .marca, .btn, .pestana, .nav a, th { font-family: Montserrat, system-ui,
 .heroe h1 em { font-style: normal; color: var(--magenta); }
 .heroe p { margin: 0; font-size: 18px; line-height: 1.55; color: #D1D5DB; max-width: 620px; }
 .tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: -72px; padding-bottom: 64px; }
-@media (min-width: 1400px) { .tarjetas { grid-template-columns: repeat(5, minmax(0, 1fr)); } }  /* 5 por fila: las nuevas tarjetas bajan a una 2.ª fila */
 .tarjeta { text-decoration: none; color: var(--texto); background: var(--blanco); border: 1px solid var(--magenta); border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 24px rgba(26,26,46,0.08); }
 .tarjeta:hover { color: var(--texto); transform: translateY(-2px); transition: transform .15s; }
 .tarjeta .icono { width: 56px; height: 56px; border-radius: 16px; background: var(--rosa); display: flex; align-items: center; justify-content: center; }
