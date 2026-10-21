@@ -746,6 +746,12 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 @media (max-width: 700px) { .segs-obs .g > .seg-t { min-width: 100%; } .pv > * > tr > :first-child { min-width: 150px !important; } }
 #vista[hidden], #ab-cuerpo[hidden], #limpiar[hidden] { display: none !important; }
 #tb-modal td, #tb-modal th { white-space: nowrap !important; }
+.kv-btn { all: unset; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 6px; text-decoration-thickness: 2px; }
+.kv-btn:hover, .kv-btn:focus-visible { text-decoration-style: solid; outline: none; }
+#tb-modal.lista-tasa td.com { white-space: pre-wrap !important; text-align: left; min-width: 380px; max-width: 560px; font-size: 12px; line-height: 1.45; }
+#tb-modal.lista-tasa td.com b { color: var(--magenta-txt); }
+#tb-modal.lista-tasa td { vertical-align: top; }
+#tb-modal.lista-tasa mark.rr { background: var(--ok-bg); color: var(--ok); font-weight: 700; padding: 0 4px; border-radius: 4px; }
 #tb-modal.lista-obs { width: 100%; font-size: 12px; } #tb-modal.lista-obs th { font-size: 10px !important; white-space: normal !important; }
 #tb-modal.lista-obs td, #tb-modal.lista-obs th { padding: 7px 3px !important; } #tb-modal.lista-obs td.w { white-space: normal !important; min-width: 150px; }
 .t-segs { gap: 8px 22px; } .t-segs .g > .seg-t { min-width: 0; margin-right: 4px; }
@@ -1105,7 +1111,17 @@ function editarMeta() {
     } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message; }
   });
 }
-document.addEventListener('click', (e) => { if (e.target.closest('#meta-ed')) editarMeta(); });
+document.addEventListener('click', (e) => { if (e.target.closest('#meta-ed')) editarMeta(); if (e.target.closest('#tasa-ver')) listaTasa(); });
+/* Lista de la tasa de recuperación: recuperadas primero, luego las que siguen observadas, con el comentario del técnico */
+let tasaL = [];
+function listaTasa() {
+  const L = tasaL.slice().sort((a, b) => (b.rc || 0) - (a.rc || 0) || (a.f + a.h).localeCompare(b.f + b.h)), nR = L.filter(r => r.rc).length;
+  const dm = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '—';
+  const com = (t) => t ? obsCompleta(t).replace(/\$R\$/g, '<mark class="rr">$R$</mark>') : '<span style="color:var(--fg-4)">Sin comentario</span>';
+  const filas = L.map(r => `<tr><td>${r.rc ? '<span class="b ges">Recuperada</span>' : '<span class="b sges">Observada</span>'}</td><td>${dm(r.f)} ${r.h}</td><td><b>${r.ab}</b></td><td>${r.os}</td><td class="w">${esc(r.s)}</td><td>${esc(r.ecN)}</td><td title="${esc(r.tec)}">${esc(tecCorto(r.tec))}</td><td title="${esc(r.di)}">${esc(CORTOS[r.di] || r.di)}</td><td class="com">${com(r.ovt)}</td></tr>`).join('');
+  abrirModal('Tasa de recuperación · AB y comentarios', `${n(nR)} recuperadas de ${n(L.length)} observadas · ${mesTxt(mes)} · recuperada = DESCARGADA con $R$ en el comentario`,
+    `<table class="det lista-obs lista-tasa" id="tb-modal"><thead><tr><th>Estado</th><th>F. observación</th><th>AB</th><th>OS</th><th>Motivo detallado</th><th>EECC</th><th>Técnico</th><th>Distrito</th><th>Comentario del técnico</th></tr></thead><tbody>${filas}</tbody></table>`, true);
+}
 const coincide = (r) => [r.ab, r.os, r.tec, r.di, r.ge, r.ecN, r.pl, r.m, r.s].some(v => String(v ?? '').toLowerCase().includes(termino));
 
 /* ---------- pintar ---------- */
@@ -1119,7 +1135,7 @@ function pintar() {
   const topDe = (cat, et) => { const c = {}; B.filter(r => r.m === cat).forEach(r => c[r.g] = (c[r.g] || 0) + 1); const t = Object.keys(c).sort((a, b) => c[b] - c[a])[0];
     return `<span class="top-m"><b>${et}</b>${t ? `${esc(t)}<small>${n(c[t])} OS · ${pc(c[t], B.length)} del total</small>` : '—'}</span>`; };
   const hoy = D.corte ? D.corte.slice(0, 10) : ''; const nHoy = B.filter(r => r.f === hoy).length;
-  const abs = new Set(B.map(r => r.ab)).size, nRec = recMes().filter(r => pasa(r, '', false)).length;
+  const abs = new Set(B.map(r => r.ab)).size, RC = recMes().filter(r => pasa(r, '', false)), nRec = RC.length; tasaL = [...RC, ...B];
   const horas = B.map(horasObs).filter(h => h != null), tmo = horas.length ? horas.reduce((a, b) => a + b, 0) / horas.length : null;
   const tasa = nRec + B.length ? nRec / (nRec + B.length) * 100 : null, meta = metaRecup();
   const d1 = (v) => v.toLocaleString('es-PE', { maximumFractionDigits: 1 });
@@ -1130,7 +1146,7 @@ function pintar() {
     ['Motivo más frecuente', '', `<span class="top-2">${topDe('COMERCIAL', 'M. Comercial')}${topDe('TÉCNICO', 'M. Técnico')}</span>`],
     ['Observadas hoy', n(nHoy), hoy ? dmy(hoy) : ''],
     ['TMO', tmo == null ? '—' : d1(tmo) + ' h', `De F. Recep a observación · ${n(horas.length)} OS`],
-    ['Tasa de recuperación', tasa == null ? '—' : d1(tasa) + '%', `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas<br><span class="meta-r ${tasa != null && tasa >= meta ? 'ok' : 'mal'}">Meta ${d1(meta)}%</span> <button type="button" class="lnk-meta" id="meta-ed">✎ Modificar meta</button>`],
+    ['Tasa de recuperación', tasa == null ? '—' : `<button type="button" class="kv-btn" id="tasa-ver" title="Ver la lista de AB y sus comentarios">${d1(tasa)}%</button>`, `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas<br><span class="meta-r ${tasa != null && tasa >= meta ? 'ok' : 'mal'}">Meta ${d1(meta)}%</span> <button type="button" class="lnk-meta" id="meta-ed">✎ Modificar meta</button>`],
   ].map(([l, v, s], i) => `<div class="kpi${i === 3 ? ' k-mot' : ''}"><span class="l">${l}</span><span class="kv"${i === 3 ? ' hidden' : i === 6 && tasa != null ? ` style="color:var(--${tasa >= meta ? 'ok' : 'mal'})"` : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
   $('res-sub').textContent = `OS que siguen en estado OBSERVADA, observadas en ${mesTxt(mes)} (fecha_observación) · solo altas de internet, una por abonado y servicio${canal === 'TODOS' ? '' : ' · canal ' + CANALES.find(c => c[0] === canal)[1].toLowerCase()}`;
   baseTabla = { pl: B, di: B, ab: B, mo: Bs };
