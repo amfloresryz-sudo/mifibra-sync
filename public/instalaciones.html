@@ -894,7 +894,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <section class="sec co-pan" data-cop="hoy" aria-labelledby="t-cohoy" hidden>
       <div class="sec-cab"><div><h2 id="t-cohoy">Agendas y coordinadas del día</h2><p class="sub" id="t-cohoy-sub">Solo AB descargados · por EECC y franja · cumplió / descargadas · cada franja incluye agendas y coordinadas (pasa el puntero para ver el desglose)</p></div>
         <label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="co-dia" class="sel-dia"></select></label></div>
-      <div class="segs"><div class="g"><span class="seg-t">EECC</span><div class="chips" id="co-ec" role="group" aria-label="EECC"></div></div></div>
+      <div class="segs"><div class="g"><span class="seg-t">EECC</span><div class="chips" id="co-ec" role="group" aria-label="EECC"></div></div>
+        <div class="g"><span class="seg-t">Franja</span><div class="chips" id="co-fr" role="group" aria-label="Franja"></div></div></div>
       <div class="scroll" id="co-hoy"></div>
     </section>
   </div>
@@ -2451,11 +2452,19 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-ag-buscar]')) abrirBuscarAgenda();
 });
 let coDiaEc = 'TODAS';   // EECC elegida en «Agendas y coordinadas del día»: TODAS = cuadro por EECC; una EECC = detalle por AB
+const coDiaFr = new Set();  // franjas elegidas (vacío = todas); varias a la vez
 function pintarCoDia() {
-  const G = D.prog.filter(x => ok(x) && x.e === 'D' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo)), cols0 = [...FRANJAS, 'SF'];
   const colDe = (x) => { const f = String(x.fr || '').replace(/\s+/g, ' ').trim(); return FRANJAS.includes(f) ? f : 'SF'; };
+  const okFr = (x) => !coDiaFr.size || coDiaFr.has(colDe(x));
+  const G = D.prog.filter(x => ok(x) && x.e === 'D' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo) && okFr(x)), cols0 = [...FRANJAS, 'SF'].filter(f => !coDiaFr.size || coDiaFr.has(f));
   // Segmentador EECC: todas las EECC con agendas o coordinadas ese día (cualquier estado menos anulada)
-  const P = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo));
+  const P0 = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo) && (coDiaEc === 'TODAS' || x.ec === coDiaEc));
+  // Segmentador Franja: cuenta las agendas y coordinadas del día (de la EECC elegida) en cada franja
+  const frOps = [...FRANJAS, 'SF'].filter(f => P0.some(x => colDe(x) === f));
+  [...coDiaFr].forEach(f => { if (!frOps.includes(f)) coDiaFr.delete(f); });
+  $('co-fr').innerHTML = `<button type="button" class="chip" data-co-fr="" aria-pressed="${!coDiaFr.size}">Todas (${n(P0.length)})</button>`
+    + frOps.map(f => `<button type="button" class="chip" data-co-fr="${f}" aria-pressed="${coDiaFr.has(f)}">${f === 'SF' ? 'Sin franja' : f} (${n(P0.filter(x => colDe(x) === f).length)})</button>`).join('');
+  const P = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo) && okFr(x));
   const ecsP = [...new Set(P.map(x => x.ec))].sort((a, b) => P.filter(x => x.ec === b).length - P.filter(x => x.ec === a).length || a.localeCompare(b));
   if (coDiaEc !== 'TODAS' && !ecsP.includes(coDiaEc)) coDiaEc = 'TODAS';
   $('co-ec').innerHTML = [['TODAS', 'Todas', P.length], ...ecsP.map(e => [e, e, P.filter(x => x.ec === e).length])]
@@ -2493,6 +2502,7 @@ function pintarCoDiaEc(L, colDe) {
   prepararOrden($('tb-co-ec'));
 }
 $('co-ec').addEventListener('click', (e) => { const b = e.target.closest('[data-co-ec]'); if (!b) return; coDiaEc = b.dataset.coEc; pintarCoDia(); });
+$('co-fr').addEventListener('click', (e) => { const b = e.target.closest('[data-co-fr]'); if (!b) return; const f = b.dataset.coFr; if (!f) coDiaFr.clear(); else coDiaFr.has(f) ? coDiaFr.delete(f) : coDiaFr.add(f); pintarCoDia(); });
 $('co-dia').addEventListener('change', (e) => { diaCo = +e.target.value; pintarCoDia(); });
 
 /* ---------- AVANCE ---------- */
