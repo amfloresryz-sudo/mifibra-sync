@@ -569,12 +569,12 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .tb-ag .sep { border-left: 1px solid var(--borde-2); }
 .tb-ag td.c1, .tb-ag td.c2, .tb-ag td.c3 { font-weight: 700; } .tb-ag td.c1 { background: var(--calor-1); color: var(--calor-txt); } .tb-ag td.c2 { background: var(--calor-2); color: var(--calor-txt); } .tb-ag td.c3 { background: var(--calor-3); color: #fff; }
 .tb-ag tfoot td { font-weight: 800; }
-#tb-av { width: 100%; min-width: 0 !important; table-layout: auto; font-size: 12.5px; }
-#tb-av th { white-space: normal !important; line-height: 1.25; padding: 8px 6px !important; vertical-align: bottom; font-size: 11px; }
-#tb-av td { padding: 7px 6px !important; white-space: nowrap; }
+#tb-av { width: 100%; min-width: 0 !important; table-layout: auto; font-size: clamp(12.5px, 0.95vw, 14.5px); }
+#tb-av th { white-space: normal !important; line-height: 1.25; padding: 10px 6px !important; vertical-align: bottom; font-size: clamp(11px, 0.78vw, 12.5px); }
+#tb-av td { padding: 11px 6px !important; white-space: nowrap; }
 #tb-av th.sep, #tb-av td.sep { border-left: 2px solid var(--borde-2); }
-#tb-av .barra-pct { min-width: 0; } #tb-av .barra-pct i { flex: 0 0 56px; }
-#tb-av .in-ruta { width: 52px; font: 600 13px var(--f-txt, inherit); text-align: center; padding: 4px 2px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
+#tb-av .barra-pct { min-width: 0; } #tb-av .barra-pct i { flex: 0 0 clamp(48px, 4.5vw, 72px); height: 10px; }
+#tb-av .in-ruta { width: 58px; font: 600 14px var(--f-txt, inherit); text-align: center; padding: 4px 2px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
 #av-kpis { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; } #av-kpis .kpi { padding: 14px 14px; } #av-kpis .kv { font-size: 26px; }
 .tb-ag .in-ruta { width: 52px; font: 600 13px var(--f-txt, inherit); text-align: center; padding: 4px 2px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
 .tb-ag .in-ruta:focus-visible { outline: 2px solid var(--magenta); outline-offset: 1px; }
@@ -775,7 +775,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     </section>
     <section class="sec" aria-labelledby="t-altas">
       <div class="sec-cab"><div><h2 id="t-altas">Altas pendientes</h2><p class="sub" id="altas-sub"></p></div>
-        <div class="pen-acc"><button type="button" class="btn-out" id="altas-todo">Expandir todo</button><button type="button" class="btn-out" data-copiar-tabla="tb-altas">Copiar tabla</button><button type="button" class="btn-out" data-img="tb-altas" data-nom="altas-pendientes">Copiar imagen</button></div></div>
+        <div class="pen-acc"><button type="button" class="btn-out" id="altas-todo">Expandir todo</button><button type="button" class="btn-out" data-img="tb-altas" data-nom="altas-pendientes">Copiar imagen</button></div></div>
       <p class="nota">Pendientes (REGISTRADA) por zona y distrito (filas) y fecha de F. Recep (columnas). Cada distrito se agrupa en su zona: toca la zona para ver u ocultar sus distritos y toca cualquier número para ver los AB. Respeta los filtros de la franja; puedes acotar por EECC y tipo de programación.</p>
       <div class="segs" id="altas-segs"></div>
       <div class="ley"><span><b class="e3"></b>8+ días</span><span><b class="e2"></b>4 a 7 días</span><span><b class="e1"></b>3 días · desde 3 días cuentan en % antiguas</span><span><b style="background:var(--magenta)"></b>Hoy</span></div>
@@ -849,7 +849,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     </section>
     <section class="sec co-pan" data-cop="det" aria-labelledby="t-codet" hidden>
       <div class="sec-cab"><div><h2 id="t-codet">Detalle de agendas y coordinadas</h2><p class="sub">Agendas y coordinadas del mes por fecha de agenda (F. AG) · BI = inicio de la atención del técnico · los botones Total / Agendas / Coordinadas también filtran esta tabla</p></div>
-        <div class="pen-acc"><span class="nota" id="codet-n"></span><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda de un AB</button><button type="button" class="btn-out" data-copiar-tabla="tb-codet">Copiar tabla</button><button type="button" class="btn-out" data-xls="tb-codet" data-nom="detalle-agendas-coordinadas">Descargar Excel</button></div></div>
+        <div class="pen-acc"><span class="nota" id="codet-n"></span><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda de un AB</button><button type="button" class="btn-out" data-img="tb-codet" data-nom="detalle-agendas-coordinadas">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-codet" data-nom="detalle-agendas-coordinadas">Descargar Excel</button></div></div>
       <div class="segs" id="co-segs"></div>
       <div class="segs"><div class="g"><span class="seg-t">Fecha de agenda (F. AG)</span>
         <label class="fecha-f">Desde <input type="date" id="codet-desde"></label><label class="fecha-f">Hasta <input type="date" id="codet-hasta"></label>
@@ -870,7 +870,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     </section>
     <section class="sec co-pan" data-cop="eec" aria-labelledby="t-eec" hidden>
       <div class="sec-cab"><div><h2 id="t-eec">Evolutivo diario por EECC</h2><p class="sub" id="eec-sub"></p></div>
-        <div class="pen-acc"><button type="button" class="btn-out" data-copiar-tabla="tb-eec">Copiar tabla</button><button type="button" class="btn-out" data-img="eec-cuerpo" data-nom="evolutivo-diario-eecc">Copiar imagen</button></div></div>
+        <div class="pen-acc"><button type="button" class="btn-out" data-img="eec-cuerpo" data-nom="evolutivo-diario-eecc">Copiar imagen</button></div></div>
       <div id="eec-cuerpo" style="display:flex;flex-direction:column;gap:20px">
         <div class="kpis" id="eec-kpis"></div>
         <div id="eec-segs"></div>
@@ -884,8 +884,9 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <section class="sec co-pan cs" data-cop="ec" aria-labelledby="t-cs-cm" hidden><div id="cs-cm"></div></section>
     <section class="sec co-pan cs" data-cop="cd" aria-labelledby="t-cs-cd" hidden><div id="cs-cd"></div></section>
     <section class="sec co-pan" data-cop="hoy" aria-labelledby="t-cohoy" hidden>
-      <div class="sec-cab"><div><h2 id="t-cohoy">Agendas y coordinadas del día</h2><p class="sub">Solo AB descargados · por EECC y franja · cumplió / descargadas · cada franja incluye agendas y coordinadas (pasa el puntero para ver el desglose)</p></div>
+      <div class="sec-cab"><div><h2 id="t-cohoy">Agendas y coordinadas del día</h2><p class="sub" id="t-cohoy-sub">Solo AB descargados · por EECC y franja · cumplió / descargadas · cada franja incluye agendas y coordinadas (pasa el puntero para ver el desglose)</p></div>
         <label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="co-dia" class="sel-dia"></select></label></div>
+      <div class="segs"><div class="g"><span class="seg-t">EECC</span><div class="chips" id="co-ec" role="group" aria-label="EECC"></div></div></div>
       <div class="scroll" id="co-hoy"></div>
     </section>
   </div>
@@ -913,7 +914,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-avt" aria-labelledby="tab-avt" hidden style="flex-direction:column;gap:22px">
     <section class="sec" aria-labelledby="t-avt">
       <div class="sec-cab"><div><h2 id="t-avt">Avance total por EECC y técnico</h2><p class="sub" id="avt-sub"></p></div>
-        <div class="pen-acc"><button type="button" class="btn-out" id="avt-todo">Expandir todo</button><button type="button" class="btn-out" data-copiar-tabla="tb-avt">Copiar tabla</button><button type="button" class="btn-out" data-img="avt-cuerpo" data-nom="avance-total">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-avt" data-nom="avance-total">Descargar Excel</button></div></div>
+        <div class="pen-acc"><button type="button" class="btn-out" id="avt-todo">Expandir todo</button><button type="button" class="btn-out" data-img="tb-avt" data-nom="avance-total-tabla">Copiar imagen de la tabla</button><button type="button" class="btn-out" data-img="avt-cuerpo" data-nom="avance-total">Copiar imagen del panel</button><button type="button" class="btn-out" data-xls="tb-avt" data-nom="avance-total">Descargar Excel</button></div></div>
       <div class="segs" id="avt-segs"></div>
       <p class="pen-aviso" id="aviso-tb-avt" role="status" aria-live="polite"></p>
       <div id="avt-cuerpo" style="display:flex;flex-direction:column;gap:20px">
@@ -930,7 +931,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-tit" aria-describedby="modal-sub">
     <div class="modal-cab">
       <div><h3 id="modal-tit"></h3><p id="modal-sub"></p></div>
-      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-copiar-ab" hidden>Copiar AB</button><button type="button" class="btn-sec" id="modal-copiar">Copiar tabla</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
+      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-copiar-ab" hidden>Copiar AB</button><button type="button" class="btn-sec" id="modal-copiar">Copiar imagen</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
     </div>
     <div class="modal-aviso" id="modal-aviso" role="status"></div>
     <div class="modal-cuerpo" id="modal-cuerpo"></div>
@@ -1405,7 +1406,7 @@ function listaProg(L, tit, sub, reabrir) {
       <td data-v="${msIso(x.rec)}" style="white-space:nowrap">${x.rec ? `${fechaHora(x.rec)} <span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; });
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-tit').textContent = tit; $('modal-sub').textContent = sub;
-  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar tabla'; $('modal-copiar-ab').hidden = false;
+  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar imagen'; $('modal-copiar-ab').hidden = false;
   $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`;
   orden['tb-modal'] = null; prepararOrden($('tb-modal')); modalCab = cab; reabrirLista = reabrir;
   if ($('modal').hidden) modalOrigen = document.activeElement;
@@ -1429,7 +1430,7 @@ function abrirListaAltas(clave) {
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-tit').textContent = `${nom} · ${f === 'ALL' ? 'todas las fechas' : fIso(f)}`;
   $('modal-sub').textContent = `${L.length} AB pendiente${L.length === 1 ? '' : 's'} · Tipo: INSTALACION · más antiguos primero` + (seg === 'TODOS' ? '' : ` · ${seg}`);
-  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar tabla'; $('modal-copiar-ab').hidden = false;
+  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar imagen'; $('modal-copiar-ab').hidden = false;
   $('modal-cuerpo').dataset.lista = clave;
   $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`;
   orden['tb-modal'] = null; prepararOrden($('tb-modal')); modalCab = cab; reabrirLista = () => abrirListaAltas(clave);
@@ -1922,7 +1923,7 @@ function abrirListaCoord(clave) {
   modalCab = ['AB', 'Tipo', 'EECC', 'Técnico', 'Distrito', 'Recepción', 'F. AG', 'Franja', 'Instalada', 'Resultado'];
   abrirFichaModal(NOM[k] + (f ? SUF[f] : ''), `${n(L.length)} altas · ${MESL} ${D.anio}${seg === 'TODOS' ? '' : ' · ' + seg}${zona === 'TODAS' ? '' : ' · zona ' + zona}`, html);
   document.querySelector('#modal .modal').classList.remove('ficha');
-  $('modal-copiar').textContent = 'Copiar tabla';
+  $('modal-copiar').textContent = 'Copiar imagen';
 }
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-cr-lista]'); if (b) abrirListaCoord(b.dataset.crLista); });
 document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.cr-bar [data-cr-lista]')) { e.preventDefault(); abrirListaCoord(e.target.dataset.crLista); } });
@@ -2079,7 +2080,7 @@ $('eec-segs').addEventListener('click', (e) => {
 $('eec-mat').addEventListener('click', (e) => { const b = e.target.closest('[data-evl]'); if (b) abrirListaEvo(b.dataset.evl); });
 $('eec-segs').addEventListener('change', (e) => { const d = e.target.closest('[data-evo-d]'); if (!d) return; evo[d.dataset.evoD] = +d.value; pintarEvoEc(); });
 /* ---------- Avance total (todas las órdenes descargadas por EECC y técnico) ---------- */
-const avt = { per: 'dia', dia: 0, abiertos: new Set(), ec: 'TODOS' };
+const avt = { per: 'dia', dia: 0, abiertos: new Set(), ec: 'TODOS', to: new Set() };   // to = trabajos elegidos (vacío = todos)
 const AVT_ORDEN = ['INSTALACION SERVICIO', 'REINSTALACION SERVICIO', 'SERVICIO TECNICO', 'SUSPENSION DE SERVICIO', 'CORTE DEFINITIVO', 'RECONEXION SERVICIO', 'TRASLADO INTERNO', 'TRASLADO EXTERNO', 'CAMBIO DE EQUIPO', 'RECOJO DE MATERIAL', 'AUDITORIA', 'OTROS'];
 const AVT_GR = (t) => /INSTALACION/.test(t) ? 'INS' : t === 'SERVICIO TECNICO' ? 'AVE' : /TRASLADO|CAMBIO DE EQUIPO/.test(t) ? 'TRA' : 'OTR';
 const AVT_GT = { INS: ['Instalaciones', 'var(--magenta)'], AVE: ['Averías (servicio técnico)', '#2A78D6'], TRA: ['Traslados y cambios de equipo', '#1BAF7A'], OTR: ['Otros', '#C98A0C'] };
@@ -2092,14 +2093,19 @@ function pintarAvt() {
   if (!avt.dia || !dias.includes(avt.dia)) avt.dia = dias[dias.length - 1];
   const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], sv: A.s[x[2]], ec: nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
   const ecsAll = [...new Set(R0.map(x => x.ec))].sort(); avtR = null;
-  const R = R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec);
+  // Trabajos (tipo de orden) que hacen los técnicos: varias opciones a la vez; cuentan con el periodo y la EECC elegidos.
+  const toCnt = {}; R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec).forEach(x => toCnt[x.to] = (toCnt[x.to] || 0) + x.n);
+  const toOps = Object.keys(toCnt).sort((a, b) => { const ia = AVT_ORDEN.indexOf(a), ib = AVT_ORDEN.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
+  [...avt.to].forEach(t => { if (!toCnt[t]) avt.to.delete(t); });
+  const R = R0.filter(x => (avt.ec === 'TODOS' || x.ec === avt.ec) && (!avt.to.size || avt.to.has(x.to)));
   const sum = (L) => L.reduce((a, x) => a + x.n, 0);
   // segmentadores
   $('avt-segs').innerHTML = `<div class="g"><span class="seg-t">Periodo</span><button type="button" class="chip" data-avt-per="dia" aria-pressed="${avt.per === 'dia'}">Día</button><button type="button" class="chip" data-avt-per="mes" aria-pressed="${avt.per === 'mes'}">Mes acumulado</button>
       ${avt.per === 'dia' ? `<select class="sel-dia" id="avt-dia" aria-label="Día">${dias.map(d => `<option value="${d}" ${d === avt.dia ? 'selected' : ''}>${diaInfo(d).wd} ${fDia(d)}</option>`).join('')}</select>` : ''}</div>
-    <div class="g"><span class="seg-t">EECC</span><button type="button" class="chip" data-avt-ec="TODOS" aria-pressed="${avt.ec === 'TODOS'}">Todas</button>${ecsAll.map(e => `<button type="button" class="chip" data-avt-ec="${esc(e)}" aria-pressed="${avt.ec === e}">${esc(e)} (${n(sum(R0.filter(x => x.ec === e)))})</button>`).join('')}</div>`;
+    <div class="g"><span class="seg-t">EECC</span><button type="button" class="chip" data-avt-ec="TODOS" aria-pressed="${avt.ec === 'TODOS'}">Todas</button>${ecsAll.map(e => `<button type="button" class="chip" data-avt-ec="${esc(e)}" aria-pressed="${avt.ec === e}">${esc(e)} (${n(sum(R0.filter(x => x.ec === e)))})</button>`).join('')}</div>
+    <div class="g"><span class="seg-t">Trabajo</span><button type="button" class="chip" data-avt-to="" aria-pressed="${!avt.to.size}">Todos</button>${toOps.map(t => `<button type="button" class="chip" data-avt-to="${esc(t)}" aria-pressed="${avt.to.has(t)}">${esc(t.charAt(0) + t.slice(1).toLowerCase())} (${n(toCnt[t])})</button>`).join('')}</div>`;
   const per = avt.per === 'mes' ? `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · acumulado al ${fDia(dias[dias.length - 1])}` : `${diaInfo(avt.dia).wd} ${fDia(avt.dia)} ${D.anio}`;
-  $('avt-sub').textContent = `${per} · órdenes descargadas por técnicos de EECC${avt.ec === 'TODOS' ? '' : ' · ' + avt.ec}`;
+  $('avt-sub').textContent = `${per} · órdenes descargadas por técnicos de EECC${avt.ec === 'TODOS' ? '' : ' · ' + avt.ec}${avt.to.size ? ' · ' + [...avt.to].map(t => t.toLowerCase()).join(', ') : ''}`;
   const T = sum(R), tecs = new Set(R.map(x => x.ec + '|' + x.tec)).size, gr = {}; R.forEach(x => { const g = AVT_GR(x.to); gr[g] = (gr[g] || 0) + x.n; });
   const pc = (v) => T ? dec(v / T * 100) + '%' : '—';
   $('avt-kpis').innerHTML = kpi('Órdenes descargadas', n(T), `${n(new Set(R.map(x => x.ec)).size)} EECC`, 'acento') + kpi('Técnicos', n(tecs), 'con al menos una orden')
@@ -2141,7 +2147,7 @@ function abrirListaAvt(clave) {
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-tit').textContent = `${t || (e ? 'EECC ' + e : 'Todas las EECC')} · ${qu}`;
   $('modal-sub').textContent = `${L.length} órdenes descargadas · ${avtPer}${t && e ? ' · EECC ' + e : ''}`;
-  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar tabla'; $('modal-copiar-ab').hidden = true;
+  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar imagen'; $('modal-copiar-ab').hidden = true;
   $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin órdenes.</td></tr>`}</tbody></table>`;
   orden['tb-modal'] = null; prepararOrden($('tb-modal')); modalCab = cab; reabrirLista = null;
   if ($('modal').hidden) modalOrigen = document.activeElement;
@@ -2151,7 +2157,8 @@ $('avt-cuerpo').addEventListener('click', (e) => { const b = e.target.closest('[
 $('avt-cuerpo').addEventListener('keydown', (e) => { const b = e.target.closest('i[data-avtl]'); if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrirListaAvt(b.dataset.avtl); } });
 $('avt-segs').addEventListener('click', (e) => {
   const p = e.target.closest('[data-avt-per]'); if (p) { avt.per = p.dataset.avtPer; pintarAvt(); return; }
-  const c = e.target.closest('[data-avt-ec]'); if (c) { avt.ec = c.dataset.avtEc; pintarAvt(); }
+  const c = e.target.closest('[data-avt-ec]'); if (c) { avt.ec = c.dataset.avtEc; pintarAvt(); return; }
+  const t = e.target.closest('[data-avt-to]'); if (t) { const v = t.dataset.avtTo; if (!v) avt.to.clear(); else avt.to.has(v) ? avt.to.delete(v) : avt.to.add(v); pintarAvt(); }
 });
 $('avt-segs').addEventListener('change', (e) => { if (e.target.id === 'avt-dia') { avt.dia = +e.target.value; pintarAvt(); } });
 $('avt-mat').addEventListener('click', (e) => { const z = e.target.closest('[data-avt-z]'); if (!z) return; const k = z.dataset.avtZ; avt.abiertos.has(k) ? avt.abiertos.delete(k) : avt.abiertos.add(k); pintarAvt(); });
@@ -2179,9 +2186,12 @@ function pintarCoord() {
 const CS = { cm: { desde: '', hasta: '', ec: 'TODOS', seg: 'TODOS', rank: 'EC', tg: 'TODOS', eg: 'TODOS', ver: false, mas: false },
              cd: { dia: 0, ec: 'TODOS', seg: 'TODOS', rank: 'EC', tg: 'TODOS', eg: 'TODOS', ver: false, mas: false } };
 // Detalle de cumplimiento por AB (debajo de cada consolidado): segmentadores de varias opciones + búsqueda
-['cm', 'cd'].forEach(m => { CS[m].dt = { res: new Set(), ec: new Set(), ge: new Set(), t: new Set(), fr: new Set(), q: '' }; });
+// Estado OS empieza siempre en DESCARGADA (el cumplimiento se mide sobre las descargadas); se pueden sumar otros estados.
+['cm', 'cd'].forEach(m => { CS[m].dt = { es: new Set(['DESCARGADA']), ini: new Set(), res: new Set(), ec: new Set(), ge: new Set(), t: new Set(), fr: new Set(), q: '' }; });
 const CSD_SEGS = [
-  ['res', 'Resultado', (x) => x.k === 'si' ? 'CUMPLIÓ' : 'NO CUMPLIÓ', ['CUMPLIÓ', 'NO CUMPLIÓ']],
+  ['es', 'Estado OS', (x) => EST_OS[x.e] || x.e, ['DESCARGADA', 'REGISTRADA', 'OBSERVADA', 'ANULADA']],
+  ['ini', 'Inicio', (x) => x.ini ? 'SÍ' : 'NO', ['SÍ', 'NO']],
+  ['res', 'Resultado', (x) => x.e !== 'D' ? 'SIN DESCARGAR' : x.k === 'si' ? 'CUMPLIÓ' : 'NO CUMPLIÓ', ['CUMPLIÓ', 'NO CUMPLIÓ', 'SIN DESCARGAR']],
   ['ec', 'EECC_F', (x) => x.ec || '(EN BLANCO)'],
   ['ge', 'Gestor', (x) => gestorDe(x)],
   ['t', 'Tipo', (x) => x.t === 'AG' ? 'AGENDA' : 'COORDINADA', ['AGENDA', 'COORDINADA']],
@@ -2207,7 +2217,8 @@ function csBase(m, sin = '') {
 const csCuenta = (L) => { const o = { n: L.length, AG: 0, CO: 0, D: 0, A: 0, O: 0, R: 0, si: 0, inc: 0 };
   L.forEach(x => { o[x.t]++; o[x.e] = (o[x.e] || 0) + 1; if (x.e === 'D') { if (x.k === 'si') o.si++; else o.inc++; } }); o.p = o.D ? o.si / o.D * 100 : null; return o; };
 const csGrupo = (m, x) => CS[m].rank === 'GE' ? gestorDe(x) : x.ec;
-const csColor = (p) => p == null ? 'gris' : p >= (CFG.meta_cumpl ?? 95) - 5 ? 'ok' : p >= (CFG.meta_cumpl ?? 95) - 20 ? 'mid' : 'mal';
+// Semáforo del cumplimiento: verde ≥ 95 % · amarillo de 85 % a menos de 95 % · rojo < 85 % (con la meta de 95 %).
+const csColor = (p) => p == null ? 'gris' : p >= (CFG.meta_cumpl ?? 95) ? 'ok' : p >= (CFG.meta_cumpl ?? 95) - 10 ? 'mid' : 'mal';
 function csChips(m, k, ops, cnt, lim = 0) {
   const c = CS[m], todos = ['TODOS', ...ops], ver = lim && !c.mas ? todos.slice(0, lim + 1) : todos;
   return ver.map(o => `<button type="button" class="chip" data-cs-k="${k}" data-v="${esc(o)}" aria-pressed="${c[k] === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && cnt ? ` (${n(cnt(o))})` : ''}</button>`).join('')
@@ -2275,7 +2286,7 @@ function pintarConsol(m) {
   const tabla = `<table class="mat ord tabla-ajuste cs-tab" id="${tid}"><thead><tr><th>#</th>${c.rank === 'GE' ? '<th>Gestor</th><th>EECC</th>' : '<th>Gestor</th><th>EECC</th>'}<th>Programadas</th><th>Agendas</th><th>Coordinadas</th><th>Descargadas</th><th>Cumplió</th><th>No cumplió</th><th>% Cumplimiento</th><th>Anuladas</th><th>Observadas</th><th>Registradas</th></tr></thead><tbody>
     ${fl.map((r, i) => `<tr><td>${i + 1}</td>${c.rank === 'GE' ? `<td>${esc(r.g)}</td><td>${esc(ecsDeGe(r.g).join(', '))}</td>` : `<td>${esc(geDe(r.g) === 'SIN GESTOR' ? 'S/ASIGNAR' : geDe(r.g))}</td><td>${esc(r.g)}</td>`}${celda(r, r.g)}</tr>`).join('') || '<tr><td colspan="14">Sin programadas con estos filtros.</td></tr>'}</tbody>
     <tfoot><tr><td></td><td>Total</td><td></td>${celda(T, '*')}</tr></tfoot></table>`;
-  box.innerHTML = `<div class="cs-cab"><h2 id="t-cs-${m}">Consolidado de Agendas &amp; Coordinadas ${m === 'cd' ? 'del día' : 'del mes'}</h2><div class="cs-acc"><button type="button" class="btn-out" data-copiar-tabla="${tid}">📋 Copiar tablas</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda</button>
+  box.innerHTML = `<div class="cs-cab"><h2 id="t-cs-${m}">Consolidado de Agendas &amp; Coordinadas ${m === 'cd' ? 'del día' : 'del mes'}</h2><div class="cs-acc"><button type="button" class="btn-out" data-img="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda</button>
 </div></div>
     <div class="f-mas cs-fmas" tabindex="0" aria-label="Segmentadores del consolidado: pasa el puntero para verlos">
       <div class="f-mas-cab"><span class="seg-t">Segmentadores</span><span class="f-mas-que">${esc(activos)}</span><span class="f-mas-fl" aria-hidden="true">▾</span></div>
@@ -2290,24 +2301,24 @@ function pintarConsol(m) {
 }
 /* Detalle de cumplimiento e incumplimiento por AB: solo Estado OS DESCARGADA del rango del consolidado (mes: del 1 al último día con descargadas; día: el elegido) */
 function csDetalleAB(m, L, rangoTxt) {
-  const dt = CS[m].dt, B = L.filter(x => x.e === 'D'), tid = 'tb-csd-' + m;
+  const dt = CS[m].dt, B = L, tid = 'tb-csd-' + m;
   const qq = dt.q.trim().toUpperCase();
   const F = B.filter(x => csdOk(m, x) && (!qq || [x.ab, x.os, x.tec, x.di, x.ec].some(v => String(v || '').toUpperCase().includes(qq))))
     .sort((a, b) => (a.k === 'si') - (b.k === 'si') || a.d - b.d || ((franjaDe(a.fr) || [99])[0] - (franjaDe(b.fr) || [99])[0]));
-  const si = F.filter(x => x.k === 'si').length, no = F.length - si;
+  const FD = F.filter(x => x.e === 'D'), si = FD.filter(x => x.k === 'si').length, no = FD.length - si, sinD = F.length - FD.length;
   const act = CSD_SEGS.flatMap(([k, t]) => [...dt[k]].map(v => `${t}: ${v}`));
   const grupos = CSD_SEGS.map(([k, t, f, fijo]) => { const cnt = {}; B.filter(x => csdOk(m, x, k)).forEach(x => { const v = f(x); cnt[v] = (cnt[v] || 0) + 1; });
     let ops = fijo || Object.keys(cnt).sort((a, b) => a.startsWith('(') || a === 'SIN GESTOR' ? 1 : b.startsWith('(') || b === 'SIN GESTOR' ? -1 : a.localeCompare(b, 'es', { numeric: true }));
     return `<div class="g"><span class="seg-t">${t}</span><button type="button" class="chip" data-csd-k="${k}" data-v="" aria-pressed="${!dt[k].size}">Todos</button>${ops.map(v => `<button type="button" class="chip" data-csd-k="${k}" data-v="${esc(v)}" aria-pressed="${dt[k].has(v)}">${esc(v)} (${cnt[v] || 0})</button>`).join('')}</div>`; }).join('');
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
   const filas = F.map(x => { const ge = gestorDe(x);
-    return `<tr><td class="ab-c" data-v="${x.ab}"><b>${x.ab}</b></td><td>${x.os}</td><td>${x.k === 'si' ? '<span class="b ges">Sí</span>' : '<span class="b sges">No</span>'}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di || '—'))}</td><td>${esc(x.seg || '—')}</td>
+    return `<tr><td class="ab-c" data-v="${x.ab}"><b>${x.ab}</b></td><td>${x.os}</td><td>${x.e !== 'D' ? `<span class="b sag" title="${esc(EST_OS[x.e] || x.e)}">—</span>` : x.k === 'si' ? '<span class="b ges">Sí</span>' : '<span class="b sges">No</span>'}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di || '—'))}</td><td>${esc(x.seg || '—')}</td>
       <td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td data-v="${msIso(x.rec)}">${x.rec ? fh(x.rec) + ' ' + x.rec.slice(11, 16) : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td><td>${tipoB(x)}</td>
-      <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td>${btnEd(x)}</td></tr>`; }).join('') || '<tr><td colspan="17">Sin AB descargados con estos filtros.</td></tr>';
-  return `<div class="cs-det csd"><div class="sec-cab"><div><h3 class="cs-h3">Detalle de cumplimiento por AB</h3><p class="sub">${esc(rangoTxt)} · solo Estado OS DESCARGADA · primero los que no cumplieron · BI = inicio de la atención del técnico</p></div>
-      <div class="pen-acc"><span class="nota"><b>${n(F.length)}</b> AB · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span></span><button type="button" class="btn-out" data-csd-ab="${m}">Copiar AB</button><button type="button" class="btn-out" data-copiar-tabla="${tid}">Copiar tabla</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button></div></div>
+      <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td>${btnEd(x)}</td></tr>`; }).join('') || '<tr><td colspan="17">Sin AB con estos filtros.</td></tr>';
+  return `<div class="cs-det csd"><div class="sec-cab"><div><h3 class="cs-h3">Detalle de cumplimiento por AB</h3><p class="sub">${esc(rangoTxt)} · Estado OS: ${esc(dt.es.size ? [...dt.es].map(v => v.toLowerCase()).join(', ') : 'todos')} · primero los que no cumplieron · BI = inicio de la atención del técnico</p></div>
+      <div class="pen-acc"><span class="nota"><b>${n(F.length)}</b> AB · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span>${sinD ? ` · ${n(sinD)} sin descargar` : ''}</span><button type="button" class="btn-out" data-csd-ab="${m}">Copiar AB</button><button type="button" class="btn-out" data-img="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button></div></div>
     <div class="csd-herr"><label class="seg-t csd-bus">Buscar AB <input type="search" data-csd-q="${m}" value="${esc(dt.q)}" placeholder="AB, OS, técnico, distrito o EECC"></label>
-      <div class="f-mas" tabindex="0" aria-label="Segmentadores del detalle: pasa el puntero para verlos"><div class="f-mas-cab"><span class="seg-t">Segmentadores</span><span class="f-mas-que">Resultado · EECC_F · Gestor · Tipo · Franja</span><span class="f-mas-act">${act.map(a => `<span>${esc(a)}</span>`).join('')}</span>${act.length ? `<button type="button" class="lnk" data-csd-limpiar style="font-size:12px">Limpiar</button>` : ''}<span class="f-mas-fl" aria-hidden="true">▾</span></div>
+      <div class="f-mas" tabindex="0" aria-label="Segmentadores del detalle: pasa el puntero para verlos"><div class="f-mas-cab"><span class="seg-t">Segmentadores</span><span class="f-mas-que">Estado OS · Inicio · Resultado · EECC_F · Gestor · Tipo · Franja</span><span class="f-mas-act">${act.map(a => `<span>${esc(a)}</span>`).join('')}</span>${act.length ? `<button type="button" class="lnk" data-csd-limpiar style="font-size:12px">Limpiar</button>` : ''}<span class="f-mas-fl" aria-hidden="true">▾</span></div>
         <div class="f-mas-cuerpo"><div class="segs">${grupos}</div><p class="nota" style="margin:10px 0 0">Cada segmentador admite varias opciones a la vez.</p></div></div></div>
     <p class="pen-aviso" id="aviso-${tid}" role="status" aria-live="polite"></p>
     <div class="csd-caja"><table class="det ord" id="${tid}"><thead><tr><th>AB</th><th>OS</th><th>¿Cumplió?</th><th>Gestor</th><th>EECC_F</th><th>Zona</th><th>Planta</th><th>Distrito</th><th>Segmento</th><th>Técnico</th><th>F. Recep y hora</th><th>F. AG</th><th>Franja</th><th>Tipo</th><th>BI fecha</th><th>BI hora</th><th>Editar</th></tr></thead>
@@ -2352,7 +2363,7 @@ document.addEventListener('click', (e) => {
   modalCab = ['AB', 'OS', 'Tipo', 'EECC', 'Técnico', 'Distrito', 'F. AG', 'Franja', 'Estado OS', 'Inicio', 'Resultado'];
   const [a1, b1] = csRango(m);
   abrirFichaModal(`${CS_K[k]}${tg ? ' · ' + (tg === 'AG' ? 'agendas' : 'coordinadas') : ''}${g === '*' ? '' : ' · ' + g}`, `${n(L.length)} AB · ${a1 === b1 ? fDia(a1) : `del ${fDia(a1)} al ${fDia(b1)}`} ${D.anio}`, html);
-  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar tabla';
+  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar imagen';
 });
 
 /* ---------- Editar una agenda (tipo, fecha y franja) ---------- */
@@ -2431,9 +2442,20 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-ed-ag]'); if (b) { e.preventDefault(); abrirEditarAgenda(b.dataset.edAg); return; }
   if (e.target.closest('[data-ag-buscar]')) abrirBuscarAgenda();
 });
+let coDiaEc = 'TODAS';   // EECC elegida en «Agendas y coordinadas del día»: TODAS = cuadro por EECC; una EECC = detalle por AB
 function pintarCoDia() {
   const G = D.prog.filter(x => ok(x) && x.e === 'D' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo)), cols0 = [...FRANJAS, 'SF'];
   const colDe = (x) => { const f = String(x.fr || '').replace(/\s+/g, ' ').trim(); return FRANJAS.includes(f) ? f : 'SF'; };
+  // Segmentador EECC: todas las EECC con agendas o coordinadas ese día (cualquier estado menos anulada)
+  const P = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo));
+  const ecsP = [...new Set(P.map(x => x.ec))].sort((a, b) => P.filter(x => x.ec === b).length - P.filter(x => x.ec === a).length || a.localeCompare(b));
+  if (coDiaEc !== 'TODAS' && !ecsP.includes(coDiaEc)) coDiaEc = 'TODAS';
+  $('co-ec').innerHTML = [['TODAS', 'Todas', P.length], ...ecsP.map(e => [e, e, P.filter(x => x.ec === e).length])]
+    .map(([v, t, k]) => `<button type="button" class="chip" data-co-ec="${esc(v)}" aria-pressed="${coDiaEc === v}">${esc(t)} (${n(k)})</button>`).join('');
+  $('t-cohoy-sub').textContent = coDiaEc === 'TODAS'
+    ? 'Solo AB descargados · por EECC y franja · cumplió / descargadas · cada franja incluye agendas y coordinadas (pasa el puntero para ver el desglose)'
+    : `EECC ${coDiaEc} · todas sus agendas y coordinadas del día (sin anuladas) · una fila por AB · primero las que aún no inician · BI = inicio de la atención del técnico`;
+  if (coDiaEc !== 'TODAS') return pintarCoDiaEc(P.filter(x => x.ec === coDiaEc), colDe);
   const cols = cols0.filter(f => f !== 'SF' || G.some(x => colDe(x) === 'SF'));
   const m = {}; G.forEach(x => { const k = x.ec + '|' + colDe(x), o = m[k] || (m[k] = { t: 0, a: 0, ag: 0 }); o.t++; if (kMed(x) === 'si') o.a++; if (x.t === 'AG') o.ag++; });
   const ecs = [...new Set(G.map(x => x.ec))].sort((a, b) => G.filter(x => x.ec === b).length - G.filter(x => x.ec === a).length);
@@ -2444,6 +2466,25 @@ function pintarCoDia() {
     ${ecs.map(e => { const L = G.filter(x => x.ec === e), s = sum(L); return `<tr><td><button type="button" class="clic" data-ch="prog" data-d="${diaCo}" data-k="ALL|EC:${esc(e)}" style="all:unset;cursor:pointer">${esc(e)}</button></td>${cols.map(f => c(m[e + '|' + f])).join('')}<td class="t-col">${s.a}/${s.t}</td><td>${pct(s.a, s.t, 0)}</td></tr>`; }).join('')}</tbody>
     <tfoot><tr><td>Total</td>${cols.map(f => { const s = sum(G.filter(x => colDe(x) === f)); return `<td>${s.t ? s.a + '/' + s.t : '·'}</td>`; }).join('')}<td>${sum(G).a}/${G.length}</td><td>${pct(sum(G).a, G.length, 0)}</td></tr></tfoot></table>`;
 }
+/* Detalle por AB de una EECC en el día: como el cuadro «QT AGENDA» de operaciones, con el formato del portal */
+function pintarCoDiaEc(L, colDe) {
+  if (!L.length) { $('co-hoy').innerHTML = '<p class="nota">Esa EECC no tiene agendas ni coordinadas ese día.</p>'; return; }
+  const cols = [...FRANJAS, 'SF'].filter(f => L.some(x => colDe(x) === f));
+  const fIni = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '';
+  const R = [...L].sort((a, b) => (!!a.ini - !!b.ini) || cols.indexOf(colDe(a)) - cols.indexOf(colDe(b)) || String(a.tec || '').localeCompare(String(b.tec || '')) || a.ab - b.ab);
+  const sinIni = R.filter(x => !x.ini).length;
+  const filas = R.map(x => { const ge = gestorDe(x), f = colDe(x);
+    return `<tr><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${ge === 'SIN GESTOR' ? '—' : esc(ge)}</td><td title="${esc(x.di || '')}">${esc(corto(x.di || '—'))}</td>
+      <td class="ab-c" data-v="${x.ab}"><b>${x.ab}</b></td><td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td><span class="b seg">${esc(x.seg || '—')}</span></td><td>${tipoB(x)}</td><td>${esc(EST_OS[x.e] || x.e)}</td>
+      <td data-v="${x.ini || ''}">${x.ini ? fIni(x.ini) : '<span class="b sges">SIN INICIAR</span>'}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td>
+      ${cols.map(c => `<td class="${c === f ? 't-col' : 'cero'}">${c === f ? 1 : ''}</td>`).join('')}<td class="t-col">1</td></tr>`; }).join('');
+  $('co-hoy').innerHTML = `<p class="nota" style="margin:0 0 8px"><b>${n(R.length)}</b> AB · <span style="color:var(--mal);font-weight:700">${n(sinIni)} sin iniciar</span> · ${n(R.length - sinIni)} iniciados</p>
+    <table class="mat tabla-ajuste" id="tb-co-ec"><thead><tr><th>EECC_F</th><th>Zona</th><th>Gestor</th><th>Distrito</th><th>AB</th><th>Técnico</th><th>Segmento</th><th>Tipo</th><th>Estado OS</th><th>BI fecha</th><th>BI hora</th>${cols.map(c => `<th>${c === 'SF' ? 'Sin franja' : c}</th>`).join('')}<th>Total</th></tr></thead>
+    <tbody>${filas}</tbody>
+    <tfoot><tr><td>Total ${esc(L[0].ec)}</td><td colspan="10"></td>${cols.map(c => `<td>${n(R.filter(x => colDe(x) === c).length)}</td>`).join('')}<td>${n(R.length)}</td></tr></tfoot></table>`;
+  prepararOrden($('tb-co-ec'));
+}
+$('co-ec').addEventListener('click', (e) => { const b = e.target.closest('[data-co-ec]'); if (!b) return; coDiaEc = b.dataset.coEc; pintarCoDia(); });
 $('co-dia').addEventListener('change', (e) => { diaCo = +e.target.value; pintarCoDia(); });
 
 /* ---------- AVANCE ---------- */
@@ -2735,7 +2776,7 @@ $('modal-cuerpo').addEventListener('click', async (e) => {
   try { await guardarAjustes(); filtro.penEc = 'TODOS'; filtro.penGe = 'TODOS'; aplicarAjustes(); pintarFiltros(); pintarTodo(); cerrarModal(); $('pen-ag-est').textContent = 'Metas, EECC y gestores guardados.'; $('pen-ag-est').style.color = 'var(--ok)'; }
   catch (err) { AJ = JSON.parse(previo); $('modal-aviso').textContent = err.message; b.disabled = false; }
 });
-function cerrarModal() { volverLista = null; $('modal-copiar-ab').hidden = true; $('modal-copiar').hidden = false; document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar tabla'; $('modal').hidden = true; document.body.classList.remove('con-modal'); if (modalOrigen && modalOrigen.focus) modalOrigen.focus(); }
+function cerrarModal() { volverLista = null; $('modal-copiar-ab').hidden = true; $('modal-copiar').hidden = false; document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar imagen'; $('modal').hidden = true; document.body.classList.remove('con-modal'); if (modalOrigen && modalOrigen.focus) modalOrigen.focus(); }
 $('modal-cerrar').addEventListener('click', cerrarModal);
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) cerrarModal(); });
 document.addEventListener('keydown', (e) => {
@@ -2751,10 +2792,19 @@ $('modal-copiar').addEventListener('click', async () => {
     catch { $('modal-aviso').textContent = 'Tu navegador no permitió copiar.'; }
     return;
   }
-  const tb = $('tb-modal'), vis = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1).map(r => [...r.cells].map(c => c.textContent.trim()));
-  const txt = [modalCab, ...vis].map(f => f.join('\t')).join('\n');
-  try { await navigator.clipboard.writeText(txt); $('modal-aviso').textContent = `Tabla copiada (${vis.length} filas). Pégala en Excel o WhatsApp.`; }
-  catch { $('modal-aviso').textContent = 'Tu navegador no permitió copiar. Selecciona la tabla y usa Ctrl+C.'; }
+  // Tablas de la ventana: se copian como imagen (título + tabla), igual que las demás tablas del portal.
+  const b = $('modal-copiar'); b.disabled = true; $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Generando imagen…';
+  try {
+    await cargar(URL_H2C);
+    const caja = document.createElement('div'), fondo = getComputedStyle(document.querySelector('#modal .modal')).backgroundColor;
+    caja.style.cssText = `position:fixed;left:-10000px;top:0;padding:16px;background:${fondo};width:max-content;font-family:var(--f-txt)`;
+    caja.innerHTML = `<h3 style="margin:0 0 4px;font:700 16px var(--f-disp)">${esc($('modal-tit').textContent)}</h3><p style="margin:0 0 10px;font-size:13px;color:var(--fg-3)">${esc($('modal-sub').textContent)}</p>`;
+    caja.appendChild($('tb-modal').cloneNode(true)); document.body.appendChild(caja);
+    const blob = new Promise(async (ok) => { const cv = await html2canvas(caja, { backgroundColor: fondo, scale: 2, logging: false }); caja.remove(); cv.toBlob(ok, 'image/png'); });
+    try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); $('modal-aviso').textContent = 'Imagen copiada. Pégala con Ctrl+V en WhatsApp, correo o Excel.'; }
+    catch { await bajar(await blob, nombreArch('detalle', 'png')); $('modal-aviso').textContent = 'El navegador no permitió copiar; se descargó la imagen en PNG.'; }
+  } catch { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudo generar la imagen. Revisa tu conexión.'; }
+  finally { b.disabled = false; }
 });
 document.addEventListener('click', (e) => { const b = e.target.closest('.clic[data-ch]'); if (b) abrirDetalle(b.dataset.ch, b.dataset.d, b.dataset.k); });
 

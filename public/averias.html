@@ -386,7 +386,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
     </section>
     <section class="sec" aria-labelledby="t-altas">
       <div class="sec-cab"><div><h2 id="t-altas">Altas pendientes</h2><p class="sub" id="altas-sub"></p></div>
-        <div class="pen-acc"><button type="button" class="btn-out" data-copiar-tabla="tb-altas">Copiar tabla</button><button type="button" class="btn-out" data-copiar-img="tb-altas">Copiar imagen</button></div></div>
+        <div class="pen-acc"><button type="button" class="btn-out" data-copiar-img="tb-altas">Copiar imagen</button></div></div>
       <p class="nota">Pendientes (REGISTRADA) por zona y distrito (filas) y fecha de F. Recep (columnas). Cada distrito se agrupa en su zona. Respeta los filtros de la franja; puedes acotar por EECC y agenda.</p>
       <div class="segs" id="altas-segs"></div>
       <div class="ley"><span><b class="e3"></b>8+ días</span><span><b class="e2"></b>4 a 7 días</span><span><b class="e1"></b>3 días · desde 3 días cuentan en % antiguas</span><span><b style="background:var(--magenta)"></b>Hoy</span></div>
@@ -440,7 +440,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-tit" aria-describedby="modal-sub">
     <div class="modal-cab">
       <div><h3 id="modal-tit"></h3><p id="modal-sub"></p></div>
-      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-img">Copiar imagen</button><button type="button" class="btn-sec" id="modal-copiar">Copiar tabla</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
+      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-img">Copiar imagen</button><button type="button" class="btn-sec" id="modal-copiar">Copiar</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
     </div>
     <div class="modal-aviso" id="modal-aviso" role="status"></div>
     <div class="modal-cuerpo" id="modal-cuerpo"></div>
@@ -787,7 +787,7 @@ function abrirDetalle(ch, d, k) {
   orden['tb-modal'] = null;
   prepararOrden($('tb-modal'));
   modalDatos = { cab, filas: filasTxt };
-  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar tabla';
+  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').hidden = true;   // las tablas se copian con «Copiar imagen»
   if ($('modal').hidden) modalOrigen = document.activeElement;
   $('modal').hidden = false; document.body.classList.add('con-modal');
   $('modal-cerrar').focus();
@@ -950,7 +950,7 @@ async function guardarCien(x, ajuste, clave, okTxt) {
 }
 function avisoGlobal(t) { let el = $('aviso-flot'); if (!el) { el = document.createElement('div'); el.id = 'aviso-flot'; el.className = 'aviso-flot'; el.setAttribute('role', 'status'); document.body.appendChild(el); } el.textContent = t; el.classList.add('on'); clearTimeout(avisoGlobal.t); avisoGlobal.t = setTimeout(() => el.classList.remove('on'), 3500); }
 function cerrarModal() {
-  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar tabla'; $('modal-copiar').hidden = false; ultLista = null;
+  document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar'; $('modal-copiar').hidden = false; ultLista = null;
   $('modal').hidden = true; document.body.classList.remove('con-modal');
   if (modalOrigen && modalOrigen.focus) modalOrigen.focus();
 }
