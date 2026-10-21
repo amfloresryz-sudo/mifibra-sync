@@ -940,7 +940,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-tit" aria-describedby="modal-sub">
     <div class="modal-cab">
       <div><h3 id="modal-tit"></h3><p id="modal-sub"></p></div>
-      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-copiar-ab" hidden>Copiar AB</button><button type="button" class="btn-sec" id="modal-copiar">Copiar imagen</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
+      <div class="modal-acc"><button type="button" class="btn-sec" id="modal-copiar-ab" hidden>Copiar AB</button><button type="button" class="btn-sec" id="modal-xls" hidden>Descargar Excel</button><button type="button" class="btn-sec" id="modal-copiar">Copiar imagen</button><button type="button" class="btn-x" id="modal-cerrar" aria-label="Cerrar">×</button></div>
     </div>
     <div class="modal-aviso" id="modal-aviso" role="status"></div>
     <div class="modal-cuerpo" id="modal-cuerpo"></div>
@@ -1050,6 +1050,7 @@ const edadDias = (iso) => iso ? Math.round((msIso(hoyIso()) - msIso(iso.slice(0,
 const zIdx = (z) => { const i = ZORD.indexOf(z); return i < 0 ? 99 : i; };
 const CANALES = [['TODOS','Todos'],['IC','Integral de campo'],['VI','Ventas inbound'],['OT','Otros canales']];
 const okCn = (x, c = canal) => c === 'TODOS' || x.cn === c;
+const cnNom = (c) => (CANALES.find(k => k[0] === c) || [0, c || '—'])[1];
 const ok = (x) => (seg === 'TODOS' || x.seg === seg) && okCn(x) && (zona === 'TODAS' || x.z === zona);
 const tecCorto = (t) => { if (!t) return '—'; const [ape, nom] = t.split(','); return nom ? `${nom.trim().split(' ')[0]} ${ape.trim().split(' ')[0]}` : t; };
 // El robot clasifica (t): CO si de la F. Recep al inicio de la franja (la de la OS si la trae; si no, la del comentario del técnico) hay 24 h o menos; AG si hay más.
@@ -2597,8 +2598,8 @@ function abrirDetalle(ch, d, k) {
     tit = kk.startsWith('DI:') ? kk.slice(3) : 'Pendientes'; sub = `${L.length} altas pendientes (REGISTRADA)`;
   } else {
     L = D.liq.filter(ok).filter(x => (dia == null || x.d === dia) && sel(x));
-    cab = ['AB', 'OS', 'F. atención', 'Zona', 'Distrito', 'Segmento', 'Planta', 'EECC_F', 'Técnico', 'Franja OS', 'Recepción', 'Hora I', 'Hora F'];
-    filas = L.map(x => `<tr><td>${x.ab}</td><td>${x.os}</td><td data-v="${x.d}">${fDia(x.d)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(corto(x.di))}</td><td>${esc(x.seg)}</td><td>${esc(x.pl)}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td><td>${x.fr && x.fr !== 'NO DEFINE' ? esc(x.fr) : '—'}</td><td data-v="${msIso(x.rec)}">${fechaHora(x.rec)}</td><td>${x.hi || '—'}</td><td>${x.hf || '—'}</td></tr>`);
+    cab = ['AB', 'OS', 'F. atención', 'Zona', 'Distrito', 'Segmento', 'Canal', 'Planta', 'EECC_F', 'Técnico', 'Franja OS', 'Recepción', 'Hora I', 'Hora F', 'Estado OS'];
+    filas = L.map(x => `<tr><td>${x.ab}</td><td>${x.os}</td><td data-v="${x.d}">${fDia(x.d)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(corto(x.di))}</td><td>${esc(x.seg)}</td><td>${esc(cnNom(x.cn))}</td><td>${esc(x.pl)}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td><td>${x.fr && x.fr !== 'NO DEFINE' ? esc(x.fr) : '—'}</td><td data-v="${msIso(x.rec)}">${fechaHora(x.rec)}</td><td>${x.hi || '—'}</td><td>${x.hf || '—'}</td><td>Descargada</td></tr>`);
     tit = kk.startsWith('DI:') ? kk.slice(3) : kk.startsWith('Z:') ? 'Zona ' + kk.slice(2) : kk.startsWith('EC:') ? kk.slice(3) : kk.startsWith('PL:') ? kk.slice(3) : (NOM_K[kk] || 'Instalaciones');
     tit = `${tit === 'Todas' ? 'Instalaciones' : tit} · liquidadas`; sub = `${L.length} instalaciones DESCARGADA por fecha de atención`;
   }
@@ -2796,6 +2797,31 @@ $('modal-cuerpo').addEventListener('click', async (e) => {
 });
 function cerrarModal() { volverLista = null; $('modal-copiar-ab').hidden = true; $('modal-copiar').hidden = false; document.querySelector('#modal .modal').classList.remove('ficha'); $('modal-copiar').textContent = 'Copiar imagen'; $('modal').hidden = true; document.body.classList.remove('con-modal'); if (modalOrigen && modalOrigen.focus) modalOrigen.focus(); }
 $('modal-cerrar').addEventListener('click', cerrarModal);
+/* Descargar Excel: visible en las listas de abonados de la ventana (tabla de detalle) */
+new MutationObserver(() => { $('modal-xls').hidden = !document.querySelector('#modal-cuerpo table.det#tb-modal'); }).observe($('modal-cuerpo'), { childList: true });
+$('modal-xls').addEventListener('click', async () => {
+  const tb = $('tb-modal'), b = $('modal-xls'); if (!tb) return;
+  b.disabled = true; $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Generando Excel…';
+  try {
+    await cargar(URL_XLS);
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Detalle', { views: [{ state: 'frozen', ySplit: 1 }] }), borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
+    const filas = [tb.tHead.rows[0], ...[...tb.tBodies[0].rows].filter(r => r.cells.length > 1)], anchos = [];
+    filas.forEach((tr, i) => { const fila = ws.getRow(i + 1);
+      [...tr.cells].forEach((td, j) => { const txt = td.innerText.replace(/\s+/g, ' ').replace(/[↕↑↓▲▼▸▾]/g, '').trim(), c = fila.getCell(j + 1);
+        c.value = i > 0 && /^\d+$/.test(txt) && txt.length < 12 ? Number(txt) : txt === '—' ? '' : txt;
+        c.font = { name: 'Calibri', size: 11, bold: i === 0, color: { argb: i === 0 ? 'FFFFFFFF' : 'FF111827' } };
+        if (i === 0) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2A44' } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = { top: borde, left: borde, bottom: borde, right: borde };
+        anchos[j] = Math.max(anchos[j] || 6, txt.length + 3); }); });
+    anchos.forEach((w, j) => ws.getColumn(j + 1).width = Math.min(w, 40));
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: anchos.length } };
+    const buf = await wb.xlsx.writeBuffer();
+    const base = $('modal-tit').textContent.split('·').slice(0, 2).join('-').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'detalle';
+    await bajar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArch(base, 'xlsx'));
+    $('modal-aviso').textContent = `Excel descargado con ${filas.length - 1} filas.`;
+  } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err && err.code === 'declined' ? 'Descarga cancelada.' : 'No se pudo generar el Excel. Revisa tu conexión.'; }
+  finally { b.disabled = false; }
+});
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) cerrarModal(); });
 document.addEventListener('keydown', (e) => {
   if ($('modal').hidden) return;
