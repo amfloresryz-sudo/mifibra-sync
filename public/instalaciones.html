@@ -269,6 +269,14 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .prog { height: 8px; border-radius: 4px; background: var(--gris-bg); overflow: hidden; margin-top: 4px; }
 .prog i { display: block; height: 100%; background: var(--magenta); border-radius: 4px; }
 .kpi .meta { font-size: 12px; color: var(--fg-4); }
+/* Avance total: todos los indicadores en una sola fila; se reparten el ancho según cuántos haya */
+#v-avt #avt-kpis { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+#avt-kpis .kpi { padding: 12px clamp(8px, 0.8vw, 12px); min-width: 0; overflow: hidden; }
+#avt-kpis .kpi > * { min-width: 0; overflow-wrap: anywhere; }
+#avt-kpis .kpi .l { font-size: clamp(9.5px, 0.75vw, 11px); letter-spacing: .3px; line-height: 1.25; hyphens: auto; }
+#avt-kpis .kpi .kv { font-size: clamp(22px, 1.9vw, 30px); }
+#avt-kpis .kpi .s { font-size: 12px; }
+@media (max-width: 760px) { #v-avt #avt-kpis { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .par { display: flex; gap: 3px; align-items: flex-end; justify-content: center; height: 210px; }
 .par .bb { width: 44%; max-width: 18px; border: 0; padding: 0; border-radius: 4px 4px 0 0; position: relative; }
 .par .bb span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); font: 700 10.5px var(--f-disp); color: var(--fg-2); padding-bottom: 2px; white-space: nowrap; }
@@ -2110,7 +2118,7 @@ function pintarAvt() {
   const pc = (v) => T ? dec(v / T * 100) + '%' : '—';
   $('avt-kpis').innerHTML = kpi('Órdenes descargadas', n(T), `${n(new Set(R.map(x => x.ec)).size)} EECC`, 'acento') + kpi('Técnicos', n(tecs), 'con al menos una orden')
     + kpi('Promedio por técnico', tecs ? dec(T / tecs) : '—', avt.per === 'mes' ? `en el mes · ${dec(T / tecs / dias.length)} por día` : 'órdenes en el día')
-    + Object.keys(AVT_GT).map(g => kpi(AVT_GT[g][0], `<span style="color:${AVT_GT[g][1]}">${n(gr[g] || 0)}</span>`, pc(gr[g] || 0) + ' del total')).join('');
+    + Object.keys(AVT_GT).filter(g => gr[g]).map(g => kpi(AVT_GT[g][0], `<span style="color:${AVT_GT[g][1]}">${n(gr[g])}</span>`, pc(gr[g]) + ' del total')).join('');   // solo los grupos con órdenes
   // gráfico gerencial: barras apiladas por EECC
   const porEc = {}; R.forEach(x => { const o = porEc[x.ec] || (porEc[x.ec] = { n: 0, t: new Set() }); o.n += x.n; o.t.add(x.tec); const g = AVT_GR(x.to); o[g] = (o[g] || 0) + x.n; });
   const ecs = Object.keys(porEc).sort((a, b) => porEc[b].n - porEc[a].n), mx = Math.max(1, ...ecs.map(e => porEc[e].n));
