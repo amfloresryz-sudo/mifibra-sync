@@ -372,6 +372,8 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .csd-bus input { font: inherit; font-size: 15px; font-weight: 600; padding: 9px 12px; border: 2px solid var(--magenta); border-radius: 10px; background: var(--sup); color: var(--fg); }
 .csd-caja { max-height: 560px; overflow: auto; border: 1px solid var(--borde); border-radius: 12px; }
 .csd-caja table { width: 100%; }
+.ab-com { all: unset; cursor: pointer; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ab-com:hover, .ab-com:focus-visible { text-decoration: underline; outline: none; }
 #tb-codet td.ab-c, .csd-caja td.ab-c { background: var(--rosa); color: var(--magenta-txt); font-size: 13.5px; position: sticky; left: 0; }
 .csd-caja thead th:first-child { position: sticky; left: 0; z-index: 2; }
 @media (max-width: 760px) { .csd-herr { grid-template-columns: 1fr; } }
@@ -1963,7 +1965,7 @@ function pintarCoDetalle() {
   $('codet-n').textContent = `${n(L.length)} registros`;
   const cuB = (k) => k === 'si' ? '<span class="b ges">Sí</span>' : (k === 'tarde' || k === 'no') ? '<span class="b sges">No</span>' : '<span class="b sag">Pendiente</span>';
   $('codet-filas').innerHTML = L.map(x => { const ge = gestorDe(x);
-    return `<tr><td class="ab-c" data-v="${x.ab}"><b>${x.ab}</b></td><td>${x.os}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
+    return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
       <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)}/${x.rec.slice(0, 4)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td>
       <td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${x.ini ? `${x.ini.slice(8, 10)}/${x.ini.slice(5, 7)}/${x.ini.slice(0, 4)}` : '—'}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td>
@@ -2326,7 +2328,7 @@ function csDetalleAB(m, L, rangoTxt) {
     return `<div class="g"><span class="seg-t">${t}</span><button type="button" class="chip" data-csd-k="${k}" data-v="" aria-pressed="${!dt[k].size}">Todos</button>${ops.map(v => `<button type="button" class="chip" data-csd-k="${k}" data-v="${esc(v)}" aria-pressed="${dt[k].has(v)}">${esc(v)} (${cnt[v] || 0})</button>`).join('')}</div>`; }).join('');
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
   const filas = F.map(x => { const ge = gestorDe(x);
-    return `<tr><td class="ab-c" data-v="${x.ab}"><b>${x.ab}</b></td><td>${x.os}</td><td>${x.e !== 'D' ? `<span class="b sag" title="${esc(EST_OS[x.e] || x.e)}">—</span>` : x.k === 'si' ? '<span class="b ges">Sí</span>' : '<span class="b sges">No</span>'}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di || '—'))}</td><td>${esc(x.seg || '—')}</td>
+    return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${x.e !== 'D' ? `<span class="b sag" title="${esc(EST_OS[x.e] || x.e)}">—</span>` : x.k === 'si' ? '<span class="b ges">Sí</span>' : '<span class="b sges">No</span>'}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di || '—'))}</td><td>${esc(x.seg || '—')}</td>
       <td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td data-v="${msIso(x.rec)}">${x.rec ? fh(x.rec) + ' ' + x.rec.slice(11, 16) : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td><td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td data-v="${x.ini ? 0 : 1}"><span class="b ${x.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'SÍ' : 'NO'}</span></td><td>${btnEd(x)}</td></tr>`; }).join('') || '<tr><td colspan="18">Sin AB con estos filtros.</td></tr>';
   return `<div class="cs-det csd"><div class="sec-cab"><div><h3 class="cs-h3">Detalle de cumplimiento por AB</h3><p class="sub">${esc(rangoTxt)} · Estado OS: ${esc(dt.es.size ? [...dt.es].map(v => v.toLowerCase()).join(', ') : 'todos')} · primero los que no cumplieron · BI = inicio de la atención del técnico</p></div>
@@ -2497,7 +2499,7 @@ function pintarCoDiaEc(L, colDe) {
   const sinIni = R.filter(x => !x.ini).length;
   const filas = R.map(x => { const ge = gestorDe(x), f = colDe(x);
     return `<tr><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${ge === 'SIN GESTOR' ? '—' : esc(ge)}</td><td title="${esc(x.di || '')}">${esc(corto(x.di || '—'))}</td>
-      <td class="ab-c" data-v="${x.ab}"><b>${x.ab}</b></td><td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td><span class="b seg">${esc(x.seg || '—')}</span></td><td>${tipoB(x)}</td><td>${esc(EST_OS[x.e] || x.e)}</td>
+      <td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td><span class="b seg">${esc(x.seg || '—')}</span></td><td>${tipoB(x)}</td><td>${esc(EST_OS[x.e] || x.e)}</td>
       <td data-v="${x.ini || ''}">${x.ini ? fIni(x.ini) : '<span class="b sges">SIN INICIAR</span>'}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td>
       ${cols.map(c => `<td class="${c === f ? 't-col' : 'cero'}">${c === f ? 1 : ''}</td>`).join('')}<td class="t-col">1</td></tr>`; }).join('');
   $('co-hoy').innerHTML = `<p class="nota" style="margin:0 0 8px"><b>${n(R.length)}</b> AB · <span style="color:var(--mal);font-weight:700">${n(sinIni)} sin iniciar</span> · ${n(R.length - sinIni)} iniciados</p>
@@ -2614,6 +2616,24 @@ function abrirDetalle(ch, d, k) {
   orden['tb-modal'] = null; prepararOrden($('tb-modal')); modalCab = cab;
   modalOrigen = document.activeElement; $('modal').hidden = false; document.body.classList.add('con-modal'); $('modal-cerrar').focus();
 }
+/* ---------- Comentario del técnico al hacer clic en el AB (agendas y cumplimiento) ---------- */
+async function comentarioAB(os) {
+  const x = (D.progRaw || D.prog || []).find(p => String(p.os) === String(os)) || D.pend.find(p => String(p.os) === String(os));
+  if (!x) return;
+  const sub = `OS ${x.os} · ${x.ec || '—'} · ${x.tec || 'sin técnico'} · ${x.di || '—'}`;
+  const cuerpo = (t, en) => (t ? `<div class="fi-obs">${obsCompleta(t)}${en ? `<small>Última anotación: ${esc(en)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
+    + '<p class="fi-nota">Los teléfonos del comentario se ocultan.</p>';
+  const pend = D.pend.find(p => String(p.os) === String(os));
+  if (pend && (pend.ovt || pend.ov)) { abrirFichaModal(`AB ${x.ab} · comentario del técnico`, sub, secF('OBS VISITA TÉCNICO (completo)', cuerpo(pend.ovt || pend.ov, pend.ove))); return; }
+  abrirFichaModal(`AB ${x.ab} · comentario del técnico`, sub, '<p class="fi-nota">Cargando el comentario…</p>');
+  if (!x.id) { $('modal-cuerpo').innerHTML = '<p class="fi-nota">El comentario de esta OS estará disponible desde la próxima actualización del robot.</p>'; return; }
+  try {
+    const r = await fetch('/api/comentario?id=' + encodeURIComponent(x.id), { headers: { 'x-portal-token': tokenPortal() } });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+    if (!$('modal').hidden) $('modal-cuerpo').innerHTML = secF('OBS VISITA TÉCNICO (completo)', cuerpo(j.obs_visita_todo || j.obs_visita, j.obs_visita_en));
+  } catch (e) { $('modal-cuerpo').innerHTML = `<p class="fi-nota">No se pudo traer el comentario: ${esc(e.message)}</p>`; }
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-com]'); if (b) { e.stopPropagation(); comentarioAB(b.dataset.com); } });
 /* ---------- Ficha del AB y cajas cercanas (pestaña Pendientes) ---------- */
 const val = (v) => v === null || v === undefined || v === '' ? '—' : esc(v);
 const grilla = (pares) => `<div class="fi-grid">${pares.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
