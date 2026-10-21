@@ -746,6 +746,15 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 @media (max-width: 700px) { .segs-obs .g > .seg-t { min-width: 100%; } .pv > * > tr > :first-child { min-width: 150px !important; } }
 #vista[hidden], #ab-cuerpo[hidden] { display: none !important; }
 #tb-modal td, #tb-modal th { white-space: nowrap !important; }
+.t-segs { gap: 8px 22px; } .t-segs .g > .seg-t { min-width: 0; margin-right: 4px; }
+.t-segs .mas { all: unset; cursor: pointer; font: 600 12px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; }
+.pv > thead > tr.grupo > th .fcol { color: #FFFFFF; } .pv > thead > tr.grupo > th .fcol.on { background: var(--magenta); }
+.meta-r { font: 700 11px var(--f-disp); padding: 2px 8px; border-radius: 8px; } .meta-r.ok { background: var(--ok-bg); color: var(--ok); } .meta-r.mal { background: var(--mal-bg); color: var(--mal); }
+.lnk-meta { all: unset; cursor: pointer; font: 600 12px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; margin-left: 4px; }
+.lnk-meta:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+.f-meta { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; margin-bottom: 12px; }
+.f-meta label { display: flex; flex-direction: column; gap: 6px; font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
+.f-meta input { font: 500 15px var(--f-txt); padding: 9px 12px; border: 1px solid var(--borde-2); border-radius: 10px; background: var(--sup); color: var(--fg); width: 200px; }
 .pv.dis { min-width: 0; width: 100%; max-width: 900px; }
 .pv.dis > * > tr > td:first-child, .pv.dis > thead > tr > th:first-child { min-width: 90px; }
 .pv.dis td.izq, .pv.dis > thead > tr > th:nth-child(2) { text-align: left; }
@@ -787,6 +796,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <section class="sec" id="sec-pl" aria-labelledby="t-pl">
     <div class="sec-cab"><div><h2 id="t-pl">Resumen por zona</h2><p class="sub">Motivo de observación (COMERCIAL / TÉCNICO) y motivo detallado por zona · «NO DESEA» agrupa sus variantes (clic en + para ver el detalle) · clic en un número para ver los abonados.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" data-abrir="pl">Expandir todo</button><button type="button" class="btn-out" data-img="tb-pl" data-nom="observadas-por-zona">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-pl" data-nom="observadas-por-zona">Descargar Excel</button></div></div>
+    <div class="segs t-segs" id="ts-pl"></div>
     <p class="pen-aviso" id="aviso-tb-pl" role="status" aria-live="polite"></p>
     <div class="scroll" id="w-pl"></div>
   </section>
@@ -794,6 +804,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <section class="sec" id="sec-di" aria-labelledby="t-di">
     <div class="sec-cab"><div><h2 id="t-di">Resumen por distrito</h2><p class="sub">Observadas comerciales y técnicas de cada distrito, agrupadas por zona · clic en un número para ver los abonados.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" data-img="tb-di" data-nom="observadas-por-distrito">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-di" data-nom="observadas-por-distrito">Descargar Excel</button></div></div>
+    <div class="segs t-segs" id="ts-di"></div>
     <p class="pen-aviso" id="aviso-tb-di" role="status" aria-live="polite"></p>
     <div class="scroll" id="w-di"></div>
   </section>
@@ -801,6 +812,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <section class="sec" id="sec-ab" aria-labelledby="t-ab">
     <div class="sec-cab"><div><h2 id="t-ab">Resumen de AB observados</h2><p class="sub">Observadas por motivo y día de observación.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" id="ab-ver" aria-expanded="true" aria-controls="ab-cuerpo">▲ Ocultar resumen</button><button type="button" class="btn-out" data-abrir="ab">Expandir todo</button><button type="button" class="btn-out" data-img="tb-ab" data-nom="resumen-ab-observados">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-ab" data-nom="resumen-ab-observados">Descargar Excel</button></div></div>
+    <div class="segs t-segs" id="ts-ab"></div>
     <p class="pen-aviso" id="aviso-tb-ab" role="status" aria-live="polite"></p>
     <div id="ab-cuerpo"><div class="scroll" id="w-ab"></div></div>
   </section>
@@ -809,6 +821,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <div class="sec-cab"><div><h2 id="t-mo">Observadas por motivo</h2><p class="sub">Clic en + de un motivo para ver el detalle de sus OS · clic en el AB para ver el comentario del técnico.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" id="mo-exp">Expandir todo</button><button type="button" class="btn-out" id="mo-red">Reducir todo</button><button type="button" class="btn-out" data-img="tb-mo" data-nom="observadas-por-motivo">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-mo" data-nom="observadas-por-motivo">Descargar Excel</button></div></div>
     <div class="herr"><label class="seg-t" for="buscar" style="display:flex;flex-direction:column;gap:6px;flex:1 1 260px">Buscar<input id="buscar" type="search" placeholder="AB, OS, técnico, distrito, gestor, EECC, planta o motivo"></label><span class="nota" id="mo-n"></span></div>
+    <div class="segs t-segs" id="ts-mo"></div>
     <p class="pen-aviso" id="aviso-tb-mo" role="status" aria-live="polite"></p>
     <div class="scroll" id="w-mo"></div>
     <p class="nota">Tiempo hasta observado = días entre la F. Recep y la fecha de observación · EECC y técnico de una observada: los del técnico escrito entre %…% en su comentario (si no hay, los de la OS) · Gestor según la EECC (ajuste del portal).</p>
@@ -961,9 +974,61 @@ function pivote(tid, recs, colDe, cols, cab, opc = {}) {
     });
   });
   const pie = `<tr><td>Total general</td>${cols.map(c => { const X = recs.filter(r => colDe(r) === c); return `<td>${lista(X, `Total · ${opc.colTxt ? opc.colTxt(c) : c}`)}</td>`; }).join('')}<td class="tg-c">${lista(recs, 'Total general')}</td><td class="pc">100%</td></tr>`;
-  return `<table class="pv" id="tb-${tid}"><thead><tr class="grupo"><th rowspan="2">Motivo</th><th colspan="${cols.length}">${cab}</th><th rowspan="2" class="tg-c">Total general</th><th rowspan="2">%</th></tr>
+  return `<table class="pv" id="tb-${tid}"><thead><tr class="grupo"><th rowspan="2">Motivo${btnHF(tid, 'mot')}</th><th colspan="${cols.length}">${cab}${btnHF(tid, 'col')}</th><th rowspan="2" class="tg-c">Total general</th><th rowspan="2">%</th></tr>
     <tr>${cols.map(c => `<th>${esc(opc.colTxt ? opc.colTxt(c) : c)}</th>`).join('')}</tr></thead><tbody>${body}</tbody><tfoot>${pie}</tfoot></table>`;
 }
+/* ---------- Segmentadores de cada tabla (Motivo y Zona) y filtros en los encabezados ---------- */
+const TS = Object.fromEntries(['pl', 'di', 'ab', 'mo'].map(t => [t, { m: new Set(), z: new Set() }]));
+const HF = { pl: {}, di: {}, ab: {}, mo: {} };
+const zonaDe = (r) => r.z || 'SIN ZONA';
+const HFV = { pl: { mot: r => r.g, col: zonaDe }, ab: { mot: r => r.g, col: r => r.f }, mo: { mot: r => r.g, col: r => r.f }, di: { z: zonaDe, d: r => r.di } };
+const HFT = { pl: { mot: 'Motivo', col: 'Zona' }, ab: { mot: 'Motivo', col: 'Día' }, mo: { mot: 'Motivo', col: 'Día' }, di: { z: 'Zona', d: 'Distrito' } };
+const hfTxt = (tid, k, v) => k === 'col' && tid !== 'pl' ? diaCorto(v) : v;
+const tsOk = (tid, r, sin = '') => (sin === 'm' || !TS[tid].m.size || TS[tid].m.has(r.m)) && (sin === 'z' || !TS[tid].z.size || TS[tid].z.has(zonaDe(r)));
+const hfOk = (tid, r, sin = '') => Object.entries(HF[tid]).every(([k, S]) => k === sin || S.has(HFV[tid][k](r)));
+const deTabla = (tid, L) => L.filter(r => tsOk(tid, r) && hfOk(tid, r));
+const btnHF = (tid, k) => `<button type="button" class="fcol${HF[tid][k] ? ' on' : ''}" data-hf="${tid}|${k}" aria-label="Filtrar ${HFT[tid][k]}${HF[tid][k] ? ' (filtro activo)' : ''}" title="${HF[tid][k] ? 'Filtro activo · clic para cambiarlo' : 'Filtrar'}"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2h14l-5.5 6.5V14l-3-1.5v-4z"/></svg></button>`;
+let baseTabla = {};   // registros de cada tabla antes de sus propios filtros (para contar opciones)
+function pintarTS(tid, base) {
+  const chip = (k, v, txt, n) => `<button type="button" class="chip" data-ts="${tid}|${k}|${esc(v)}" aria-pressed="${v ? TS[tid][k].has(v) : !TS[tid][k].size}">${esc(txt)}${n == null ? '' : ` (${n})`}</button>`;
+  const cnt = (k, f) => { const o = {}; base.filter(r => tsOk(tid, r, k) && hfOk(tid, r)).forEach(r => { const v = f(r); o[v] = (o[v] || 0) + 1; }); return o; };
+  const cm = cnt('m', r => r.m), cz = cnt('z', zonaDe);
+  const zs = [...new Set([...Object.keys(cz), ...TS[tid].z])].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
+  const nf = Object.keys(HF[tid]).length;
+  $('ts-' + tid).innerHTML = `<div class="g"><span class="seg-t">Motivo</span>${chip('m', '', 'Todos')}${['COMERCIAL', 'TÉCNICO'].map(m => chip('m', m, m === 'TÉCNICO' ? 'Técnico' : 'Comercial', cm[m] || 0)).join('')}</div>
+    <div class="g"><span class="seg-t">Zona</span>${chip('z', '', 'Todas')}${zs.map(z => chip('z', z, z, cz[z] || 0)).join('')}</div>${nf ? `<button type="button" class="mas" data-hf-limpiar="${tid}">Quitar ${nf} filtro${nf === 1 ? '' : 's'} de encabezado</button>` : ''}`;
+}
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-ts]'); if (c) { const [tid, k, v] = c.dataset.ts.split('|'), S = TS[tid][k]; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintar(); return; }
+  const l = e.target.closest('[data-hf-limpiar]'); if (l) { HF[l.dataset.hfLimpiar] = {}; pintar(); return; }
+  const b = e.target.closest('[data-hf]'); if (b) { e.stopPropagation(); abrirHF(b); return; }
+  if (!e.target.closest('.fpop')) cerrarHF();
+}, true);
+function cerrarHF() { const f = document.querySelector('.fpop'); if (f) f.remove(); }
+function abrirHF(btn) {
+  const [tid, k] = btn.dataset.hf.split('|'), abierto = document.querySelector('.fpop');
+  if (abierto) { const mismo = abierto._k === btn.dataset.hf; cerrarHF(); if (mismo) return; }
+  const cnt = new Map(); (baseTabla[tid] || []).filter(r => tsOk(tid, r) && hfOk(tid, r, k)).forEach(r => { const v = HFV[tid][k](r); cnt.set(v, (cnt.get(v) || 0) + 1); });
+  const vals = [...cnt.keys()].sort((a, b) => k === 'z' || (k === 'col' && tid === 'pl') ? zIdx(a) - zIdx(b) : String(a).localeCompare(String(b), 'es', { numeric: true }));
+  const sel = HF[tid][k] ? new Set(HF[tid][k]) : new Set(vals);
+  const pop = document.createElement('div'); pop.className = 'fpop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Filtro de ' + HFT[tid][k]); pop._k = btn.dataset.hf;
+  pop.innerHTML = `<input type="search" placeholder="Buscar valor" aria-label="Buscar valor"><div class="fl"></div>
+    <div class="fb"><button type="button" class="btn-out" data-f="limpiar">Quitar filtro</button><button type="button" class="btn-sec" data-f="ok" style="background:var(--magenta);color:#fff;border-color:var(--magenta)">Aplicar</button></div>`;
+  const lista = pop.querySelector('.fl'), q = pop.querySelector('input');
+  const vis = () => { const t = q.value.trim().toUpperCase(); return vals.filter(v => !t || String(hfTxt(tid, k, v)).toUpperCase().includes(t)); };
+  const pinta = () => { const V = vis(), todos = V.length && V.every(v => sel.has(v));
+    lista.innerHTML = `<label class="todo"><input type="checkbox" data-todo ${todos ? 'checked' : ''}>(Seleccionar todo)</label>` + V.map(v => `<label><input type="checkbox" value="${esc(v)}" ${sel.has(v) ? 'checked' : ''}>${esc(hfTxt(tid, k, v))}<small>${cnt.get(v)}</small></label>`).join(''); };
+  pinta(); q.addEventListener('input', pinta);
+  lista.addEventListener('change', (e) => { const i = e.target; if (i.dataset.todo !== undefined) vis().forEach(v => i.checked ? sel.add(v) : sel.delete(v)); else i.checked ? sel.add(i.value) : sel.delete(i.value); pinta(); });
+  pop.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return;
+    if (b.dataset.f === 'limpiar' || sel.size === vals.length) delete HF[tid][k]; else HF[tid][k] = sel; cerrarHF(); pintar(); });
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); cerrarHF(); btn.focus(); } });
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth;
+  pop.style.top = (r.bottom + window.scrollY + 6) + 'px'; pop.style.left = Math.max(8, Math.min(r.left + window.scrollX - 10, window.scrollX + document.documentElement.clientWidth - w - 8)) + 'px';
+  q.focus();
+}
+
 /* ---------- Resumen por distrito: Zona · Distrito · Comercial · Técnico · Total · % ---------- */
 function tablaDistritos(B) {
   REG.di = []; const tot = B.length, g = {};
@@ -972,7 +1037,7 @@ function tablaDistritos(B) {
   const filas = Object.keys(g).sort((a, b) => { const [za] = a.split('|'), [zb] = b.split('|'); return zIdx(za) - zIdx(zb) || za.localeCompare(zb) || g[b].length - g[a].length || a.localeCompare(b); });
   const fila = (L, z, d, cls) => { const C = L.filter(r => r.m === 'COMERCIAL'), T = L.filter(r => r.m === 'TÉCNICO');
     return `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(z)}</td><td class="izq">${esc(d)}</td><td>${lista(C, `${d} · comercial`)}</td><td>${lista(T, `${d} · técnico`)}</td><td class="tg-c">${lista(L, d)}</td><td class="pc">${pc(L.length, tot)}</td></tr>`; };
-  return `<table class="pv dis" id="tb-di"><thead><tr class="grupo"><th>Zona</th><th>Distrito</th><th>Comercial</th><th>Técnico</th><th class="tg-c">Total</th><th>%</th></tr></thead>
+  return `<table class="pv dis" id="tb-di"><thead><tr class="grupo"><th>Zona${btnHF('di', 'z')}</th><th>Distrito${btnHF('di', 'd')}</th><th>Comercial</th><th>Técnico</th><th class="tg-c">Total</th><th>%</th></tr></thead>
     <tbody>${filas.map(k => { const [z, d] = k.split('|'); return fila(g[k], z, d); }).join('')}</tbody>
     <tfoot>${fila(B, 'Total general', '', '').replace('<td class="izq"></td>', '<td></td>')}</tfoot></table>`;
 }
@@ -995,6 +1060,37 @@ function detalleMotivo(mot, Mt, dias) {
   }
   return `<div class="detbox">${h}<div class="scroll">${tablaDetalle(L)}</div></div>`;
 }
+/* TMO: horas desde la F. Recep (fecha y hora) hasta la observación (fecha y hora) */
+function horasObs(r) {
+  if (!r.rec || !r.f || !r.h) return null;
+  const a = Date.parse(r.rec.slice(0, 16) + ':00Z'), b = Date.parse(`${r.f}T${r.h}:00Z`);
+  return isFinite(a) && isFinite(b) && b >= a ? (b - a) / 36e5 : null;
+}
+/* Meta de la tasa de recuperación: 20% por defecto; solo el usuario master la cambia (se guarda para todos) */
+const metaRecup = () => { const v = Number(AJ.obsMetas?.recup); return AJ.obsMetas && AJ.obsMetas.recup != null && isFinite(v) ? v : 20; };
+const CLAVE_MASTER = 'mf_master';
+const claveMaster = () => { try { return sessionStorage.getItem(CLAVE_MASTER) || ''; } catch { return ''; } };
+const ponerMaster = (v) => { try { v ? sessionStorage.setItem(CLAVE_MASTER, v) : sessionStorage.removeItem(CLAVE_MASTER); } catch { /* sin almacenamiento */ } };
+function editarMeta() {
+  abrirModal('Meta de la tasa de recuperación', `${filialSel()} · aplica para todos los usuarios · requiere la clave master`,
+    `<form id="f-meta" class="f-meta"><label>Meta (%)<input type="number" id="meta-v" min="0" max="100" step="0.1" required value="${metaRecup()}"></label>
+      <label>Clave master<input type="password" id="meta-k" autocomplete="current-password" required value="${esc(claveMaster())}"></label>
+      <button type="submit" class="btn-out" style="background:var(--magenta);color:#fff;border-color:var(--magenta)">Guardar meta</button></form>
+     <p class="nota">Recuperada = OS observada en el mes que hoy está DESCARGADA y tiene $R$ en el comentario del técnico. Tasa = recuperadas ÷ (observadas + recuperadas).</p>`, false);
+  $('modal-copiar').hidden = true;
+  $('f-meta').addEventListener('submit', async (e) => {
+    e.preventDefault(); const k = $('meta-k').value.trim(), v = $('meta-v').value; if (!k) { $('modal-aviso').textContent = 'Ingresa la clave master.'; return; }
+    $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
+    try {
+      const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(filialSel()) + '&accion=metaobs', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': k }, body: JSON.stringify({ recup: v }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { if (r.status === 403) ponerMaster(''); throw new Error(j.error || `Error ${r.status}`); }
+      ponerMaster(k); AJ.obsMetas = j.obsMetas || { recup: +v }; cerrarModal(); pintar();
+    } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message; }
+  });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('#meta-ed')) editarMeta(); });
 const coincide = (r) => [r.ab, r.os, r.tec, r.di, r.ge, r.ecN, r.pl, r.m, r.s].some(v => String(v ?? '').toLowerCase().includes(termino));
 
 /* ---------- pintar ---------- */
@@ -1007,28 +1103,32 @@ function pintar() {
   const cnt = {}; B.forEach(r => cnt[r.g] = (cnt[r.g] || 0) + 1); const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
   const hoy = D.corte ? D.corte.slice(0, 10) : ''; const nHoy = B.filter(r => r.f === hoy).length;
   const abs = new Set(B.map(r => r.ab)).size, nRec = recMes().filter(r => pasa(r, '', false)).length;
+  const horas = B.map(horasObs).filter(h => h != null), tmo = horas.length ? horas.reduce((a, b) => a + b, 0) / horas.length : null;
+  const tasa = nRec + B.length ? nRec / (nRec + B.length) * 100 : null, meta = metaRecup();
+  const d1 = (v) => v.toLocaleString('es-PE', { maximumFractionDigits: 1 });
   $('kpis').innerHTML = [
     ['Observadas del mes', n(B.length), `${n(abs)} abonados distintos`],
     ['Motivo comercial', n(com), pc(com, B.length) + ' del total'],
     ['Motivo técnico', n(tec), pc(tec, B.length) + ' del total'],
     ['Motivo más frecuente', esc(top || '—'), top ? `${n(cnt[top])} OS · ${pc(cnt[top], B.length)}` : ''],
     ['Observadas hoy', n(nHoy), hoy ? dmy(hoy) : ''],
-    ['Tasa de recuperación', nRec + B.length ? (nRec / (nRec + B.length) * 100).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + '%' : '—', `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas`],
-  ].map(([l, v, s], i) => `<div class="kpi"><span class="l">${l}</span><span class="kv"${i === 3 ? ' style="font-size:20px;line-height:1.25"' : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
+    ['TMO', tmo == null ? '—' : d1(tmo) + ' h', `Promedio de F. Recep a la observación · ${n(horas.length)} OS`],
+    ['Tasa de recuperación', tasa == null ? '—' : d1(tasa) + '%', `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas<br><span class="meta-r ${tasa != null && tasa >= meta ? 'ok' : 'mal'}">Meta ${d1(meta)}%</span> <button type="button" class="lnk-meta" id="meta-ed">✎ Modificar meta</button>`],
+  ].map(([l, v, s], i) => `<div class="kpi"><span class="l">${l}</span><span class="kv"${i === 3 ? ' style="font-size:20px;line-height:1.25"' : i === 6 && tasa != null ? ` style="color:var(--${tasa >= meta ? 'ok' : 'mal'})"` : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
   $('res-sub').textContent = `OS que siguen en estado OBSERVADA, observadas en ${mesTxt(mes)} (fecha_observación) · solo altas de internet, una por abonado y servicio${canal === 'TODOS' ? '' : ' · canal ' + CANALES.find(c => c[0] === canal)[1].toLowerCase()}`;
-  if (!B.length) { ['pl', 'di', 'ab'].forEach(t => $('w-' + t).innerHTML = vacio(`No hay observadas en ${mesTxt(mes)} con estos filtros.`)); }
-  else {
-    const zs = [...new Set(B.map(r => r.z || 'SIN ZONA'))].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
-    $('w-pl').innerHTML = pivote('pl', B, r => r.z || 'SIN ZONA', zs, 'Zona');
-    $('w-di').innerHTML = tablaDistritos(B);
-    const dias = [...new Set(B.map(r => r.f))].sort();
-    $('w-ab').innerHTML = pivote('ab', B, r => r.f, dias, MES3[+mes.slice(5, 7) - 1], { colTxt: diaCorto });
-  }
+  baseTabla = { pl: B, di: B, ab: B, mo: Bs };
+  Object.keys(baseTabla).forEach(t => pintarTS(t, baseTabla[t]));
+  const sinDatos = vacio(`No hay observadas en ${mesTxt(mes)} con estos filtros.`);
+  const Bpl = deTabla('pl', B), Bdi = deTabla('di', B), Bab = deTabla('ab', B);
+  const zs = [...new Set(Bpl.map(zonaDe))].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
+  $('w-pl').innerHTML = Bpl.length ? pivote('pl', Bpl, zonaDe, zs, 'Zona') : sinDatos;
+  $('w-di').innerHTML = Bdi.length ? tablaDistritos(Bdi) : sinDatos;
+  $('w-ab').innerHTML = Bab.length ? pivote('ab', Bab, r => r.f, [...new Set(Bab.map(r => r.f))].sort(), MES3[+mes.slice(5, 7) - 1], { colTxt: diaCorto }) : sinDatos;
   // Observadas por motivo (con Seg. y buscador)
-  let R = Bs;
+  let R = deTabla('mo', Bs);
   if (termino) { const okMot = new Set(R.filter(coincide).map(r => r.m + '|' + r.g)); R = R.filter(r => okMot.has(r.m + '|' + r.g)); }
   const diasM = [...new Set(R.map(r => r.f))].sort();
-  $('w-mo').innerHTML = !Bs.length ? vacio(`No hay observadas en ${mesTxt(mes)} con estos filtros.`)
+  $('w-mo').innerHTML = !deTabla('mo', Bs).length ? vacio(`No hay observadas en ${mesTxt(mes)} con estos filtros.`)
     : !R.length ? vacio(`Ningún motivo tiene OS que coincidan con «${esc(termino)}».`)
     : pivote('mo', R, r => r.f, diasM, MES3[+mes.slice(5, 7) - 1], { colTxt: diaCorto, detalle: detalleMotivo });
   $('mo-n').textContent = termino ? `${R.filter(coincide).length} OS coinciden con la búsqueda` : `${n(Bs.length)} OS`;
@@ -1076,7 +1176,7 @@ function fichaObs(r, desdeLista) {
     `${volver}<p class="nota" style="margin:0 0 8px">Comentario del técnico · OBS VISITA TÉCNICO</p>${r.ovt ? `<div class="fi-obs">${obsCompleta(r.ovt)}</div>` : '<p class="nota">Sin comentario registrado por el técnico para esta OS.</p>'}
      <p class="nota" style="margin-top:10px">${esc(r.ecN)} · ${esc(r.tec || 'sin técnico')} · ${esc(r.di)} · ${esc(r.pl)} · los teléfonos del comentario se ocultan.</p>`, false);
 }
-function cerrarModal() { $('modal').hidden = true; document.body.classList.remove('con-modal'); if (modalOrigen && modalOrigen.focus) modalOrigen.focus(); }
+function cerrarModal() { $('modal-copiar').hidden = false; $('modal').hidden = true; document.body.classList.remove('con-modal'); if (modalOrigen && modalOrigen.focus) modalOrigen.focus(); }
 $('modal-cerrar').addEventListener('click', cerrarModal);
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) cerrarModal(); });
 document.addEventListener('keydown', (e) => {
@@ -1135,7 +1235,7 @@ document.addEventListener('click', async (e) => {
       const caja = document.createElement('div'), h2 = sec.querySelector('h2');
       caja.style.cssText = `position:fixed;left:-10000px;top:0;padding:16px;background:${base};width:max-content;font-family:var(--f-txt)`;
       caja.innerHTML = `<h3 style="margin:0 0 4px;font:700 16px var(--f-disp)">${esc(h2 ? h2.textContent : '')}</h3><p style="margin:0 0 10px;font-size:13px;color:var(--fg-3)">${esc(filialSel())} · ${esc(mesTxt(mes))}</p>`;
-      const cl = tb.cloneNode(true); cl.querySelectorAll('.detrow').forEach(x => x.remove()); caja.appendChild(cl); document.body.appendChild(caja);
+      const cl = tb.cloneNode(true); cl.querySelectorAll('.detrow, .fcol').forEach(x => x.remove()); caja.appendChild(cl); document.body.appendChild(caja);
       const blob = imagen(caja, base).finally(() => caja.remove());
       try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); aviso(id, 'Imagen copiada. Pégala con Ctrl+V en WhatsApp, correo o Excel.'); }
       catch { await bajar(await blob, nombreArch(b.dataset.nom || id, 'png')); aviso(id, 'El navegador no permitió copiar; se descargó la imagen en PNG.'); }
