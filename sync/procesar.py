@@ -522,9 +522,13 @@ def _st_etiqueta(t: str, ini: int, fin: int) -> str:
             cli = re.search(r"\b" + _ST_CLI + r"\b", m.group(0), re.I)
             if not cli:
                 continue
-            fin_cli = m.start() + cli.end()
-            if _RE_ST_NEG.match(zona[fin_cli:fin_cli + 30]) or _RE_ST_EXCL.search(m.group(0)) or len(zona) - m.end() > 30:
-                continue   # negación, comentario o etiqueta lejos del enlace (sigue más texto)
+            ini_cli, fin_cli = m.start() + cli.start(), m.start() + cli.end()
+            cola = zona[fin_cli:fin_cli + 30]
+            if (_RE_ST_NEG.match(cola) or re.search(r"gama|conform", cola, re.I)        # «cliente con equipo de baja gama», «da conformidad»
+                    or _RE_ST_EXCL.search(zona[max(0, ini_cli - 25):ini_cli] + m.group(0))   # «a pedido del abonado link…»
+                    or _RE_ST_T.search(m.group(0))                                       # «test en laptop de técnico cliente…»
+                    or len(zona) - m.end() > 30):                                        # etiqueta lejos del enlace
+                continue
             pc = max(pc, m.end())
     if _RE_ST_CSOLO.match(zona):
         pc = max(pc, len(zona))
