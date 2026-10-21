@@ -778,6 +778,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .pv.dis td.izq, .pv.dis > thead > tr > th:nth-child(2) { text-align: left; }
 .pv.dis > tfoot td:first-child { font-weight: 700; }
 #modal .modal-cuerpo { overflow-x: auto; }
+.blq { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; } .blq .chips { display: flex; flex-wrap: wrap; gap: 8px; } .blq-f[hidden] { display: none !important; }
+.blq-f { padding-left: 14px; border-left: 1px solid rgba(255,255,255,.25); }
 </style>
 </head>
 <body>
@@ -790,7 +792,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div class="fila">
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Observadas</h1><p><span id="nom-filial">Lima</span> · OS en estado OBSERVADA por fecha de observación · <span id="actualizado">Cargando…</span></p></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end">
-      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Mes (F. observación)</div><div class="chips meses" role="group" aria-label="Mes de observación" id="meses"></div></div>
     </div>
@@ -1310,5 +1312,6 @@ $('filial').value = filialSel();
 await cargarTodo(filialSel());
 })();
 </script>
+<script src="/filial-bloques.js"></script>
 </body>
 </html>

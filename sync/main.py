@@ -78,8 +78,13 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
     fa = pd.to_datetime(df["fecha_atencion"], errors="coerce")
     tableros: dict[str, dict] = {}
 
-    for filial in sorted(df["filial"].fillna("SIN FILIAL").unique()):
-        d = df[df["filial"].fillna("SIN FILIAL") == filial]
+    fil = df["filial"].fillna("SIN FILIAL")
+    grupos = [(f, df[fil == f]) for f in sorted(fil.unique())]
+    # Bloque PROVINCIAS: todas las filiales menos Lima juntas (el portal elige Lima o Provincias y luego, si quiere, una filial).
+    prov = df[~fil.isin(["LIMA", "SIN FILIAL"])]
+    if not prov.empty:
+        grupos.append(("PROVINCIAS", prov))
+    for filial, d in grupos:
         t0 = time.time()
         # ---------------- indicadores de la portada / Dashboard
         tableros[f"indicadores:{filial}"] = {**resumen.indicadores(d, actualizado), "filial": filial}

@@ -285,7 +285,8 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
 
     return {"ing": ing, "liq": liq, "pend": pend, "prog": prog, "pdia": pdia, "zonas": zonas, "obs": obs,
             "config": {**{k: v for k, v in config.items() if k not in ("meta_mes", "plantas")},
-                       "meta_mes": config["meta_mes"].get(filial)},
+                       "meta_mes": config["meta_mes"].get(filial) if filial != "PROVINCIAS" else
+                       (sum(v for k, v in config["meta_mes"].items() if k != "LIMA") or None)},
             "corte": corte.strftime("%Y-%m-%dT%H:%M:00"), "anio": anio, "mes": mes, "dias": corte.day}
 
 

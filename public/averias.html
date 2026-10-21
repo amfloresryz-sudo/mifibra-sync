@@ -311,6 +311,8 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sel-filial { font: 600 13px var(--f-disp); min-height: 38px; padding: 8px 34px 8px 14px; border-radius: 25px; border: 1px solid #FF0091; background: #FF0091; color: #FFFFFF; cursor: pointer; }
 .sel-filial option { color: #1F2937; background: #FFFFFF; }
 .pen-aviso { margin: 0; font-size: 13px; color: var(--ok); min-height: 18px; }
+.blq { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; } .blq .chips { display: flex; flex-wrap: wrap; gap: 8px; } .blq-f[hidden] { display: none !important; }
+.blq-f { padding-left: 14px; border-left: 1px solid rgba(255,255,255,.25); }
 </style>
 </head>
 <body>
@@ -326,7 +328,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
   <div class="fila">
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Averías y TC</h1><p><span id="nom-filial">Lima</span> · visitas a red del cliente · resultados, ingresos y pendientes</p></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px 28px">
-      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Tipo</div><div class="chips" role="group" aria-label="Tipo" id="tipos"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
       <div id="grupo-zona"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Zona</div><div class="chips" role="group" aria-label="Zona" id="zonas"></div></div>
@@ -1601,5 +1603,6 @@ new MutationObserver(repintar).observe(document.documentElement, { attributes: t
   window.addEventListener('scroll', () => { if (!caja.hidden) ocultar(); }, true);
 })();
 </script>
+<script src="/filial-bloques.js"></script>
 </body>
 </html>

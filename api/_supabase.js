@@ -42,10 +42,13 @@ function responder(res, estado, cuerpo, cacheSeg = 0) {
 }
 
 // Filial elegida en el portal (?filial=LIMA). Por defecto LIMA.
-const FILIALES = ['LIMA', 'ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
+const FILIALES = ['LIMA', 'PROVINCIAS', 'ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
 function filialDe(req) {
   const f = (new URL(req.url, 'http://x').searchParams.get('filial') || 'LIMA').toUpperCase();
   return FILIALES.includes(f) ? f : 'LIMA';
 }
 
-module.exports = { consultar, guardar, autorizado, responder, filialDe, FILIALES };
+// Filtro de PostgREST por filial: PROVINCIAS = todas menos Lima.
+const filtroFilial = (f) => f === 'PROVINCIAS' ? 'filial=neq.LIMA' : `filial=eq.${encodeURIComponent(f)}`;
+
+module.exports = { consultar, guardar, autorizado, responder, filialDe, filtroFilial, FILIALES };

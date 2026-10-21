@@ -704,6 +704,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .fi-coin { margin: 4px 0 2px; padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 13px; text-align: center; }
 .fi-coin.si { background: var(--ok-bg); color: var(--ok); } .fi-coin.no { background: var(--mal-bg); color: var(--mal); } .fi-coin.nd { background: var(--gris-bg); color: var(--fg-3); }
 .mat tr.zona td.e1 { background: var(--edad-1); } .mat tr.zona td.e2 { background: var(--edad-2); color: #2A1400; } .mat tr.zona td.e3 { background: var(--edad-3); color: var(--edad-txt3); }
+.blq { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; } .blq .chips { display: flex; flex-wrap: wrap; gap: 8px; } .blq-f[hidden] { display: none !important; }
+.blq-f { padding-left: 14px; border-left: 1px solid rgba(255,255,255,.25); }
 </style>
 </head>
 <body>
@@ -719,7 +721,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div class="fila">
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Instalaciones</h1><p><span id="nom-filial">Lima</span> · altas FTTH · ingresos, liquidaciones, pendientes, agendas y avance</p></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px 28px">
-      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Segmento</div><div class="chips" role="group" aria-label="Segmento" id="tipos"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
       <div id="grupo-zona"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Zona</div><div class="chips" role="group" aria-label="Zona" id="zonas"></div></div>
@@ -3055,5 +3057,6 @@ new MutationObserver(repintar).observe(document.documentElement, { attributes: t
   window.addEventListener('scroll', () => { if (!caja.hidden) ocultar(); }, true);
 })();
 </script>
+<script src="/filial-bloques.js"></script>
 </body>
 </html>
