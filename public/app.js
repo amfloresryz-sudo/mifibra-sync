@@ -392,6 +392,7 @@
     const ruta = (location.hash.replace('#', '') || 'inicio').toLowerCase();
     if (ruta === 'averias') { location.replace('/averias.html'); return; } // el módulo Averías y TC vive en su propia página
     if (ruta === 'instalaciones') { location.replace('/instalaciones.html'); return; } // el módulo Instalaciones vive en su propia página
+    if (ruta === 'observadas') { location.replace('/observadas.html'); return; } // el módulo Observadas vive en su propia página
     document.querySelectorAll('.nav a[data-ruta]').forEach((a) => a.classList.toggle('activo', a.dataset.ruta === ruta));
     window.scrollTo(0, 0);
     try {

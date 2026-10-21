@@ -268,8 +268,10 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
     for lista in (ing, liq, pend, prog):
         for x in lista:
             x["z"] = _zona(x["di"])
-    # Observadas (página Observadas): OS que siguen en estado OBSERVADA, por fecha de observación (hora de Lima).
-    ob = df[df["estado_os"] == "OBSERVADA"].copy()
+    # Observadas (página Observadas): OS que siguen en estado OBSERVADA (y las recuperadas, rc=1), por fecha de observación (hora de Lima).
+    # Recuperadas: OS que fueron observadas y luego se descargaron con «$R$» en el comentario del técnico (tasa de recuperación).
+    _rec = df["obs_visita_todo"].fillna("").astype(str).str.contains("$R$", regex=False) if "obs_visita_todo" in df else False
+    ob = df[(df["estado_os"] == "OBSERVADA") | ((df["estado_os"] == "DESCARGADA") & _rec)].copy()
     ob["fo"] = _lima(ob["fecha_observacion"]) if "fecha_observacion" in ob else pd.NaT
     ob = ob[ob["fo"].notna()]
     obs = [{
@@ -278,6 +280,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
         "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "rec": _iso(r["rec"]), "ec": eecc_ingreso(r)[1], "tec": eecc_ingreso(r)[0],
         "di": _txt(r["distrito"]) or "SIN DISTRITO", "z": _zona(r["distrito"]), "pl": r["pl"], "seg": _seg(r), "cn": _canal(r.get("canal_atencion")),
         "co": _txt(r.get("coordenadas")), "plan": _txt(r.get("tarifa_servicio")), "ovt": (_txt(r.get("obs_visita_todo")) or _txt(r.get("obs_visita")))[:900],
+        **({"rc": 1} if r["estado_os"] == "DESCARGADA" else {}),
     } for _, r in ob.iterrows()]
 
     return {"ing": ing, "liq": liq, "pend": pend, "prog": prog, "pdia": pdia, "zonas": zonas, "obs": obs,
