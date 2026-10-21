@@ -1118,9 +1118,9 @@ function listaTasa() {
   const L = tasaL.slice().sort((a, b) => (b.rc || 0) - (a.rc || 0) || (a.f + a.h).localeCompare(b.f + b.h)), nR = L.filter(r => r.rc).length;
   const dm = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '—';
   const com = (t) => t ? obsCompleta(t).replace(/\$R\$/g, '<mark class="rr">$R$</mark>') : '<span style="color:var(--fg-4)">Sin comentario</span>';
-  const filas = L.map(r => `<tr><td>${r.rc ? '<span class="b ges">Recuperada</span>' : '<span class="b sges">Observada</span>'}</td><td>${dm(r.f)} ${r.h}</td><td><b>${r.ab}</b></td><td>${r.os}</td><td class="w">${esc(r.s)}</td><td>${esc(r.ecN)}</td><td title="${esc(r.tec)}">${esc(tecCorto(r.tec))}</td><td title="${esc(r.di)}">${esc(CORTOS[r.di] || r.di)}</td><td class="com">${com(r.ovt)}</td></tr>`).join('');
+  const filas = L.map(r => `<tr><td>${r.rc ? '<span class="b ges">Recuperada</span>' : '<span class="b sges">Observada</span>'}</td><td>${r.rc ? 'DESCARGADA' : 'OBSERVADA'}</td><td>${dm(r.f)} ${r.h}</td><td><b>${r.ab}</b></td><td>${r.os}</td><td class="w">${esc(r.s)}</td><td>${esc(r.ecN)}</td><td title="${esc(r.tec)}">${esc(tecCorto(r.tec))}</td><td title="${esc(r.di)}">${esc(CORTOS[r.di] || r.di)}</td><td class="com">${com(r.ovt)}</td></tr>`).join('');
   abrirModal('Tasa de recuperación · AB y comentarios', `${n(nR)} recuperadas de ${n(L.length)} observadas · ${mesTxt(mes)} · recuperada = DESCARGADA con $R$ en el comentario`,
-    `<table class="det lista-obs lista-tasa" id="tb-modal"><thead><tr><th>Estado</th><th>F. observación</th><th>AB</th><th>OS</th><th>Motivo detallado</th><th>EECC</th><th>Técnico</th><th>Distrito</th><th>Comentario del técnico</th></tr></thead><tbody>${filas}</tbody></table>`, true);
+    `<table class="det lista-obs lista-tasa" id="tb-modal"><thead><tr><th>Resultado</th><th>Estado OS</th><th>F. observación</th><th>AB</th><th>OS</th><th>Motivo detallado</th><th>EECC</th><th>Técnico</th><th>Distrito</th><th>Comentario del técnico</th></tr></thead><tbody>${filas}</tbody></table>`, true);
 }
 const coincide = (r) => [r.ab, r.os, r.tec, r.di, r.ge, r.ecN, r.pl, r.m, r.s].some(v => String(v ?? '').toLowerCase().includes(termino));
 
