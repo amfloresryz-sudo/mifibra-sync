@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Speed Test · Mi Fibra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --magenta: #FF0091; --magenta-txt: #B0005F; --rosa: #FFF0F7; --rosa-2: #FFD6EA;
+  --noche: #1A1A2E; --bg: #F6F7F9; --sup: #FFFFFF; --fg: #1F2937; --fg-2: #374151; --fg-3: #4B5563; --fg-4: #6B7280;
+  --borde: #E5E7EB; --borde-2: #D1D5DB; --ok: #157A4A; --ok-bg: #E3F4EA; --mal: #B42318; --mal-bg: #FDE8E7;
+  --gris-bg: #E7E8EC; --pista: #EEF0F3; --aviso-bg: #FFF6D6; --aviso-fg: #6B4E00;
+  --f-disp: Montserrat, system-ui, sans-serif; --f-txt: 'DM Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --magenta: #FF3DAA; --magenta-txt: #FF8CCB; --rosa: #3A1430; --rosa-2: #4E1A40; --noche: #0E0E1A; --bg: #14141F; --sup: #1D1D2B;
+  --fg: #ECEDF2; --fg-2: #D4D6DE; --fg-3: #B4B7C3; --fg-4: #9497A6; --borde: #2E2F40; --borde-2: #3C3E52;
+  --ok: #5FD08F; --ok-bg: #173527; --mal: #FF8A80; --mal-bg: #3D1C1C; --gris-bg: #3A3C50; --pista: #262838; --aviso-bg: #3A3214; --aviso-fg: #F4DC8A; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-txt); font-size: 15px; }
+.w { max-width: 1760px; margin: 0 auto; padding-left: max(clamp(16px, 2vw, 32px), env(safe-area-inset-left, 0px)); padding-right: max(clamp(16px, 2vw, 32px), env(safe-area-inset-right, 0px)); }
+h1, h2, h3, .chip, th, .kv, .marca, .nav { font-family: var(--f-disp); }
+.aviso { background: var(--aviso-bg); color: var(--aviso-fg); font-size: 14px; }
+.aviso .w { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cab { background: #FFFFFF; border-bottom: 1px solid #E5E7EB; }
+.cab .w { padding-block: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.marca { font-weight: 800; font-size: 26px; color: #FF0091; letter-spacing: -.5px; text-decoration: none; }
+.marca small { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; color: #374151; margin-left: 8px; }
+.nav { display: flex; flex-wrap: wrap; gap: 4px; font-size: 13px; font-weight: 600; }
+.nav span, .nav a { padding: 10px 12px; border-radius: 25px; color: #1F2937; text-decoration: none; }
+.nav a:hover { background: #FFF0F7; color: #B0005F; } .nav .on { background: #FFF0F7; color: #B0005F; font-weight: 700; }
+.franja { background: #1A1A2E; color: #FFFFFF; }
+.franja .w { padding-block: 26px 28px; display: flex; flex-direction: column; gap: 22px; }
+.franja h1 { margin: 4px 0; font-size: clamp(28px, 4vw, 38px); font-weight: 800; }
+.franja p { margin: 0; color: #D1D5DB; }
+.vol { color: #FFD6EA; font-size: 14px; text-decoration: none; } .vol:hover { text-decoration: underline; }
+.filtros { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: flex-end; }
+.seg-t { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .8px; color: #B9BCCB; margin-bottom: 8px; display: block; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 13px; font-weight: 600; padding: 9px 15px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; cursor: pointer; min-height: 38px; }
+.chip:hover { border-color: #FF0091; }
+.chip[aria-pressed="true"] { background: #FF0091; border-color: #FF0091; }
+.fecha { font: 600 13px var(--f-txt); min-height: 38px; padding: 7px 12px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; color-scheme: dark; }
+.limpiar { all: unset; cursor: pointer; color: #FFD6EA; font-size: 14px; text-decoration: underline; padding: 10px 4px; }
+main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 22px; }
+.sec { background: var(--sup); border: 1px solid var(--borde); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.titular { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px 24px; }
+.titular h2 { margin: 0; font-size: clamp(22px, 2.6vw, 32px); font-weight: 800; line-height: 1.2; max-width: 900px; text-wrap: balance; }
+.titular h2 em { font-style: normal; color: var(--magenta); }
+.ctx { color: var(--fg-3); font-size: 14px; padding-top: 6px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.kpi { border: 1px solid var(--borde); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.kpi .l { font: 700 12px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
+.kpi .kv { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .kv.mg { color: var(--magenta); }
+.kpi .s { font-size: 13px; color: var(--fg-3); line-height: 1.45; }
+.medidor { height: 8px; border-radius: 4px; background: var(--pista); overflow: hidden; }
+.medidor i { display: block; height: 100%; border-radius: 4px; background: var(--fg-2); }
+.medidor.mg i { background: var(--magenta); }
+.dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; }
+@media (max-width: 520px) { .dos { grid-template-columns: 1fr; } }
+.sec h3 { margin: 0; font-size: 17px; font-weight: 700; }
+.sub { margin: 4px 0 0; font-size: 13px; color: var(--fg-3); }
+.leyenda { display: flex; gap: 16px; font-size: 13px; color: var(--fg-3); flex-wrap: wrap; }
+.leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.cols { display: flex; align-items: flex-end; justify-content: space-around; gap: 18px; height: 260px; border-bottom: 1px solid var(--borde-2); padding: 0 8px; }
+.col { flex: 1 1 0; max-width: 150px; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; cursor: default; }
+.col .et { text-align: center; margin-bottom: 8px; } .col .et b { font: 800 20px var(--f-disp); display: block; font-variant-numeric: tabular-nums; } .col .et span { font-size: 13px; color: var(--fg-3); }
+.col .barra { width: 100%; display: flex; flex-direction: column; gap: 2px; }
+.col .barra .t { background: var(--gris-bg); border-radius: 4px 4px 0 0; } .col .barra .m { background: var(--magenta); }
+.col:hover .barra, .col:focus-visible .barra { filter: brightness(.95); outline: 2px solid var(--fg); outline-offset: 2px; }
+.meses { display: flex; justify-content: space-around; gap: 18px; padding: 8px 8px 0; color: var(--fg-3); font-size: 14px; } .meses span { flex: 1 1 0; max-width: 150px; text-align: center; }
+.hbar { display: grid; grid-template-columns: 130px 1fr 56px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; cursor: default; }
+.hbar .p { height: 14px; border-radius: 4px; background: var(--pista); } .hbar .p i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--magenta); min-width: 3px; }
+.hbar .v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hbar:hover .p, .hbar:focus-visible .p { outline: 2px solid var(--fg); outline-offset: 2px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 1100px; font-variant-numeric: tabular-nums; }
+th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--fg-3); text-align: right; padding: 10px 10px; border-bottom: 2px solid var(--fg); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+td { padding: 12px 10px; border-bottom: 1px solid var(--borde); text-align: right; white-space: nowrap; }
+tr.ec { cursor: pointer; } tr.ec:hover td { background: var(--rosa); }
+tr.ec td:first-child::before { content: '▸'; color: var(--magenta-txt); display: inline-block; width: 16px; transition: transform .15s; }
+tr.ec[aria-expanded="true"] td:first-child::before { transform: rotate(90deg); }
+tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec td:first-child { padding-left: 34px; }
+.mini { display: inline-flex; align-items: center; gap: 8px; } .mini .p { width: 70px; height: 6px; border-radius: 3px; background: var(--pista); } .mini .p i { display: block; height: 100%; background: var(--magenta); border-radius: 3px; min-width: 2px; }
+.tenue { color: var(--fg-4); } .alerta { color: var(--magenta-txt); font-weight: 700; }
+.nota { font-size: 13px; color: var(--fg-4); margin: 0; }
+.flot { position: fixed; z-index: 50; background: var(--fg); color: var(--sup); font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; pointer-events: none; max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.ejemplo { background: var(--magenta); color: #fff; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 10px; letter-spacing: .5px; }
+</style>
+</head>
+<body>
+<div class="aviso"><div class="w"><span class="ejemplo">VISTA PREVIA · DATOS DE EJEMPLO</span><span>Órdenes al <b>30 set 2026</b> · Speedtest al <b>30 set 2026</b> · actualizado 01/10/2026 15:26</span><span>Los 2 últimos días son provisionales</span></div></div>
+
+<header class="cab"><div class="w">
+  <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
+  <nav class="nav" aria-label="Módulos"><a href="/instalaciones.html">INSTALACIONES</a><a href="/averias.html">AVERÍAS</a><a href="/#observadas">OBSERVADAS</a><a href="/#anuladas">ANULADAS</a><span class="on" aria-current="page">SPEED TEST</span><a href="/#dashboard">DASHBOARD</a></nav>
+</div></header>
+
+<section class="franja"><div class="w">
+  <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Speed Test</h1><p>Control operativo · medición de velocidad en las instalaciones</p></div>
+  <div class="filtros">
+    <div><span class="seg-t">Filial</span><div class="chips" id="f-filial" role="group" aria-label="Filial"></div></div>
+    <div><span class="seg-t">Mes de atención</span><div class="chips" id="f-mes" role="group" aria-label="Mes de atención"></div></div>
+    <div><label class="seg-t" for="f-fecha">Fecha de instalación</label><input type="date" id="f-fecha" class="fecha" aria-label="Fecha de instalación"></div>
+    <div><span class="seg-t">Plan contratado</span><div class="chips" id="f-plan" role="group" aria-label="Plan contratado"></div></div>
+    <button type="button" class="limpiar" id="limpiar">Limpiar filtros</button>
+  </div>
+</div></section>
+
+<main><div class="w">
+  <section class="sec" aria-labelledby="t-tit">
+    <div class="titular"><h2 id="t-tit">En las 8 filiales, <em>2,5%</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.</h2><span class="ctx" id="ctx">Julio a setiembre 2026 · Todas las filiales · Todos los planes</span></div>
+    <div class="kpis">
+      <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv">28.748</span><span class="s">4.275 en días sin archivo de Speedtest</span></div>
+      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv">69,2%</span><div class="medidor" role="img" aria-label="69,2% con medición"><i style="width:69.2%"></i></div><span class="s">19.887 de 28.748 instalaciones</span></div>
+      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg">2,5%</span><div class="medidor mg" role="img" aria-label="2,5% en dispositivo del cliente"><i style="width:2.5%"></i></div><span class="s">549 del cliente · 21.115 del equipo del técnico</span></div>
+      <div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv">90,3%</span><div class="medidor" role="img" aria-label="90,3% válidas"><i style="width:90.3%"></i></div><span class="s">2.106 por debajo del mínimo: 504 de red · 1.396 no certificables · 206 por equipo</span></div>
+    </div>
+  </section>
+
+  <div class="dos">
+    <section class="sec" aria-labelledby="t-mes">
+      <div><h3 id="t-mes">Instalaciones y cobertura de medición por mes</h3><p class="sub">Barra completa = instalaciones del mes · tramo magenta = las que tienen prueba de velocidad registrada.</p></div>
+      <div class="leyenda"><span><i style="background:var(--magenta)"></i>Con medición</span><span><i style="background:var(--gris-bg)"></i>Sin medición</span></div>
+      <div><div class="cols" id="g-mes"></div><div class="meses" id="g-mes-x"></div></div>
+    </section>
+    <section class="sec" aria-labelledby="t-fil">
+      <div><h3 id="t-fil">Pruebas en dispositivo del cliente, por filial</h3><p class="sub">Solo se listan grupos con 5 o más pruebas registradas.</p></div>
+      <div id="g-fil"></div>
+    </section>
+  </div>
+
+  <section class="sec" aria-labelledby="t-ec">
+    <div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos.</p></div>
+    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Válidas</th><th>No certificable</th><th>Equipo insuf.</th><th>Red no entregó</th></tr></thead><tbody></tbody></table></div>
+    <p class="nota">Cobertura = instalaciones con prueba registrada ÷ instalaciones. Válidas = pruebas que alcanzan el mínimo del plan contratado.</p>
+  </section>
+</div></main>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const n = (v) => Number(v).toLocaleString('es-PE').replace(/,/g, '.');
+  const pc = (v) => Number(v).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).replace('.', ',') + '%';
+  // ----- Datos de ejemplo (la página real los leerá de la base) -----
+  const MESES = [['Julio 2026', 10450, 7116], ['Agosto 2026', 9578, 5900], ['Setiembre 2026', 8720, 6871]];
+  const FIL = [['LAMBAYEQUE', 5.8], ['AREQUIPA', 4.8], ['ANCASH', 4.2], ['CAJAMARCA', 2.5], ['LA LIBERTAD', 2.1], ['PIURA', 1.8], ['LIMA', 1.2], ['HUANUCO', 1.1]];
+  const EC = [
+    ['EECC V & B TECHNOLOGY', 3230, 2467, 2512, 23, 2489, 2298, 61, 37, 116],
+    ['EECC SEGANETWORKS', 2704, 2071, 2074, 17, 2057, 2050, 3, 5, 16],
+    ['EECC JBA TELECOM', 2410, 1702, 1730, 52, 1678, 1561, 88, 21, 60],
+    ['EECC DTA', 1988, 1311, 1340, 41, 1299, 1207, 70, 18, 45],
+    ['EECC JVR', 1655, 1190, 1205, 12, 1193, 1120, 40, 9, 36],
+  ];
+  const TEC = (e) => ['VICTOR LLACTAHUAMAN', 'ELVIS FREITAS', 'MARDEN BOLANOS'].map((t, i) => { const f = [0.4, 0.35, 0.25][i]; return [t, ...e.slice(1).map(v => Math.round(v * f))]; });
+  // ----- Filtros (en la vista previa solo cambian el estado visual) -----
+  const chips = (id, ops, todos) => { $(id).innerHTML = [todos, ...ops].map((o, i) => `<button type="button" class="chip" aria-pressed="${i === 0}">${o}</button>`).join('');
+    $(id).addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return; $(id).querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); }); };
+  chips('f-filial', ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'LIMA', 'PIURA'], 'Todas');
+  chips('f-mes', MESES.map(m => m[0]), 'Todos');
+  chips('f-plan', ['Hasta 1.000 Mbps', 'Más de 1.000 Mbps', 'Sin plan identificado'], 'Todos');
+  $('limpiar').addEventListener('click', () => { document.querySelectorAll('.filtros .chips').forEach(g => g.querySelectorAll('.chip').forEach((c, i) => c.setAttribute('aria-pressed', String(i === 0)))); $('f-fecha').value = ''; });
+  // ----- Ventana flotante de los gráficos -----
+  const flot = document.createElement('div'); flot.className = 'flot'; flot.hidden = true; document.body.appendChild(flot);
+  const ver = (el, html) => { flot.innerHTML = html; flot.hidden = false; const r = el.getBoundingClientRect(); flot.style.left = Math.min(window.innerWidth - flot.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - flot.offsetWidth / 2)) + 'px'; flot.style.top = Math.max(8, r.top - flot.offsetHeight - 8) + 'px'; };
+  document.addEventListener('mouseover', (e) => { const el = e.target.closest('[data-tip]'); if (el) ver(el, el.dataset.tip); });
+  document.addEventListener('mouseout', (e) => { const el = e.target.closest('[data-tip]'); if (el && !el.contains(e.relatedTarget)) flot.hidden = true; });
+  document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) ver(el, el.dataset.tip); });
+  document.addEventListener('focusout', () => { flot.hidden = true; });
+  // ----- Columnas por mes -----
+  const max = Math.max(...MESES.map(m => m[1])), alto = 190;
+  $('g-mes').innerHTML = MESES.map(([m, t, med]) => { const h = Math.round(t / max * alto), hm = Math.round(med / t * h);
+    return `<div class="col" tabindex="0" data-tip="<b>${m}</b><br>${n(t)} instalaciones<br>${n(med)} con medición (${pc(med / t * 100)})<br>${n(t - med)} sin medición"><div class="et"><b>${n(t)}</b><span>${pc(med / t * 100)} medido</span></div>
+      <div class="barra" style="height:${h}px"><div class="t" style="height:${h - hm - 2}px"></div><div class="m" style="height:${hm}px"></div></div></div>`; }).join('');
+  $('g-mes-x').innerHTML = MESES.map(m => `<span>${m[0]}</span>`).join('');
+  // ----- Barras por filial -----
+  const fmax = Math.max(...FIL.map(f => f[1]));
+  $('g-fil').innerHTML = FIL.map(([f, v]) => `<div class="hbar" tabindex="0" data-tip="<b>${f}</b><br>${pc(v)} de sus pruebas en el equipo del cliente"><span>${f}</span><span class="p"><i style="width:${v / fmax * 100}%"></i></span><span class="v">${pc(v)}</span></div>`).join('');
+  // ----- Tabla por EECC con detalle por técnico -----
+  const fila = (r, cls) => { const [nom, ins, med, pr, cli, tec, val, nc, eq, red] = r;
+    return `<tr class="${cls}"${cls === 'ec' ? ' tabindex="0" aria-expanded="false"' : ''}><td>${nom}</td><td>${n(ins)}</td><td>${n(med)}</td><td class="tenue">${pc(med / ins * 100)}</td><td>${n(pr)}</td>
+      <td><span class="mini"><span class="p"><i style="width:${Math.min(100, cli / pr * 100 * 10)}%"></i></span>${pc(cli / pr * 100)}</span></td><td class="tenue">${n(tec)}</td><td>${n(val)}</td><td class="tenue">${n(nc)}</td><td class="tenue">${n(eq)}</td><td class="alerta">${n(red)}</td></tr>`; };
+  const tb = $('tb-ec').querySelector('tbody');
+  tb.innerHTML = EC.map((e, i) => fila(e, 'ec').replace('<tr class="ec"', `<tr class="ec" data-i="${i}"`)).join('');
+  const abrir = (tr) => { const abierto = tr.getAttribute('aria-expanded') === 'true'; let s = tr.nextElementSibling; while (s && s.classList.contains('tec')) { const x = s; s = s.nextElementSibling; x.remove(); }
+    tr.setAttribute('aria-expanded', String(!abierto)); if (!abierto) tr.insertAdjacentHTML('afterend', TEC(EC[+tr.dataset.i]).map(t => fila(t, 'tec')).join('')); };
+  tb.addEventListener('click', (e) => { const tr = e.target.closest('tr.ec'); if (tr) abrir(tr); });
+  tb.addEventListener('keydown', (e) => { const tr = e.target.closest('tr.ec'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrir(tr); } });
+})();
+</script>
+</body>
+</html>

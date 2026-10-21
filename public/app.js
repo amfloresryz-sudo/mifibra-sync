@@ -183,6 +183,8 @@
     observadas: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 16.5v.5"/>',
     anuladas: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/>',
     dashboard: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
+    facilidades: '<circle cx="12" cy="9" r="2"/><path d="M8.5 5.5a5 5 0 0 0 0 7"/><path d="M15.5 5.5a5 5 0 0 1 0 7"/><path d="M5.6 2.6a9 9 0 0 0 0 12.8"/><path d="M18.4 2.6a9 9 0 0 1 0 12.8"/><path d="M12 11v10"/><path d="M9 21h6"/>',
+    speedtest: '<path d="M3.5 17a9 9 0 1 1 17 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.5"/><path d="M7 20h10"/>',
   };
   const icono = (k, color) => `<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[k]}</svg>`;
 
@@ -196,11 +198,11 @@
       <div class="contenedor"><div class="tarjetas" id="tarjetas"><p class="cargando">Cargando…</p></div></div>`;
     const { indicadores: i } = await indicadores();
     pintarActualizado(i);
-    const t = (k, titulo, texto, cifra, destacada = false) => `
-      <a class="tarjeta${destacada ? ' destacada' : ''}" href="#${k}">
+    const t = (k, titulo, texto, cifra, destacada = false, href = '#' + k, externo = false) => `
+      <a class="tarjeta${destacada ? ' destacada' : ''}" href="${href}"${externo ? ' target="_blank" rel="noopener"' : ''}>
         <span class="icono">${icono(k, destacada ? '#FFFFFF' : '#FF0091')}</span>
         <h2>${titulo}</h2><p>${texto}</p><span class="cifra">${cifra}</span>
-        <span class="btn${destacada ? ' oscuro' : ''}">${destacada ? 'Ver resultados →' : 'Ingresar →'}</span>
+        <span class="btn${destacada ? ' oscuro' : ''}">${destacada ? 'Ver resultados →' : externo ? 'Abrir ↗' : 'Ingresar →'}</span>
       </a>`;
     document.getElementById('tarjetas').innerHTML = [
       t('instalaciones', 'Instalaciones', 'Órdenes de instalación: registradas, descargadas, observadas y anuladas por técnico y distrito.', `${num(i.inst_registradas)} por atender · ${dec(i.inst_efectividad_pct)}% efectividad`),
@@ -208,6 +210,8 @@
       t('observadas', 'Observadas', 'Órdenes observadas por motivo comercial o técnico, con su submotivo y usuario.', `${num(i.obs_total)} observadas activas`),
       t('anuladas', 'Anuladas', 'Órdenes anuladas: motivo, usuario que la modificó y canal de atención.', `${num(i.anul_total)} anuladas en el periodo`),
       t('dashboard', 'Dashboard de resultados', 'Indicadores consolidados: efectividad, órdenes por día, estados y ranking de técnicos.', periodo(i), true),
+      t('facilidades', 'Facilidades Técnicas', 'Buscador de facilidades técnicas en vivo: cajas, puertos y disponibilidad de planta para nuevas altas.', 'Buscador FFTT en vivo', false, 'https://buscadorffttenvivo.vercel.app/', true),
+      t('speedtest', 'Speed Test', 'Pruebas de velocidad de cada alta: cobertura de medición, pruebas del cliente o del técnico, AB sin medición y enlaces repetidos.', 'Cobertura de medición por EECC y técnico', false, '/speedtest.html'),
     ].join('');
   }
 
