@@ -2593,8 +2593,8 @@ function abrirDetalle(ch, d, k) {
     tit = 'Ingresos'; sub = `${L.length} altas recibidas`;
   } else if (ch === 'pend') {
     L = D.pend.filter(ok).filter(sel);
-    cab = ['AB', 'OS', 'Recepción', 'Zona', 'Distrito', 'EECC_F', 'Técnico', 'Programada', 'Tipo', 'Programación'];
-    filas = L.map(p => `<tr><td>${p.ab}</td><td>${p.os}</td><td data-v="${msIso(p.rec)}">${fechaHora(p.rec)}</td><td>${esc(p.z)}</td><td>${esc(corto(p.di))}</td><td>${esc(p.ec)}</td><td>${esc(tecCorto(p.tec))}</td><td>${fIso(p.fp)}</td><td>${tipoProg(p)}</td><td>${PROG_B[progEstado(p)]}</td></tr>`);
+    cab = ['AB', 'OS', 'Recepción', 'Zona', 'Distrito', 'Canal', 'EECC_F', 'Técnico', 'Programada', 'Tipo', 'Programación', 'Inicio'];
+    filas = L.map(p => `<tr><td>${p.ab}</td><td>${p.os}</td><td data-v="${msIso(p.rec)}">${fechaHora(p.rec)}</td><td>${esc(p.z)}</td><td>${esc(corto(p.di))}</td><td>${esc(cnNom(p.cn))}</td><td>${esc(p.ec)}</td><td>${esc(tecCorto(p.tec))}</td><td>${fIso(p.fp)}</td><td>${tipoProg(p)}</td><td>${PROG_B[progEstado(p)]}</td><td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td></tr>`);
     tit = kk.startsWith('DI:') ? kk.slice(3) : 'Pendientes'; sub = `${L.length} altas pendientes (REGISTRADA)`;
   } else {
     L = D.liq.filter(ok).filter(x => (dia == null || x.d === dia) && sel(x));
@@ -2803,22 +2803,11 @@ $('modal-xls').addEventListener('click', async () => {
   const tb = $('tb-modal'), b = $('modal-xls'); if (!tb) return;
   b.disabled = true; $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Generando Excel…';
   try {
-    await cargar(URL_XLS);
-    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Detalle', { views: [{ state: 'frozen', ySplit: 1 }] }), borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
-    const filas = [tb.tHead.rows[0], ...[...tb.tBodies[0].rows].filter(r => r.cells.length > 1)], anchos = [];
-    filas.forEach((tr, i) => { const fila = ws.getRow(i + 1);
-      [...tr.cells].forEach((td, j) => { const txt = td.innerText.replace(/\s+/g, ' ').replace(/[↕↑↓▲▼▸▾]/g, '').trim(), c = fila.getCell(j + 1);
-        c.value = i > 0 && /^\d+$/.test(txt) && txt.length < 12 ? Number(txt) : txt === '—' ? '' : txt;
-        c.font = { name: 'Calibri', size: 11, bold: i === 0, color: { argb: i === 0 ? 'FFFFFFFF' : 'FF111827' } };
-        if (i === 0) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2A44' } };
-        c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = { top: borde, left: borde, bottom: borde, right: borde };
-        anchos[j] = Math.max(anchos[j] || 6, txt.length + 3); }); });
-    anchos.forEach((w, j) => ws.getColumn(j + 1).width = Math.min(w, 40));
-    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: anchos.length } };
-    const buf = await wb.xlsx.writeBuffer();
+    const fondo = getComputedStyle(document.querySelector('#modal .modal')).backgroundColor;
+    const { buf, n } = await excelDeTabla(tb, transparente(fondo) ? '#FFFFFF' : fondo, true);
     const base = $('modal-tit').textContent.split('·').slice(0, 2).join('-').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'detalle';
     await bajar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArch(base, 'xlsx'));
-    $('modal-aviso').textContent = `Excel descargado con ${filas.length - 1} filas.`;
+    $('modal-aviso').textContent = `Excel descargado con ${n} filas, con los mismos colores de la tabla.`;
   } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err && err.code === 'declined' ? 'Descarga cancelada.' : 'No se pudo generar el Excel. Revisa tu conexión.'; }
   finally { b.disabled = false; }
 });
@@ -2878,6 +2867,26 @@ async function bajar(blob, nombre) { await dlP; if (dlNs) { await dlNs.save({ fi
 const lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = 1; const ctx1 = lienzo.getContext('2d', { willReadFrequently: true });
 function aHex(color, fondo) { ctx1.clearRect(0, 0, 1, 1); ctx1.fillStyle = fondo || '#FFFFFF'; ctx1.fillRect(0, 0, 1, 1); ctx1.fillStyle = '#000'; ctx1.fillStyle = color; ctx1.fillRect(0, 0, 1, 1); const [r, g, b] = ctx1.getImageData(0, 0, 1, 1).data; return [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase(); }
 const transparente = (c) => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+/* Arma un Excel con los mismos colores, negritas y formato de la tabla en pantalla. */
+async function excelDeTabla(tb, base, soloDatos) {
+  await cargar(URL_XLS);
+  const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Hoja1', { views: [{ state: 'frozen', ySplit: 1, xSplit: 1 }] }), borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
+  const cuerpo = [...tb.tBodies[0].rows].filter(r => !soloDatos || r.cells.length > 1);
+  const filas = [soloDatos ? tb.tHead.rows[tb.tHead.rows.length - 1] : null, ...(soloDatos ? [] : tb.tHead.rows), ...cuerpo, ...(tb.tFoot ? tb.tFoot.rows : [])].filter(Boolean), anchos = [];
+  filas.forEach((tr, i) => { const fila = ws.getRow(i + 1);
+    [...tr.cells].forEach((td, j) => { const txt = td.innerText.replace(/\s+/g, ' ').replace(/[↕↑↓▲▼▸▾]/g, '').trim(), c = fila.getCell(j + 1);
+      c.value = i > 0 && /^\d+$/.test(txt) && txt.length < 12 ? Number(txt) : txt;
+      const ins = td.querySelector('.b, b[style]') || td, csI = getComputedStyle(ins), csT = getComputedStyle(td), csR = getComputedStyle(tr);
+      const bg = [csI.backgroundColor, csT.backgroundColor, csR.backgroundColor].find(x => !transparente(x));
+      if (bg) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + aHex(bg, base) } };
+      c.font = { name: 'Calibri', size: 11, bold: i === 0 || parseInt(csI.fontWeight) >= 600 || parseInt(csT.fontWeight) >= 600, color: { argb: 'FF' + aHex(ins !== td ? csI.color : csT.color, base) } };
+      c.alignment = { horizontal: j === 0 && !soloDatos ? 'left' : 'center', vertical: 'middle' }; c.border = { top: borde, left: borde, bottom: borde, right: borde };
+      anchos[j] = Math.max(anchos[j] || 6, txt.length + 3); });
+    fila.height = i === 0 ? 22 : 18; });
+  anchos.forEach((w, j) => ws.getColumn(j + 1).width = Math.min(w, 40));
+  if (soloDatos && anchos.length) ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: anchos.length } };
+  return { buf: await wb.xlsx.writeBuffer(), n: filas.length - 1 };
+}
 document.addEventListener('click', async (e) => {
   const bi = e.target.closest('[data-img]'), bx = e.target.closest('[data-xls]'); if (!bi && !bx) return;
   const b = bi || bx, id = b.dataset.img || b.dataset.xls, tb = $(id); if (!tb) return;
@@ -2890,23 +2899,9 @@ document.addEventListener('click', async (e) => {
       try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); aviso(id, 'Imagen de la tabla copiada. Pégala con Ctrl+V en WhatsApp, correo o Excel.'); }
       catch { await bajar(await blob, nombreArch(b.dataset.nom || id, 'png')); aviso(id, 'El navegador no permitió copiar; se descargó la imagen en PNG.'); }
     } else {
-      await cargar(URL_XLS);
-      const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Hoja1', { views: [{ state: 'frozen', ySplit: 1, xSplit: 1 }] }), borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
-      const filas = [...tb.tHead.rows, ...tb.tBodies[0].rows, ...(tb.tFoot ? tb.tFoot.rows : [])], anchos = [];
-      filas.forEach((tr, i) => { const fila = ws.getRow(i + 1);
-        [...tr.cells].forEach((td, j) => { const txt = td.innerText.replace(/\s+/g, ' ').replace(/[↕↑↓▲▼▸▾]/g, '').trim(), c = fila.getCell(j + 1);
-          c.value = /^\d+$/.test(txt) && txt.length < 12 ? Number(txt) : txt;
-          const ins = td.querySelector('.b, b[style]') || td, csI = getComputedStyle(ins), csT = getComputedStyle(td), csR = getComputedStyle(tr);
-          const bg = [csI.backgroundColor, csT.backgroundColor, csR.backgroundColor].find(x => !transparente(x));
-          if (bg) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + aHex(bg, base) } };
-          c.font = { name: 'Calibri', size: 11, bold: i === 0 || parseInt(csT.fontWeight) >= 600, color: { argb: 'FF' + aHex(csT.color, base) } };
-          c.alignment = { horizontal: j === 0 ? 'left' : 'center', vertical: 'middle' }; c.border = { top: borde, left: borde, bottom: borde, right: borde };
-          anchos[j] = Math.max(anchos[j] || 6, txt.length + 3); });
-        fila.height = i === 0 ? 22 : 18; });
-      anchos.forEach((w, j) => ws.getColumn(j + 1).width = Math.min(w, 40));
-      const buf = await wb.xlsx.writeBuffer();
+      const { buf, n } = await excelDeTabla(tb, base);
       await bajar(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), nombreArch(b.dataset.nom || id, 'xlsx'));
-      aviso(id, `Excel descargado con ${filas.length - 1} filas, con los mismos colores de la tabla.`);
+      aviso(id, `Excel descargado con ${n} filas, con los mismos colores de la tabla.`);
     }
   } catch (err) { aviso(id, err && err.code === 'declined' ? 'Descarga cancelada.' : 'No se pudo generar el archivo. Revisa tu conexión e inténtalo de nuevo.', !(err && err.code === 'declined')); }
   finally { b.disabled = false; }
