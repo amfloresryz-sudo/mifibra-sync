@@ -92,10 +92,27 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .nota { font-size: 13px; color: var(--fg-4); margin: 0; }
 .flot { position: fixed; z-index: 50; background: var(--fg); color: var(--sup); font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; pointer-events: none; max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
 .ejemplo { background: var(--magenta); color: #fff; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 10px; letter-spacing: .5px; }
+.aviso b { font-weight: 700; }
+.cargando { padding: 48px 0; text-align: center; color: var(--fg-3); }
+.pen-acc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn-out { font: 600 13px var(--f-disp); border: 1px solid var(--fg); background: var(--sup); color: var(--fg); border-radius: 22px; padding: 8px 14px; cursor: pointer; min-height: 38px; }
+.btn-out:hover { background: var(--gris-bg); } .btn-out[disabled] { opacity: .55; cursor: wait; }
+.sec-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.det { min-width: 900px; } .det td, .det th { text-align: center; } .det td:first-child, .det th:first-child { text-align: center; }
+.det td.izq { text-align: left; white-space: normal; word-break: break-all; }
+.lista { max-height: 460px; overflow: auto; border: 1px solid var(--borde); border-radius: 12px; }
+.lista thead th { position: sticky; top: 0; background: var(--sup); z-index: 1; }
+.lnk { color: var(--magenta-txt); }
+.vacio { color: var(--fg-3); padding: 18px 0; }
+.chip-n { font-size: 12px; font-weight: 600; color: var(--fg-3); }
+.tabs-st { display: flex; gap: 6px; flex-wrap: wrap; } .tabs-st button { font: 700 13px var(--f-disp); border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); padding: 8px 14px; border-radius: 22px; cursor: pointer; }
+.tabs-st button[aria-selected="true"] { background: var(--magenta); border-color: var(--magenta); color: #FFFFFF; }
+.aviso-dl { font-size: 13px; color: var(--ok); min-height: 18px; }
+#vista[hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<div class="aviso"><div class="w"><span class="ejemplo">VISTA PREVIA · DATOS DE EJEMPLO</span><span>Órdenes al <b>30 set 2026</b> · Speedtest al <b>30 set 2026</b> · actualizado 01/10/2026 15:26</span><span>Los 2 últimos días son provisionales</span></div></div>
+<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: «Observaciones Tecnico» de cada alta de internet descargada · se actualiza con el robot cada 20 minutos</span></div></div>
 
 <header class="cab"><div class="w">
   <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
@@ -114,14 +131,11 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 </div></section>
 
 <main><div class="w">
+  <p class="cargando" id="cargando" role="status">Cargando el tablero de Speed Test…</p>
+  <div id="vista" hidden style="display:flex;flex-direction:column;gap:22px">
   <section class="sec" aria-labelledby="t-tit">
-    <div class="titular"><h2 id="t-tit">En las 8 filiales, <em>2,5%</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.</h2><span class="ctx" id="ctx">Julio a setiembre 2026 · Todas las filiales · Todos los planes</span></div>
-    <div class="kpis">
-      <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv">28.748</span><span class="s">4.275 en días sin archivo de Speedtest</span></div>
-      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv">69,2%</span><div class="medidor" role="img" aria-label="69,2% con medición"><i style="width:69.2%"></i></div><span class="s">19.887 de 28.748 instalaciones</span></div>
-      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg">2,5%</span><div class="medidor mg" role="img" aria-label="2,5% en dispositivo del cliente"><i style="width:2.5%"></i></div><span class="s">549 del cliente · 21.115 del equipo del técnico</span></div>
-      <div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv">90,3%</span><div class="medidor" role="img" aria-label="90,3% válidas"><i style="width:90.3%"></i></div><span class="s">2.106 por debajo del mínimo: 504 de red · 1.396 no certificables · 206 por equipo</span></div>
-    </div>
+    <div class="titular"><h2 id="t-tit"></h2><span class="ctx" id="ctx"></span></div>
+    <div class="kpis" id="kpis"></div>
   </section>
 
   <div class="dos">
@@ -131,42 +145,68 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <div><div class="cols" id="g-mes"></div><div class="meses" id="g-mes-x"></div></div>
     </section>
     <section class="sec" aria-labelledby="t-fil">
-      <div><h3 id="t-fil">Pruebas en dispositivo del cliente, por filial</h3><p class="sub">Solo se listan grupos con 5 o más pruebas registradas.</p></div>
+      <div><h3 id="t-fil">Pruebas en dispositivo del cliente, por filial</h3><p class="sub">Solo se listan filiales con 5 o más pruebas registradas.</p></div>
       <div id="g-fil"></div>
     </section>
   </div>
 
   <section class="sec" aria-labelledby="t-ec">
-    <div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos.</p></div>
-    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Válidas</th><th>No certificable</th><th>Equipo insuf.</th><th>Red no entregó</th></tr></thead><tbody></tbody></table></div>
-    <p class="nota">Cobertura = instalaciones con prueba registrada ÷ instalaciones. Válidas = pruebas que alcanzan el mínimo del plan contratado.</p>
+    <div class="sec-cab"><div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos.</p></div>
+      <div class="pen-acc"><button type="button" class="btn-out" data-xls="tb-ec" data-nom="speedtest-eecc">Descargar Excel</button></div></div>
+    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Sin identificar</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody></table></div>
+    <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Sin identificar = AB con 2 o más enlaces sin etiqueta de cliente o técnico (se cuentan como del técnico) · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba.</p>
   </section>
+
+  <section class="sec" aria-labelledby="t-det">
+    <div class="sec-cab"><div><h3 id="t-det">Detalle</h3><p class="sub" id="det-sub"></p></div>
+      <div class="pen-acc"><div class="tabs-st" role="tablist" aria-label="Detalle"><button type="button" role="tab" data-tab="sin" aria-selected="true">AB sin medición</button><button type="button" role="tab" data-tab="rep" aria-selected="false">Enlaces repetidos</button></div>
+        <button type="button" class="btn-out" id="det-xls">Descargar Excel</button></div></div>
+    <p class="aviso-dl" id="aviso-det" role="status"></p>
+    <div class="lista scroll" id="det"></div>
+  </section>
+  </div>
 </div></main>
 
 <script>
-(function () {
+(async () => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const n = (v) => Number(v).toLocaleString('es-PE').replace(/,/g, '.');
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const n = (v) => Number(v || 0).toLocaleString('es-PE').replace(/,/g, '.');
   const pc = (v) => Number(v).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).replace('.', ',') + '%';
-  // ----- Datos de ejemplo (la página real los leerá de la base) -----
-  const MESES = [['Julio 2026', 10450, 7116], ['Agosto 2026', 9578, 5900], ['Setiembre 2026', 8720, 6871]];
-  const FIL = [['LAMBAYEQUE', 5.8], ['AREQUIPA', 4.8], ['ANCASH', 4.2], ['CAJAMARCA', 2.5], ['LA LIBERTAD', 2.1], ['PIURA', 1.8], ['LIMA', 1.2], ['HUANUCO', 1.1]];
-  const EC = [
-    ['EECC V & B TECHNOLOGY', 3230, 2467, 2512, 23, 2489, 2298, 61, 37, 116],
-    ['EECC SEGANETWORKS', 2704, 2071, 2074, 17, 2057, 2050, 3, 5, 16],
-    ['EECC JBA TELECOM', 2410, 1702, 1730, 52, 1678, 1561, 88, 21, 60],
-    ['EECC DTA', 1988, 1311, 1340, 41, 1299, 1207, 70, 18, 45],
-    ['EECC JVR', 1655, 1190, 1205, 12, 1193, 1120, 40, 9, 36],
-  ];
-  const TEC = (e) => ['VICTOR LLACTAHUAMAN', 'ELVIS FREITAS', 'MARDEN BOLANOS'].map((t, i) => { const f = [0.4, 0.35, 0.25][i]; return [t, ...e.slice(1).map(v => Math.round(v * f))]; });
-  // ----- Filtros (en la vista previa solo cambian el estado visual) -----
-  const chips = (id, ops, todos) => { $(id).innerHTML = [todos, ...ops].map((o, i) => `<button type="button" class="chip" aria-pressed="${i === 0}">${o}</button>`).join('');
-    $(id).addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return; $(id).querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); }); };
-  chips('f-filial', ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'LIMA', 'PIURA'], 'Todas');
-  chips('f-mes', MESES.map(m => m[0]), 'Todos');
-  chips('f-plan', ['Hasta 1.000 Mbps', 'Más de 1.000 Mbps', 'Sin plan identificado'], 'Todos');
-  $('limpiar').addEventListener('click', () => { document.querySelectorAll('.filtros .chips').forEach(g => g.querySelectorAll('.chip').forEach((c, i) => c.setAttribute('aria-pressed', String(i === 0)))); $('f-fecha').value = ''; });
+  const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const mesTxt = (ym) => `${MESES[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
+  const dmy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  const PLANES = ['Hasta 1.000 Mbps', 'Más de 1.000 Mbps', 'Sin plan identificado'];
+  const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
+
+  // ----- Datos (tablero que arma el robot: tablas de nombres + una fila por alta) -----
+  let D;
+  try {
+    const r = await fetch('/api/speedtest', { headers: { 'x-portal-token': tokenPortal() } });
+    if (r.status === 401) { location.href = '/'; return; }
+    D = await r.json(); if (!r.ok) throw new Error(D.error || `Error ${r.status}`);
+  } catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar el tablero.'; return; }
+  // fila: [filial, día, eecc, técnico, plan, ab, os, cliente, técnico_n, sin_identificar, repetidos]
+  const O = D.o.map((x, i) => ({ i, f: D.f[x[0]], d: x[1], e: D.e[x[2]], t: D.k[x[3]], p: x[4], ab: x[5], os: x[6], c: x[7], tn: x[8], s: x[9], r: x[10] }));
+  O.forEach(o => { o.pr = o.c + o.tn + o.s; });
+  const act = D.actualizado ? new Date(D.actualizado) : null;
+  $('corte').innerHTML = `Instalaciones del <b>${dmy(O.length ? O.reduce((a, o) => o.d < a ? o.d : a, O[0].d) : '')}</b> al <b>${O.length ? dmy(O.reduce((a, o) => o.d > a ? o.d : a, O[0].d)) : '—'}</b>${act ? ` · actualizado ${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}`;
+
+  // ----- Filtros -----
+  const F = { filial: '', mes: '', fecha: '', plan: -1 };
+  const filiales = [...new Set(O.map(o => o.f))].sort(), meses = [...new Set(O.map(o => o.d.slice(0, 7)))].sort();
+  const chips = (id, ops, todos, k) => {
+    $(id).innerHTML = [['', todos], ...ops].map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${String(F[k]) === String(v === '' && k === 'plan' ? -1 : v)}">${esc(t)}</button>`).join('');
+  };
+  const pintarChips = () => { chips('f-filial', filiales.map(f => [f, f]), 'Todas', 'filial'); chips('f-mes', meses.map(m => [m, mesTxt(m)]), 'Todos', 'mes'); chips('f-plan', PLANES.map((t, i) => [i, t]), 'Todos', 'plan'); $('f-fecha').value = F.fecha; };
+  const enlazar = (id, k) => $(id).addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
+    F[k] = k === 'plan' ? (b.dataset.v === '' ? -1 : +b.dataset.v) : b.dataset.v; if (k === 'mes') F.fecha = ''; pintarChips(); pintar(); });
+  enlazar('f-filial', 'filial'); enlazar('f-mes', 'mes'); enlazar('f-plan', 'plan');
+  $('f-fecha').addEventListener('change', (e) => { F.fecha = e.target.value; if (F.fecha) F.mes = ''; pintarChips(); pintar(); });
+  $('limpiar').addEventListener('click', () => { Object.assign(F, { filial: '', mes: '', fecha: '', plan: -1 }); pintarChips(); pintar(); });
+  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || o.f === F.filial) && (sin === 'mes' || !F.mes || o.d.startsWith(F.mes)) && (!F.fecha || o.d === F.fecha) && (F.plan < 0 || o.p === F.plan);
+
   // ----- Ventana flotante de los gráficos -----
   const flot = document.createElement('div'); flot.className = 'flot'; flot.hidden = true; document.body.appendChild(flot);
   const ver = (el, html) => { flot.innerHTML = html; flot.hidden = false; const r = el.getBoundingClientRect(); flot.style.left = Math.min(window.innerWidth - flot.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - flot.offsetWidth / 2)) + 'px'; flot.style.top = Math.max(8, r.top - flot.offsetHeight - 8) + 'px'; };
@@ -174,25 +214,95 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   document.addEventListener('mouseout', (e) => { const el = e.target.closest('[data-tip]'); if (el && !el.contains(e.relatedTarget)) flot.hidden = true; });
   document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) ver(el, el.dataset.tip); });
   document.addEventListener('focusout', () => { flot.hidden = true; });
-  // ----- Columnas por mes -----
-  const max = Math.max(...MESES.map(m => m[1])), alto = 190;
-  $('g-mes').innerHTML = MESES.map(([m, t, med]) => { const h = Math.round(t / max * alto), hm = Math.round(med / t * h);
-    return `<div class="col" tabindex="0" data-tip="<b>${m}</b><br>${n(t)} instalaciones<br>${n(med)} con medición (${pc(med / t * 100)})<br>${n(t - med)} sin medición"><div class="et"><b>${n(t)}</b><span>${pc(med / t * 100)} medido</span></div>
-      <div class="barra" style="height:${h}px"><div class="t" style="height:${h - hm - 2}px"></div><div class="m" style="height:${hm}px"></div></div></div>`; }).join('');
-  $('g-mes-x').innerHTML = MESES.map(m => `<span>${m[0]}</span>`).join('');
-  // ----- Barras por filial -----
-  const fmax = Math.max(...FIL.map(f => f[1]));
-  $('g-fil').innerHTML = FIL.map(([f, v]) => `<div class="hbar" tabindex="0" data-tip="<b>${f}</b><br>${pc(v)} de sus pruebas en el equipo del cliente"><span>${f}</span><span class="p"><i style="width:${v / fmax * 100}%"></i></span><span class="v">${pc(v)}</span></div>`).join('');
-  // ----- Tabla por EECC con detalle por técnico -----
-  const fila = (r, cls) => { const [nom, ins, med, pr, cli, tec, val, nc, eq, red] = r;
-    return `<tr class="${cls}"${cls === 'ec' ? ' tabindex="0" aria-expanded="false"' : ''}><td>${nom}</td><td>${n(ins)}</td><td>${n(med)}</td><td class="tenue">${pc(med / ins * 100)}</td><td>${n(pr)}</td>
-      <td><span class="mini"><span class="p"><i style="width:${Math.min(100, cli / pr * 100 * 10)}%"></i></span>${pc(cli / pr * 100)}</span></td><td class="tenue">${n(tec)}</td><td>${n(val)}</td><td class="tenue">${n(nc)}</td><td class="tenue">${n(eq)}</td><td class="alerta">${n(red)}</td></tr>`; };
-  const tb = $('tb-ec').querySelector('tbody');
-  tb.innerHTML = EC.map((e, i) => fila(e, 'ec').replace('<tr class="ec"', `<tr class="ec" data-i="${i}"`)).join('');
-  const abrir = (tr) => { const abierto = tr.getAttribute('aria-expanded') === 'true'; let s = tr.nextElementSibling; while (s && s.classList.contains('tec')) { const x = s; s = s.nextElementSibling; x.remove(); }
-    tr.setAttribute('aria-expanded', String(!abierto)); if (!abierto) tr.insertAdjacentHTML('afterend', TEC(EC[+tr.dataset.i]).map(t => fila(t, 'tec')).join('')); };
-  tb.addEventListener('click', (e) => { const tr = e.target.closest('tr.ec'); if (tr) abrir(tr); });
-  tb.addEventListener('keydown', (e) => { const tr = e.target.closest('tr.ec'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrir(tr); } });
+
+  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0 }; L.forEach(o => { if (o.pr) a.med++; a.pr += o.pr; a.c += o.c; a.tn += o.tn; a.s += o.s; a.r += o.r; }); return a; };
+  let tab = 'sin', L = [], abiertos = new Set();
+
+  function pintar() {
+    L = O.filter(o => sel(o));
+    const a = sum(L), pCli = a.pr ? a.c / a.pr * 100 : 0, pMed = a.ins ? a.med / a.ins * 100 : 0;
+    const quien = F.filial ? `En ${F.filial}` : `En las ${filiales.length} filiales`;
+    $('t-tit').innerHTML = a.pr ? `${quien}, <em>${pc(pCli)}</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.` : `${quien} no hay pruebas registradas con estos filtros.`;
+    const per = F.fecha ? dmy(F.fecha) : F.mes ? mesTxt(F.mes) : meses.length ? `${mesTxt(meses[0])} a ${mesTxt(meses[meses.length - 1]).toLowerCase()}` : '';
+    $('ctx').textContent = `${per} · ${F.filial || 'Todas las filiales'} · ${F.plan < 0 ? 'Todos los planes' : PLANES[F.plan]}`;
+    const nRep = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
+    $('kpis').innerHTML = `
+      <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv">${n(a.ins)}</span><span class="s">${n(a.ins - a.med)} sin medición registrada</span></div>
+      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv">${pc(pMed)}</span><div class="medidor" role="img" aria-label="${pc(pMed)} con medición"><i style="width:${pMed}%"></i></div><span class="s">${n(a.med)} de ${n(a.ins)} instalaciones</span></div>
+      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg">${pc(pCli)}</span><div class="medidor mg" role="img" aria-label="${pc(pCli)} en dispositivo del cliente"><i style="width:${pCli}%"></i></div><span class="s">${n(a.c)} del cliente · ${n(a.tn + a.s)} del equipo del técnico${a.s ? ` (${n(a.s)} sin identificar)` : ''}</span></div>
+      <div class="kpi"><span class="l">Enlaces repetidos</span><span class="kv">${n(nRep)}</span><span class="s">${n(a.r)} veces en ${n(L.filter(o => o.r).length)} AB · no cuentan como prueba</span></div>`;
+    // Columnas por mes (sin el filtro de mes)
+    const LM = O.filter(o => sel(o, 'mes')), porMes = meses.map(m => [m, sum(LM.filter(o => o.d.startsWith(m)))]);
+    const max = Math.max(1, ...porMes.map(([, s]) => s.ins)), alto = 190;
+    $('g-mes').innerHTML = porMes.map(([m, s]) => { const h = Math.round(s.ins / max * alto), hm = s.ins ? Math.round(s.med / s.ins * h) : 0;
+      return `<div class="col" tabindex="0" data-tip="<b>${mesTxt(m)}</b><br>${n(s.ins)} instalaciones<br>${n(s.med)} con medición (${pc(s.ins ? s.med / s.ins * 100 : 0)})<br>${n(s.ins - s.med)} sin medición"><div class="et"><b>${n(s.ins)}</b><span>${pc(s.ins ? s.med / s.ins * 100 : 0)} medido</span></div>
+        <div class="barra" style="height:${h}px"><div class="t" style="height:${Math.max(0, h - hm - 2)}px"></div><div class="m" style="height:${hm}px"></div></div></div>`; }).join('');
+    $('g-mes-x').innerHTML = meses.map(m => `<span>${mesTxt(m)}</span>`).join('');
+    // Barras por filial (sin el filtro de filial)
+    const LF = O.filter(o => sel(o, 'filial')), porFil = filiales.map(f => [f, sum(LF.filter(o => o.f === f))]).filter(([, s]) => s.pr >= 5).map(([f, s]) => [f, s.c / s.pr * 100, s]).sort((x, y) => y[1] - x[1]);
+    const fmax = Math.max(0.1, ...porFil.map(x => x[1]));
+    $('g-fil').innerHTML = porFil.map(([f, v, s]) => `<div class="hbar" tabindex="0" data-tip="<b>${f}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas"><span>${f}</span><span class="p"><i style="width:${v / fmax * 100}%"></i></span><span class="v">${pc(v)}</span></div>`).join('') || '<p class="vacio">Sin pruebas con estos filtros.</p>';
+    // Tabla por EECC
+    const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
+    const fila = (nom, s, cls, attrs = '') => `<tr class="${cls}"${attrs}><td>${esc(nom)}</td><td>${n(s.ins)}</td><td>${n(s.med)}</td><td class="tenue">${pc(s.ins ? s.med / s.ins * 100 : 0)}</td><td>${n(s.pr)}</td>
+      <td><span class="mini"><span class="p"><i style="width:${s.pr ? Math.min(100, s.c / s.pr * 1000) : 0}%"></i></span>${pc(s.pr ? s.c / s.pr * 100 : 0)}</span></td><td class="tenue">${n(s.tn + s.s)}</td><td class="tenue">${n(s.s)}</td><td class="${s.r ? 'alerta' : 'tenue'}">${n(s.r)}</td></tr>`;
+    $('tb-ec').tBodies[0].innerHTML = Object.keys(porEc).sort((x, y) => porEc[y].length - porEc[x].length).map(ec => {
+      const ab = abiertos.has(ec), s = sum(porEc[ec]);
+      let h = fila(ec, s, 'ec', ` tabindex="0" aria-expanded="${ab}" data-ec="${esc(ec)}"`);
+      if (ab) { const porT = {}; porEc[ec].forEach(o => { (porT[o.t] = porT[o.t] || []).push(o); });
+        h += Object.keys(porT).sort((x, y) => porT[y].length - porT[x].length).map(t => fila(t, sum(porT[t]), 'tec')).join(''); }
+      return h; }).join('') || '<tr><td colspan="9" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
+    pintarDetalle();
+  }
+  const tb = $('tb-ec').tBodies[0];
+  const alternar = (tr) => { const ec = tr.dataset.ec; abiertos.has(ec) ? abiertos.delete(ec) : abiertos.add(ec); pintar(); const t = [...tb.querySelectorAll('tr.ec')].find(x => x.dataset.ec === ec); if (t) t.focus(); };
+  tb.addEventListener('click', (e) => { const tr = e.target.closest('tr.ec'); if (tr) alternar(tr); });
+  tb.addEventListener('keydown', (e) => { const tr = e.target.closest('tr.ec'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alternar(tr); } });
+
+  // ----- Detalle: AB sin medición / enlaces repetidos -----
+  let filasDet = [], cabDet = [];
+  function pintarDetalle() {
+    if (tab === 'sin') {
+      const S = L.filter(o => !o.pr).sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
+      cabDet = ['Filial', 'F. atención', 'AB', 'OS', 'EECC', 'Técnico', 'Plan', 'Enlaces repetidos'];
+      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, PLANES[o.p], o.r || '']);
+      $('det-sub').textContent = `${n(S.length)} instalaciones sin ninguna prueba válida (sin enlace, o solo con enlaces repetidos)${S.length > 500 ? ' · se muestran las 500 más recientes; el Excel trae todas' : ''}`;
+    } else {
+      const R = D.rep.map(([url, idx]) => [url, idx.filter(i => sel(O[i]))]).filter(([, idx]) => idx.length);
+      cabDet = ['Enlace', 'Veces', 'AB', 'Filiales', 'EECC'];
+      filasDet = R.map(([url, idx]) => [url, idx.length, [...new Set(idx.map(i => O[i].ab))].join(', '), [...new Set(idx.map(i => O[i].f))].join(', '), [...new Set(idx.map(i => O[i].e))].join(', ')]);
+      $('det-sub').textContent = `${n(R.length)} enlaces que aparecen más de una vez · no cuentan como prueba en ningún AB`;
+    }
+    const V = filasDet.slice(0, 500);
+    $('det').innerHTML = V.length ? `<table class="det"><thead><tr>${cabDet.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${V.map(f => `<tr>${f.map((v, j) => tab === 'rep' && j === 0 ? `<td class="izq"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a></td>` : tab === 'rep' && j === 2 ? `<td class="izq">${esc(v)}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+      : '<p class="vacio">Sin registros con estos filtros.</p>';
+  }
+  document.querySelector('.tabs-st').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab;
+    document.querySelectorAll('.tabs-st [data-tab]').forEach(x => x.setAttribute('aria-selected', String(x === b))); pintarDetalle(); });
+
+  // ----- Excel -----
+  const libs = {};
+  const cargar = (url) => libs[url] || (libs[url] = new Promise((ok, mal) => { const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => { delete libs[url]; mal(new Error('sin conexión')); }; document.head.appendChild(sc); }));
+  async function excel(cab, filas, nombre) {
+    await cargar('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Hoja1', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.addRow(cab); filas.forEach(f => ws.addRow(f));
+    ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } }; c.alignment = { horizontal: 'center' }; });
+    cab.forEach((c, j) => { ws.getColumn(j + 1).width = Math.min(60, Math.max(10, c.length + 2, ...filas.slice(0, 300).map(f => String(f[j] ?? '').length + 2))); });
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cab.length } };
+    const buf = await wb.xlsx.writeBuffer(), a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  const hoyTxt = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  $('det-xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
+    try { await excel(cabDet, filasDet, `speedtest-${tab === 'sin' ? 'ab-sin-medicion' : 'enlaces-repetidos'}-${hoyTxt()}.xlsx`); $('aviso-det').textContent = `Excel descargado con ${n(filasDet.length)} filas.`; }
+    catch { $('aviso-det').textContent = 'No se pudo generar el Excel. Revisa tu conexión.'; } finally { b.disabled = false; } });
+  document.querySelector('[data-xls="tb-ec"]').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
+    const filas = [...tb.rows].filter(r => r.cells.length > 1).map(r => [...r.cells].map((c, j) => { const t = c.innerText.trim(); return j && /^[\d.]+$/.test(t) ? Number(t.replace(/\./g, '')) : t; }));
+    try { await excel([...$('tb-ec').tHead.rows[0].cells].map(c => c.textContent), filas, `speedtest-eecc-${hoyTxt()}.xlsx`); } catch { /* sin conexión */ } finally { b.disabled = false; } });
+
+  pintarChips(); pintar();
+  $('cargando').hidden = true; $('vista').hidden = false;
 })();
 </script>
 </body>
