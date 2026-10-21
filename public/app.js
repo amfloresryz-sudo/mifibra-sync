@@ -211,7 +211,7 @@
       t('anuladas', 'Anuladas', 'Órdenes anuladas: motivo, usuario que la modificó y canal de atención.', `${num(i.anul_total)} anuladas en el periodo`),
       t('dashboard', 'Dashboard de resultados', 'Indicadores consolidados: efectividad, órdenes por día, estados y ranking de técnicos.', periodo(i), true),
       t('facilidades', 'Facilidades Técnicas', 'Buscador de facilidades técnicas en vivo: cajas, puertos y disponibilidad de planta para nuevas altas.', 'Buscador FFTT en vivo', false, 'https://buscadorffttenvivo.vercel.app/', true),
-      t('speedtest', 'Speed Test', 'Pruebas de velocidad en las instalaciones: cobertura de medición, pruebas en equipo del cliente y validez por plan.', '69,2% medido · 90,3% válidas', false, '/speedtest.html'),
+      t('speedtest', 'Speed Test', 'Pruebas de velocidad de cada alta: cobertura de medición, pruebas del cliente o del técnico, AB sin medición y enlaces repetidos.', 'Cobertura de medición por EECC y técnico', false, '/speedtest.html'),
     ].join('');
   }
 
