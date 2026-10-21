@@ -30,3 +30,25 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
 })();
+
+/* Provincias › Todas: los cuadros se leen por filial, así que «EECC» y «Zona» en títulos, encabezados y segmentadores
+   pasan a decir «Filial». Cada página indica cuándo aplica con window.esProvTodas(). */
+(function () {
+  'use strict';
+  const REGLAS = [[/de EECC\b/g, 'de E​ECC'], [/\b1 EECC\b/g, '1 filial'], [/(\d+) EECC\b/g, '$1 filiales'], [/\bEECC_F\b/g, 'Filial'], [/\bpor EECC\b/gi, 'por filial'], [/\bEECC\b/g, 'Filial'],
+    [/\bpor zona\b/gi, 'por filial'], [/\bZONAS\b/g, 'FILIALES'], [/\bZonas\b/g, 'Filiales'], [/\bZONA\b/g, 'FILIAL'], [/\bZona\b/g, 'Filial'], [/\bzona\b/g, 'filial']];
+  const activo = () => typeof window.esProvTodas === 'function' && window.esProvTodas();
+  function renombrar() {
+    const raiz = document.querySelector('main'); if (!raiz || !activo()) return;
+    const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT, { acceptNode: (t) => {
+      if (!/EECC|zona/i.test(t.nodeValue)) return NodeFilter.FILTER_REJECT;
+      const b = t.parentElement && t.parentElement.closest('button, select, option, input, textarea, script, style');
+      return b && !b.matches('.avt-z, [role="tab"], .chip') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
+    const L = []; let t; while ((t = w.nextNode())) L.push(t);
+    L.forEach(t => { let v = t.nodeValue; REGLAS.forEach(([re, r]) => v = v.replace(re, r)); if (v !== t.nodeValue) t.nodeValue = v; });
+  }
+  let pend = false;
+  const prog = () => { if (pend || !activo()) return; pend = true; requestAnimationFrame(() => { pend = false; renombrar(); }); };
+  const iniciar = () => new MutationObserver(prog).observe(document.body, { childList: true, subtree: true, characterData: true });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();

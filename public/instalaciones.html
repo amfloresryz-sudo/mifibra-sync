@@ -706,6 +706,13 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .mat tr.zona td.e1 { background: var(--edad-1); } .mat tr.zona td.e2 { background: var(--edad-2); color: #2A1400; } .mat tr.zona td.e3 { background: var(--edad-3); color: var(--edad-txt3); }
 .blq { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; } .blq .chips { display: flex; flex-wrap: wrap; gap: 8px; } .blq-f[hidden] { display: none !important; }
 .blq-f { padding-left: 14px; border-left: 1px solid rgba(255,255,255,.25); }
+.rf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.rf-g { border: 1px solid var(--borde); border-radius: 12px; padding: 10px; } .rf-cab { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+.rf-cab span { color: var(--magenta-txt); font-weight: 700; } .rf-g .mat td:first-child { position: static; font-weight: 500; }
+.rf-g .in-ruta[disabled] { background: var(--gris-bg); color: var(--fg); border-color: transparent; }
+.rf-acc { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; } .rf-acc label { display: flex; flex-direction: column; gap: 6px; }
+.rf-acc input { font: inherit; padding: 8px 10px; border: 1px solid var(--borde-2); border-radius: 10px; background: var(--sup); color: var(--fg); }
+.rf-ok:not([disabled]) { background: var(--magenta); border-color: var(--magenta); color: #FFFFFF; }
 </style>
 </head>
 <body>
@@ -908,7 +915,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-avance" aria-labelledby="tab-avance" hidden style="flex-direction:column;gap:22px">
     <section class="sec" id="sec-av" aria-labelledby="t-av">
       <div class="sec-cab"><div><h2 id="t-av">Avance de producción diaria por EECC</h2><p class="sub" id="av-sub"></p></div>
-        <div class="pen-acc"><label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="av-dia" class="sel-dia"></select></label><button type="button" class="btn-out" data-img="sec-av" data-nom="avance-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-av" data-nom="avance-eecc">Descargar Excel</button></div></div>
+        <div class="pen-acc"><label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="av-dia" class="sel-dia"></select></label><button type="button" class="btn-out" id="av-rutas">Rutas por distrito</button><button type="button" class="btn-out" data-img="sec-av" data-nom="avance-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-av" data-nom="avance-eecc">Descargar Excel</button></div></div>
       <div class="kpis" id="av-kpis"></div>
       <p class="pen-aviso" id="aviso-tb-av" role="status" aria-live="polite"></p>
       <div id="av-tab" class="scroll"></div><p class="ag-est" id="av-est" role="status" aria-live="polite"></p>
@@ -1085,20 +1092,7 @@ const fijarEc = (x) => { if (x.ecR === undefined) x.ecR = x.ec0 !== undefined ? 
 /* Provincias › Todas: todos los cuadros se analizan por filial; al elegir una filial, por EECC (detalle). */
 const provTodas = () => (D && D.filial || filialSel()) === 'PROVINCIAS';
 const nomFil = (f) => f ? String(f).split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ') : 'Sin filial';
-const RENOMBRA = [[/de EECC\b/g, 'de E\u200BECC'], [/\b1 EECC\b/g, '1 filial'], [/(\d+) EECC\b/g, '$1 filiales'], [/\bEECC_F\b/g, 'Filial'], [/\bEECC\b/g, 'Filial'], [/\bEECCs\b/g, 'filiales'], [/\bpor EECC\b/gi, 'por filial'], [/\bpor Filial\b/g, 'por filial']];
-function renombrarEecc() {
-  if (!provTodas()) return;
-  const raiz = document.querySelector('main'); if (!raiz) return;
-  const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT, { acceptNode: (t) => {
-    if (!/EECC/.test(t.nodeValue)) return NodeFilter.FILTER_REJECT;
-    const b = t.parentElement && t.parentElement.closest('button, select, option, input, textarea, script, style');
-    return b && !b.matches('.avt-z, [role="tab"], .chip') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
-  const L = []; let t; while ((t = w.nextNode())) L.push(t);
-  L.forEach(t => { let v = t.nodeValue; RENOMBRA.forEach(([re, r]) => v = v.replace(re, r)); if (v !== t.nodeValue) t.nodeValue = v; });
-}
-let renPend = false;
-new MutationObserver(() => { if (!provTodas() || renPend) return; renPend = true; requestAnimationFrame(() => { renPend = false; renombrarEecc(); }); })
-  .observe(document.body, { childList: true, subtree: true, characterData: true });
+window.esProvTodas = provTodas;   // filial-bloques.js cambia «EECC» y «Zona» por «Filial» en los textos
 const gestorDe = (x) => AJ.gestores[x.ec0 ?? x.ec] || 'SIN GESTOR';
 const hayGestores = () => Object.keys(AJ.gestores).length > 0;
 /* Metas del canal elegido en la cabecera: lo vacío en el canal usa la meta de «Todos» (y lo vacío en «Todos», la del robot).
@@ -1190,7 +1184,8 @@ function prepararDatos() {
   const fil = D.filial || 'LIMA';
   $('filial').value = fil;
   $('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
-  $('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length ? 'visible' : 'hidden';
+  $('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS' ? 'visible' : 'hidden';
+  ZORD.splice(0, ZORD.length, ...(fil === 'PROVINCIAS' ? [...new Set(Object.values(D.zonas || {}))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
   $('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 20 min.`;
   const opDias = DIAS.slice().reverse().map(d => `<option value="${d}">${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
   $('co-dia').innerHTML = opDias; $('av-dia').innerHTML = opDias;
@@ -2533,6 +2528,42 @@ $('co-fr').addEventListener('click', (e) => { const b = e.target.closest('[data-
 $('co-dia').addEventListener('change', (e) => { diaCo = +e.target.value; pintarCoDia(); });
 
 /* ---------- AVANCE ---------- */
+/* ---------- Rutas fijas por filial y distrito (iguales todos los días; solo el usuario master las cambia) ---------- */
+let RF = {};
+async function traerRutasFijas() {
+  try { const r = await fetch('/api/ajustes?modulo=rutas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (r.ok) RF = (await r.json()).fijas || {}; } catch { /* sin rutas fijas */ }
+}
+const rfSuma = (f, okD) => { const m = RF[f]; if (!m || !Object.keys(m).length) return null; return Object.entries(m).reduce((a, [d, v]) => a + (okD && !okD(d) ? 0 : v), 0); };
+function gruposRutas() {   // [[filial, título, [distritos]]] según lo elegido: Lima por zona, Provincias por filial, una filial sola
+  const fil = D.filial || 'LIMA', L = [...(D.ing || []), ...(D.liq || []), ...(D.pend || []), ...(D.progRaw || D.prog || [])];
+  const ds = (f) => { const S = new Set(Object.keys(RF[f] || {})); L.forEach(x => { if (x.di && (fil !== 'PROVINCIAS' || (x.fi || '') === f)) S.add(String(x.di).toUpperCase().trim()); }); return [...S].filter(Boolean).sort(); };
+  if (fil === 'PROVINCIAS') return [...new Set(L.map(x => x.fi).filter(Boolean)), ...Object.keys(RF).filter(f => f !== 'LIMA')].filter((v, i, a) => a.indexOf(v) === i).sort().map(f => [f, nomFil(f), ds(f)]);
+  if (fil === 'LIMA') { const todos = ds('LIMA'), z = {}; todos.forEach(d => { const k = (D.zonas || {})[d] || 'SIN ZONA'; (z[k] = z[k] || []).push(d); });
+    return Object.keys(z).sort((a, b) => zIdx(a) - zIdx(b)).map(k => ['LIMA', `Lima · zona ${k}`, z[k]]); }
+  return [[fil, nomFil(fil), ds(fil)]];
+}
+function abrirRutas() {
+  const G = gruposRutas(), tot = (f, L) => L.reduce((a, d) => a + (RF[f]?.[d] || 0), 0);
+  const html = `<p class="fi-nota" style="margin:0 0 10px">Rutas (técnicos) que deben salir a campo cada día en cada distrito. Quedan fijas para todos los días y todos los usuarios; para cambiarlas se necesita la clave master.</p>
+    <form id="f-rutas"><div class="rf-grid">${G.map(([f, t, L]) => `<div class="rf-g"><div class="rf-cab"><b>${esc(t)}</b><span data-rf-tot="${esc(t)}">${n(tot(f, L))} rutas</span></div>
+      <table class="mat"><tbody>${L.map(d => `<tr><td>${esc(d)}</td><td style="width:90px"><input type="number" min="0" max="999" class="in-ruta" data-rf-f="${esc(f)}" data-rf-d="${esc(d)}" data-rf-t="${esc(t)}" value="${RF[f]?.[d] ?? ''}" placeholder="—" disabled></td></tr>`).join('') || '<tr><td colspan="2">Sin distritos con datos.</td></tr>'}</tbody></table></div>`).join('')}</div>
+    <div class="rf-acc"><label class="seg-t">Clave master <input type="password" id="rf-clave" autocomplete="current-password" value="${esc(claveMaster())}"></label><button type="button" class="btn-out" id="rf-editar">Editar</button><button type="submit" class="btn-out rf-ok" id="rf-guardar" disabled>Guardar rutas</button></div></form>`;
+  abrirFichaModal('Rutas por distrito', `${D.filial === 'PROVINCIAS' ? 'Provincias' : nomFil(D.filial || 'LIMA')} · fijas para todos los días · Rutas declaradas del Avance`, html);
+  const f = $('f-rutas');
+  f.addEventListener('input', (e) => { const i = e.target.closest('[data-rf-t]'); if (!i) return; const t = i.dataset.rfT;
+    const s = [...f.querySelectorAll(`[data-rf-t="${CSS.escape(t)}"]`)].reduce((a, x) => a + (Number(x.value) || 0), 0); const sp = f.querySelector(`[data-rf-tot="${CSS.escape(t)}"]`); if (sp) sp.textContent = `${n(s)} rutas`; });
+  $('rf-editar').addEventListener('click', () => { if (!$('rf-clave').value.trim()) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'Ingresa la clave master para editar.'; return; }
+    f.querySelectorAll('[data-rf-f]').forEach(i => i.disabled = false); $('rf-guardar').disabled = false; $('modal-aviso').textContent = ''; });
+  f.addEventListener('submit', async (e) => { e.preventDefault(); const k = $('rf-clave').value.trim(), fijas = {};
+    f.querySelectorAll('[data-rf-f]').forEach(i => { const m = fijas[i.dataset.rfF] || (fijas[i.dataset.rfF] = { ...(RF[i.dataset.rfF] || {}) }); if (i.value === '') delete m[i.dataset.rfD]; else m[i.dataset.rfD] = Number(i.value); });
+    $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…'; $('rf-guardar').disabled = true;
+    try { const r = await fetch('/api/ajustes?modulo=rutas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': k }, body: JSON.stringify({ fijas }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { if (r.status === 403) ponerMaster(''); throw new Error(j.error || `Error ${r.status}`); }
+      ponerMaster(k); RF = j.fijas || RF; $('modal-aviso').style.color = 'var(--ok)'; $('modal-aviso').textContent = 'Rutas guardadas para todos.'; pintarAvance(); }
+    catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message; $('rf-guardar').disabled = false; } });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('#av-rutas')) abrirRutas(); });
+traerRutasFijas().then(() => { try { if (D && diaAv) pintarAvance(); } catch { /* el tablero aún no está listo: se pinta al cargar */ } });
 function pintarAvance() {
   const L = D.liq.filter(ok), Ld = L.filter(x => x.d === diaAv), P = D.pend.filter(ok), G = D.prog.filter(x => ok(x) && x.d === diaAv);
   const obj = CFG.obj_tecnico || 3, ecs = {}, RD = AJ.rutas[isoDia(diaAv)] || {};
@@ -2548,12 +2579,17 @@ function pintarAvance() {
   const tecs = new Set(Ld.map(x => x.tec).filter(Boolean)), objT = Math.round(tecs.size * obj);  // objetivo en número entero
   // Rutas declaradas (Pendientes › Agendas del día, o aquí) y faltas = rutas declaradas que no salieron a campo
   const falta = (r, t) => r == null ? null : Math.max(0, r - t);
-  const rutasT = rk.reduce((a, k) => a + (RD[k] || 0), 0), conR = rk.some(k => RD[k] != null);
-  const faltasT = rk.reduce((a, k) => a + (falta(RD[k], ecs[k].tec.size) || 0), 0);
+  // Rutas fijas por distrito (botón «Rutas por distrito», clave master): en Provincias › Todas dan las rutas de cada filial;
+  // en Lima o una filial dan el total del día. Si no hay rutas fijas se usan las declaradas a mano por EECC.
+  const zOk = (d) => zona === 'TODAS' || ((D.zonas || {})[d] || 'SIN ZONA') === zona;
+  const rutaDe = (k) => porFil ? rfSuma(k.toUpperCase(), zOk) : RD[k];
+  const fijoT = porFil ? null : rfSuma(D.filial || 'LIMA', zOk);
+  const rutasT = fijoT != null ? fijoT : rk.reduce((a, k) => a + (rutaDe(k) || 0), 0), conR = fijoT != null || rk.some(k => rutaDe(k) != null);
+  const faltasT = fijoT != null ? falta(fijoT, tecs.size) : rk.reduce((a, k) => a + (falta(rutaDe(k), ecs[k].tec.size) || 0), 0);
   const di = diaInfo(diaAv);
   $('t-av').textContent = porFil ? 'Avance de producción diaria por filial' : 'Avance de producción diaria por EECC';
-  $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus EECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = técnicos × ${obj}`;
-  $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
+  $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus E\u200BECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = técnicos × ${obj}`;
+  $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', fijoT != null || porFil ? 'rutas fijas por distrito' : conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
     kpi('Técnicos en campo', n(tecs.size), 'liquidaron al menos una') +
     kpi('Faltas', conR ? n(faltasT) : '—', conR ? `${pct(faltasT, rutasT)} de las rutas declaradas` : 'declara las rutas para calcularlas', !conR ? '' : faltasT === 0 ? 'ok' : faltasT / Math.max(1, rutasT) <= .1 ? 'mid' : 'mal') +
     kpi('Objetivo del día', n(objT), `${obj} por técnico`) +
@@ -2565,7 +2601,7 @@ function pintarAvance() {
   const icAv = (liq, o) => { if (!o) return ''; const q = liq / o * 100, t = `${dec(q, 0)}% del objetivo`;
     return q >= 90 ? `<span class="ic-av ok" title="${t}">✔</span>` : q >= 50 ? `<span class="ic-av mid" title="${t}">!</span>` : `<span class="ic-av mal" title="${t}">✖</span>`; };
   const filaAv = (k, e) => { const o = Math.round(e.tec.size * obj), av = o ? e.liq / o * 100 : null;
-    const r = k ? RD[k] : (conR ? rutasT : null), fa = k ? falta(r, e.tec.size) : (conR ? faltasT : null);
+    const r = k ? rutaDe(k) : (conR ? rutasT : null), fa = k ? falta(r, e.tec.size) : (conR ? faltasT : null);
     const celR = k && !porFil ? `<td class="sep"><input type="number" class="in-ruta" min="0" max="999" inputmode="numeric" data-av-ruta="${esc(k)}" value="${r ?? ''}" aria-label="Rutas declaradas de ${esc(k)}" placeholder="—"></td>` : `<td class="sep">${r ?? '—'}</td>`;
     const celF = `<td class="${fa == null ? '' : fa ? 'malo' : 'bien'}">${fa == null ? '—' : fa}</td>`;
     return `${celR}${celF}<td>${n(e.tec.size) || '·'}</td><td>${n(e.bolsa) || '·'}</td><td class="bh">${n(e.hoy) || '·'}</td><td class="bm">${n(e.m24) || '·'}</td><td class="av-prog">${n(e.prog) || '·'}</td><td>${o || '·'}</td><td class="t-col av-liq">${k ? `<button type="button" class="clic" data-ch="liq" data-d="${diaAv}" data-k="EC:${esc(k)}" style="all:unset;cursor:pointer">${e.liq}</button>` : e.liq}${icAv(e.liq, o)}</td><td class="${!o ? '' : o - e.liq > 0 ? 'av-falta' : 'av-ok'}" title="${!o ? '' : o - e.liq > 0 ? 'Faltan ' + (o - e.liq) + ' para el objetivo' : 'Objetivo alcanzado' + (e.liq > o ? ' (+' + (e.liq - o) + ')' : '')}">${!o ? '·' : o - e.liq > 0 ? o - e.liq : (e.liq > o ? '+' + (e.liq - o) : '0')}</td><td>${e.tec.size ? dec(e.liq / e.tec.size) : '—'}</td><td data-v="${av ?? -1}">${barra(av)}</td>`; };

@@ -521,8 +521,11 @@ function aplicarTecs(b) {
   if (!b) return;
   [b.liq, b.cien, b.ing, b.pend, b.pendx, b.agd].forEach(L => (Array.isArray(L) ? L : []).forEach(x => {
     if (!x || typeof x !== 'object' || Array.isArray(x)) return;
-    if (x.ecR === undefined) x.ecR = x.ec; x.ec = (x.tec && TECS[x.tec]) || x.ecR; }));
+    if (x.ecR === undefined) x.ecR = x.ec; x.ec = (x.tec && TECS[x.tec]) || x.ecR;
+    // Provincias › Todas: se analiza por filial (la filial ocupa el lugar de la EECC; la «zona» ya es la filial)
+    if ((b.filial || '') === 'PROVINCIAS') { const z = x.z || (b.zonas || {})[String(x.di || '').toUpperCase().trim()]; if (z) x.ec = z; } }));
 }
+window.esProvTodas = () => ((typeof D !== 'undefined' && D && D.filial) || filialSel()) === 'PROVINCIAS';
 function vistaPeriodo() {
   aplicarTecs(DC); if (PER.mes && DMES[kMes(PER.mes)]) aplicarTecs(DMES[kMes(PER.mes)]);
   const base = (PER.mes && DMES[kMes(PER.mes)]) || DC;
@@ -553,6 +556,7 @@ const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: 
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 let DIAS = [], MC = '', MESL = '';
 const MESES_L = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const ZORD = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'];
 function prepararDatos() {
   DIAS = []; for (let d = PER.a; d <= Math.min(PER.b, D.dias); d++) DIAS.push(d);
   MC = MES[D.mes - 1]; MESL = MESES_L[D.mes - 1];
@@ -562,7 +566,8 @@ function prepararDatos() {
   const fil = D.filial || 'LIMA';
   document.getElementById('filial').value = fil;
   document.getElementById('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
-  document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length ? 'visible' : 'hidden';  // ocupa su lugar para que Filial no se mueva
+  document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS' ? 'visible' : 'hidden';
+  ZORD.splice(0, ZORD.length, ...((D.filial || '') === 'PROVINCIAS' ? [...new Set(Object.values(D.zonas || {}))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial  // ocupa su lugar para que Filial no se mueva
   document.getElementById('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 20 min.`;
   aplicarAjCien();
 }
@@ -579,7 +584,6 @@ const diaLima = (ms) => fLima(ms, { year: 'numeric', month: '2-digit', day: '2-d
 const edad = (rec) => { const a = new Date(diaLima(ahora()).split('/').reverse().join('-')), b = new Date(diaLima(rec).split('/').reverse().join('-')); return Math.round((a - b) / 86400000); };
 let tipo = 'TODOS', vista = 'dia', tab = 'panel';
 const filtro = { ingEc: 'TODOS', ingAg: 'TODOS', detEc: 'TODOS', detAg: 'TODOS', altEc: 'TODOS', altAg: 'TODOS', penZona: 'TODOS', penEc: 'TODOS', penAg: 'TODOS', buscar: '' };
-const ZORD = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'];
 const ZCOL = { NORTE: '#2A78D6', SUR: '#EB6834', ESTE: '#1BAF7A', OESTE: '#EDA100', PREMIUM: '#6250D6' };
 const ZTXT = { NORTE: '#FFFFFF', SUR: '#FFFFFF', ESTE: '#0B0B0B', OESTE: '#0B0B0B', PREMIUM: '#FFFFFF' };
 let zona = 'TODAS', canal = 'TODOS';

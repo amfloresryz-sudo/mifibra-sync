@@ -914,13 +914,16 @@ function preparar() {
   D.obs.forEach(r => {
     const ec0 = (r.tec && AJ.tecnicos && AJ.tecnicos[r.tec]) || r.ec;   // reasignación de técnicos (Técnicos y EECC)
     r.ecN = AJ.nombres?.[ec0] || ec0; r.ge = AJ.gestores?.[ec0] || 'SIN GESTOR'; r.g = grupo(r.s);
+    if (provTodas()) { r.ecN = r.z || r.ecN; r.ge = 'SIN GESTOR'; }   // Provincias › Todas: por filial (la «zona» es la filial)
   });
 }
+const provTodas = () => (D && D.filial || filialSel()) === 'PROVINCIAS';
+window.esProvTodas = provTodas;
 async function cargarTodo(f) {
   $('cargando').hidden = false; $('cargando').textContent = 'Cargando las observadas…'; $('vista').hidden = true;
   try {
     const [j] = await Promise.all([traer(f), traerAjustes(f)]);
-    D = j; preparar();
+    D = j; ZORD.splice(0, ZORD.length, ...(f === 'PROVINCIAS' ? [...new Set(D.obs.map(r => r.z).filter(Boolean))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'])); preparar();
     const meses = [...new Set(D.obs.filter(r => !r.rc).map(r => r.f.slice(0, 7)))].sort();
     if (!meses.includes(mes)) mes = meses[meses.length - 1] || '';
     $('meses').innerHTML = meses.map(m => `<button type="button" class="chip" data-mes="${m}" aria-pressed="${m === mes}">${mesTxt(m).replace(/^./, c => c.toUpperCase())}</button>`).join('') || '<span style="color:#D1D5DB">Sin observadas en el periodo</span>';

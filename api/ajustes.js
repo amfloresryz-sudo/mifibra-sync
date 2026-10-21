@@ -3,7 +3,7 @@
 // Ajustes que operaciones edita en el portal: metas (generales y por canal de atención), nombres de EECC, gestor de cada EECC
 // y rutas (técnicos) que asisten cada día por EECC. Se validan antes de guardar.
 const crypto = require('crypto');
-const { consultar, guardar, autorizado, responder, filialDe } = require('./_supabase');
+const { consultar, guardar, autorizado, responder, filialDe, FILIALES } = require('./_supabase');
 
 // Clave del usuario master (variable MASTER_TOKEN en Vercel): la única que puede editar agendas.
 function esMaster(req) {
@@ -13,7 +13,7 @@ function esMaster(req) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-const MODULOS = ['instalaciones', 'averias'];
+const MODULOS = ['instalaciones', 'averias', 'rutas'];   // rutas: rutas fijas por filial y distrito (una sola fila para todo el portal)
 const METAS = ['meta_mes', 'meta_conv', 'meta_disp', 'meta_db', 'meta_prod', 'obj_tecnico', 'meta_cumpl'];
 const texto = (v, max = 60) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
 const esFecha = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k);
@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
   const filial = filialDe(req);
   const modulo = new URL(req.url, 'http://x').searchParams.get('modulo') || 'instalaciones';
   if (!MODULOS.includes(modulo)) return responder(res, 400, { error: 'Módulo no válido' });
-  const clave = `${modulo}:${filial}`;
+  const clave = modulo === 'rutas' ? 'rutas:GLOBAL' : `${modulo}:${filial}`;
   try {
     if (req.method === 'GET') {
       const { datos } = await consultar(`ajustes?select=datos,actualizado&clave=eq.${encodeURIComponent(clave)}`);
@@ -115,7 +115,18 @@ module.exports = async (req, res) => {
       const previo = datos.length ? datos[0].datos || {} : {};
       const accion = new URL(req.url, 'http://x').searchParams.get('accion');
       let nuevo;
-      if (accion === 'agenda') {
+      if (modulo === 'rutas') {
+        // Rutas fijas (técnicos que deben salir a campo) por filial y distrito: solo el usuario master. Se reemplaza la filial enviada.
+        if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
+        if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar las rutas.' });
+        const fijas = { ...(previo.fijas || {}) };
+        Object.entries(cuerpo?.fijas || {}).forEach(([f, m]) => {
+          const fil = texto(f, 30).toUpperCase(); if (!FILIALES.includes(fil) || fil === 'PROVINCIAS') return;
+          const o = {}; Object.entries(m || {}).slice(0, 400).forEach(([d, v]) => { const k = texto(d, 80).toUpperCase(), n = Math.round(Number(v)); if (k && v !== '' && v != null && isFinite(n) && n >= 0 && n <= 999) o[k] = n; });
+          fijas[fil] = o;
+        });
+        nuevo = { fijas, por: 'master' };
+      } else if (accion === 'agenda') {
         // Editar la agenda de una OS: solo el usuario master. Se cambia solo esa OS sobre lo guardado.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
         if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede editar agendas.' });

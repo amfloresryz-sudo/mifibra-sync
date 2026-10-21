@@ -84,13 +84,18 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
     prov = df[~fil.isin(["LIMA", "SIN FILIAL"])]
     if not prov.empty:
         grupos.append(("PROVINCIAS", prov))
+    # En PROVINCIAS la «zona» de cada distrito es su filial: los cuadros por zona se leen por filial.
+    zonas_prov = {}
+    if not prov.empty:
+        dd = prov.assign(_d=prov["distrito"].fillna("").astype(str).str.upper().str.strip(), _f=prov["filial"].astype(str))
+        zonas_prov = {d: g.mode().iat[0] for d, g in dd[dd["_d"] != ""].groupby("_d")["_f"]}
     for filial, d in grupos:
         t0 = time.time()
         # ---------------- indicadores de la portada / Dashboard
         tableros[f"indicadores:{filial}"] = {**resumen.indicadores(d, actualizado), "filial": filial}
 
         # ---------------- Averías y TC
-        zz = averias.ZONAS if filial == "LIMA" else {}
+        zz = averias.ZONAS if filial == "LIMA" else zonas_prov if filial == "PROVINCIAS" else {}
         av = _cols(d[d["tipo_orden"].isin(["SERVICIO TECNICO", *averias.TIPOS_ORDEN_MISC])], averias.COLUMNAS_BD)
         ins = _cols(d[(d["tipo_orden"] == "INSTALACION SERVICIO") & (d["estado_os"] == "DESCARGADA")
                       & (fa[d.index] >= pd.Timestamp(desde - timedelta(days=31)))], averias.COLUMNAS_INST, ("id_os", "filial"))
@@ -112,7 +117,7 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
         # ---------------- Instalaciones
         it = _cols(d[d["tipo_orden"] == "INSTALACION SERVICIO"], instalaciones.COLUMNAS_BD)
         if not it.empty:
-            zz = instalaciones.ZONAS if filial == "LIMA" else {}
+            zz = instalaciones.ZONAS if filial == "LIMA" else zonas_prov if filial == "PROVINCIAS" else {}
             try:
                 ant = instalaciones.construir(it, tecnicos, fin_ant, filial=filial, zonas=zz)
                 ant["filial"] = filial
