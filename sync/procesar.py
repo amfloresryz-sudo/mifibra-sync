@@ -551,23 +551,6 @@ def speedtest_links(texto) -> list[list]:
     return out
 
 
-def speedtest_muestra(df: pd.DataFrame, n: int = 400) -> list:
-    """Temporal: muestra de enlaces con el texto que los antecede (teléfonos ocultos) para verificar la regla de etiquetas."""
-    import random
-    x = df[df["Tipo Orden"].astype(str).str.strip().str.upper().eq("INSTALACION SERVICIO")]
-    filas = []
-    for obs in x["Observaciones Tecnico"].dropna().astype(str):
-        previo = 0
-        for m in _RE_ST_URL.finditer(obs):
-            q = _st_etiqueta(obs, previo, m.start())
-            antes = "\n".join([ln for ln in obs[previo:m.start()].split("\n") if ln.strip()][-2:])
-            filas.append([q, _sin_tel(antes)[-160:]])
-            previo = m.end()
-    random.seed(7)
-    por = {k: [f for f in filas if f[0] == k] for k in ("C", "T", "")}
-    return [f for k, cupo in (("C", 200), ("T", 100), ("", 100)) for f in random.sample(por[k], min(cupo, len(por[k])))]
-
-
 def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:
     """id_os → enlaces de Speedtest, solo instalaciones (INSTALACION SERVICIO)."""
     if "Observaciones Tecnico" not in df or "IdOS" not in df:
