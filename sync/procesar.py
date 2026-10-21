@@ -477,19 +477,52 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
     return filas
 
 
-_RE_SPEED = re.compile(r"speedtest|ookla|fast\.com|nperf|testdevelocidad", re.I)
+# ---------- Speed Test: enlaces de speedtest.net en «Observaciones Tecnico» ----------
+_RE_ST_URL = re.compile(r"(?:https?://)?(?:www\.)?speedtest\.net/[^\s,;()\"'<>]+", re.I)
+_RE_ST_CLI = re.compile(r"cliente|abonado|\bab\b|usuario", re.I)
+_RE_ST_TEC = re.compile(r"t[eé]cnico|\bt[eé]c\b|\bt[eé]c\.", re.I)
 
 
-def diagnostico_speedtest(df: pd.DataFrame) -> dict:
-    """Temporal: qué columnas del Excel traen enlaces de pruebas de velocidad, con unos ejemplos (teléfonos ocultos)."""
-    cols = {}
-    inst = df[df.get("Tipo Orden", pd.Series(dtype=str)).astype(str).str.upper().eq("INSTALACION SERVICIO")] if "Tipo Orden" in df else df
-    for c in df.columns:
-        s = inst[c].dropna().astype(str)
-        m = s[s.str.contains(_RE_SPEED)]
-        if len(m):
-            cols[str(c)] = {"filas": int(len(m)), "ejemplos": [_sin_tel(v)[:500] for v in m.head(12).tolist()]}
-    return {"columnas_excel": [str(c) for c in df.columns], "instalaciones": int(len(inst)), "con_speedtest": cols}
+def _st_norm(url: str) -> str:
+    """Clave para comparar enlaces: sin http/www, sin idioma (/es/), sin parámetros, en minúsculas."""
+    u = re.sub(r"^(?:https?://)?(?:www\.)?", "", url.strip().lower())
+    u = re.sub(r"^speedtest\.net/[a-z]{2}(?:-[a-z]{2})?/", "speedtest.net/", u)
+    return re.split(r"[?#]", u)[0].rstrip("/.:")
+
+
+def speedtest_links(texto) -> list[list]:
+    """Enlaces de Speedtest de un comentario, con de quién es cada prueba según la etiqueta que lo antecede.
+
+    Devuelve [[clave, enlace, quién]] con quién = "C" (cliente), "T" (técnico) o "" (sin etiqueta). La etiqueta se busca
+    en las 2 últimas líneas antes del enlace (sin pasar el enlace anterior); manda la palabra más cercana al enlace."""
+    t = str(_texto(texto) or "")
+    out, previo = [], 0
+    for m in _RE_ST_URL.finditer(t):
+        url = m.group(0).rstrip(".:")
+        tramo = t[previo:m.start()]
+        tramo = "\n".join([ln for ln in tramo.split("\n") if ln.strip()][-2:])
+        c = [x.end() for x in _RE_ST_CLI.finditer(tramo)]
+        k = [x.end() for x in _RE_ST_TEC.finditer(tramo)]
+        quien = "" if not c and not k else ("C" if (max(c) if c else -1) > (max(k) if k else -1) else "T")
+        out.append([_st_norm(url), url if url.lower().startswith("http") else "https://" + url, quien])
+        previo = m.end()
+    return out
+
+
+def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:
+    """id_os → enlaces de Speedtest, solo instalaciones (INSTALACION SERVICIO)."""
+    if "Observaciones Tecnico" not in df or "IdOS" not in df:
+        print("Aviso: el reporte no trae «Observaciones Tecnico»; Speed Test sin enlaces.", flush=True)
+        return {}
+    x = df[df["Tipo Orden"].astype(str).str.strip().str.upper().eq("INSTALACION SERVICIO")]
+    out = {}
+    for ido, obs in zip(x["IdOS"], x["Observaciones Tecnico"]):
+        if pd.isna(ido):
+            continue
+        links = speedtest_links(obs)
+        if links:
+            out[int(ido)] = links
+    return out
 
 
 def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:

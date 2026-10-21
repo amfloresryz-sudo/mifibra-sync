@@ -57,7 +57,7 @@ def _cols(df: pd.DataFrame, columnas: str, extra: tuple[str, ...] = ()) -> pd.Da
     return x
 
 
-def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str) -> dict[str, dict]:
+def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links_st: dict | None = None) -> dict[str, dict]:
     """Todos los tableros del portal a partir de las órdenes del periodo (sin leer Supabase)."""
     from . import averias, instalaciones, resumen
 
@@ -124,6 +124,11 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str) -> di
             datos["filial"] = filial
             tableros[f"instalaciones:{filial}"] = datos
         print(f"  Tableros de {filial} calculados en {time.time() - t0:.0f} s.", flush=True)
+    try:  # Speed Test: un solo tablero con todas las filiales (la página filtra)
+        from . import speedtest
+        tableros["speedtest"] = speedtest.construir(df, links_st or {}, tecnicos, actualizado)
+    except Exception as e:  # noqa: BLE001
+        print(f"Aviso: no se calculó el tablero de Speed Test: {e}", flush=True)
     return tableros
 
 
@@ -162,14 +167,13 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:  # noqa: BLE001 - sin mapas se conservan las cajas ya guardadas
             print(f"Aviso: no se cargaron los mapas de cajas: {e}", flush=True)
         filas_por_id: dict[int, dict] = {}
-        diag = None
+        links_st: dict[int, list] = {}
         for archivo in archivos:
             df0 = procesar.leer_excel(archivo)
-            if diag is None:
-                try:
-                    diag = procesar.diagnostico_speedtest(df0)
-                except Exception as e:  # noqa: BLE001 - el diagnóstico nunca detiene la corrida
-                    print(f"Aviso: diagnóstico de Speedtest falló: {e}", flush=True)
+            try:
+                links_st.update(procesar.speedtest_por_os(df0))
+            except Exception as e:  # noqa: BLE001 - Speed Test nunca detiene la corrida
+                print(f"Aviso: no se leyeron los enlaces de Speedtest: {e}", flush=True)
             for fila in procesar.a_filas(df0, inicio, indice_cajas):
                 filas_por_id[fila["id_os"]] = fila
         filas = list(filas_por_id.values())
@@ -185,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # ---------------- 3. Tableros e indicadores (en memoria)
         df = pd.DataFrame(filas)
-        tableros = calcular_tableros(df, ahora, inicio)
+        tableros = calcular_tableros(df, ahora, inicio, links_st)
         t_tab = time.time()
         print(f"[tiempo] tableros: {t_tab - t_proc:.0f} s ({len(tableros)} tableros)", flush=True)
 
@@ -210,8 +214,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{borradas} órdenes que ya no están en el reporte se borraron de la base.", flush=True)
         estado["arranque"] = False
         subir.guardar_estado(ESTADO, estado)
-        if diag is not None:
-            tableros["diag:speedtest"] = diag
         n_tab = subir.guardar_tableros(tableros, estado, inicio)
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
