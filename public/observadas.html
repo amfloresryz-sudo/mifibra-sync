@@ -744,8 +744,10 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .fi-obs { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--borde); border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.55; }
 .fi-obs b { color: var(--magenta-txt); }
 @media (max-width: 700px) { .segs-obs .g > .seg-t { min-width: 100%; } .pv > * > tr > :first-child { min-width: 150px !important; } }
-#vista[hidden], #ab-cuerpo[hidden] { display: none !important; }
+#vista[hidden], #ab-cuerpo[hidden], #limpiar[hidden] { display: none !important; }
 #tb-modal td, #tb-modal th { white-space: nowrap !important; }
+#tb-modal.lista-obs { width: 100%; font-size: 12px; } #tb-modal.lista-obs th { font-size: 10px !important; white-space: normal !important; }
+#tb-modal.lista-obs td, #tb-modal.lista-obs th { padding: 7px 3px !important; } #tb-modal.lista-obs td.w { white-space: normal !important; min-width: 150px; }
 .t-segs { gap: 8px 22px; } .t-segs .g > .seg-t { min-width: 0; margin-right: 4px; }
 .t-segs .mas { all: unset; cursor: pointer; font: 600 12px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; }
 .pv > thead > tr.grupo > th .fcol { color: #FFFFFF; } .pv > thead > tr.grupo > th .fcol.on { background: var(--magenta); }
@@ -800,7 +802,10 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <section class="sec" aria-labelledby="t-segs">
     <div class="sec-cab"><div><h2 id="t-segs">Segmentadores</h2><p class="sub">Aplican a todos los cuadros de la página (varias opciones a la vez). <b>Seg.</b> solo filtra «Observadas por motivo», igual que en el seguimiento de agendas.</p></div>
       <div class="pen-acc"><div class="act-f" id="act-f"></div><button type="button" class="btn-out" id="limpiar">Limpiar filtros</button></div></div>
-    <div class="segs-obs" id="segs"></div>
+    <div class="f-mas" tabindex="0" aria-label="Segmentadores: pasa el puntero para verlos">
+      <div class="f-mas-cab"><span>Pasa el puntero para ver los segmentadores (Contrata, Gestor, Distrito y Seg.)</span><span class="f-mas-act" id="act-f2"></span><span class="f-mas-fl" aria-hidden="true">▾</span></div>
+      <div class="f-mas-cuerpo"><div class="segs-obs" id="segs"></div></div>
+    </div>
   </section>
 
   <section class="sec" id="sec-pl" aria-labelledby="t-pl">
@@ -894,7 +899,7 @@ async function traerAjustes(f) {
     if (r.ok) AJ = { gestores: {}, nombres: {}, tecnicos: {}, ...(await r.json()) }; } catch { /* sin ajustes: EECC del robot y sin gestor */ }
 }
 let D = { obs: [] }, mes = '';
-const sel = { ec: new Set(), ge: new Set(), tec: new Set(), di: new Set(), seg: new Set() };
+const sel = { ec: new Set(), ge: new Set(), di: new Set(), seg: new Set() };
 const abiertos = { pl: new Set(), di: new Set(), ab: new Set(), mo: new Set() };
 const detAb = new Set(); let desg = false, termino = '';
 function preparar() {
@@ -918,7 +923,7 @@ async function cargarTodo(f) {
 }
 
 /* ---------- filtros ---------- */
-const SEGS = [['ec', 'Contrata (EECC)', r => r.ecN], ['ge', 'Gestor', r => r.ge], ['tec', 'Técnico', r => r.tec || 'SIN TÉCNICO'], ['di', 'Distrito', r => r.di], ['seg', 'Seg.', r => r.seg || '—']];
+const SEGS = [['ec', 'Contrata (EECC)', r => r.ecN], ['ge', 'Gestor', r => r.ge], ['di', 'Distrito', r => r.di], ['seg', 'Seg.', r => r.seg || '—']];
 const verTodo = new Set();
 const CANALES = [['TODOS', 'Todos'], ['IC', 'Integral de campo'], ['VI', 'Ventas inbound'], ['OT', 'Otros canales']];
 let canal = 'TODOS'; const okCn = (r) => canal === 'TODOS' || r.cn === canal;
@@ -940,7 +945,7 @@ function pintarSegs() {
     return `<div class="g"><span class="seg-t">${t}</span><button type="button" class="chip" data-sk="${k}" data-sv="" aria-pressed="${!sel[k].size}">Todos</button>${ops.slice(0, lim).map(v => `<button type="button" class="chip" data-sk="${k}" data-sv="${esc(v)}" aria-pressed="${sel[k].has(v)}" title="${esc(v)}">${esc(etq(v))} (${cnt[v] || 0})</button>`).join('')}${extra > 0 ? `<button type="button" class="mas" data-mas="${k}">+${extra} más</button>` : ''}</div>`;
   }).join('');
   const act = SEGS.flatMap(([k, t]) => [...sel[k]].map(v => `${t}: ${k === 'tec' ? tecCorto(v) : v}`));
-  $('act-f').innerHTML = act.map(a => `<span>${esc(a)}</span>`).join('');
+  $('act-f').innerHTML = ''; $('act-f2').innerHTML = act.map(a => `<span>${esc(a)}</span>`).join('');
   $('limpiar').hidden = !act.length;
 }
 $('segs').addEventListener('click', (e) => {
@@ -1176,9 +1181,11 @@ function abrirModal(tit, sub, html, conTabla) {
 let ultLista = null;
 function listaModal(L, txt) {
   ultLista = [L, txt];
-  const filas = L.slice().sort((a, b) => (a.f + a.h).localeCompare(b.f + b.h)).map(r => {
-    return `<tr><td>${dmy(r.f)}</td><td>${r.h}</td><td>${r.rec ? dmy(r.rec.slice(0, 10)) + ' ' + r.rec.slice(11, 16) : '—'}</td><td><button type="button" class="lnk-ab" data-obs="${r.os}">${r.ab}</button></td><td>${r.os}</td><td>${esc(r.m)}</td><td>${esc(r.s)}</td><td>${esc(r.ecN)}</td><td>${esc(r.ge)}</td><td title="${esc(r.tec)}">${esc(tecCorto(r.tec))}</td><td>${esc(r.di)}</td><td>${esc(r.pl)}</td><td>${esc(r.seg)}</td><td>${esc(CANAL[r.cn] || r.cn || '—')}</td><td>${esc(planCorto(r.plan))}</td><td>${tiempoObs(r)}</td></tr>`; });
-  abrirModal(`${txt}`, `${L.length} OS observadas · ${mesTxt(mes)}`, `<table class="det" id="tb-modal"><thead><tr><th>F. observación</th><th>Hora</th><th>F. recepción</th><th>AB</th><th>OS</th><th>Motivo</th><th>Motivo detallado</th><th>EECC</th><th>Gestor</th><th>Técnico</th><th>Distrito</th><th>Planta</th><th>Seg.</th><th>Canal</th><th>Plan</th><th>Tiempo hasta observado</th></tr></thead><tbody>${filas.join('')}</tbody></table>`, true);
+  const dm = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '—';
+  const CN = { IC: 'Campo', VI: 'Inbound', OT: 'Otros' };
+  const filas = L.slice().sort((a, b) => (a.f + a.h).localeCompare(b.f + b.h)).map(r =>
+    `<tr><td>${dm(r.f)} ${r.h}</td><td>${r.rec ? dm(r.rec.slice(0, 10)) + ' ' + r.rec.slice(11, 16) : '—'}</td><td><button type="button" class="lnk-ab" data-obs="${r.os}">${r.ab}</button></td><td>${r.os}</td><td>${r.m === 'TÉCNICO' ? 'Técnico' : 'Comercial'}</td><td class="w">${esc(r.s)}</td><td>${esc(r.ecN)}</td><td>${esc(r.ge)}</td><td title="${esc(r.tec)}">${esc(tecCorto(r.tec))}</td><td title="${esc(r.di)}">${esc(CORTOS[r.di] || r.di)}</td><td>${esc(r.pl)}</td><td>${esc(r.seg)}</td><td>${esc(CN[r.cn] || r.cn || '—')}</td><td>${esc(planCorto(r.plan))}</td><td>${tiempoObs(r)}</td></tr>`);
+  abrirModal(`${txt}`, `${L.length} OS observadas · ${mesTxt(mes)}`, `<table class="det lista-obs" id="tb-modal"><thead><tr><th>F. observación</th><th>F. recepción</th><th>AB</th><th>OS</th><th>Motivo</th><th>Motivo detallado</th><th>EECC</th><th>Gestor</th><th>Técnico</th><th>Distrito</th><th>Planta</th><th>Seg.</th><th>Canal</th><th>Plan</th><th>Tiempo hasta obs.</th></tr></thead><tbody>${filas.join('')}</tbody></table>`, true);
 }
 const obsCompleta = (t) => esc(t).replace(/\s*(#\s*\d{1,2}\/\d{1,2}\/\d{4}\s*\d{1,2}:\d{2}(?::\d{2})?\s*#)/g, '\n$1').replace(/^\n/, '')
   .replace(/#\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*(\d{1,2}:\d{2})(?::\d{2})?\s*#/g, '<b>$1 $2</b>').replace(/%([^%]*)%/g, '<b>$1</b>');
