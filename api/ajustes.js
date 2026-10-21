@@ -80,6 +80,17 @@ function limpiarEeccs(l) {
   return [...new Set((Array.isArray(l) ? l : []).map(v => texto(v, 60).toUpperCase()).filter(Boolean))].slice(0, 100);
 }
 
+// Líneas en servicio (LS) por mes y distrito, para el TIF de Averías: { "AAAA-MM": { "DISTRITO": n } }. Últimos 24 meses.
+function limpiarLS(ls) {
+  const o = {};
+  Object.keys(ls && typeof ls === 'object' ? ls : {}).filter(k => /^\d{4}-\d{2}$/.test(k)).sort().slice(-24).forEach((mes) => {
+    const m = {};
+    Object.entries(ls[mes] || {}).slice(0, 500).forEach(([d, v]) => { const k = texto(d, 80).toUpperCase(), n = Math.round(Number(v)); if (k && isFinite(n) && n >= 0 && n <= 1e7) m[k] = n; });
+    if (Object.keys(m).length) o[mes] = m;
+  });
+  return o;
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = '';
@@ -122,6 +133,9 @@ module.exports = async (req, res) => {
         const cien = { ...(previo.cien || {}) };
         if (a) cien[os] = { ...a, por: 'master' }; else delete cien[os];
         nuevo = { ...previo, cien: podarCien(cien) };
+      } else if (accion === 'ls') {
+        // Líneas en servicio por mes y distrito (Averías › Panel): reemplaza la lista completa de la filial.
+        nuevo = { ...previo, ls: limpiarLS(cuerpo?.ls) };
       } else if (accion === 'tecnicos') {
         // EECC de cada técnico: solo el usuario master. Reemplaza la lista completa.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
@@ -129,7 +143,7 @@ module.exports = async (req, res) => {
         nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos), eeccs: limpiarEeccs(cuerpo?.eeccs) };
       } else {
         // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs) };
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls) };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
