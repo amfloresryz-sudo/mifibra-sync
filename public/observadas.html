@@ -764,6 +764,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Observadas</h1><p><span id="nom-filial">Lima</span> · OS en estado OBSERVADA por fecha de observación · <span id="actualizado">Cargando…</span></p></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px 28px;align-items:flex-end">
       <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Mes (F. observación)</div><div class="chips meses" role="group" aria-label="Mes de observación" id="meses"></div></div>
     </div>
   </div>
@@ -896,8 +897,13 @@ async function cargarTodo(f) {
 /* ---------- filtros ---------- */
 const SEGS = [['ec', 'Contrata (EECC)', r => r.ecN], ['ge', 'Gestor', r => r.ge], ['tec', 'Técnico', r => r.tec || 'SIN TÉCNICO'], ['di', 'Distrito', r => r.di], ['seg', 'Seg.', r => r.seg || '—']];
 const verTodo = new Set();
-const delMes = () => D.obs.filter(r => !r.rc && r.f.slice(0, 7) === mes);
-const recMes = () => D.obs.filter(r => r.rc && r.f.slice(0, 7) === mes);   // recuperadas: observadas que luego se descargaron con $R$
+const CANALES = [['TODOS', 'Todos'], ['IC', 'Integral de campo'], ['VI', 'Ventas inbound'], ['OT', 'Otros canales']];
+let canal = 'TODOS'; const okCn = (r) => canal === 'TODOS' || r.cn === canal;
+$('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${k === canal}">${t}</button>`).join('');
+$('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b || b.dataset.cn === canal) return; canal = b.dataset.cn;
+  $('canales').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); pintar(); });
+const delMes = () => D.obs.filter(r => !r.rc && r.f.slice(0, 7) === mes && okCn(r));
+const recMes = () => D.obs.filter(r => r.rc && r.f.slice(0, 7) === mes && okCn(r));   // recuperadas: observadas que luego se descargaron con $R$
 const ZORD = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'], zIdx = (z) => { const i = ZORD.indexOf(z); return i < 0 ? 99 : i; };
 const pasa = (r, sin = '', conSeg = true) => SEGS.every(([k, , f]) => k === sin || (k === 'seg' && !conSeg) || !sel[k].size || sel[k].has(f(r)));
 function pintarSegs() {
@@ -1009,7 +1015,7 @@ function pintar() {
     ['Observadas hoy', n(nHoy), hoy ? dmy(hoy) : ''],
     ['Tasa de recuperación', nRec + B.length ? (nRec / (nRec + B.length) * 100).toLocaleString('es-PE', { maximumFractionDigits: 1 }) + '%' : '—', `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas`],
   ].map(([l, v, s], i) => `<div class="kpi"><span class="l">${l}</span><span class="kv"${i === 3 ? ' style="font-size:20px;line-height:1.25"' : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
-  $('res-sub').textContent = `OS que siguen en estado OBSERVADA, observadas en ${mesTxt(mes)} (fecha_observación) · solo altas de internet, una por abonado y servicio`;
+  $('res-sub').textContent = `OS que siguen en estado OBSERVADA, observadas en ${mesTxt(mes)} (fecha_observación) · solo altas de internet, una por abonado y servicio${canal === 'TODOS' ? '' : ' · canal ' + CANALES.find(c => c[0] === canal)[1].toLowerCase()}`;
   if (!B.length) { ['pl', 'di', 'ab'].forEach(t => $('w-' + t).innerHTML = vacio(`No hay observadas en ${mesTxt(mes)} con estos filtros.`)); }
   else {
     const zs = [...new Set(B.map(r => r.z || 'SIN ZONA'))].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
