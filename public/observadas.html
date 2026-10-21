@@ -751,8 +751,14 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .pv > thead > tr.grupo > th .fcol { color: #FFFFFF; } .pv > thead > tr.grupo > th .fcol.on { background: var(--magenta); }
 .meta-r { font: 700 11px var(--f-disp); padding: 2px 8px; border-radius: 8px; } .meta-r.ok { background: var(--ok-bg); color: var(--ok); } .meta-r.mal { background: var(--mal-bg); color: var(--mal); }
 .lnk-meta { all: unset; cursor: pointer; font: 600 12px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; margin-left: 4px; }
-.top-m { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--borde); font: 700 15px/1.3 var(--f-disp); color: var(--fg); }
-.top-m:first-child { border-top: 0; padding-top: 0; margin-top: 4px; }
+.top-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+.top-m { display: block; padding-left: 12px; border-left: 1px dashed var(--borde-2); font: 700 15px/1.3 var(--f-disp); color: var(--fg); }
+.top-m:first-child { border-left: 0; padding-left: 0; }
+/* KPIs del resumen en una sola línea (el de motivos ocupa dos espacios) */
+#kpis { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+#kpis .k-mot { grid-column: span 2; }
+#kpis .kpi .l { font-size: 11px; } #kpis .kpi .kv { font-size: 26px; }
+@media (max-width: 1100px) { #kpis { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); } #kpis .k-mot { grid-column: span 2; } }
 .top-m small { display: block; font: 500 13px var(--f-txt); color: var(--fg-3); margin-top: 2px; }
 .top-m b { display: block; font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--magenta-txt); }
 .lnk-meta:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
@@ -1116,11 +1122,11 @@ function pintar() {
     ['Observadas del mes', n(B.length), `${n(abs)} abonados distintos`],
     ['Motivo comercial', n(com), pc(com, B.length) + ' del total'],
     ['Motivo técnico', n(tec), pc(tec, B.length) + ' del total'],
-    ['Motivo más frecuente', '', topDe('COMERCIAL', 'M. Comercial') + topDe('TÉCNICO', 'M. Técnico')],
+    ['Motivo más frecuente', '', `<span class="top-2">${topDe('COMERCIAL', 'M. Comercial')}${topDe('TÉCNICO', 'M. Técnico')}</span>`],
     ['Observadas hoy', n(nHoy), hoy ? dmy(hoy) : ''],
-    ['TMO', tmo == null ? '—' : d1(tmo) + ' h', `Promedio de F. Recep a la observación · ${n(horas.length)} OS`],
+    ['TMO', tmo == null ? '—' : d1(tmo) + ' h', `De F. Recep a observación · ${n(horas.length)} OS`],
     ['Tasa de recuperación', tasa == null ? '—' : d1(tasa) + '%', `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas<br><span class="meta-r ${tasa != null && tasa >= meta ? 'ok' : 'mal'}">Meta ${d1(meta)}%</span> <button type="button" class="lnk-meta" id="meta-ed">✎ Modificar meta</button>`],
-  ].map(([l, v, s], i) => `<div class="kpi"><span class="l">${l}</span><span class="kv"${i === 3 ? ' hidden' : i === 6 && tasa != null ? ` style="color:var(--${tasa >= meta ? 'ok' : 'mal'})"` : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
+  ].map(([l, v, s], i) => `<div class="kpi${i === 3 ? ' k-mot' : ''}"><span class="l">${l}</span><span class="kv"${i === 3 ? ' hidden' : i === 6 && tasa != null ? ` style="color:var(--${tasa >= meta ? 'ok' : 'mal'})"` : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
   $('res-sub').textContent = `OS que siguen en estado OBSERVADA, observadas en ${mesTxt(mes)} (fecha_observación) · solo altas de internet, una por abonado y servicio${canal === 'TODOS' ? '' : ' · canal ' + CANALES.find(c => c[0] === canal)[1].toLowerCase()}`;
   baseTabla = { pl: B, di: B, ab: B, mo: Bs };
   Object.keys(baseTabla).forEach(t => pintarTS(t, baseTabla[t]));
