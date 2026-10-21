@@ -2092,9 +2092,12 @@ $('eec-mat').addEventListener('click', (e) => { const b = e.target.closest('[dat
 $('eec-segs').addEventListener('change', (e) => { const d = e.target.closest('[data-evo-d]'); if (!d) return; evo[d.dataset.evoD] = +d.value; pintarEvoEc(); });
 /* ---------- Avance total (todas las órdenes descargadas por EECC y técnico) ---------- */
 const avt = { per: 'dia', dia: 0, abiertos: new Set(), ec: 'TODOS', to: new Set() };   // to = trabajos elegidos (vacío = todos)
-const AVT_ORDEN = ['INSTALACION SERVICIO', 'REINSTALACION SERVICIO', 'SERVICIO TECNICO', 'SUSPENSION DE SERVICIO', 'CORTE DEFINITIVO', 'RECONEXION SERVICIO', 'TRASLADO INTERNO', 'TRASLADO EXTERNO', 'CAMBIO DE EQUIPO', 'RECOJO DE MATERIAL', 'AUDITORIA', 'OTROS'];
+const AVT_ORDEN = ['INSTALACION INTERNET', 'INSTALACION OTT', 'INSTALACION SERVICIO', 'REINSTALACION SERVICIO', 'SERVICIO TECNICO', 'SUSPENSION DE SERVICIO', 'CORTE DEFINITIVO', 'RECONEXION SERVICIO', 'TRASLADO INTERNO', 'TRASLADO EXTERNO', 'CAMBIO DE EQUIPO', 'RECOJO DE MATERIAL', 'AUDITORIA', 'OTROS'];
 const AVT_GR = (t) => /INSTALACION/.test(t) ? 'INS' : t === 'SERVICIO TECNICO' ? 'AVE' : /TRASLADO|CAMBIO DE EQUIPO/.test(t) ? 'TRA' : 'OTR';
 const AVT_GT = { INS: ['Instalaciones', 'var(--magenta)'], AVE: ['Averías (servicio técnico)', '#2A78D6'], TRA: ['Traslados y cambios de equipo', '#1BAF7A'], OTR: ['Otros', '#C98A0C'] };
+/* Trabajo: la instalación de servicio se separa en internet y OTT (según el servicio de la orden; P2P va con internet) */
+const avtTrabajo = (to, sv) => to !== 'INSTALACION SERVICIO' ? to : /OTT/.test(sv || '') ? 'INSTALACION OTT' : /INTERNET|P2P|DEDICAD/.test(sv || '') ? 'INSTALACION INTERNET' : to;
+const avtEtq = (t) => (t.charAt(0) + t.slice(1).toLowerCase()).replace(/\bott\b/, 'OTT');
 function pintarAvt() {
   const A = D.avt; if (!$('avt-mat')) return;
   if (A && A.o && !A.r) A.r = A.o.map(x => [x[0], x[1], x[2], x[3], x[4], 1, x[5], x[6], x[7], x[8], x[9]]);
@@ -2102,21 +2105,21 @@ function pintarAvt() {
     $('avt-mat').innerHTML = '<p class="nota">Aún no hay datos de avance total: aparecen después de la próxima actualización del robot.</p>'; return; }
   const dias = [...new Set(A.r.map(x => x[0]))].sort((a, b) => a - b);
   if (!avt.dia || !dias.includes(avt.dia)) avt.dia = dias[dias.length - 1];
-  const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], sv: A.s[x[2]], ec: nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
+  const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], tr: avtTrabajo(A.t[x[1]], A.s[x[2]]), sv: A.s[x[2]], ec: nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
   const ecsAll = [...new Set(R0.map(x => x.ec))].sort(); avtR = null;
   // Trabajos (tipo de orden) que hacen los técnicos: varias opciones a la vez; cuentan con el periodo y la EECC elegidos.
-  const toCnt = {}; R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec).forEach(x => toCnt[x.to] = (toCnt[x.to] || 0) + x.n);
+  const toCnt = {}; R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec).forEach(x => toCnt[x.tr] = (toCnt[x.tr] || 0) + x.n);
   const toOps = Object.keys(toCnt).sort((a, b) => { const ia = AVT_ORDEN.indexOf(a), ib = AVT_ORDEN.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
   [...avt.to].forEach(t => { if (!toCnt[t]) avt.to.delete(t); });
-  const R = R0.filter(x => (avt.ec === 'TODOS' || x.ec === avt.ec) && (!avt.to.size || avt.to.has(x.to)));
+  const R = R0.filter(x => (avt.ec === 'TODOS' || x.ec === avt.ec) && (!avt.to.size || avt.to.has(x.tr)));
   const sum = (L) => L.reduce((a, x) => a + x.n, 0);
   // segmentadores
   $('avt-segs').innerHTML = `<div class="g"><span class="seg-t">Periodo</span><button type="button" class="chip" data-avt-per="dia" aria-pressed="${avt.per === 'dia'}">Día</button><button type="button" class="chip" data-avt-per="mes" aria-pressed="${avt.per === 'mes'}">Mes acumulado</button>
       ${avt.per === 'dia' ? `<select class="sel-dia" id="avt-dia" aria-label="Día">${dias.map(d => `<option value="${d}" ${d === avt.dia ? 'selected' : ''}>${diaInfo(d).wd} ${fDia(d)}</option>`).join('')}</select>` : ''}</div>
     <div class="g"><span class="seg-t">EECC</span><button type="button" class="chip" data-avt-ec="TODOS" aria-pressed="${avt.ec === 'TODOS'}">Todas</button>${ecsAll.map(e => `<button type="button" class="chip" data-avt-ec="${esc(e)}" aria-pressed="${avt.ec === e}">${esc(e)} (${n(sum(R0.filter(x => x.ec === e)))})</button>`).join('')}</div>
-    <div class="g"><span class="seg-t">Trabajo</span><button type="button" class="chip" data-avt-to="" aria-pressed="${!avt.to.size}">Todos</button>${toOps.map(t => `<button type="button" class="chip" data-avt-to="${esc(t)}" aria-pressed="${avt.to.has(t)}">${esc(t.charAt(0) + t.slice(1).toLowerCase())} (${n(toCnt[t])})</button>`).join('')}</div>`;
+    <div class="g"><span class="seg-t">Trabajo</span><button type="button" class="chip" data-avt-to="" aria-pressed="${!avt.to.size}">Todos</button>${toOps.map(t => `<button type="button" class="chip" data-avt-to="${esc(t)}" aria-pressed="${avt.to.has(t)}">${esc(avtEtq(t))} (${n(toCnt[t])})</button>`).join('')}</div>`;
   const per = avt.per === 'mes' ? `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · acumulado al ${fDia(dias[dias.length - 1])}` : `${diaInfo(avt.dia).wd} ${fDia(avt.dia)} ${D.anio}`;
-  $('avt-sub').textContent = `${per} · órdenes descargadas por técnicos de EECC${avt.ec === 'TODOS' ? '' : ' · ' + avt.ec}${avt.to.size ? ' · ' + [...avt.to].map(t => t.toLowerCase()).join(', ') : ''}`;
+  $('avt-sub').textContent = `${per} · órdenes descargadas por técnicos de EECC${avt.ec === 'TODOS' ? '' : ' · ' + avt.ec}${avt.to.size ? ' · ' + [...avt.to].map(t => avtEtq(t).toLowerCase().replace(/\bott\b/, 'OTT')).join(', ') : ''}`;
   const T = sum(R), tecs = new Set(R.map(x => x.ec + '|' + x.tec)).size, gr = {}; R.forEach(x => { const g = AVT_GR(x.to); gr[g] = (gr[g] || 0) + x.n; });
   const pc = (v) => T ? dec(v / T * 100) + '%' : '—';
   $('avt-kpis').innerHTML = kpi('Órdenes descargadas', n(T), `${n(new Set(R.map(x => x.ec)).size)} EECC`, 'acento') + kpi('Técnicos', n(tecs), 'con al menos una orden')
