@@ -24,7 +24,7 @@ COLUMNAS_BD = (
     "id_os,nro_os,estado_os,abonado_codigo,distrito,segmento,categoria,servicio,plano,tipo_vivienda,fecha_registro,hora_recepcion,"
     "fecha_atencion,fecha_programada,fecha_cita,atencion_inicio,atencion_fin,horario_atencion,tecnico_ejecutor,tecnico_responsable,contrata,"
     "tarifa_servicio,cajas_cerca,obs_visita,obs_visita_en,coordenadas,visita_agenda,inicio_fachada,obs_visita_todo,canal_atencion,observaciones,"
-    "motivo_observacion,submotivo_observacion,fecha_observacion,usuario_observacion"
+    "motivo_observacion,submotivo_observacion,fecha_observacion,usuario_observacion,filial"
 )
 
 # 1.ª / 2.ª visita o VD (visita directa) mencionada en el comentario; se toma la última mención.
@@ -282,6 +282,11 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
         "co": _txt(r.get("coordenadas")), "plan": _txt(r.get("tarifa_servicio")), "ovt": (_txt(r.get("obs_visita_todo")) or _txt(r.get("obs_visita")))[:900],
         **({"rc": 1} if r["estado_os"] == "DESCARGADA" else {}),
     } for _, r in ob.iterrows()]
+
+    if filial == "PROVINCIAS":   # bloque de provincias: cada fila lleva su filial (el portal agrupa por filial)
+        for filas, F in ((ing, df[del_mes(df["fr"])]), (liq, L), (pend, df[df["estado_os"] == "REGISTRADA"].sort_values("rec")), (prog, P)):
+            for x, f in zip(filas, F["filial"]):
+                x["fi"] = _txt(f)
 
     return {"ing": ing, "liq": liq, "pend": pend, "prog": prog, "pdia": pdia, "zonas": zonas, "obs": obs,
             "config": {**{k: v for k, v in config.items() if k not in ("meta_mes", "plantas")},
