@@ -167,6 +167,16 @@ def _hora(v) -> str | None:
 _RE_VISITA_TEC = re.compile(r"#\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*(?:(\d{1,2}):?(\d{2})\d?)?\s*(?:#|%(?=\s))?\s*(?:%([^%]*)%\s*)?(.*?)\s*(?:%([^%]*)%|(?=#\s*\d{1,2}/)|$)", re.S)
 _RE_TEC_SUELTO = re.compile(r"%([^%]*)%")
 _RE_TELEFONO = re.compile(r"\+?(?=(?:[\s-]?\d){7})\d{1,3}(?:[\s-]?\d{3,})+")  # 7+ dígitos en grupos de 3+ (no confunde "15-10 14")
+_RE_URL = re.compile(r"https?://\S+", re.I)
+
+
+def _sin_tel(t: str) -> str:
+    """Oculta los teléfonos (•••) sin tocar los enlaces: los números de un enlace de Speedtest no son teléfonos."""
+    partes, ult = [], 0
+    for m in _RE_URL.finditer(t):
+        partes.append(_RE_TELEFONO.sub("•••", t[ult:m.start()])); partes.append(m.group(0)); ult = m.end()
+    partes.append(_RE_TELEFONO.sub("•••", t[ult:]))
+    return "".join(partes)
 
 
 # Agenda dentro de un comentario del técnico: día ("16/10", "HOY", "MAÑANA", "JUEVES") y franja ("8 A 10", "2-4PM", "DE 4 A 6").
@@ -316,7 +326,7 @@ def _obs_visita(v, base_sin_fecha: datetime | None = None) -> dict:
         texto, en = m[7].strip(" ,;"), f"{int(m[1]):02d}/{int(m[2]):02d}/{m[3]}" + (f" {int(m[4]):02d}:{m[5]}" if m[4] else "") + (f" · {tec}" if tec else "")
     else:  # sin fecha: '%TÉCNICO% texto, %TÉCNICO% texto' → la última anotación es la que sigue al último %TÉCNICO%
         texto, en = _ultima_sin_fecha(t)
-    return {"obs_visita": _RE_TELEFONO.sub("•••", texto)[:600] or None, "obs_visita_en": en, "visita_agenda": _agenda_visita(t, base_sin_fecha)}
+    return {"obs_visita": _sin_tel(texto)[:600] or None, "obs_visita_en": en, "visita_agenda": _agenda_visita(t, base_sin_fecha)}
 
 
 def _inicio_fachada(v) -> str | None:
@@ -442,7 +452,7 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
         fila["inicio_fachada"] = _inicio_fachada(registro.get("FechaInicioFachada"))
         fila.update(_agenda(registro.get("Observaciones")))
         # Observaciones de la OS (llamada de ATC), todos los tipos de orden: ficha del AB y 1.ª/2.ª visita o VD; teléfonos ocultos.
-        fila["observaciones"] = _RE_TELEFONO.sub("•••", str(_texto(registro.get("Observaciones")) or "").strip())[:2000] or None
+        fila["observaciones"] = _sin_tel(str(_texto(registro.get("Observaciones")) or "").strip())[:2000] or None
         # Comentario sin fecha (#dd/mm/aaaa#): HOY / MAÑANA / día de semana se cuentan desde la última modificación de
         # la OS, solo si sigue pendiente (en las ya descargadas esa fecha es posterior al comentario).
         _fm = pd.to_datetime(registro.get("Fecha Mod"), errors="coerce", dayfirst=isinstance(registro.get("Fecha Mod"), str)) \
@@ -451,7 +461,7 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
         # Comentario completo del técnico (todas las anotaciones), solo para las altas; teléfonos ocultos.
         _todo = str(_texto(registro.get("OBS VISITA TÉCNICO")) or "").strip()
         fila["detalle"] = detalle_de(fila.get("tipo_orden"), fila.get("motivo"), fila.get("lugar_averia"))
-        fila["obs_visita_todo"] = (_RE_TELEFONO.sub("•••", _todo)[:4000] or None) if fila.get("tipo_orden") in ("INSTALACION SERVICIO", "SERVICIO TECNICO") else None
+        fila["obs_visita_todo"] = (_sin_tel(_todo)[:4000] or None) if fila.get("tipo_orden") in ("INSTALACION SERVICIO", "SERVICIO TECNICO") else None
         # Coordenadas del abonado (Latitud MAPS / Longitud MAPS): solo para las altas (INSTALACION SERVICIO),
         # limpias y en el formato "-12.092068781701789,<tab>-77.01055209096951" (todos los decimales).
         lat, lon, txt_coord = _coordenadas(registro.get("Latitud MAPS"), registro.get("Longitud MAPS"))
@@ -465,6 +475,96 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
             continue
         filas.append(fila)
     return filas
+
+
+# ---------- Speed Test: enlaces de speedtest.net en «Observaciones Tecnico» ----------
+_RE_ST_URL = re.compile(r"(?:https?://)?(?:www\.)?speedtest\.net/[^\s,;()\"'<>]+", re.I)
+
+
+def _st_norm(url: str) -> str:
+    """Clave para comparar enlaces: sin http/www, sin idioma (/es/), sin parámetros, en minúsculas."""
+    u = re.sub(r"^(?:https?://)?(?:www\.)?", "", url.strip().lower())
+    u = re.sub(r"^speedtest\.net/[a-z]{2}(?:-[a-z]{2})?/", "speedtest.net/", u)
+    return re.split(r"[?#]", u)[0].rstrip("/.:")
+
+
+_ST_PRUEBA = r"(?:test|tes[dts]?|teste|twst|speed\s*test|speedtes[dt]?|speed|sp|st|link|enlace|id|prueba|resultado|celular|cel|m[oó]vil|laptop|lapto|pc|computadora|tel[eé]fono|ipad|tablet|dispositivo|equipo)"
+_ST_CLI = r"(?:cliente|abonad[oa]|ab|cl)"
+_ST_TEC = r"(?:t[eé]cnico|t[eé]c|tc|tco)"
+_RE_ST_C1 = re.compile(r"\b" + _ST_PRUEBA + r"\b\W*(?:\w+\W+){0,4}?" + _ST_CLI + r"\b", re.I)   # «test del cliente», «celular cliente»
+_RE_ST_C2 = re.compile(r"\b" + _ST_CLI + r"\b\W*(?:\w+\W+){0,3}?" + _ST_PRUEBA + r"\b", re.I)   # «cliente hizo su test», «ab pc»
+_RE_ST_T = re.compile(r"\b" + _ST_TEC + r"\b", re.I)
+_RE_ST_CSOLO = re.compile(r"^\W*(?:" + _ST_CLI + r")\W*$", re.I)                                # rótulo suelto: «cliente:»
+# Después de «cliente» no debe venir una negación o descripción del equipo («cliente no cuenta…», «de gama baja»).
+_RE_ST_NEG = re.compile(r"^\W*(?:no\b|sin\b|nos?\s+soport|(?:es\s+|de\s+)?(?:baja|media)?\s*gama|de\s+baja|cuenta|solo\s+banda|tiene\b|conforme|desea|indic|explic)", re.I)
+# Comentarios sobre la instalación que mencionan al cliente pero no son una etiqueta de prueba.
+_RE_ST_EXCL = re.compile(r"pedido|solicit|petici|piticion|est[eé]tica|indic|pared|mueble|repisa|explic|conforme|desea|responsab|cable|eternet|instal", re.I)
+_RE_ST_BOILER = re.compile(r"echa un vistazo|check out my|qu[eé] tan r[aá]pido|how fast", re.I)
+
+
+def _st_zona(t: str, ini: int, fin: int) -> str:
+    """Texto donde se busca la etiqueta: lo que va antes del enlace en su misma línea; si el enlace empieza la línea,
+    la línea anterior (sin el texto que agrega la app de Speedtest al compartir). Máximo 90 caracteres."""
+    lineas = t[ini:fin].split("\n")
+    zona = lineas[-1]
+    if not zona.strip() or _RE_ST_BOILER.search(zona):
+        prev = [ln for ln in lineas[:-1] if ln.strip() and not _RE_ST_BOILER.search(ln)]
+        zona = prev[-1] if prev else ""
+    return zona[-90:]
+
+
+def _st_etiqueta(t: str, ini: int, fin: int) -> str:
+    """«C» si la prueba es del cliente, «T» si es del técnico, «» si no tiene etiqueta (cuenta como del técnico)."""
+    zona = _st_zona(t, ini, fin)
+    pc = -1
+    for rx in (_RE_ST_C1, _RE_ST_C2):
+        for m in rx.finditer(zona):
+            cli = re.search(r"\b" + _ST_CLI + r"\b", m.group(0), re.I)
+            if not cli:
+                continue
+            ini_cli, fin_cli = m.start() + cli.start(), m.start() + cli.end()
+            cola = zona[fin_cli:fin_cli + 30]
+            if (_RE_ST_NEG.match(cola) or re.search(r"gama|conform", cola, re.I)        # «cliente con equipo de baja gama», «da conformidad»
+                    or _RE_ST_EXCL.search(zona[max(0, ini_cli - 25):ini_cli] + m.group(0))   # «a pedido del abonado link…»
+                    or _RE_ST_T.search(m.group(0))                                       # «test en laptop de técnico cliente…»
+                    or len(zona) - m.end() > 30):                                        # etiqueta lejos del enlace
+                continue
+            pc = max(pc, m.end())
+    if _RE_ST_CSOLO.match(zona):
+        pc = max(pc, len(zona))
+    pt = max((m.end() for m in _RE_ST_T.finditer(zona) if len(zona) - m.end() <= 30), default=-1)
+    if pc < 0 and pt < 0:
+        return ""
+    return "C" if pc > pt else "T"
+
+
+def speedtest_links(texto) -> list[list]:
+    """Enlaces de Speedtest de un comentario, con de quién es cada prueba según la etiqueta que lo antecede.
+
+    Devuelve [[clave, enlace, quién]] con quién = "C" (cliente), "T" (técnico) o "" (sin etiqueta)."""
+    t = str(_texto(texto) or "")
+    out, previo = [], 0
+    for m in _RE_ST_URL.finditer(t):
+        url = m.group(0).rstrip(".:")
+        out.append([_st_norm(url), url if url.lower().startswith("http") else "https://" + url, _st_etiqueta(t, previo, m.start())])
+        previo = m.end()
+    return out
+
+
+def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:
+    """id_os → enlaces de Speedtest, solo instalaciones (INSTALACION SERVICIO)."""
+    if "Observaciones Tecnico" not in df or "IdOS" not in df:
+        print("Aviso: el reporte no trae «Observaciones Tecnico»; Speed Test sin enlaces.", flush=True)
+        return {}
+    x = df[df["Tipo Orden"].astype(str).str.strip().str.upper().eq("INSTALACION SERVICIO")]
+    out = {}
+    for ido, obs in zip(x["IdOS"], x["Observaciones Tecnico"]):
+        if pd.isna(ido):
+            continue
+        links = speedtest_links(obs)
+        if links:
+            out[int(ido)] = links
+    return out
 
 
 def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:

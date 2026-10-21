@@ -3,14 +3,16 @@ name: Sincronizar ScordSoft
 # Horario (hora de Lima): primera actualización a las 8:00 a. m. y luego cada 20 minutos hasta las 12:00 a. m.
 #   8:00, 8:20, 8:40 … 23:20, 23:40 y 0:00.
 # El horario de GitHub (cron) se retrasa o se salta corridas, así que cada turno se queda despierto ~5 h 30 min y
-# actualiza en cada :00, :20 y :40. Hay 3 turnos al día; cada uno se programa antes de que termine el anterior y espera
+# actualiza en cada :00, :20 y :40. Hay 4 turnos al día (GitHub llega a atrasar el arranque 40 min o más); cada uno
+# se programa antes de que termine el anterior y espera
 # en cola (concurrency) hasta que el otro termina, así no quedan huecos aunque GitHub se atrase.
 # Cada actualización descarga UN reporte: Filial SELECCIONE, por Registro, del 1 del mes anterior al fin del mes en curso.
 on:
   schedule:
-    - cron: "40 12 * * *"   # turno 1 · 7:40 Lima (primera actualización a las 8:00)
-    - cron: "55 17 * * *"   # turno 2 · 12:55 Lima (espera en cola al turno 1)
-    - cron: "25 23 * * *"   # turno 3 · 18:25 Lima (espera en cola al turno 2; termina con la de las 0:00)
+    - cron: "0 12 * * *"    # turno 1 · 7:00 Lima: queda despierto y hace la primera actualización a las 8:00 en punto
+    - cron: "30 16 * * *"   # turno 2 · 11:30 Lima (espera en cola al turno 1)
+    - cron: "0 21 * * *"    # turno 3 · 16:00 Lima (espera en cola al turno 2)
+    - cron: "30 1 * * *"    # turno 4 · 20:30 Lima (espera en cola al turno 3; termina con la de las 0:00)
   workflow_dispatch:
     inputs:
       modo:

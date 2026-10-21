@@ -356,6 +356,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
           <button type="button" data-v="zona" aria-pressed="false">Por día y zona</button>
           <button type="button" data-v="dist" aria-pressed="false">Por distrito</button>
         </div>
+        <button type="button" class="btn-out" id="btn-ls" title="Cargar las líneas en servicio por distrito (base del TIF)">Líneas en servicio (LS)</button>
       </div>
       <div class="kpis" id="liq-kpis"></div>
       <div id="liq-graf"></div>
@@ -531,7 +532,8 @@ vistaPeriodo();
 /* Resultados de 100 min corregidos a mano por el usuario master (se guardan por OS y los ve todo el equipo) */
 let AJC = {};
 const urlAjAv = (f) => '/api/ajustes?modulo=averias&filial=' + encodeURIComponent(f);
-async function traerAjCien(f) { try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; AJC = (await r.json()).cien || {}; } catch { /* sin ajustes */ } }
+async function traerAjCien(f) { try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AJC = j.cien || {}; LSP = j.ls || {}; } catch { /* sin ajustes */ } }
+let LSP = {};   // líneas en servicio cargadas en el portal: { 'AAAA-MM': { DISTRITO: n } } (por filial)
 const CLAVE_MASTER = 'mf_master';
 const claveMaster = () => { try { return sessionStorage.getItem(CLAVE_MASTER) || ''; } catch { return ''; } };
 const ponerMaster = (v) => { try { v ? sessionStorage.setItem(CLAVE_MASTER, v) : sessionStorage.removeItem(CLAVE_MASTER); } catch { /* sin almacenamiento */ } };
@@ -672,7 +674,19 @@ async function traerLS() {
   } catch { LS = {}; }
   pintarLiq();
 }
-const lsDe = (mes) => { if (!LS) return null; const ks = Object.keys(LS).filter(k => LS[k] > 0 && k <= mes).sort(); return ks.length ? { mes: ks[ks.length - 1], v: LS[ks[ks.length - 1]] } : null; };
+/* Zona de cada distrito, tomada de las órdenes del tablero (la misma que usa el filtro Zona) */
+const zonaDi = () => { const z = {}; [DC.liq, DC.pend, DC.ing, DC.cien].forEach(L => (L || []).forEach(x => { if (x && x.di && x.z) z[String(x.di).toUpperCase()] = x.z; })); return z; };
+const lsDe = (mes) => {
+  const kp = Object.keys(LSP).filter(k => k <= mes && Object.keys(LSP[k] || {}).length).sort();
+  if (kp.length) {   // LS cargadas en el portal (Líneas en servicio): suma de los distritos de la zona elegida
+    const m = kp[kp.length - 1], zd = zonaDi();
+    const v = Object.entries(LSP[m]).reduce((a, [d, c]) => a + (zona === 'TODAS' || (zd[d] || 'SIN ZONA') === zona ? c : 0), 0);
+    return v > 0 ? { mes: m, v, src: 'portal' } : null;
+  }
+  if ((D.filial || filialSel()) !== 'LIMA' || !LS) return null;   // la hoja LS_TIF solo trae Lima (por planta)
+  const ks = Object.keys(LS).filter(k => LS[k] > 0 && k <= mes).sort();
+  return ks.length && zona === 'TODAS' ? { mes: ks[ks.length - 1], v: LS[ks[ks.length - 1]], src: 'hoja' } : null;
+};
 function pintarIndLiq(L) {
   const btn = (txt, k) => `<button type="button" class="clic" data-ch="liq" data-d="ALL" data-k="${k}" style="all:unset;cursor:pointer">${txt}</button>`;
   const dias = DIAS.length, mesIso = `${D.anio}-${p2(D.mes)}`, rangoTxt = PER.sem === 'MES' && PER.a === 1 ? MESL : `${p2(PER.a)} al ${p2(Math.min(PER.b, D.dias))}-${MC}.`;
@@ -702,7 +716,7 @@ function pintarIndLiq(L) {
     kpi('TLC', `<button type="button" class="clic" data-ch="cien" data-d="ALL" data-k="no" style="all:unset;cursor:pointer" title="Ver las que no cumplieron">${pctTxt(tlc)}</button>`, `meta ${META_IND.tlc}% · cumplimiento de los 100 min · ${n(cSi)} de ${n(cSi + cNo)}`, semMas(tlc, META_IND.tlc)) +
     kpi('Infancia', btn(pctTxt(qInf), 'INF'), `meta ${META_IND.inf}% o menos · ${n(ctdInf)} averías en infancia ÷ ${n(alta)} altas del periodo`, semMenos(qInf, META_IND.inf)) +
     kpi('Reiteradas', btn(pctTxt(qRei), 'REI'), `meta ${META_IND.rei}% o menos · ${n(REI_AB.size)} AB con 2 o más averías ÷ ${n(ta)} averías`, semMenos(qRei, META_IND.rei)) +
-    kpi('TIF', pctTxt(tif), ls ? `meta ${META_IND.tif}% o menos · ${n(ta)} averías ÷ ${n(ls.v)} líneas (LS ${ls.mes})${proy != null ? ' · proyección del mes ' + pctTxt(proy) : ''}` : (LS ? 'falta LS en la pestaña LS_TIF' : 'cargando líneas en servicio…'), semMenos(tif, META_IND.tif));
+    kpi('TIF', pctTxt(tif), ls ? `meta ${META_IND.tif}% o menos · ${n(ta)} averías ÷ ${n(ls.v)} líneas (LS ${ls.mes}${ls.src === 'hoja' ? ', hoja LS_TIF' : zona === 'TODAS' ? '' : ', zona ' + zona})${proy != null ? ' · proyección del mes ' + pctTxt(proy) : ''}` : (LS ? 'sin LS para este mes' + (zona === 'TODAS' ? '' : ' y zona') + ': cárgalas en «Líneas en servicio (LS)»' : 'cargando líneas en servicio…'), semMenos(tif, META_IND.tif));
 }
 const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#FFFFFF'];
 $('liq-vistas').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; vista = b.dataset.v; document.querySelectorAll('#liq-vistas button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarLiq(); });
@@ -941,6 +955,67 @@ function cerrarModal() {
   if (modalOrigen && modalOrigen.focus) modalOrigen.focus();
 }
 $('modal-cerrar').addEventListener('click', cerrarModal);
+/* ---------- Líneas en servicio (LS) por distrito y mes: base del TIF. Se guarda por filial para todo el equipo. ---------- */
+function abrirLS(mesSel) {
+  const f = D.filial || filialSel(), zd = zonaDi(), hoyMes = `${DC.anio}-${p2(DC.mes)}`;
+  const mesAntK = (() => { const m = DC.mes === 1 ? 12 : DC.mes - 1, y = DC.mes === 1 ? DC.anio - 1 : DC.anio; return `${y}-${p2(m)}`; })();
+  const meses = [...new Set([hoyMes, mesAntK, ...Object.keys(LSP)])].sort().reverse();
+  const mes = mesSel || hoyMes, base = { ...(LSP[mes] || {}) };
+  const ZO = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'], zIdx = (z) => { const i = ZO.indexOf(z); return i < 0 ? 9 : i; };
+  const dis = [...new Set([...Object.keys(zd), ...Object.keys(base)])].sort((a, b) => zIdx(zd[a] || 'SIN ZONA') - zIdx(zd[b] || 'SIN ZONA') || a.localeCompare(b, 'es'));
+  const nomMesL = (m) => { const [y, mm] = m.split('-'); return ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'][+mm - 1] + ' ' + y; };
+  const html = `<form id="f-ls">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <label class="seg-t" style="display:flex;flex-direction:column;gap:6px">Mes<select id="ls-mes" style="font:600 14px var(--f-txt);min-height:38px;padding:6px 12px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg)">${meses.map(m => `<option value="${m}"${m === mes ? ' selected' : ''}>${nomMesL(m)}${LSP[m] ? '' : ' · sin cargar'}</option>`).join('')}</select></label>
+      <button type="button" class="btn-out" data-ls-copiar>Copiar del mes anterior</button>
+      <button type="button" class="btn-out" data-ls-pegar>Pegar desde Excel</button></div>
+    <div id="ls-pegado" hidden style="margin-bottom:10px"><textarea id="ls-txt" rows="5" style="width:100%;font:inherit;padding:8px;border:1px solid var(--borde-2);border-radius:10px;background:var(--sup);color:var(--fg)" placeholder="Pega dos columnas desde Excel: DISTRITO y LS (una fila por distrito)"></textarea>
+      <button type="button" class="btn-out" data-ls-aplicar style="margin-top:6px">Usar lo pegado</button></div>
+    <div style="max-height:46vh;overflow:auto"><table class="det" id="tb-ls" style="width:100%"><thead><tr><th style="text-align:left">Distrito</th><th style="text-align:left">Zona</th><th style="text-align:right">Líneas en servicio</th></tr></thead><tbody>
+      ${dis.map(d => `<tr><td style="text-align:left">${esc(d)}</td><td style="text-align:left">${esc(zd[d] || 'SIN ZONA')}</td><td style="text-align:right"><input type="number" min="0" step="1" inputmode="numeric" data-ls="${esc(d)}" value="${base[d] ?? ''}" aria-label="LS de ${esc(d)}" style="width:130px;text-align:right;font:inherit;padding:6px 8px;border:1px solid var(--borde-2);border-radius:8px;background:var(--sup);color:var(--fg)"></td></tr>`).join('')}
+    </tbody><tfoot><tr><th style="text-align:left">Total ${esc(f)}</th><th></th><th style="text-align:right" id="ls-total"></th></tr></tfoot></table></div>
+    <p class="fi-nota">El TIF usa las LS del mes de la fecha elegida (o el último mes cargado antes). Con el filtro Zona, suma solo los distritos de esa zona. Vacío = el distrito no suma. Si una filial no tiene LS cargadas, Lima sigue usando la hoja LS_TIF.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn-out" data-ls-cancelar>Cancelar</button><button type="submit" class="btn-out" style="background:var(--magenta);color:#fff;border-color:var(--magenta)">Guardar para todos</button></div></form>`;
+  $('modal-tit').textContent = 'Líneas en servicio (LS)'; $('modal-sub').textContent = `Averías · ${f} · por distrito y mes · base del TIF · los cambios se guardan para todos`;
+  $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-cuerpo').innerHTML = html;
+  document.querySelector('#modal .modal').classList.add('ficha'); $('modal-copiar').hidden = true;
+  $('modal').hidden = false; document.body.classList.add('con-modal');
+  const form = $('f-ls'), total = () => { let t = 0; form.querySelectorAll('[data-ls]').forEach(i => { const v = Number(i.value); if (i.value !== '' && isFinite(v)) t += v; }); $('ls-total').textContent = n(t); };
+  total(); form.addEventListener('input', total);
+  $('ls-mes').addEventListener('change', (e) => abrirLS(e.target.value));
+  form.addEventListener('click', (e) => {
+    if (e.target.closest('[data-ls-cancelar]')) { cerrarModal(); return; }
+    if (e.target.closest('[data-ls-pegar]')) { $('ls-pegado').hidden = !$('ls-pegado').hidden; return; }
+    if (e.target.closest('[data-ls-copiar]')) {
+      const prev = Object.keys(LSP).filter(k => k < $('ls-mes').value).sort().pop();
+      if (!prev) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No hay un mes anterior cargado.'; return; }
+      form.querySelectorAll('[data-ls]').forEach(i => { const v = LSP[prev][i.dataset.ls]; i.value = v ?? ''; }); total();
+      $('modal-aviso').style.color = ''; $('modal-aviso').textContent = `Copiado de ${nomMesL(prev)}. Revisa y pulsa «Guardar para todos».`; return;
+    }
+    if (e.target.closest('[data-ls-aplicar]')) {
+      let ok = 0; const nuevos = [];
+      $('ls-txt').value.split(/\r?\n/).forEach(l => { const c = l.split(/\t|;/).map(x => x.trim()); if (c.length < 2) return; const d = c[0].toUpperCase(), v = Math.round(Number(String(c[c.length - 1]).replace(/[^\d]/g, ''))); if (!d || !isFinite(v)) return;
+        let inp = form.querySelector(`[data-ls="${CSS.escape(d)}"]`);
+        if (!inp) { form.querySelector('#tb-ls tbody').insertAdjacentHTML('beforeend', `<tr><td style="text-align:left">${esc(d)}</td><td style="text-align:left">${esc(zd[d] || 'SIN ZONA')}</td><td style="text-align:right"><input type="number" min="0" step="1" data-ls="${esc(d)}" style="width:130px;text-align:right;font:inherit;padding:6px 8px;border:1px solid var(--borde-2);border-radius:8px;background:var(--sup);color:var(--fg)"></td></tr>`); inp = form.querySelector(`[data-ls="${CSS.escape(d)}"]`); nuevos.push(d); }
+        inp.value = v; ok++; });
+      total(); $('modal-aviso').style.color = ok ? '' : 'var(--mal)';
+      $('modal-aviso').textContent = ok ? `${ok} distritos cargados${nuevos.length ? ` (${nuevos.length} nuevos: ${nuevos.slice(0, 5).join(', ')}${nuevos.length > 5 ? '…' : ''})` : ''}. Revisa y pulsa «Guardar para todos».` : 'No se encontraron filas con DISTRITO y LS.';
+    }
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const m = {}; form.querySelectorAll('[data-ls]').forEach(i => { const v = Math.round(Number(i.value)); if (i.value !== '' && isFinite(v) && v >= 0) m[i.dataset.ls] = v; });
+    const todo = { ...LSP }; if (Object.keys(m).length) todo[$('ls-mes').value] = m; else delete todo[$('ls-mes').value];
+    const bt = form.querySelectorAll('button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
+    try {
+      const r = await fetch(urlAjAv(f) + '&accion=ls', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() }, body: JSON.stringify({ ls: todo }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
+      LSP = j.ls || {}; pintarLiq(); cerrarModal(); avisoGlobal(`LS de ${nomMesL($('ls-mes') ? $('ls-mes').value : mes)} guardadas. Ya las ve todo el equipo.`);
+    } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message || 'No se pudo guardar.'; bt.forEach(b => b.disabled = false); }
+  });
+}
+$('btn-ls').addEventListener('click', (e) => { modalOrigen = e.currentTarget; abrirLS(); });
 $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) cerrarModal(); });
 document.addEventListener('keydown', (e) => {
   if ($('modal').hidden) return;
@@ -1446,11 +1521,11 @@ if (frescoP) frescoP.then((nuevo) => { if (nuevo.actualizado !== DC.actualizado)
 $('filial').addEventListener('change', async (e) => {
   const f = e.target.value, antes = D.filial || 'LIMA';
   e.target.disabled = true; $('estado-datos').textContent = `Cargando ${f}…`;
-  try { DC = await traer(f); guardarFilial(f); traerGestores(f); zona = 'TODAS'; Object.assign(PER, { mes: '', a: 1, b: 31, sem: 'MES' }); repintarPer(); }
+  try { DC = await traer(f); guardarFilial(f); traerGestores(f); LSP = {}; traerAjCien(f).then(() => { aplicarAjCien(); pintarLiq(); pintarCien(); }); zona = 'TODAS'; Object.assign(PER, { mes: '', a: 1, b: 31, sem: 'MES' }); repintarPer(); }
   catch (err) { e.target.value = antes; prepararDatos(); $('estado-datos').textContent = err.message; }
   finally { e.target.disabled = false; }
 });
-ajCienP.then(() => { if (Object.keys(AJC).length) { aplicarAjCien(); pintarCien(); } });
+ajCienP.then(() => { if (Object.keys(AJC).length) { aplicarAjCien(); pintarCien(); } if (Object.keys(LSP).length) pintarLiq(); });
 $('cargando').hidden = true; if (tab === 'panel') { $('v-panel').hidden = false; $('v-panel').style.display = 'flex'; }
 /* Recarga los datos cada 5 minutos sin perder la pestaña ni los filtros. */
 setInterval(async () => {
