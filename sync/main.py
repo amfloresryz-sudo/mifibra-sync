@@ -111,6 +111,7 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
             try:
                 ant = instalaciones.construir(it, tecnicos, fin_ant, filial=filial, zonas=zz)
                 ant["filial"] = filial
+                ant.pop("obs", None)
                 tableros[f"instalaciones:{filial}:{fin_ant:%Y-%m}"] = ant
             except Exception as e:  # noqa: BLE001
                 print(f"Aviso: no se calculó el mes anterior de instalaciones {filial}: {e}", flush=True)
@@ -122,6 +123,7 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
             datos["pendx"] = instalaciones.pendientes_otros(otros_in, tecnicos, corte, filial=filial, zonas=zz)
             datos["avt"] = instalaciones.avance_total(avt, datos["anio"], datos["mes"])
             datos["filial"] = filial
+            tableros[f"observadas:{filial}"] = {"obs": datos.pop("obs"), "filial": filial, "corte": datos["corte"]}
             tableros[f"instalaciones:{filial}"] = datos
         print(f"  Tableros de {filial} calculados en {time.time() - t0:.0f} s.", flush=True)
     try:  # Speed Test: un solo tablero con todas las filiales (la página filtra)

@@ -23,7 +23,8 @@ from .zonas import ZONAS
 COLUMNAS_BD = (
     "id_os,nro_os,estado_os,abonado_codigo,distrito,segmento,categoria,servicio,plano,tipo_vivienda,fecha_registro,hora_recepcion,"
     "fecha_atencion,fecha_programada,fecha_cita,atencion_inicio,atencion_fin,horario_atencion,tecnico_ejecutor,tecnico_responsable,contrata,"
-    "tarifa_servicio,cajas_cerca,obs_visita,obs_visita_en,coordenadas,visita_agenda,inicio_fachada,obs_visita_todo,canal_atencion,observaciones"
+    "tarifa_servicio,cajas_cerca,obs_visita,obs_visita_en,coordenadas,visita_agenda,inicio_fachada,obs_visita_todo,canal_atencion,observaciones,"
+    "motivo_observacion,submotivo_observacion,fecha_observacion,usuario_observacion"
 )
 
 # 1.ª / 2.ª visita o VD (visita directa) mencionada en el comentario; se toma la última mención.
@@ -267,7 +268,19 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
     for lista in (ing, liq, pend, prog):
         for x in lista:
             x["z"] = _zona(x["di"])
-    return {"ing": ing, "liq": liq, "pend": pend, "prog": prog, "pdia": pdia, "zonas": zonas,
+    # Observadas (página Observadas): OS que siguen en estado OBSERVADA, por fecha de observación (hora de Lima).
+    ob = df[df["estado_os"] == "OBSERVADA"].copy()
+    ob["fo"] = _lima(ob["fecha_observacion"]) if "fecha_observacion" in ob else pd.NaT
+    ob = ob[ob["fo"].notna()]
+    obs = [{
+        "f": r["fo"].strftime("%Y-%m-%d"), "h": r["fo"].strftime("%H:%M"), "m": _txt(r.get("motivo_observacion")).strip() or "SIN CATEGORÍA",
+        "s": _txt(r.get("submotivo_observacion")).strip() or "SIN MOTIVO REGISTRADO", "u": _txt(r.get("usuario_observacion")),
+        "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "rec": _iso(r["rec"]), "ec": eecc_ingreso(r)[1], "tec": eecc_ingreso(r)[0],
+        "di": _txt(r["distrito"]) or "SIN DISTRITO", "z": _zona(r["distrito"]), "pl": r["pl"], "seg": _seg(r), "cn": _canal(r.get("canal_atencion")),
+        "co": _txt(r.get("coordenadas")), "plan": _txt(r.get("tarifa_servicio")), "ovt": (_txt(r.get("obs_visita_todo")) or _txt(r.get("obs_visita")))[:900],
+    } for _, r in ob.iterrows()]
+
+    return {"ing": ing, "liq": liq, "pend": pend, "prog": prog, "pdia": pdia, "zonas": zonas, "obs": obs,
             "config": {**{k: v for k, v in config.items() if k not in ("meta_mes", "plantas")},
                        "meta_mes": config["meta_mes"].get(filial)},
             "corte": corte.strftime("%Y-%m-%dT%H:%M:00"), "anio": anio, "mes": mes, "dias": corte.day}
