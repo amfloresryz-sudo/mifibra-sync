@@ -421,10 +421,12 @@ def leer_excel(ruta: Path) -> pd.DataFrame:
 _REGLAS_DETALLE = json.loads((Path(__file__).with_name("tipo_ab.json")).read_text(encoding="utf-8"))["reglas"]
 
 
-def detalle_de(tipo, motivo, lugar) -> str | None:
-    t, mo, lu = (str(_texto(x) or "").strip().upper() for x in (tipo, motivo, lugar))
+def detalle_de(tipo, motivo, lugar, det=None) -> str | None:
+    """det: columna «Detalle» del reporte; en OTROS y CAMBIO DE EQUIPO debe estar en la lista de la regla (amarre del cuadro TIPO_AB)."""
+    t, mo, lu, de = (" ".join(str(_texto(x) or "").split()).upper() for x in (tipo, motivo, lugar, det))
     for r in _REGLAS_DETALLE:
-        if r["tipo"] == t and (not r["motivo"] or r["motivo"] == mo) and (not r["lugar"] or r["lugar"] == lu):
+        if r["tipo"] == t and (not r["motivo"] or r["motivo"] == mo) and (not r["lugar"] or r["lugar"] == lu) \
+                and ("det" not in r or de in r["det"]):
             return r["detalle"]
     return None
 
@@ -463,7 +465,7 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
         fila.update(_obs_visita(registro.get("OBS VISITA TÉCNICO"), _fm.to_pydatetime().replace(hour=0, minute=0, second=0) if pd.notna(_fm) else None))
         # Comentario completo del técnico (todas las anotaciones), solo para las altas; teléfonos ocultos.
         _todo = str(_texto(registro.get("OBS VISITA TÉCNICO")) or "").strip()
-        fila["detalle"] = detalle_de(fila.get("tipo_orden"), fila.get("motivo"), fila.get("lugar_averia"))
+        fila["detalle"] = detalle_de(fila.get("tipo_orden"), fila.get("motivo"), fila.get("lugar_averia"), fila.get("detalle_os"))
         fila["obs_visita_todo"] = (_sin_tel(_todo)[:4000] or None) if fila.get("tipo_orden") in ("INSTALACION SERVICIO", "SERVICIO TECNICO") else None
         # Coordenadas del abonado (Latitud MAPS / Longitud MAPS): solo para las altas (INSTALACION SERVICIO),
         # limpias y en el formato "-12.092068781701789,<tab>-77.01055209096951" (todos los decimales).
@@ -573,22 +575,3 @@ def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:
 def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:
     return a_filas(leer_excel(ruta), sincronizado_en, cajas)
 
-
-def diag_columnas(df: pd.DataFrame) -> dict:
-    """Diagnóstico temporal: para cada columna del reporte que no se usa, sus valores más comunes en OTROS y CAMBIO DE EQUIPO."""
-    usadas = {*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"}
-    cols = [c for c in df.columns if c not in usadas]
-    o = {"columnas": [str(c) for c in cols], "todas": [str(c) for c in df.columns], "valores": {}, "os5250": {}}
-    try:
-        sub = df[df["Tipo Orden"].astype(str).str.upper().isin(["OTROS", "CAMBIO DE EQUIPO"])]
-        for c in [*cols, "Detalle"] if "Detalle" in df.columns else cols:
-            try:
-                o["valores"][str(c)] = {str(k): int(v) for k, v in sub[c].astype(str).str.slice(0, 80).value_counts().head(15).items()}
-            except Exception:  # noqa: BLE001
-                pass
-        fila = df[(pd.to_numeric(df["Nro OS"], errors="coerce") == 5250) & (pd.to_numeric(df["Abonado"], errors="coerce") == 27313)]
-        if len(fila):
-            o["os5250"] = {str(c): str(fila.iloc[0][c])[:120] for c in df.columns}
-    except Exception as e:  # noqa: BLE001
-        o["error"] = str(e)
-    return o

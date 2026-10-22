@@ -125,21 +125,37 @@
    "motivo": "",
    "lugar": "",
    "servicio": "INTERNET",
-   "detalle": "CAMBIO DE EQUIPO"
+   "detalle": "CAMBIO DE EQUIPO",
+   "det": [
+    "CAMBIO ONU REGULARIZACIÓN",
+    "CAMBIO ONU AUTORIZACIÓN",
+    "CAMBIO ONU POR RETENCIÓN XGPON WIFI 6",
+    "CAMBIO ONU POR RETENCIÓN",
+    "",
+    "CAMBIO DE ONU WIFI6 (COMODATO)",
+    "CAMBIO ONU MIGRACIÓN UP",
+    "CAMBIO ONU DOBLE BANDA XPON WIFI 6 SIN COSTO"
+   ]
   },
   {
    "tipo": "OTROS",
    "motivo": "",
    "lugar": "",
    "servicio": "INTERNET",
-   "detalle": "OTROS"
+   "detalle": "OTROS",
+   "det": [
+    "INSTALACION EQUIPOS VARIOS"
+   ]
   },
   {
    "tipo": "OTROS",
    "motivo": "",
    "lugar": "",
    "servicio": "OTT",
-   "detalle": "OTROS"
+   "detalle": "OTROS",
+   "det": [
+    "INSTALACION EQUIPOS VARIOS"
+   ]
   },
   {
    "tipo": "TRASLADO INTERNO",
@@ -222,5 +238,6 @@
    "instalaciones": true
   }
  },
- "nota_pestanas": "Pendientes: con averias=true salen en la pestaña Averías; con instalaciones=true, en la pestaña Instalaciones."
+ "nota_pestanas": "Pendientes: con averias=true salen en la pestaña Averías; con instalaciones=true, en la pestaña Instalaciones.",
+ "nota_det": "det: valores permitidos de la columna «Detalle» del reporte (vacío = sin detalle); si la regla no trae det, no se mira."
 }
