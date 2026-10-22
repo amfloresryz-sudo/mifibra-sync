@@ -1,5 +1,5 @@
 {
- "fuente": "MF_V2.1/ADICIONALES/TIPO_AB.xlsx (columna DETALLE)",
+ "fuente": "TIPO_AB de operaciones (columnas DETALLE/BUSCAR, AVERIAS e INSTALACIONES; actualizado 21/10/2026)",
  "reglas": [
   {
    "tipo": "SERVICIO TECNICO",
@@ -175,6 +175,52 @@
    "lugar": "RED CLIENTE",
    "servicio": "INTERNET",
    "detalle": "AVERIA"
+  },
+  {
+   "tipo": "SERVICIO TECNICO",
+   "motivo": "MESA CONTROL DESPACHO",
+   "lugar": "SEGUNDA LINEA",
+   "servicio": "INTERNET",
+   "detalle": "MCD"
   }
- ]
+ ],
+ "pestanas": {
+  "AVERIA": {
+   "averias": true,
+   "instalaciones": false
+  },
+  "TC": {
+   "averias": true,
+   "instalaciones": false
+  },
+  "MCD": {
+   "averias": true,
+   "instalaciones": false
+  },
+  "CAMBIO DE EQUIPO": {
+   "averias": true,
+   "instalaciones": true
+  },
+  "OTROS": {
+   "averias": true,
+   "instalaciones": true
+  },
+  "TRASLADO INT": {
+   "averias": true,
+   "instalaciones": true
+  },
+  "INSTALACION": {
+   "averias": false,
+   "instalaciones": true
+  },
+  "REINSTALACION": {
+   "averias": false,
+   "instalaciones": true
+  },
+  "TRASLADO EXT": {
+   "averias": false,
+   "instalaciones": true
+  }
+ },
+ "nota_pestanas": "Pendientes: con averias=true salen en la pestaña Averías; con instalaciones=true, en la pestaña Instalaciones."
 }

@@ -297,15 +297,22 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
 
 # ---------- Pendientes de otros tipos de trabajo (sin averías ni TC) ----------
 TIPOS_EXCLUIDOS_PEND = ("INSTALACION SERVICIO", "SERVICIO TECNICO")
+# Tabla TIPO_AB de operaciones: qué tipos de trabajo (DETALLE) salen en los pendientes de cada pestaña.
+_PESTANAS = __import__("json").loads((__import__("pathlib").Path(__file__).with_name("tipo_ab.json")).read_text(encoding="utf-8")).get("pestanas", {})
+DET_AVERIAS = {k for k, v in _PESTANAS.items() if v.get("averias")}
+DET_INSTALACIONES = {k for k, v in _PESTANAS.items() if v.get("instalaciones")}
 
 
 def pendientes_otros(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, filial: str = "LIMA",
-                     zonas: dict[str, str] = ZONAS, excluir: tuple = TIPOS_EXCLUIDOS_PEND) -> list[dict]:
+                     zonas: dict[str, str] = ZONAS, excluir: tuple = TIPOS_EXCLUIDOS_PEND, permitidos: set | None = None) -> list[dict]:
     """Órdenes REGISTRADAS de los demás tipos de orden (traslados, cambio de equipo, recojo, otros…), con los mismos
     campos que los pendientes de instalación. No incluye SERVICIO TECNICO (averías y TC)."""
     if df is None or df.empty:
         return []
     df = df[~df["tipo_orden"].isin(excluir) & (df["estado_os"] == "REGISTRADA")]
+    if permitidos is not None:   # solo los tipos de trabajo marcados en TIPO_AB para la pestaña; el trabajo se nombra como en TIPO_AB
+        det = df["detalle"].fillna("") if "detalle" in df else pd.Series("", index=df.index)
+        df = df[det.isin(permitidos)].assign(tipo_orden=det[det.isin(permitidos)])
     if df.empty:
         return []
     return construir(df, tec_contrata, corte, filial=filial, zonas=zonas, solo_internet=False)["pend"]
@@ -317,13 +324,9 @@ def pendientes_otros_averias(df: pd.DataFrame, tec_contrata: dict[str, str], cor
     averías / TC (que ya son el tablero). Las de SERVICIO TECNICO sin detalle AVERIA/TC salen como su propio tipo."""
     if df is None or df.empty:
         return []
-    df = df.copy()
-    det = df["detalle"].fillna("") if "detalle" in df else pd.Series("", index=df.index)
-    st = df["tipo_orden"] == "SERVICIO TECNICO"
-    df = df[~(st & det.isin(["AVERIA", "TC"]))]
-    df.loc[df["tipo_orden"] == "SERVICIO TECNICO", "tipo_orden"] = "SERVICIO TECNICO (SIN DETALLE)"
-    return pendientes_otros(df.drop(columns=["detalle"], errors="ignore"), tec_contrata, corte, filial=filial, zonas=zonas,
-                            excluir=("INSTALACION SERVICIO",))
+    # Según TIPO_AB: los marcados para Averías, sin AVERIA ni TC (que ya son el tablero): MCD, cambio de equipo, otros, traslado interno.
+    return pendientes_otros(df, tec_contrata, corte, filial=filial, zonas=zonas, excluir=("INSTALACION SERVICIO",),
+                            permitidos=DET_AVERIAS - {"AVERIA", "TC"})
 
 
 # ---------- Avance total: todas las órdenes DESCARGADAS del mes hechas por técnicos de EECC ----------

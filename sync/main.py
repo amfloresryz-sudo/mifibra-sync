@@ -125,12 +125,13 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
                 tableros[f"instalaciones:{filial}:{fin_ant:%Y-%m}"] = ant
             except Exception as e:  # noqa: BLE001
                 print(f"Aviso: no se calculó el mes anterior de instalaciones {filial}: {e}", flush=True)
-            otros_in = _cols(d[(d["estado_os"] == "REGISTRADA") & ~d["tipo_orden"].isin(["INSTALACION SERVICIO", "SERVICIO TECNICO"])],
-                             instalaciones.COLUMNAS_BD, ("tipo_orden",))
+            otros_in = _cols(d[(d["estado_os"] == "REGISTRADA") & (d["tipo_orden"] != "INSTALACION SERVICIO")],
+                             instalaciones.COLUMNAS_BD, ("tipo_orden", "detalle"))
             avt = _cols(d[(d["estado_os"] == "DESCARGADA") & d["contrata"].astype(str).str.startswith("EECC")
                           & (fa[d.index] >= pd.Timestamp(hoy.replace(day=1)))], instalaciones.COLUMNAS_AVT)
             datos = instalaciones.construir(it, tecnicos, corte, filial=filial, zonas=zz)
-            datos["pendx"] = instalaciones.pendientes_otros(otros_in, tecnicos, corte, filial=filial, zonas=zz)
+            datos["pendx"] = instalaciones.pendientes_otros(otros_in, tecnicos, corte, filial=filial, zonas=zz, excluir=("INSTALACION SERVICIO",),
+                                                              permitidos=instalaciones.DET_INSTALACIONES - {"INSTALACION"})
             datos["avt"] = instalaciones.avance_total(avt, datos["anio"], datos["mes"])
             datos["filial"] = filial
             tableros[f"observadas:{filial}"] = {"obs": datos.pop("obs"), "filial": filial, "corte": datos["corte"]}
