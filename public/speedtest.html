@@ -324,12 +324,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       (await r.json()).forEach(x => extraOs.set(x.filial + '|' + x.nro_os, x)); }));
   }
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.length > 10 ? iso.slice(11, 16) : ''}`.trim() : '—';
-  let modalFilas = [], modalCab = [], modalNom = 'lista';
+  let modalFilas = [], modalCab = [], modalNom = 'lista', listaTurno = 0;
   async function listaAB(tit, sub, LL, extraHtml = '') {
+    const turno = ++listaTurno;   // si se abre otra lista antes de que llegue la respuesta, esta ya no pinta
     const Ls = [...LL].sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
     $('modal-tit').textContent = tit; $('modal-sub').textContent = `${n(Ls.length)} AB · ${sub}`; $('modal-extra').innerHTML = extraHtml; $('modal-aviso').textContent = '';
     $('modal-cuerpo').innerHTML = '<p class="vacio">Cargando los datos de las OS…</p>'; $('modal').hidden = false; $('modal-cerrar').focus();
-    try { await traerExtra(Ls); } catch { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudieron traer F. Recep, distrito y estado; se muestra lo que hay.'; }
+    try { await traerExtra(Ls); if (turno !== listaTurno) return; } catch { if (turno !== listaTurno) return; $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudieron traer F. Recep, distrito y estado; se muestra lo que hay.'; }
     modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Pr. cliente', 'Pr. técnico', 'Repetidos'];
     modalFilas = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', PLANES[o.p], o.c, o.tn + o.s, o.r]; });
     $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map(f => `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
