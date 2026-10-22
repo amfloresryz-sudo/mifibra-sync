@@ -871,6 +871,16 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div><div class="cr-tit"><i>2</i>¿Se cumplió la fecha y franja?</div><div class="cr-cards" id="cr-cards"></div></div>
       <p class="nota">Universo (el mismo del Consolidado mensual): agendas y coordinadas programadas en el mes por F. AG con Estado OS DESCARGADA, más las altas instaladas en el mes sin fecha ni franja · Coordinada = de la F. Recep (fecha y hora) al inicio de la franja hay 24 h o menos · Agenda = más de 24 h · se respetan la Fecha Asignacion y la franja de la OS; solo si la OS no tiene franja se toman las del comentario del técnico · Dos resultados: Cumplió = el inicio de atención fue el día asignado, dentro de la franja o antes (8 - 10 con inicio 10:00 cumple; 18 - 20 con inicio 10:39 cumple) · No cumplió = inicio después del fin de la franja (8 - 10 con inicio 10:01) o en otro día · Inconsistente = la franja terminaba antes de la hora de ingreso de la orden (se cuenta dentro de AG/CO).</p>
     </section>
+    <section class="sec co-pan" data-cop="det" aria-labelledby="t-aghoy" hidden>
+      <div class="sec-cab"><div><h2 id="t-aghoy">Detalle de agendas de hoy</h2><p class="sub" id="aghoy-sub"></p></div>
+        <div class="pen-acc"><span class="nota" id="aghoy-n"></span><button type="button" class="btn-out" data-img="tb-aghoy" data-nom="agendas-de-hoy">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-aghoy" data-nom="agendas-de-hoy">Descargar Excel</button></div></div>
+      <div class="segs" id="hoy-segs"></div>
+      <p class="pen-aviso" id="aviso-tb-aghoy" role="status" aria-live="polite"></p>
+      <div style="max-height:520px;overflow:auto;border:1px solid var(--borde);border-radius:12px"><table class="det ord" id="tb-aghoy">
+        <thead><tr><th>AB</th><th>OS</th><th>Tipo</th><th>Franja</th><th>EECC_F</th><th>Técnico</th><th>Zona</th><th>Distrito</th><th>Seg.</th><th title="Canal de venta">Canal</th><th>F. Recep y hora</th><th title="Horas desde la F. Recep">Antig.</th><th>BI hora</th><th>Estado</th><th>Estado OS</th></tr></thead>
+        <tbody id="aghoy-filas"></tbody></table></div>
+      <p class="nota">Solo lo programado para hoy (F. AG = día en curso) · AG HOY = agendas del día · Coordinadas = coordinadas del día · no incluye sin agenda ni anuladas · Estado: Pendiente = aún sin inicio hoy · En atención = el técnico ya inició hoy · Descargada / Observada según el Estado OS · orden: pendientes primero y, dentro de cada estado, la F. Recep más antigua primero · clic en el AB para ver el comentario del técnico.</p>
+    </section>
     <section class="sec co-pan" data-cop="det" aria-labelledby="t-codet" hidden>
       <div class="sec-cab"><div><h2 id="t-codet">Detalle de agendas y coordinadas</h2><p class="sub">Agendas y coordinadas del mes por fecha de agenda (F. AG) · BI = inicio de la atención del técnico · los botones Total / Agendas / Coordinadas también filtran esta tabla</p></div>
         <div class="pen-acc"><span class="nota" id="codet-n"></span><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda de un AB</button><button type="button" class="btn-out" data-img="tb-codet" data-nom="detalle-agendas-coordinadas">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-codet" data-nom="detalle-agendas-coordinadas">Descargar Excel</button></div></div>
@@ -1054,7 +1064,7 @@ const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#F
 const FRANJAS = ['8 - 10','10 - 12','12 - 14','14 - 16','16 - 18','18 - 20'];
 let DIAS = [], MC = '', MESL = '', CFG = {};
 let coTipo = 'TODOS', seg = 'TODOS', canal = 'TODOS', zona = 'TODAS', vista = 'eecc', tab = 'panel', diaCo = 0, diaAv = 0, diaPenAg = 0;
-const filtro = { ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: 'TODOS', altTp: 'TODOS', penTo: 'INSTALACION SERVICIO', penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
+const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: 'TODOS', altTp: 'TODOS', penTo: 'INSTALACION SERVICIO', penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
 const abiertos = new Set();
 const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: WD[f.getDay()], fin: f.getDay() === 0 }; };
 const fDia = (d) => `${String(d).padStart(2, '0')}-${MC}.`;
@@ -1324,7 +1334,7 @@ function segmentos(contenedor, grupos) {
   $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span>${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${filtro[g.k] === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</div>`).join('');
 }
 // Cada segmentador repinta solo su pestaña (antes repintaba todo el portal y se sentía lento).
-const REPINTA = { 'eecc-segs': () => pintarIngresos(), 'altas-segs': () => pintarDetalle(), 'pen-segs': () => pintarPendientes(), 'pen-segs-ge': () => pintarPendientes(), 'co-segs': () => pintarCoord() };
+const REPINTA = { 'eecc-segs': () => pintarIngresos(), 'altas-segs': () => pintarDetalle(), 'pen-segs': () => pintarPendientes(), 'pen-segs-ge': () => pintarPendientes(), 'co-segs': () => pintarCoord(), 'hoy-segs': () => pintarAgHoy() };
 Object.keys(REPINTA).forEach(id => $(id).addEventListener('click', (e) => {
   const b = e.target.closest('[data-v]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
   if (filtro[g.dataset.k] === b.dataset.v) return;
@@ -1961,6 +1971,37 @@ function abrirListaCoord(clave) {
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-cr-lista]'); if (b) abrirListaCoord(b.dataset.crLista); });
 document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.cr-bar [data-cr-lista]')) { e.preventDefault(); abrirListaCoord(e.target.dataset.crLista); } });
 
+/* Detalle de agendas de hoy (como en Seguimiento de agendas): solo lo programado para el día en curso */
+const HO_TP = { 'AG HOY': 'AG', 'COORDINADAS': 'CO' };
+const frNorm = (x) => String(x.fr || '').replace(/\s+/g, ' ').trim();
+const hoEstado = (x) => x.e === 'D' ? 'DESCARGADA' : x.e === 'O' ? 'OBSERVADA' : (x.ini && x.ini.slice(0, 10) === hoyIso()) ? 'EN ATENCIÓN' : 'PENDIENTE';
+const HO_ORD = { 'PENDIENTE': 0, 'EN ATENCIÓN': 1, 'OBSERVADA': 2, 'DESCARGADA': 3 };
+function hoyFiltrados(sin = '') {
+  return D.prog.filter(ok).filter(x => x.d === D.dias && (x.t === 'AG' || x.t === 'CO') && x.e !== 'A'
+    && (sin === 'hoTp' || filtro.hoTp === 'TODOS' || x.t === HO_TP[filtro.hoTp])
+    && (sin === 'hoFr' || filtro.hoFr === 'TODOS' || frNorm(x) === filtro.hoFr)
+    && (sin === 'hoEc' || filtro.hoEc === 'TODOS' || x.ec === filtro.hoEc));
+}
+function pintarAgHoy() {
+  if (!$('hoy-segs')) return;
+  const cnt = (k, f) => (o) => hoyFiltrados(k).filter(x => f(x, o)).length;
+  const frs = [...FRANJAS, ...[...new Set(hoyFiltrados('hoFr').map(frNorm))].filter(f => f && !FRANJAS.includes(f)).sort()];
+  segmentos('hoy-segs', [
+    { k: 'hoTp', t: 'Tipo', ops: Object.keys(HO_TP), cnt: cnt('hoTp', (x, o) => x.t === HO_TP[o]) },
+    { k: 'hoFr', t: 'Franja', ops: frs, cnt: cnt('hoFr', (x, o) => frNorm(x) === o) },
+    { k: 'hoEc', t: 'EECC_F', ops: ecsDe(hoyFiltrados('hoEc')), cnt: cnt('hoEc', (x, o) => x.ec === o) } ]);
+  const L = hoyFiltrados().map(x => ({ x, es: hoEstado(x) })).sort((a, b) => HO_ORD[a.es] - HO_ORD[b.es] || msIso(a.x.rec) - msIso(b.x.rec)).map(o => o.x);
+  const T = D.prog.filter(ok).filter(x => x.d === D.dias && x.e !== 'A'), ag = T.filter(x => x.t === 'AG').length, co = T.filter(x => x.t === 'CO').length;
+  const pen = L.filter(x => hoEstado(x) === 'PENDIENTE').length;
+  $('aghoy-sub').innerHTML = `${diaInfo(D.dias).wd} ${fDia(D.dias)} · <b>${ag}</b> agendas marcadas «AG HOY» · <b>${co}</b> coordinadas en total · pendientes y más antiguos primero`;
+  $('aghoy-n').textContent = `${n(L.length)} registros · ${n(pen)} pendientes`;
+  const corte = msIso(D.corte) || Date.now();
+  const esB = (e) => e === 'DESCARGADA' ? '<span class="b ges">Descargada</span>' : e === 'OBSERVADA' ? '<span class="b sges">Observada</span>' : e === 'EN ATENCIÓN' ? '<span class="b coo">En atención</span>' : '<span class="b sag">Pendiente</span>';
+  $('aghoy-filas').innerHTML = L.map(x => { const es = hoEstado(x), h = x.rec ? Math.max(0, Math.round((corte - msIso(x.rec)) / 36e5)) : null, iniHoy = x.ini && x.ini.slice(0, 10) === hoyIso();
+    return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${x.t === 'AG' ? '<span class="b ag">AG HOY</span>' : '<span class="b co">CO</span>'}</td><td>${esc(x.fr || '—')}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(cnNom(x.cn))}">${esc(cnCorto(x.cn))}</td>
+      <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${h ?? -1}">${h == null ? '—' : h + ' h'}</td><td>${iniHoy ? x.ini.slice(11, 16) : '—'}</td><td data-v="${HO_ORD[es]}">${esB(es)}</td><td>${EST_OS[x.e] || '—'}</td></tr>`; }).join('') || '<tr><td colspan="15">No hay agendas ni coordinadas para hoy con estos filtros.</td></tr>';
+  prepararOrden($('tb-aghoy'));
+}
 /* Detalle de agendas y coordinadas (como en Seguimiento de agendas) */
 const CU_TXT = { si: 'Sí', tarde: 'No', no: 'No', hoy: 'Pendiente', fut: 'Pendiente' };
 const CU_OP = { 'CUMPLIÓ': (x) => kMed(x) === 'si', 'NO CUMPLIÓ': (x) => kMed(x) === 'no', 'PEND. DE EVALUAR': (x) => kMed(x) === 'pen' };
@@ -2202,6 +2243,7 @@ $('avt-todo').addEventListener('click', () => { const ecs = [...document.querySe
   if (ecs.every(k => avt.abiertos.has(k))) avt.abiertos.clear(); else ecs.forEach(k => avt.abiertos.add(k)); pintarAvt(); });
 function pintarCoord() {
   pintarResumenCoord();
+  pintarAgHoy();
   pintarCoDetalle();
   pintarEvoEc();
   // Solo AB con Estado OS DESCARGADA; resultado: Cumplió / No cumplió.
