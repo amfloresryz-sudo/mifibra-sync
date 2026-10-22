@@ -53,6 +53,7 @@ COLUMNAS = {
     "NAP": "nap",
     "BORNE": "borne",
     "Dispositivo": "dispositivo",
+    "Detalle": "detalle_os",   # detalle de la OS en ScordSoft (amarre TIPO_AB de OTROS y CAMBIO DE EQUIPO)
 }
 
 # Columnas de fecha + hora que se combinan en un solo timestamp.
@@ -576,15 +577,18 @@ def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:
 def diag_columnas(df: pd.DataFrame) -> dict:
     """Diagnóstico temporal: para cada columna del reporte que no se usa, sus valores más comunes en OTROS y CAMBIO DE EQUIPO."""
     usadas = {*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"}
-    sub = df[df["Tipo Orden"].astype(str).str.upper().isin(["OTROS", "CAMBIO DE EQUIPO"])]
-    o = {"columnas": [str(c) for c in df.columns if c not in usadas], "valores": {}, "os5250": {}}
-    for c in o["columnas"]:
-        try:
-            o["valores"][c] = {str(k): int(v) for k, v in sub[c].astype(str).str.slice(0, 80).value_counts().head(12).items()}
-        except Exception:  # noqa: BLE001
-            pass
-    fila = df[pd.to_numeric(df["Nro OS"], errors="coerce") == 5250]
-    fila = fila[pd.to_numeric(fila["Abonado"], errors="coerce") == 27313]
-    if len(fila):
-        o["os5250"] = {c: str(fila.iloc[0][c])[:120] for c in o["columnas"]}
+    cols = [c for c in df.columns if c not in usadas]
+    o = {"columnas": [str(c) for c in cols], "todas": [str(c) for c in df.columns], "valores": {}, "os5250": {}}
+    try:
+        sub = df[df["Tipo Orden"].astype(str).str.upper().isin(["OTROS", "CAMBIO DE EQUIPO"])]
+        for c in [*cols, "Detalle"] if "Detalle" in df.columns else cols:
+            try:
+                o["valores"][str(c)] = {str(k): int(v) for k, v in sub[c].astype(str).str.slice(0, 80).value_counts().head(15).items()}
+            except Exception:  # noqa: BLE001
+                pass
+        fila = df[(pd.to_numeric(df["Nro OS"], errors="coerce") == 5250) & (pd.to_numeric(df["Abonado"], errors="coerce") == 27313)]
+        if len(fila):
+            o["os5250"] = {str(c): str(fila.iloc[0][c])[:120] for c in df.columns}
+    except Exception as e:  # noqa: BLE001
+        o["error"] = str(e)
     return o
