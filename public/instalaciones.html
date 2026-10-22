@@ -713,6 +713,11 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .rf-acc { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; } .rf-acc label { display: flex; flex-direction: column; gap: 6px; }
 .rf-acc input { font: inherit; padding: 8px 10px; border: 1px solid var(--borde-2); border-radius: 10px; background: var(--sup); color: var(--fg); }
 .rf-ok:not([disabled]) { background: var(--magenta); border-color: var(--magenta); color: #FFFFFF; }
+/* Detalle por EECC: marco rojo en «No cumplió» y EECC resaltadas cuando no cumplieron agendas (botón «Marcar incumplidos») */
+.cs-tab.marcar th.nc { outline: none; border: 3px solid #D7263D !important; border-bottom-width: 0 !important; }
+.cs-tab.marcar td.nc { border-left: 3px solid #D7263D !important; border-right: 3px solid #D7263D !important; }
+.cs-tab.marcar tfoot td.nc { border-bottom: 3px solid #D7263D !important; }
+.cs-tab.marcar tr.fila-nc .ec-nc, .cs-tab.marcar td.nc-si button, .cs-tab.marcar td.nc-si > span { background: #FFF200; color: #1F2937; padding: 1px 4px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -2312,10 +2317,10 @@ function pintarConsol(m) {
   const GD = {}; L.forEach(x => { const g = csGrupo(m, x); (GD[g] || (GD[g] = [])).push(x); });
   const fl = Object.keys(GD).map(g => ({ g, ...csCuenta(GD[g]) })).sort((x, y) => (y.p ?? -1) - (x.p ?? -1) || y.n - x.n);
   const barP = (p) => p == null ? '—' : `<div class="barra-pct"><i><b style="width:${Math.min(100, p).toFixed(1)}%;background:var(--${csColor(p)})"></b></i><span>${dec(p)}%</span></div>`;
-  const celda = (r, g) => `<td class="t-col">${num(r.n, g, 'ALL')}</td><td>${num(r.AG, g, 'AG')}</td><td>${num(r.CO, g, 'CO')}</td><td>${num(r.D, g, 'D')}</td><td class="bien">${num(r.si, g, 'si')}</td><td class="malo">${num(r.inc, g, 'inc')}</td><td data-v="${r.p ?? -1}">${barP(r.p)}</td><td>${num(r.A, g, 'A')}</td><td>${num(r.O, g, 'O')}</td><td>${num(r.R, g, 'R')}</td>`;
+  const celda = (r, g) => `<td class="t-col">${num(r.n, g, 'ALL')}</td><td>${num(r.AG, g, 'AG')}</td><td>${num(r.CO, g, 'CO')}</td><td>${num(r.D, g, 'D')}</td><td class="bien">${num(r.si, g, 'si')}</td><td class="malo nc${r.inc ? ' nc-si' : ''}">${num(r.inc, g, 'inc')}</td><td data-v="${r.p ?? -1}">${barP(r.p)}</td><td>${num(r.A, g, 'A')}</td><td>${num(r.O, g, 'O')}</td><td>${num(r.R, g, 'R')}</td>`;
   const tid = 'tb-cs-' + m;
-  const tabla = `<table class="mat ord tabla-ajuste cs-tab" id="${tid}"><thead><tr><th>#</th>${c.rank === 'GE' ? '<th>Gestor</th><th>EECC</th>' : '<th>Gestor</th><th>EECC</th>'}<th>Programadas</th><th>Agendas</th><th>Coordinadas</th><th>Descargadas</th><th>Cumplió</th><th>No cumplió</th><th>% Cumplimiento</th><th>Anuladas</th><th>Observadas</th><th>Registradas</th></tr></thead><tbody>
-    ${fl.map((r, i) => `<tr><td>${i + 1}</td>${c.rank === 'GE' ? `<td>${esc(r.g)}</td><td>${esc(ecsDeGe(r.g).join(', '))}</td>` : `<td>${esc(geDe(r.g) === 'SIN GESTOR' ? 'S/ASIGNAR' : geDe(r.g))}</td><td>${esc(r.g)}</td>`}${celda(r, r.g)}</tr>`).join('') || '<tr><td colspan="14">Sin programadas con estos filtros.</td></tr>'}</tbody>
+  const tabla = `<table class="mat ord tabla-ajuste cs-tab${c.marcar !== false ? ' marcar' : ''}" id="${tid}"><thead><tr><th>#</th>${c.rank === 'GE' ? '<th>Gestor</th><th>EECC</th>' : '<th>Gestor</th><th>EECC</th>'}<th>Programadas</th><th>Agendas</th><th>Coordinadas</th><th>Descargadas</th><th>Cumplió</th><th class="nc">No cumplió</th><th>% Cumplimiento</th><th>Anuladas</th><th>Observadas</th><th>Registradas</th></tr></thead><tbody>
+    ${fl.map((r, i) => `<tr${r.inc ? ' class="fila-nc"' : ''}><td>${i + 1}</td>${c.rank === 'GE' ? `<td><span class="ec-nc">${esc(r.g)}</span></td><td>${esc(ecsDeGe(r.g).join(', '))}</td>` : `<td>${esc(geDe(r.g) === 'SIN GESTOR' ? 'S/ASIGNAR' : geDe(r.g))}</td><td><span class="ec-nc">${esc(r.g)}</span></td>`}${celda(r, r.g)}</tr>`).join('') || '<tr><td colspan="14">Sin programadas con estos filtros.</td></tr>'}</tbody>
     <tfoot><tr><td></td><td>Total</td><td></td>${celda(T, '*')}</tr></tfoot></table>`;
   box.innerHTML = `<div class="cs-cab"><h2 id="t-cs-${m}">Consolidado de Agendas &amp; Coordinadas ${m === 'cd' ? 'del día' : 'del mes'}</h2><div class="cs-acc"><button type="button" class="btn-out" data-img="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda</button>
 </div></div>
@@ -2325,7 +2330,8 @@ function pintarConsol(m) {
     ${kpis}
     ${graf}
     ${csDetalleAB(m, L, rangoTxt)}
-    <div class="cs-det"><div class="sec-cab"><div><h3 class="cs-h3">Detalle por ${c.rank === 'GE' ? 'gestor' : 'EECC'}</h3><p class="sub">${esc(rangoTxt)} · programadas por fecha de agenda (F. AG), incluye anuladas · % cumplimiento = cumplidas ÷ descargadas · clic en un número para ver los AB y editar su agenda</p></div></div>
+    <div class="cs-det"><div class="sec-cab"><div><h3 class="cs-h3">Detalle por ${c.rank === 'GE' ? 'gestor' : 'EECC'}</h3><p class="sub">${esc(rangoTxt)} · programadas por fecha de agenda (F. AG), incluye anuladas · % cumplimiento = cumplidas ÷ descargadas · clic en un número para ver los AB y editar su agenda</p></div>
+        <div class="pen-acc"><button type="button" class="btn-out" data-cs-marcar="${m}" aria-pressed="${c.marcar !== false}">${c.marcar !== false ? '✓ Marcar incumplidos' : 'Marcar incumplidos'}</button><button type="button" class="btn-out" data-img="${tid}" data-nom="detalle-${c.rank === 'GE' ? 'gestor' : 'eecc'}-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button></div></div>
       <p class="pen-aviso" id="aviso-${tid}" role="status" aria-live="polite"></p>
       <div class="scroll">${tabla}</div></div>`;
   prepararOrden($(tid)); prepararOrden($('tb-csd-' + m));
@@ -2361,6 +2367,7 @@ function csDetalleAB(m, L, rangoTxt) {
     const c = CS[m], t = e.target;
     const k = t.closest('[data-cs-k]'); if (k) { c[k.dataset.csK] = k.dataset.v; if (k.dataset.csK === 'rank') c.eg = 'TODOS'; pintarConsol(m); return; }
     if (t.closest('[data-cs-ver]')) { c.ver = !c.ver; pintarConsol(m); return; }
+    if (t.closest('[data-cs-marcar]')) { c.marcar = c.marcar === false; pintarConsol(m); return; }
     const dk = t.closest('[data-csd-k]'); if (dk) { const S = c.dt[dk.dataset.csdK], v = dk.dataset.v; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarConsol(m); return; }
     if (t.closest('[data-csd-limpiar]')) { CSD_SEGS.forEach(([k]) => c.dt[k].clear()); pintarConsol(m); return; }
     if (t.closest('[data-csd-ab]')) { const tb = $('tb-csd-' + m), abs = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1).map(r => r.cells[0].textContent.trim());
