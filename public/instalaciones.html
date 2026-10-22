@@ -1232,6 +1232,7 @@ $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]'); if (!b) return; tab = b.dataset.t;
   document.querySelectorAll('#tabs [role="tab"]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
   VISTAS.forEach(k => { const v = $('v-' + k); v.hidden = k !== tab; v.style.display = v.hidden ? 'none' : 'flex'; });
+  pintarTabSiSucia(tab);
 });
 
 /* ---------- gráfico de columnas apiladas (mismo de Averías) ---------- */
@@ -1704,7 +1705,7 @@ function pintarPendientes0() {
   const nCol = Object.keys(colFil).length;
   $('pen-n').innerHTML = `${L.length} de ${penUni().length} pendientes${esInst() ? '' : ' de ' + TO_TXT(filtro.penTo).toLowerCase()}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   marcarFiltrosCol();
-  $('pen-filas').innerHTML = L.map(p => { const ed = edadDias(p.rec), ea = estAg(p), ge = gestorDe(p);
+  $('pen-filas').innerHTML = diferir('tb-pend', L.map(p => { const ed = edadDias(p.rec), ea = estAg(p), ge = gestorDe(p);
     return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnCorto(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}" data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td>${esc(p.ec)}</td>
       <td title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
       <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
@@ -1712,7 +1713,7 @@ function pintarPendientes0() {
       <td data-v="${visI(p) ? (visI(p) === 'VD' ? 3 : visI(p)) : 9}">${visI(p) ? `<span class="b v1" title="Tomado del comentario">${visTxtI(visI(p))}</span>` : '-'}</td>
       ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
-      <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }).join('') || '<tr><td colspan="16">No hay pendientes con este filtro.</td></tr>';
+      <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 16, '<tr><td colspan="16">No hay pendientes con este filtro.</td></tr>');
   prepararOrden($('tb-pend'));
 }
 $('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; pintarPendientes(); });
@@ -2060,12 +2061,12 @@ function pintarCoDetalle() {
   const L = coFiltrados().filter(x => !q || [x.ab, x.os, x.tec, x.di].some(v => String(v || '').toUpperCase().includes(q))).sort((a, b) => a.d - b.d || ((franjaDe(a.fr) || [99])[0] - (franjaDe(b.fr) || [99])[0]));
   $('codet-n').textContent = `${n(L.length)} registros`;
   const cuB = (k) => k === 'si' ? '<span class="b ges">Sí</span>' : (k === 'tarde' || k === 'no') ? '<span class="b sges">No</span>' : '<span class="b sag">Pendiente</span>';
-  $('codet-filas').innerHTML = L.map(x => { const ge = gestorDe(x);
+  $('codet-filas').innerHTML = diferir('tb-codet', L.map(x => { const ge = gestorDe(x);
     return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
       <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)}/${x.rec.slice(0, 4)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td>
       <td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${x.ini ? `${x.ini.slice(8, 10)}/${x.ini.slice(5, 7)}/${x.ini.slice(0, 4)}` : '—'}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td>
-      <td><span class="ini-pop ini-txt" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'Sí' : 'No'}</span></td><td data-v="${kMed(x)}">${cuB(kMed(x))}</td><td>${EST_OS[x.e] || '—'}</td><td>${btnEd(x)}</td></tr>`; }).join('') || '<tr><td colspan="19">No hay registros con estos filtros.</td></tr>';
+      <td><span class="ini-pop ini-txt" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'Sí' : 'No'}</span></td><td data-v="${kMed(x)}">${cuB(kMed(x))}</td><td>${EST_OS[x.e] || '—'}</td><td>${btnEd(x)}</td></tr>`; }), 19, '<tr><td colspan="19">No hay registros con estos filtros.</td></tr>');
   prepararOrden($('tb-codet'));
 }
 $('codet-desde').addEventListener('change', (e) => { filtro.coDesde = e.target.value; pintarCoDetalle(); });
@@ -2425,10 +2426,10 @@ function csDetalleAB(m, L, rangoTxt) {
     let ops = fijo || Object.keys(cnt).sort((a, b) => a.startsWith('(') || a === 'SIN GESTOR' ? 1 : b.startsWith('(') || b === 'SIN GESTOR' ? -1 : a.localeCompare(b, 'es', { numeric: true }));
     return `<div class="g"><span class="seg-t">${t}</span><button type="button" class="chip" data-csd-k="${k}" data-v="" aria-pressed="${!dt[k].size}">Todos</button>${ops.map(v => `<button type="button" class="chip" data-csd-k="${k}" data-v="${esc(v)}" aria-pressed="${dt[k].has(v)}">${esc(v)} (${cnt[v] || 0})</button>`).join('')}</div>`; }).join('');
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
-  const filas = F.map(x => { const ge = gestorDe(x);
+  const filas = diferir(tid, F.map(x => { const ge = gestorDe(x);
     return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${x.e !== 'D' ? `<span class="b sag" title="${esc(EST_OS[x.e] || x.e)}">—</span>` : x.k === 'si' ? '<span class="b ges">Sí</span>' : '<span class="b sges">No</span>'}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di || '—'))}</td><td>${esc(x.seg || '—')}</td>
       <td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td data-v="${msIso(x.rec)}">${x.rec ? fh(x.rec) + ' ' + x.rec.slice(11, 16) : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td><td>${tipoB(x)}</td>
-      <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td data-v="${x.ini ? 0 : 1}"><span class="b ${x.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'SÍ' : 'NO'}</span></td><td>${btnEd(x)}</td></tr>`; }).join('') || '<tr><td colspan="18">Sin AB con estos filtros.</td></tr>';
+      <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td data-v="${x.ini ? 0 : 1}"><span class="b ${x.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'SÍ' : 'NO'}</span></td><td>${btnEd(x)}</td></tr>`; }), 18, '<tr><td colspan="18">Sin AB con estos filtros.</td></tr>');
   return `<div class="cs-det csd"><div class="sec-cab"><div><h3 class="cs-h3">Detalle de cumplimiento por AB</h3><p class="sub">${esc(rangoTxt)} · Estado OS: ${esc(dt.es.size ? [...dt.es].map(v => v.toLowerCase()).join(', ') : 'todos')} · primero los que no cumplieron · BI = inicio de la atención del técnico</p></div>
       <div class="pen-acc"><span class="nota"><b>${n(F.length)}</b> AB · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span>${sinD ? ` · ${n(sinD)} sin descargar` : ''}</span><button type="button" class="btn-out" data-csd-ab="${m}">Copiar AB</button><button type="button" class="btn-out" data-img="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button></div></div>
     <div class="csd-herr"><label class="seg-t csd-bus">Buscar AB <input type="search" data-csd-q="${m}" value="${esc(dt.q)}" placeholder="AB, OS, técnico, distrito o EECC"></label>
@@ -2447,7 +2448,7 @@ function csDetalleAB(m, L, rangoTxt) {
     if (t.closest('[data-cs-marcar]')) { c.marcar = c.marcar === false; pintarConsol(m); return; }
     const dk = t.closest('[data-csd-k]'); if (dk) { const S = c.dt[dk.dataset.csdK], v = dk.dataset.v; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarConsol(m); return; }
     if (t.closest('[data-csd-limpiar]')) { CSD_SEGS.forEach(([k]) => c.dt[k].clear()); pintarConsol(m); return; }
-    if (t.closest('[data-csd-ab]')) { const tb = $('tb-csd-' + m), abs = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1).map(r => r.cells[0].textContent.trim());
+    if (t.closest('[data-csd-ab]')) { const tb = $('tb-csd-' + m); completarTabla(tb); const abs = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1).map(r => r.cells[0].textContent.trim());
       navigator.clipboard.writeText(abs.join('\n')).then(() => aviso('tb-csd-' + m, `${abs.length} AB copiados.`), () => aviso('tb-csd-' + m, 'Tu navegador no permitió copiar.', true)); return; }
     if (t.closest('[data-cs-mas]')) { c.mas = !c.mas; pintarConsol(m); return; }
     const tp = t.closest('[data-cs-tipo]'); if (tp) { document.querySelector(`#cr-btns [data-crt="${tp.dataset.csTipo}"]`).click(); return; }
@@ -3038,6 +3039,27 @@ $('modal-copiar').addEventListener('click', async () => {
 });
 document.addEventListener('click', (e) => { const b = e.target.closest('.clic[data-ch]'); if (b) abrirDetalle(b.dataset.ch, b.dataset.d, b.dataset.k); });
 
+/* ---------- Tablas grandes: se pintan por partes (las primeras filas al instante, el resto al hacer scroll) ---------- */
+// Las tablas de miles de filas (detalle de agendas, cumplimiento por AB) congelaban la pantalla al cambiar de pestaña.
+// Se pintan 120 filas y el resto se agrega al acercarse al final; ordenar, copiar imagen o bajar Excel completan la tabla antes.
+const DIFER = {}, DIF_INI = 120, DIF_LOTE = 400;
+function diferir(tid, filas, cols, vacio = '') {
+  if (!filas.length) { delete DIFER[tid]; return vacio; }
+  if (filas.length <= DIF_INI * 2) { delete DIFER[tid]; return filas.join(''); }
+  DIFER[tid] = filas.slice(DIF_INI);
+  return filas.slice(0, DIF_INI).join('') + `<tr class="fila-mas" data-dif="${tid}"><td colspan="${cols}">Cargando ${n(filas.length - DIF_INI)} filas más…</td></tr>`;
+}
+function masFilas(tb, todo) {
+  const R = DIFER[tb.id]; if (!R) return; const sen = tb.querySelector('tr.fila-mas'); if (!sen) { delete DIFER[tb.id]; return; }
+  const parte = todo ? R.splice(0) : R.splice(0, DIF_LOTE);
+  sen.insertAdjacentHTML('beforebegin', parte.join(''));
+  if (!R.length) { sen.remove(); delete DIFER[tb.id]; } else sen.cells[0].textContent = `Cargando ${n(R.length)} filas más…`;
+}
+const completarTabla = (tb) => { if (tb && DIFER[tb.id]) masFilas(tb, true); };
+const obsDif = 'IntersectionObserver' in window ? new IntersectionObserver((ents) => ents.forEach(en => { if (!en.isIntersecting) return; const tb = en.target.closest('table');
+  obsDif.unobserve(en.target); masFilas(tb); const sig = tb.querySelector('tr.fila-mas'); if (sig) requestAnimationFrame(() => obsDif.observe(sig)); }), { rootMargin: '600px 0px' }) : null;
+function vigilarDiferidas(tb) { const sen = tb && tb.querySelector('tr.fila-mas'); if (!sen) return; if (obsDif) obsDif.observe(sen); else completarTabla(tb); }
+
 /* ---------- ordenar tablas ---------- */
 const orden = {};
 function valorCelda(td) { if (!td) return ''; const v = td.dataset.v ?? td.textContent.trim(); if (v === '' || v === '·' || v === '—') return -Infinity; const num = Number(String(v).replace(/,/g, '.').replace('%', '')); return isNaN(num) ? String(v).toUpperCase() : num; }
@@ -3047,8 +3069,8 @@ function aplicarOrden(tb) {
   if (!st) return; const body = tb.tBodies[0], filas = [...body.rows].filter(r => r.cells.length > 1);
   filas.sort((a, b) => { const x = valorCelda(a.cells[st.c]), y = valorCelda(b.cells[st.c]); return (x > y ? 1 : x < y ? -1 : 0) * st.dir; }); filas.forEach(r => body.appendChild(r));
 }
-function prepararOrden(tb) { if (!tb) return; [...filaCab(tb)].forEach((th, i) => { th.classList.add('ordenable'); th.tabIndex = 0; th.dataset.c = i; }); aplicarOrden(tb); }
-function alternarOrden(th) { const tb = th.closest('table'), c = +th.dataset.c, st = orden[tb.id]; orden[tb.id] = { c, dir: st && st.c === c ? -st.dir : (c === 0 ? 1 : -1) }; aplicarOrden(tb); }
+function prepararOrden(tb) { if (!tb) return; if (orden[tb.id]) completarTabla(tb); else vigilarDiferidas(tb); [...filaCab(tb)].forEach((th, i) => { th.classList.add('ordenable'); th.tabIndex = 0; th.dataset.c = i; }); aplicarOrden(tb); }
+function alternarOrden(th) { const tb = th.closest('table'); completarTabla(tb); const c = +th.dataset.c, st = orden[tb.id]; orden[tb.id] = { c, dir: st && st.c === c ? -st.dir : (c === 0 ? 1 : -1) }; aplicarOrden(tb); }
 document.addEventListener('click', (e) => { const th = e.target.closest('table.ord th.ordenable'); if (th) alternarOrden(th); });
 document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('table.ord th.ordenable')) { e.preventDefault(); alternarOrden(e.target); } });
 
@@ -3087,6 +3109,7 @@ async function excelDeTabla(tb, base, soloDatos) {
 document.addEventListener('click', async (e) => {
   const bi = e.target.closest('[data-img]'), bx = e.target.closest('[data-xls]'); if (!bi && !bx) return;
   const b = bi || bx, id = b.dataset.img || b.dataset.xls, tb = $(id); if (!tb) return;
+  completarTabla(tb.matches('table') ? tb : tb.querySelector('table'));
   b.disabled = true;
   const fondo = getComputedStyle(tb.closest('.sec')).backgroundColor, base = transparente(fondo) ? '#FFFFFF' : fondo;
   try {
@@ -3110,7 +3133,11 @@ document.addEventListener('click', async (e) => {
   const txt = [...tb.rows].map(r => [...r.cells].map(c => c.innerText.replace(/[↕▲▼▸▾]/g, '').trim()).join('\t')).join('\n');
   try { await navigator.clipboard.writeText(txt); aviso(id, 'Tabla copiada. Pégala en Excel o WhatsApp.'); } catch { aviso(id, 'Tu navegador no permitió copiar.', true); }
 });
-function pintarTodo() { pintarPanel(); pintarIngresos(); pintarDetalle(); pintarPendientes(); pintarCoord(); pintarAvance(); pintarAvt(); }
+// Solo se pinta la pestaña a la vista; las demás quedan marcadas y se pintan al abrirlas (antes se pintaban las 6 en cada filtro).
+const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt() };
+const tabSucia = new Set();
+function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); }
+function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
 /* ---------- Periodo: selector de mes, semanas y desde/hasta ---------- */
 const MESES_C = (iso) => { const [y, m] = iso.split('-').map(Number); const t = MESES_L[m - 1]; return t.charAt(0).toUpperCase() + t.slice(1) + ' ' + y; };
 function pintarPer() {
