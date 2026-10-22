@@ -78,6 +78,7 @@ jobs:
             h=$((10#$(TZ=America/Lima date +%H))); m=$((10#$(TZ=America/Lima date +%M)))
             # Se actualiza de 8:00 a 23:59 y una última vez a las 0:00 (hasta 0:15 si GitHub se atrasó).
             if [ "$h" -ge 8 ] || { [ "$h" -eq 0 ] && [ "$m" -lt 15 ]; }; then
+              inicio=$(date +%s)
               echo "::group::Actualización $(TZ=America/Lima date '+%d/%m %H:%M') (hora de Lima)"
               if python -m sync.main; then errores=0; else errores=$((errores+1)); echo "La actualización falló ($errores seguidas); se reintenta en la siguiente marca de 20 min."; fi
               echo "::endgroup::"
@@ -86,10 +87,12 @@ jobs:
             elif [ "$h" -ge 1 ] && [ "$h" -lt 7 ]; then
               echo "Fuera de horario (1:00–7:00): el turno termina."; break
             fi
-            # Espera hasta el siguiente :00, :20 o :40 (si la actualización se pasó de la marca, sigue en la siguiente).
-            ahora=$(date +%s); prox=$(( (ahora/1200 + 1) * 1200 ))
+            # Siguiente actualización: la marca de :00, :20 o :40 que sigue al INICIO de la anterior. Si la actualización
+            # tardó más de 20 min y ya pasó esa marca, arranca de inmediato (antes esperaba a la otra marca: quedaba cada 40 min).
+            ahora=$(date +%s); prox=$(( (${inicio:-$ahora}/1200 + 1) * 1200 ))
             [ "$prox" -ge "$fin" ] && break
-            sleep $(( prox - ahora ))
+            [ "$prox" -gt "$ahora" ] && sleep $(( prox - ahora ))
+            inicio=""
           done
 
       - name: Guardar estado del robot
