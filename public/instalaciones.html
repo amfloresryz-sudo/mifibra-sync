@@ -933,7 +933,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-avance" aria-labelledby="tab-avance" hidden style="flex-direction:column;gap:22px">
     <section class="sec" id="sec-av" aria-labelledby="t-av">
       <div class="sec-cab"><div><h2 id="t-av">Avance de producción diaria por EECC</h2><p class="sub" id="av-sub"></p></div>
-        <div class="pen-acc"><label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="av-dia" class="sel-dia"></select></label><button type="button" class="btn-out" id="av-rutas">Rutas por EECC</button><button type="button" class="btn-out" data-img="sec-av" data-nom="avance-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-av" data-nom="avance-eecc">Descargar Excel</button></div></div>
+        <div class="pen-acc"><label class="seg-t" style="display:flex;gap:8px;align-items:center">Día <select id="av-dia" class="sel-dia"></select></label><button type="button" class="btn-out" id="av-rutas">Rutas por EECC</button><button type="button" class="btn-out" id="av-obj">% Objetivo</button><button type="button" class="btn-out" data-img="sec-av" data-nom="avance-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-av" data-nom="avance-eecc">Descargar Excel</button></div></div>
       <div class="kpis" id="av-kpis"></div>
       <p class="pen-aviso" id="aviso-tb-av" role="status" aria-live="polite"></p>
       <div id="av-tab" class="scroll"></div><p class="ag-est" id="av-est" role="status" aria-live="polite"></p>
@@ -2613,9 +2613,9 @@ $('co-dia').addEventListener('change', (e) => { diaCo = +e.target.value; pintarC
 
 /* ---------- AVANCE ---------- */
 /* ---------- Rutas fijas por filial y EECC (iguales todos los días; solo el usuario master las cambia) ---------- */
-let RF = {};
+let RF = {}, OBJ_PCT = 80;   // % de la bolsa de pendientes que es el objetivo del día (Avance); lo cambia el usuario master
 async function traerRutasFijas() {
-  try { const r = await fetch('/api/ajustes?modulo=rutas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (r.ok) RF = (await r.json()).fijas || {}; } catch { /* sin rutas fijas */ }
+  try { const r = await fetch('/api/ajustes?modulo=rutas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (r.ok) { const j = await r.json(); RF = j.fijas || {}; if (Number.isFinite(+j.objPct) && +j.objPct > 0) OBJ_PCT = +j.objPct; } } catch { /* sin rutas fijas */ }
 }
 const rfSuma = (f, okD) => { const m = RF[f]; if (!m || !Object.keys(m).length) return null; return Object.entries(m).reduce((a, [d, v]) => a + (okD && !okD(d) ? 0 : v), 0); };
 function gruposRutas() {   // [[filial, título, [EECC]]]: Lima y cada filial con sus EECC; Provincias › Todas, una caja por filial
@@ -2647,6 +2647,24 @@ function abrirRutas() {
     catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message; $('rf-guardar').disabled = false; } });
 }
 document.addEventListener('click', (e) => { if (e.target.closest('#av-rutas')) abrirRutas(); });
+/* % de la bolsa de pendientes que se toma como objetivo del día (igual para todos; solo el usuario master lo cambia) */
+function abrirObjetivo() {
+  const html = `<p class="fi-nota" style="margin:0 0 10px">Objetivo del día de cada EECC = este % de su bolsa de pendientes (altas REGISTRADA), redondeado. Aplica a todas las filiales y lo ven todos los usuarios; para cambiarlo se necesita la clave master.</p>
+    <form id="f-obj"><div class="rf-acc" style="margin-top:0"><label class="seg-t">% de la bolsa <input type="number" id="ob-pct" min="1" max="100" step="1" value="${OBJ_PCT}" disabled style="width:110px"></label>
+      <label class="seg-t">Clave master <input type="password" id="ob-clave" autocomplete="current-password" value="${esc(claveMaster())}"></label><button type="button" class="btn-out" id="ob-editar">Editar</button><button type="submit" class="btn-out rf-ok" id="ob-guardar" disabled>Guardar</button></div></form>`;
+  abrirFichaModal('% Objetivo del avance', `Actual: ${dec(OBJ_PCT, 0)}% de la bolsa de pendientes`, html);
+  $('ob-editar').addEventListener('click', () => { if (!$('ob-clave').value.trim()) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'Ingresa la clave master para editar.'; return; }
+    $('ob-pct').disabled = false; $('ob-guardar').disabled = false; $('modal-aviso').textContent = ''; $('ob-pct').focus(); });
+  $('f-obj').addEventListener('submit', async (e) => { e.preventDefault(); const k = $('ob-clave').value.trim(), v = Number($('ob-pct').value);
+    if (!(v > 0 && v <= 100)) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'El % debe estar entre 1 y 100.'; return; }
+    $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…'; $('ob-guardar').disabled = true;
+    try { const r = await fetch('/api/ajustes?modulo=rutas&accion=objpct', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': k }, body: JSON.stringify({ objPct: v }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { if (r.status === 403) ponerMaster(''); throw new Error(j.error || `Error ${r.status}`); }
+      ponerMaster(k); OBJ_PCT = +j.objPct || v; $('modal-sub').textContent = `Actual: ${dec(OBJ_PCT, 0)}% de la bolsa de pendientes`; $('modal-aviso').style.color = 'var(--ok)'; $('modal-aviso').textContent = 'Objetivo guardado para todos.'; pintarAvance(); }
+    catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message; $('ob-guardar').disabled = false; } });
+}
+document.addEventListener('click', (e) => { if (e.target.closest('#av-obj')) abrirObjetivo(); });
+
 traerRutasFijas().then(() => { try { if (D && diaAv) pintarAvance(); } catch { /* el tablero aún no está listo: se pinta al cargar */ } });
 function pintarAvance() {
   const L = D.liq.filter(ok), Ld = L.filter(x => x.d === diaAv), P = D.pend.filter(ok), G = D.prog.filter(x => ok(x) && x.d === diaAv);
@@ -2660,7 +2678,10 @@ function pintarAvance() {
   Ld.forEach(x => { const e = e0(gk(x)); e.liq++; if (x.tec) e.tec.add(x.tec); });
   P.forEach(p => { const e = e0(gk(p)); e.bolsa++; esHoy(p) ? e.hoy++ : e.m24++; }); G.forEach(x => e0(gk(x)).prog++);
   const rk = Object.keys(ecs).filter(k => ecs[k].liq || ecs[k].prog || ecs[k].bolsa || RD[k] != null).sort((a, b) => ecs[b].liq - ecs[a].liq || ecs[b].bolsa - ecs[a].bolsa);
-  const tecs = new Set(Ld.map(x => x.tec).filter(Boolean)), objT = Math.round(tecs.size * obj);  // objetivo en número entero
+  const tecs = new Set(Ld.map(x => x.tec).filter(Boolean));
+  // Objetivo del día = OBJ_PCT % de la bolsa de pendientes de cada EECC (entero); el total suma los de cada fila.
+  const objDe = (bolsa) => Math.round(bolsa * OBJ_PCT / 100), objT = rk.reduce((a, k) => a + objDe(ecs[k].bolsa), 0);
+  $('av-obj').textContent = `% Objetivo (${dec(OBJ_PCT, 0)}%)`;
   // Rutas declaradas (Pendientes › Agendas del día, o aquí) y faltas = rutas declaradas que no salieron a campo
   const falta = (r, t) => r == null ? null : Math.max(0, r - t);
   // Rutas fijas por distrito (botón «Rutas por distrito», clave master): en Provincias › Todas dan las rutas de cada filial;
@@ -2675,11 +2696,11 @@ function pintarAvance() {
   const faltasT = rk.reduce((a, k) => a + (falta(rutaDe(k), ecs[k].tec.size) || 0), 0);
   const di = diaInfo(diaAv);
   $('t-av').textContent = porFil ? 'Avance de producción diaria por filial' : 'Avance de producción diaria por EECC';
-  $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus E\u200BECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = técnicos × ${obj}`;
+  $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus E\u200BECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa de pendientes`;
   $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', fijoT != null ? 'rutas fijas por EECC' : conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
     kpi('Técnicos en campo', n(tecs.size), 'liquidaron al menos una') +
     kpi('Faltas', conR ? n(faltasT) : '—', conR ? `${pct(faltasT, rutasT)} de las rutas declaradas` : 'declara las rutas para calcularlas', !conR ? '' : faltasT === 0 ? 'ok' : faltasT / Math.max(1, rutasT) <= .1 ? 'mid' : 'mal') +
-    kpi('Objetivo del día', n(objT), `${obj} por técnico`) +
+    kpi('Objetivo del día', n(objT), `${dec(OBJ_PCT, 0)}% de la bolsa de pendientes (${n(P.length)})`) +
     kpi('Liquidadas', `<button type="button" class="clic" data-ch="liq" data-d="${diaAv}" data-k="ALL" style="all:unset;cursor:pointer">${n(Ld.length)}</button>`, 'instalaciones DESCARGADA', 'acento') +
     kpi('Falta', n(Math.max(0, objT - Ld.length)), 'para el objetivo') + kpi('Productividad', dec(tecs.size ? Ld.length / tecs.size : null), 'por técnico', semaf(tecs.size ? Ld.length / tecs.size : null, obj)) +
     kpi('% avance', pct(Ld.length, objT), 'liquidadas ÷ objetivo', semaf(objT ? Ld.length / objT * 100 : null, 100));
@@ -2687,7 +2708,7 @@ function pintarAvance() {
   // Ícono de Liquidadas frente al objetivo: ✖ menos del 50 % · ! del 50 % a menos del 90 % · ✔ 90 % o más
   const icAv = (liq, o) => { if (!o) return ''; const q = liq / o * 100, t = `${dec(q, 0)}% del objetivo`;
     return q >= 90 ? `<span class="ic-av ok" title="${t}">✔</span>` : q >= 50 ? `<span class="ic-av mid" title="${t}">!</span>` : `<span class="ic-av mal" title="${t}">✖</span>`; };
-  const filaAv = (k, e) => { const o = Math.round(e.tec.size * obj), av = o ? e.liq / o * 100 : null;
+  const filaAv = (k, e) => { const o = k ? objDe(e.bolsa) : objT, av = o ? e.liq / o * 100 : null;
     const r = k ? rutaDe(k) : (conR ? rutasT : null), fa = k ? falta(r, e.tec.size) : (conR ? faltasT : null);
     const celR = k && !porFil && !hayFijas ? `<td class="sep"><input type="number" class="in-ruta" min="0" max="999" inputmode="numeric" data-av-ruta="${esc(k)}" value="${RD[k] ?? ''}" aria-label="Rutas declaradas de ${esc(k)}" placeholder="${fijaDe(k) ?? '—'}" title="${fijaDe(k) != null ? 'Ruta fija: ' + fijaDe(k) + ' (escribe un número solo si hoy es distinto)' : ''}"></td>` : `<td class="sep">${r ?? '—'}</td>`;
     const celF = `<td class="${fa == null ? '' : fa ? 'malo' : 'bien'}">${fa == null ? '—' : fa}</td>`;
@@ -2696,7 +2717,7 @@ function pintarAvance() {
   $('av-tab').innerHTML = `<table class="mat ord tabla-ajuste" id="tb-av"><thead><tr><th>${porFil ? 'Filial' : 'EECC'}</th><th class="sep" title="Rutas (técnicos) declaradas para el día">Rutas declaradas</th><th title="Rutas declaradas que no salieron a campo">Faltas</th><th>Técnicos en campo</th><th>Bolsa pendientes</th><th class="av-hoy" title="Altas pendientes con F. Recep de hoy">Ingresaron hoy</th><th title="Altas pendientes con F. Recep anterior a hoy">Más de 24 h</th><th class="av-prog">Programadas del día</th><th>Objetivo</th><th class="av-liq">Liquidadas</th><th>Falta para objetivo</th><th>Productividad</th><th>% avance</th></tr></thead><tbody>
     ${rk.map(k => `<tr><td>${esc(k)}</td>${filaAv(k, ecs[k])}</tr>`).join('')}</tbody><tfoot><tr><td>Total</td>${filaAv(null, T)}</tr></tfoot></table>`;
   prepararOrden($('tb-av'));
-  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = Ingresaron hoy (F. Recep de hoy) + Más de 24 h (F. Recep de días anteriores) · Programadas del día = agendas y coordinadas con ese día de ruta · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
+  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = Ingresaron hoy (F. Recep de hoy) + Más de 24 h (F. Recep de días anteriores) · Programadas del día = agendas y coordinadas con ese día de ruta · Objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa de pendientes de la EECC, redondeado (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
   pintarConsolidado(L);
 }
 function pintarConsolidado(L) {

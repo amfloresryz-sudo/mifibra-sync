@@ -126,13 +126,21 @@ module.exports = async (req, res) => {
         // Rutas fijas (técnicos que deben salir a campo) por filial y EECC: solo el usuario master. Se reemplaza la filial enviada.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
         if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar las rutas.' });
+        if (accion === 'objpct') {
+          // % de la bolsa de pendientes que es el objetivo del día (Avance): solo cambia ese valor.
+          const v = Number(cuerpo?.objPct);
+          if (!isFinite(v) || v <= 0 || v > 100) return responder(res, 400, { error: 'El % debe estar entre 1 y 100.' });
+          const nuevoO = { ...previo, objPct: Math.round(v * 10) / 10 }, act = new Date().toISOString();
+          await guardar('ajustes', [{ clave, datos: nuevoO, actualizado: act }], 'clave');
+          return responder(res, 200, { ...nuevoO, actualizado: act });
+        }
         const fijas = { ...(previo.fijas || {}) };
         Object.entries(cuerpo?.fijas || {}).forEach(([f, m]) => {
           const fil = texto(f, 30).toUpperCase(); if (!FILIALES.includes(fil) || fil === 'PROVINCIAS') return;
           const o = {}; Object.entries(m || {}).slice(0, 400).forEach(([d, v]) => { const k = texto(d, 80).toUpperCase(), n = Math.round(Number(v)); if (k && v !== '' && v != null && isFinite(n) && n >= 0 && n <= 999) o[k] = n; });
           fijas[fil] = o;
         });
-        nuevo = { fijas, por: 'master' };
+        nuevo = { fijas, por: 'master', ...(previo.objPct != null ? { objPct: previo.objPct } : {}) };
       } else if (accion === 'agenda') {
         // Editar la agenda de una OS: solo el usuario master. Se cambia solo esa OS sobre lo guardado.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
