@@ -183,6 +183,10 @@ def main(argv: list[str] | None = None) -> int:
         links_st: dict[int, list] = {}
         for archivo in archivos:
             df0 = procesar.leer_excel(archivo)
+            try:   # diagnóstico temporal: columnas sin usar y sus valores en OTROS / CAMBIO DE EQUIPO (amarre TIPO_AB)
+                subir.guardar_diag_columnas(procesar.diag_columnas(df0))
+            except Exception as e:  # noqa: BLE001
+                print(f"Aviso: diagnóstico de columnas: {e}", flush=True)
             try:
                 links_st.update(procesar.speedtest_por_os(df0))
             except Exception as e:  # noqa: BLE001 - Speed Test nunca detiene la corrida

@@ -20,7 +20,7 @@ import hashlib
 import json
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
@@ -217,3 +217,10 @@ def registrar_corrida(modo: str, filas: int | None, ok: bool, mensaje: str, inic
 def limpiar_diagnosticos() -> None:
     """Borra los registros de diagnóstico temporales (clave «diag:…») de la tabla tableros, si quedara alguno."""
     _pedir("DELETE", _url("tableros") + "?clave=like.diag:*", "Limpieza de diagnósticos", headers=_cabeceras({"Prefer": "return=minimal"}))
+
+
+def guardar_diag_columnas(d: dict) -> None:
+    """Diagnóstico temporal en ajustes (clave diag:columnas)."""
+    _pedir("POST", _url("ajustes") + "?on_conflict=clave", "Diagnóstico de columnas",
+           json={"clave": "diag:columnas", "datos": d, "actualizado": datetime.now(timezone.utc).isoformat()},
+           headers=_cabeceras({"Prefer": "resolution=merge-duplicates,return=minimal"}))

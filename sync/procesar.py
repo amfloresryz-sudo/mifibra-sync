@@ -571,3 +571,20 @@ def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:
 
 def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:
     return a_filas(leer_excel(ruta), sincronizado_en, cajas)
+
+
+def diag_columnas(df: pd.DataFrame) -> dict:
+    """Diagnóstico temporal: para cada columna del reporte que no se usa, sus valores más comunes en OTROS y CAMBIO DE EQUIPO."""
+    usadas = {*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"}
+    sub = df[df["Tipo Orden"].astype(str).str.upper().isin(["OTROS", "CAMBIO DE EQUIPO"])]
+    o = {"columnas": [str(c) for c in df.columns if c not in usadas], "valores": {}, "os5250": {}}
+    for c in o["columnas"]:
+        try:
+            o["valores"][c] = {str(k): int(v) for k, v in sub[c].astype(str).str.slice(0, 80).value_counts().head(12).items()}
+        except Exception:  # noqa: BLE001
+            pass
+    fila = df[pd.to_numeric(df["Nro OS"], errors="coerce") == 5250]
+    fila = fila[pd.to_numeric(fila["Abonado"], errors="coerce") == 27313]
+    if len(fila):
+        o["os5250"] = {c: str(fila.iloc[0][c])[:120] for c in o["columnas"]}
+    return o
