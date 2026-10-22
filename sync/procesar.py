@@ -404,6 +404,8 @@ def leer_excel(ruta: Path) -> pd.DataFrame:
     df = leer(ruta, header=FILA_ENCABEZADO, dtype={"Hora": str, "Hora I": str, "Hora F": str, "Hora Mod": str, "fecha_observacion": str, "Observaciones": str})
     faltan = [c for c in [*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"] if c not in df.columns]
     criticas = [c for c in faltan if c in OBLIGATORIAS]
+    _usadas = {*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"}
+    print(f"  Columnas del reporte sin usar: {[str(c) for c in df.columns if c not in _usadas]}", flush=True)
     if criticas:
         raise ErrorFormato(f"El reporte ya no trae estas columnas: {criticas}")
     if faltan:  # columnas secundarias: se guardan vacías y se avisa en el registro
