@@ -91,6 +91,13 @@ function limpiarLS(ls) {
   return o;
 }
 
+// Responsables de zona de Lima: { "NORTE": "Nombre", ... }.
+function limpiarResponsables(r) {
+  const o = {};
+  Object.entries(r && typeof r === 'object' ? r : {}).forEach(([z, v]) => { const k = texto(z, 20).toUpperCase(), vv = texto(v, 60); if (['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'].includes(k) && vv) o[k] = vv; });
+  return o;
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = '';
@@ -154,6 +161,12 @@ module.exports = async (req, res) => {
         const v = Number(cuerpo?.recup);
         if (cuerpo?.recup === '' || cuerpo?.recup == null || !isFinite(v) || v < 0 || v > 100) return responder(res, 400, { error: 'La meta debe ser un número entre 0 y 100.' });
         nuevo = { ...previo, obsMetas: { ...(previo.obsMetas || {}), recup: Math.round(v * 10) / 10 } };
+      } else if (accion === 'responsables') {
+        // Responsables de zona (solo Lima): solo el usuario master. Reemplaza la lista completa.
+        if (filial !== 'LIMA' || modulo !== 'instalaciones') return responder(res, 400, { error: 'Los responsables de zona son solo para Lima.' });
+        if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
+        if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar los responsables.' });
+        nuevo = { ...previo, responsables: limpiarResponsables(cuerpo?.responsables) };
       } else if (accion === 'tecnicos') {
         // EECC de cada técnico: solo el usuario master. Reemplaza la lista completa.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
@@ -161,7 +174,7 @@ module.exports = async (req, res) => {
         nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos), eeccs: limpiarEeccs(cuerpo?.eeccs) };
       } else {
         // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {} };
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {}, responsables: limpiarResponsables(previo.responsables) };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
