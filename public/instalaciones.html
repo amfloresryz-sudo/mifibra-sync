@@ -151,15 +151,6 @@ body.con-modal { overflow: hidden; }
 .col .dia { text-align: center; font-size: 11px; color: var(--fg-4); line-height: 1.25; }
 .col .dia b { display: block; font-size: 13px; color: var(--fg-2); }
 .col .dia.fin b { color: var(--fg-4); }
-.flu-cv { display: block; text-align: center; font: 700 11px var(--f-disp); font-variant-numeric: tabular-nums; margin-top: 2px; }
-.graf.flu-sem { grid-auto-columns: minmax(90px, 150px); justify-content: center; gap: 28px; min-width: 0; }
-.flu-kpis { display: flex; flex-wrap: wrap; gap: 10px; }
-.flu-kpis > div { flex: 1 1 130px; border: 1px solid var(--borde); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
-.flu-kpis span { font: 600 11px var(--f-disp); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); display: flex; align-items: center; gap: 6px; }
-.flu-kpis span i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-.flu-kpis b { font: 700 22px var(--f-disp); font-variant-numeric: tabular-nums; }
-.flu-kpis small { color: var(--fg-3); font-size: 12px; }
-.flu-kpis .cv { background: var(--gris-bg); border-color: transparent; }
 .pct { text-align: center; font: 700 11px var(--f-disp); border-radius: 6px; padding: 3px 0; display: block; }
 .pct.ok { background: var(--ok-bg); color: var(--ok); } .pct.mid { background: var(--mid-bg); color: var(--mid); } .pct.mal { background: var(--mal-bg); color: var(--mal); } .pct.na { color: var(--fg-4); }
 .ley { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--fg-2); }
@@ -777,17 +768,6 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       </div>
       <p class="nota">Ingresos = altas recibidas en el mes (F. Recep) · Liquidadas = DESCARGADA por fecha de atención · Convertibilidad = ingresos del mes ya descargados ÷ ingresos del mes · Dispersión = pendientes con más de 48 h ÷ pendientes · Días de bolsa = pendientes ÷ promedio de liquidadas por día · Productividad = liquidadas ÷ técnicos que liquidaron, por día.</p>
     </section>
-    <section class="sec" aria-labelledby="t-flu">
-      <div class="sec-cab">
-        <div><h2 id="t-flu">Ingresos y cómo terminaron</h2><p class="sub"><span class="mes-anio"></span> · altas por F. Recep · cada barra = ingresos del periodo partidos por su estado actual · debajo, la convertibilidad</p></div>
-        <div class="vistas" role="group" aria-label="Periodo" id="flu-vistas">
-          <button type="button" data-v="dia" aria-pressed="true">Por día</button>
-          <button type="button" data-v="sem" aria-pressed="false">Por semana</button>
-        </div>
-      </div>
-      <div id="flu-graf"></div>
-      <p class="nota">Ingresos = altas recibidas (F. Recep) en el día o la semana, número sobre la barra · Instalaciones = de esos ingresos, los ya DESCARGADA · Observadas, Anuladas y Pendientes (REGISTRADA) = su estado actual · Convertibilidad = instalaciones ÷ ingresos · clic en una barra o en un número para ver los abonados.</p>
-    </section>
     <section class="sec" aria-labelledby="t-dia">
       <div class="sec-cab"><div><h2 id="t-dia">Ingresos, instalaciones y pendientes por día</h2><p class="sub"><span class="mes-anio"></span> · ingresos por F. Recep · instalaciones por fecha de atención · pendientes al cierre de cada día<b id="dia-sub-f" class="sub-f"></b></p></div></div>
       <div class="ley"><span><b style="background:var(--gris)"></b>Ingresos</span><span><b style="background:var(--magenta)"></b>Instalaciones</span></div>
@@ -1330,37 +1310,8 @@ function pintarPanel() {
     ${fila('Días de bolsa', d => porD[d] ? dec(pdia(d) / porD[d]) : '·', '', dec(db))}
   </tbody></table>${filtrado ? '<p class="nota" style="margin-top:6px">Con filtros, los pendientes al cierre de cada día se reconstruyen: pendientes de hoy recibidas hasta ese día + las que se instalaron después.</p>' : ''}`;
   pintarLiq(L);
-  pintarFlujo(I);
 }
 let liqTop = [];
-/* Ingresos por día o semana partidos por su estado actual (Instalaciones / Observadas / Anuladas / Pendientes) + convertibilidad */
-let fluVista = 'dia';
-const FLU = [['D', 'Instalaciones', '--magenta', '#FFFFFF'], ['O', 'Observadas', '#EDA100', '#0B0B0B'], ['A', 'Anuladas', '#5B5F6E', '#FFFFFF'], ['R', 'Pendientes', '#C9CCD6', '#0B0B0B']];
-function semanasMes() {   // semanas lunes–domingo del mes hasta el corte: [[desde, hasta], …]
-  const S = []; let ini = 1;
-  for (let d = 1; d <= D.dias; d++) { const wd = new Date(D.anio, D.mes - 1, d).getDay(); if (wd === 0 || d === D.dias) { S.push([ini, d]); ini = d + 1; } }
-  return S;
-}
-function pintarFlujo(I) {
-  const col = (c) => c.startsWith('--') ? css(c) : c;
-  const per = fluVista === 'dia' ? DIAS.map(d => ({ k: String(d), a: d, b: d, l1: String(d), l2: diaInfo(d).wd, fin: diaInfo(d).fin }))
-    : semanasMes().map(([a, b], i) => ({ k: `${a}-${b}`, a, b, l1: `Sem ${i + 1}`, l2: `${String(a).padStart(2, '0')}–${String(b).padStart(2, '0')}`, fin: false }));
-  const cnt = {}; I.forEach(x => { const c = cnt[x.d] || (cnt[x.d] = { D: 0, O: 0, A: 0, R: 0 }); c[x.e] = (c[x.e] || 0) + 1; });
-  const suma = (p) => { const o = { D: 0, O: 0, A: 0, R: 0 }; for (let d = p.a; d <= p.b; d++) if (cnt[d]) FLU.forEach(([e]) => o[e] += cnt[d][e] || 0); return o; };
-  const datos = per.map(p => ({ p, c: suma(p) })), mx = Math.max(1, ...datos.map(({ c }) => c.D + c.O + c.A + c.R));
-  const tot = { D: 0, O: 0, A: 0, R: 0 }; datos.forEach(({ c }) => FLU.forEach(([e]) => tot[e] += c[e])); const ti = tot.D + tot.O + tot.A + tot.R;
-  const convC = (v) => v == null ? 'var(--fg-4)' : v >= 70 ? 'var(--ok)' : v >= 50 ? 'var(--mid, #B7791F)' : 'var(--mal)';
-  const barras = datos.map(({ p, c }) => { const t = c.D + c.O + c.A + c.R, cv = t ? c.D / t * 100 : null, rg = p.a === p.b ? String(p.a) : `W${p.a}-${p.b}`;
-    const vivos = FLU.filter(([e]) => c[e]), dentro = vivos.length > 1;
-    const tramos = vivos.map(([e, l, bg, fg]) => `<button type="button" class="sg clic" data-ch="flu" data-d="${rg}" data-k="${e}" title="${esc(p.l1 + ' ' + p.l2)} · ${l}: ${c[e]} · clic: ver los AB" aria-label="${l}: ${c[e]}" style="height:${Math.max(dentro ? MIN_TRAMO : 4, Math.round(c[e] / mx * ALTO))}px;background:${col(bg)};color:${fg}">${dentro ? c[e] : ''}</button>`).join('');
-    const arriba = t ? `<button type="button" class="tot clic" data-ch="flu" data-d="${rg}" data-k="ALL" title="Ingresos: ${t}">${t}</button>` : '<span class="tot" style="color:var(--fg-4)">0</span>';
-    return `<div class="col"><div class="stk">${tramos}${arriba}</div><span class="dia${p.fin ? ' fin' : ''}"><b>${p.l1}</b>${p.l2}</span><span class="flu-cv" style="color:${convC(cv)}" title="Convertibilidad: ${c.D} instalaciones ÷ ${t} ingresos">${cv == null ? '—' : Math.round(cv) + '%'}</span></div>`; }).join('');
-  $('flu-graf').innerHTML = `<div class="flu-kpis">
-      <div><span>Ingresos</span><b>${n(ti)}</b></div>${FLU.map(([e, l, bg]) => `<div><span><i style="background:${col(bg)}"></i>${l}</span><b>${n(tot[e])}</b><small>${ti ? dec(tot[e] / ti * 100) + '%' : '—'}</small></div>`).join('')}
-      <div class="cv"><span>Convertibilidad</span><b style="color:${convC(ti ? tot.D / ti * 100 : null)}">${ti ? dec(tot.D / ti * 100) + '%' : '—'}</b></div></div>
-    <div class="scroll" style="margin-top:14px"><div class="graf${fluVista === 'sem' ? ' flu-sem' : ''}">${barras}</div></div>`;
-}
-$('flu-vistas').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; fluVista = b.dataset.v; document.querySelectorAll('#flu-vistas button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarFlujo(D.ing.filter(ok)); });
 function pintarLiq(L) {
   const g = $('liq-graf');
   if (vista === 'eecc') {

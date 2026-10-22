@@ -151,6 +151,15 @@ body.con-modal { overflow: hidden; }
 .col .dia { text-align: center; font-size: 11px; color: var(--fg-4); line-height: 1.25; }
 .col .dia b { display: block; font-size: 13px; color: var(--fg-2); }
 .col .dia.fin b { color: var(--fg-4); }
+.flu-cv { display: block; text-align: center; font: 700 11px var(--f-disp); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.graf.flu-sem { grid-auto-columns: minmax(90px, 150px); justify-content: center; gap: 28px; min-width: 0; }
+.flu-kpis { display: flex; flex-wrap: wrap; gap: 10px; }
+.flu-kpis > div { flex: 1 1 130px; border: 1px solid var(--borde); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.flu-kpis span { font: 600 11px var(--f-disp); letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); display: flex; align-items: center; gap: 6px; }
+.flu-kpis span i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.flu-kpis b { font: 700 22px var(--f-disp); font-variant-numeric: tabular-nums; }
+.flu-kpis small { color: var(--fg-3); font-size: 12px; }
+.flu-kpis .cv { background: var(--gris-bg); border-color: transparent; }
 .pct { text-align: center; font: 700 11px var(--f-disp); border-radius: 6px; padding: 3px 0; display: block; }
 .pct.ok { background: var(--ok-bg); color: var(--ok); } .pct.mid { background: var(--mid-bg); color: var(--mid); } .pct.mal { background: var(--mal-bg); color: var(--mal); } .pct.na { color: var(--fg-4); }
 .ley { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--fg-2); }
@@ -811,6 +820,18 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <div class="kpis" id="kpis"></div>
   </section>
 
+  <section class="sec" aria-labelledby="t-flu">
+    <div class="sec-cab">
+      <div><h2 id="t-flu">Ingresos y cómo terminaron</h2><p class="sub"><span class="mes-txt"></span> · altas de instalación por F. Recep · cada barra = ingresos del periodo partidos por su estado actual · debajo, la convertibilidad</p></div>
+      <div class="vistas" role="group" aria-label="Periodo" id="flu-vistas">
+        <button type="button" data-v="dia" aria-pressed="true">Por día</button>
+        <button type="button" data-v="sem" aria-pressed="false">Por semana</button>
+      </div>
+    </div>
+    <div id="flu-graf"><p class="nota">Cargando los ingresos…</p></div>
+    <p class="nota">Ingresos = altas de instalación recibidas (F. Recep) en el día o la semana, número sobre la barra · Instalaciones = de esos ingresos, los ya DESCARGADA · Observadas, Anuladas y Pendientes (REGISTRADA) = su estado actual · Convertibilidad = instalaciones ÷ ingresos · respeta el canal de atención · clic en una barra o en un número para ver los abonados.</p>
+  </section>
+
   <section class="sec" aria-labelledby="t-segs">
     <div class="sec-cab"><div><h2 id="t-segs">Segmentadores</h2><p class="sub">Aplican a todos los cuadros de la página (varias opciones a la vez). <b>Seg.</b> solo filtra «Observadas por motivo», igual que en el seguimiento de agendas.</p></div>
       <div class="pen-acc"><div class="act-f" id="act-f"></div><button type="button" class="btn-out" id="limpiar">Limpiar filtros</button></div></div>
@@ -1140,6 +1161,7 @@ const coincide = (r) => [r.ab, r.os, r.tec, r.di, r.ge, r.ecN, r.pl, r.m, r.s].s
 /* ---------- pintar ---------- */
 function pintar() {
   pintarSegs();
+  pintarFlujo();
   document.querySelectorAll('.mes-txt').forEach(e => e.textContent = mesTxt(mes));
   const M = delMes(), B = M.filter(r => pasa(r, '', false)), Bs = M.filter(r => pasa(r));
   // KPIs
@@ -1204,6 +1226,54 @@ $('ab-ver').addEventListener('click', (e) => { const b = e.currentTarget, ver = 
 
 /* ---------- ventana: lista de abonados y comentario del técnico ---------- */
 let modalOrigen = null;
+/* ---------- Ingresos y cómo terminaron (tablero de Instalaciones del mes elegido) ---------- */
+let fluVista = 'dia', ING = null, ingClave = '';
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const dec1 = (v) => Number(v).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const WD = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], MESC = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const FLU = [['D', 'Instalaciones', '--magenta', '#FFFFFF'], ['O', 'Observadas', '#EDA100', '#0B0B0B'], ['A', 'Anuladas', '#5B5F6E', '#FFFFFF'], ['R', 'Pendientes', '#C9CCD6', '#0B0B0B']];
+const EST_F = { D: 'Descargada', O: 'Observada', A: 'Anulada', R: 'Registrada' };
+async function traerIngresos() {
+  const f = (D && D.filial) || filialSel(), clave = f + '|' + mes; if (ingClave === clave && ING) return ING;
+  const corteMes = (D.corte || '').slice(0, 7);
+  const r = await fetch('/api/instalaciones?filial=' + encodeURIComponent(f) + (mes && mes !== corteMes ? '&mes=' + mes : ''), { headers: { 'x-portal-token': tokenPortal() } });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+  ING = j; ingClave = clave; return j;
+}
+async function pintarFlujo() {
+  let T; try { T = await traerIngresos(); } catch (e) { $('flu-graf').innerHTML = `<p class="nota">No se pudieron cargar los ingresos: ${esc(e.message)}</p>`; return; }
+  const I = (T.ing || []).filter(okCn), anio = T.anio, m = T.mes, dias = T.dias || new Date(anio, m, 0).getDate();
+  const info = (d) => { const w = new Date(anio, m - 1, d).getDay(); return { wd: WD[w], fin: w === 0 }; };
+  const col = (c) => c.startsWith('--') ? css(c) : c, MIN = 18, ALT = 200;
+  const sem = []; { let ini = 1; for (let d = 1; d <= dias; d++) { if (new Date(anio, m - 1, d).getDay() === 0 || d === dias) { sem.push([ini, d]); ini = d + 1; } } }
+  const per = fluVista === 'dia' ? Array.from({ length: dias }, (_, i) => i + 1).map(d => ({ a: d, b: d, l1: String(d), l2: info(d).wd, fin: info(d).fin }))
+    : sem.map(([a, b], i) => ({ a, b, l1: `Sem ${i + 1}`, l2: `${String(a).padStart(2, '0')}–${String(b).padStart(2, '0')}`, fin: false }));
+  const cnt = {}; I.forEach(x => { const c = cnt[x.d] || (cnt[x.d] = { D: 0, O: 0, A: 0, R: 0 }); c[x.e] = (c[x.e] || 0) + 1; });
+  const datos = per.map(p => { const c = { D: 0, O: 0, A: 0, R: 0 }; for (let d = p.a; d <= p.b; d++) if (cnt[d]) FLU.forEach(([e]) => c[e] += cnt[d][e] || 0); return { p, c }; });
+  const mx = Math.max(1, ...datos.map(({ c }) => c.D + c.O + c.A + c.R));
+  const tot = { D: 0, O: 0, A: 0, R: 0 }; datos.forEach(({ c }) => FLU.forEach(([e]) => tot[e] += c[e])); const ti = tot.D + tot.O + tot.A + tot.R;
+  const convC = (v) => v == null ? 'var(--fg-4)' : v >= 70 ? 'var(--ok)' : v >= 50 ? '#B7791F' : 'var(--mal)';
+  const barras = datos.map(({ p, c }) => { const t = c.D + c.O + c.A + c.R, cv = t ? c.D / t * 100 : null, rg = `${p.a}-${p.b}`;
+    const vivos = FLU.filter(([e]) => c[e]), dentro = vivos.length > 1;
+    const tramos = vivos.map(([e, l, bg, fg]) => `<button type="button" class="sg clic" data-flu="${rg}|${e}" title="${esc(p.l1 + ' ' + p.l2)} · ${l}: ${c[e]} · clic: ver los AB" aria-label="${l}: ${c[e]}" style="height:${Math.max(dentro ? MIN : 4, Math.round(c[e] / mx * ALT))}px;background:${col(bg)};color:${fg}">${dentro ? c[e] : ''}</button>`).join('');
+    const arriba = t ? `<button type="button" class="tot clic" data-flu="${rg}|ALL" title="Ingresos: ${t}">${t}</button>` : '<span class="tot" style="color:var(--fg-4)">0</span>';
+    return `<div class="col"><div class="stk">${tramos}${arriba}</div><span class="dia${p.fin ? ' fin' : ''}"><b>${p.l1}</b>${p.l2}</span><span class="flu-cv" style="color:${convC(cv)}" title="Convertibilidad: ${c.D} instalaciones ÷ ${t} ingresos">${cv == null ? '—' : Math.round(cv) + '%'}</span></div>`; }).join('');
+  $('flu-graf').innerHTML = `<div class="flu-kpis">
+      <div><span>Ingresos</span><b>${n(ti)}</b></div>${FLU.map(([e, l, bg]) => `<div><span><i style="background:${col(bg)}"></i>${l}</span><b>${n(tot[e])}</b><small>${ti ? dec1(tot[e] / ti * 100) + '%' : '—'}</small></div>`).join('')}
+      <div class="cv"><span>Convertibilidad</span><b style="color:${convC(ti ? tot.D / ti * 100 : null)}">${ti ? dec1(tot.D / ti * 100) + '%' : '—'}</b></div></div>
+    <div class="scroll" style="margin-top:14px"><div class="graf${fluVista === 'sem' ? ' flu-sem' : ''}">${barras}</div></div>`;
+}
+$('flu-vistas').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; fluVista = b.dataset.v; document.querySelectorAll('#flu-vistas button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarFlujo(); });
+$('flu-graf').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-flu]'); if (!b || !ING) return;
+  const [rg, k] = b.dataset.flu.split('|'), [a, z] = rg.split('-').map(Number), NOMF = { D: 'Instalaciones', O: 'Observadas', A: 'Anuladas', R: 'Pendientes', ALL: 'Ingresos' };
+  const L = (ING.ing || []).filter(okCn).filter(x => x.d >= a && x.d <= z && (k === 'ALL' || x.e === k)).sort((p, q) => String(p.rec).localeCompare(String(q.rec)));
+  const fd = (d) => `${String(d).padStart(2, '0')}-${MESC[ING.mes - 1]}.`, fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.slice(11, 16)}` : '—';
+  const cab = ['AB', 'OS', 'Recepción', 'Zona', 'Distrito', 'Segmento', 'Planta', 'EECC', 'Técnico', 'Estado OS'];
+  const filas = L.map(x => `<tr><td>${x.ab}</td><td>${x.os}</td><td>${fh(x.rec)}</td><td>${esc(x.z || '—')}</td><td>${esc(x.di || '—')}</td><td>${esc(x.seg || '—')}</td><td>${esc(x.pl || '—')}</td><td>${esc(x.ec || '—')}</td><td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec))}</td><td>${EST_F[x.e] || x.e}</td></tr>`).join('');
+  abrirModal(`${NOMF[k]} · ${a === z ? fd(a) : `del ${fd(a)} al ${fd(z)}`}`, `${L.length} altas de instalación por F. Recep${k === 'ALL' ? '' : ' · estado actual: ' + (EST_F[k] || k).toLowerCase()}`,
+    `<table class="det" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`, true);
+});
 function abrirModal(tit, sub, html, conTabla) {
   $('modal-tit').textContent = tit; $('modal-sub').textContent = sub; $('modal-aviso').textContent = ''; $('modal-aviso').style.color = '';
   $('modal-cuerpo').innerHTML = html; $('modal-xls').hidden = !conTabla; $('modal-copiar').textContent = conTabla ? 'Copiar imagen' : 'Copiar';
