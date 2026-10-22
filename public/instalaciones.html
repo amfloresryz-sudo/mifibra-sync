@@ -711,6 +711,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .rf-cab span { color: var(--magenta-txt); font-weight: 700; } .rf-g .mat td:first-child { position: static; font-weight: 500; }
 .rf-g .in-ruta[disabled] { background: var(--gris-bg); color: var(--fg); border-color: transparent; }
 .rf-acc { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; } .rf-acc label { display: flex; flex-direction: column; gap: 6px; }
+.in-resp { width: 100%; font: inherit; padding: 6px 10px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); } .in-resp[disabled] { background: var(--gris-bg); border-color: transparent; }
+#tb-altas .resp-c { font-weight: 600; white-space: nowrap; text-align: left; }
 .rf-acc input { font: inherit; padding: 8px 10px; border: 1px solid var(--borde-2); border-radius: 10px; background: var(--sup); color: var(--fg); }
 .rf-ok:not([disabled]) { background: var(--magenta); border-color: var(--magenta); color: #FFFFFF; }
 /* Detalle por EECC: marco rojo en «No cumplió» y EECC resaltadas cuando no cumplieron agendas (botón «Marcar incumplidos») */
@@ -799,8 +801,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     </section>
     <section class="sec" aria-labelledby="t-altas">
       <div class="sec-cab"><div><h2 id="t-altas">Altas pendientes</h2><p class="sub" id="altas-sub"></p></div>
-        <div class="pen-acc"><button type="button" class="btn-out" id="altas-todo">Expandir todo</button><button type="button" class="btn-out" data-img="tb-altas" data-nom="altas-pendientes">Copiar imagen</button></div></div>
-      <p class="nota">Pendientes (REGISTRADA) por zona y distrito (filas) y fecha de F. Recep (columnas). Cada distrito se agrupa en su zona: toca la zona para ver u ocultar sus distritos y toca cualquier número para ver los AB. Respeta los filtros de la franja; puedes acotar por EECC y tipo de programación.</p>
+        <div class="pen-acc"><button type="button" class="btn-out" id="altas-resp" hidden>Responsables de zona</button><button type="button" class="btn-out" id="altas-todo">Expandir todo</button><button type="button" class="btn-out" data-img="tb-altas" data-nom="altas-pendientes">Copiar imagen</button></div></div>
+      <p class="nota">Pendientes (REGISTRADA) por zona y distrito (filas) y fecha de F. Recep (columnas). Cada distrito se agrupa en su zona: toca la zona para ver u ocultar sus distritos y toca cualquier número para ver los AB. Respeta los filtros de la franja; puedes acotar por EECC y tipo (el estado de agenda del AB: Incumplida, Hoy, Futura, Coordinada o Sin agenda) y elegir varias opciones a la vez.</p>
       <div class="segs" id="altas-segs"></div>
       <div class="ley"><span><b class="e3"></b>8+ días</span><span><b class="e2"></b>4 a 7 días</span><span><b class="e1"></b>3 días · desde 3 días cuentan en % antiguas</span><span><b style="background:var(--magenta)"></b>Hoy</span></div>
       <p class="pen-aviso" id="aviso-tb-altas" role="status" aria-live="polite"></p>
@@ -993,7 +995,7 @@ async function traer(f = filialSel()) {
   return j;
 }
 /* Ajustes que operaciones edita en el portal (metas, nombres de EECC, gestores y rutas del día) */
-const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {}, tecnicos: {}, eeccs: [] });
+const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {}, tecnicos: {}, eeccs: [], responsables: {} });
 let AJ = AJ_VACIO(), ajOk = false;
 const urlAj = (f) => '/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f);
 async function traerAjustes(f = filialSel()) {
@@ -1054,7 +1056,7 @@ const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#F
 const FRANJAS = ['8 - 10','10 - 12','12 - 14','14 - 16','16 - 18','18 - 20'];
 let DIAS = [], MC = '', MESL = '', CFG = {};
 let coTipo = 'TODOS', seg = 'TODOS', canal = 'TODOS', zona = 'TODAS', vista = 'eecc', tab = 'panel', diaCo = 0, diaAv = 0, diaPenAg = 0;
-const filtro = { ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: 'TODOS', altTp: 'TODOS', penTo: 'INSTALACION SERVICIO', penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
+const filtro = { ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTo: 'INSTALACION SERVICIO', penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
 const abiertos = new Set();
 const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: WD[f.getDay()], fin: f.getDay() === 0 }; };
 const fDia = (d) => `${String(d).padStart(2, '0')}-${MC}.`;
@@ -1324,7 +1326,7 @@ function segmentos(contenedor, grupos) {
   $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span>${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${filtro[g.k] === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</div>`).join('');
 }
 // Cada segmentador repinta solo su pestaña (antes repintaba todo el portal y se sentía lento).
-const REPINTA = { 'eecc-segs': () => pintarIngresos(), 'altas-segs': () => pintarDetalle(), 'pen-segs': () => pintarPendientes(), 'pen-segs-ge': () => pintarPendientes(), 'co-segs': () => pintarCoord() };
+const REPINTA = { 'eecc-segs': () => pintarIngresos(), 'pen-segs': () => pintarPendientes(), 'pen-segs-ge': () => pintarPendientes(), 'co-segs': () => pintarCoord() };
 Object.keys(REPINTA).forEach(id => $(id).addEventListener('click', (e) => {
   const b = e.target.closest('[data-v]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
   if (filtro[g.dataset.k] === b.dataset.v) return;
@@ -1368,13 +1370,18 @@ function pintarDetalle() {
 const altasP = {}, altasAbiertas = new Set();   // zonas expandidas (al cargar la página siempre empiezan contraídas)
 /* Altas pendientes por zona/distrito × F. Recep (se usa en Detalle y en Ingresos) */
 function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
-  const P0 = D.pend.filter(ok);
-  segmentos(segsId, [
-    { k: kEc, t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
-    { k: kTp, t: 'Tipo', ops: ['AGENDA','COORDINADA'], cnt: (o) => P0.filter(p => tpOk(p, o)).length } ]);
-  const P = P0.filter(p => p.rec && (filtro[kEc] === 'TODOS' || p.ec === filtro[kEc]) && tpOk(p, filtro[kTp]));
+  const P0 = D.pend.filter(ok).filter(p => p.rec), SE = filtro[kEc], ST = filtro[kTp];
+  const okE = (p) => !SE.size || SE.has(p.ec), okT = (p) => !ST.size || ST.has(estAg(p));
+  // Varias opciones a la vez: cada segmentador cuenta con lo elegido en el otro.
+  const grupos = [
+    { k: kEc, t: 'EECC', S: SE, ops: ecsDe(P0), cnt: (o) => P0.filter(p => okT(p) && p.ec === o).length },
+    { k: kTp, t: 'Tipo', S: ST, ops: ALT_TIPOS, cnt: (o) => P0.filter(p => okE(p) && estAg(p) === o).length } ];
+  $(segsId).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span><button type="button" class="chip" data-mv="" aria-pressed="${!g.S.size}">Todos</button>${g.ops.map(o => `<button type="button" class="chip" data-mv="${esc(o)}" aria-pressed="${g.S.has(o)}">${esc(o)} (${g.cnt(o)})</button>`).join('')}</div>`).join('');
+  const P = P0.filter(p => okE(p) && okT(p));
   altasP[tbId] = P;
-  $(subId).textContent = `${P.length} altas pendientes${seg === 'TODOS' ? '' : ' · ' + seg}${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
+  const lima = (D.filial || 'LIMA') === 'LIMA', RESP = (AJ && AJ.responsables) || {};
+  $('altas-resp').hidden = !lima;
+  $(subId).textContent = `${P.length} altas pendientes${seg === 'TODOS' ? '' : ' · ' + seg}${zona === 'TODAS' ? '' : ' · zona ' + zona}${SE.size ? ' · EECC: ' + [...SE].join(', ') : ''}${ST.size ? ' · Tipo: ' + [...ST].join(', ') : ''}`;
   if (!P.length) { $(matId).innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const f10 = (p) => p.rec.slice(0, 10), fechas = [...new Set(P.map(f10))].sort();
   const cls = (f) => { const e = edadDias(f); return e >= 8 ? 'e3' : e >= 4 ? 'e2' : e >= 3 ? 'e1' : ''; };
@@ -1384,15 +1391,42 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
   const fila = (nom, L, clase, k, z) => { const ant = L.filter(p => edadDias(f10(p)) >= 3).length;
     const abierta = altasAbiertas.has(z), cab = plegable && clase === 'zona'
       ? `<button type="button" class="al-z" data-al-zona="${esc(z)}" aria-expanded="${abierta}">${esc(nom)}</button>` : esc(nom);
-    return `<tr class="${clase}"${plegable && clase === 'distr' ? ` data-de="${esc(z)}"${abierta ? '' : ' hidden'}` : ''}><td>${cab}</td>${fechas.map(f => { const v = L.filter(p => f10(p) === f).length; return `<td class="${v ? cls(f) : ''}${edadDias(f) === 0 ? ' hoy-c' : ''}">${num(v, k, f)}</td>`; }).join('')}<td class="t-col">${num(L.length, k, 'ALL')}</td><td class="ant-c">${Math.round(ant / L.length * 100)}%</td></tr>`; };
+    return `<tr class="${clase}"${plegable && clase === 'distr' ? ` data-de="${esc(z)}"${abierta ? '' : ' hidden'}` : ''}><td>${cab}</td>${lima ? `<td class="resp-c">${clase === 'zona' ? esc(RESP[z] || '—') : ''}</td>` : ''}${fechas.map(f => { const v = L.filter(p => f10(p) === f).length; return `<td class="${v ? cls(f) : ''}${edadDias(f) === 0 ? ' hoy-c' : ''}">${num(v, k, f)}</td>`; }).join('')}<td class="t-col">${num(L.length, k, 'ALL')}</td><td class="ant-c">${Math.round(ant / L.length * 100)}%</td></tr>`; };
   let body = '';
   Object.keys(zonas).sort((a, b) => zIdx(a) - zIdx(b)).forEach(z => { const ds = zonas[z]; body += fila(z, Object.values(ds).flat(), 'zona', 'Z:' + z, z);
     Object.keys(ds).sort((a, b) => ds[b].length - ds[a].length || (a < b ? -1 : 1)).forEach(d => body += fila(d, ds[d], 'distr', 'DI:' + z + ':' + d, z)); });
   const antT = P.filter(p => edadDias(f10(p)) >= 3).length;
-  $(matId).innerHTML = `<table class="mat altas" id="${tbId}"><thead><tr><th>Zona / distrito</th>${fechas.map(f => `<th class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${fIso(f)}</th>`).join('')}<th>Total general</th><th class="ant-h">% antiguas</th></tr></thead><tbody>${body}</tbody>
-    <tfoot><tr><td>Total general</td>${fechas.map(f => `<td class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${num(P.filter(p => f10(p) === f).length, 'T', f)}</td>`).join('')}<td>${num(P.length, 'T', 'ALL')}</td><td class="ant-c">${Math.round(antT / P.length * 100)}%</td></tr></tfoot></table>`;
+  $(matId).innerHTML = `<table class="mat altas" id="${tbId}"><thead><tr><th>Zona / distrito</th>${lima ? '<th>Responsable</th>' : ''}${fechas.map(f => `<th class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${fIso(f)}</th>`).join('')}<th>Total general</th><th class="ant-h">% antiguas</th></tr></thead><tbody>${body}</tbody>
+    <tfoot><tr><td>Total general</td>${lima ? '<td></td>' : ''}${fechas.map(f => `<td class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${num(P.filter(p => f10(p) === f).length, 'T', f)}</td>`).join('')}<td>${num(P.length, 'T', 'ALL')}</td><td class="ant-c">${Math.round(antT / P.length * 100)}%</td></tr></tfoot></table>`;
 }
 
+const ALT_TIPOS = ['INCUMPLIDA', 'HOY', 'FUTURA', 'COORDINADA', 'SIN AGENDA'];
+// Segmentadores de Altas pendientes con varias opciones a la vez («Todos» limpia la selección).
+$('altas-segs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mv]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
+  const S = filtro[g.dataset.k], v = b.dataset.mv;
+  if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v);
+  requestAnimationFrame(pintarDetalle);
+});
+/* Responsables de zona (solo Lima): fijos para todos; para cambiarlos se necesita la clave master */
+function abrirResponsables() {
+  const R = AJ.responsables || {};
+  const html = `<p class="fi-nota" style="margin:0 0 10px">Responsable de cada zona de Lima. Se muestra en «Altas pendientes» y lo ven todos los usuarios; para cambiarlo se necesita la clave master.</p>
+    <form id="f-resp"><table class="mat" style="width:100%"><thead><tr><th>Zona</th><th>Responsable</th></tr></thead><tbody>${['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'].map(z => `<tr><td>${z}</td><td><input type="text" maxlength="60" class="in-resp" data-resp="${z}" value="${esc(R[z] || '')}" placeholder="—" disabled></td></tr>`).join('')}</tbody></table>
+    <div class="rf-acc"><label class="seg-t">Clave master <input type="password" id="rs-clave" autocomplete="current-password" value="${esc(claveMaster())}"></label><button type="button" class="btn-out" id="rs-editar">Editar</button><button type="submit" class="btn-out rf-ok" id="rs-guardar" disabled>Guardar responsables</button></div></form>`;
+  abrirFichaModal('Responsables de zona', 'Lima · fijos para todos los días', html);
+  const f = $('f-resp');
+  $('rs-editar').addEventListener('click', () => { if (!$('rs-clave').value.trim()) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'Ingresa la clave master para editar.'; return; }
+    f.querySelectorAll('[data-resp]').forEach(i => i.disabled = false); $('rs-guardar').disabled = false; $('modal-aviso').textContent = ''; f.querySelector('[data-resp]').focus(); });
+  f.addEventListener('submit', async (e) => { e.preventDefault(); const k = $('rs-clave').value.trim(), responsables = {};
+    f.querySelectorAll('[data-resp]').forEach(i => { if (i.value.trim()) responsables[i.dataset.resp] = i.value.trim(); });
+    $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…'; $('rs-guardar').disabled = true;
+    try { const r = await fetch(urlAj('LIMA') + '&accion=responsables', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': k }, body: JSON.stringify({ responsables }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { if (r.status === 403) ponerMaster(''); throw new Error(j.error || `Error ${r.status}`); }
+      ponerMaster(k); AJ.responsables = j.responsables || responsables; $('modal-aviso').style.color = 'var(--ok)'; $('modal-aviso').textContent = 'Responsables guardados para todos.'; pintarDetalle(); }
+    catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message; $('rs-guardar').disabled = false; } });
+}
+$('altas-resp').addEventListener('click', abrirResponsables);
 /* Contraer / expandir zonas de Altas pendientes (Ingresos) */
 function plegarAltas() {
   const tb = $('tb-altas'); if (!tb) { $('altas-todo').hidden = true; return; }
@@ -1458,7 +1492,7 @@ function abrirListaAltas(clave) {
   const nom = tz === 'T' ? 'Total general' : tz === 'Z' ? 'Zona ' + z : di;
   const cab = ['AB', 'Distrito', 'EECC', 'Gestor', 'F. Recep', 'Agenda', 'F. AG', 'Franja', 'Gestión'];
   const filas = L.map(p => `<tr><td data-v="${p.ab}"><button type="button" class="lnk num" data-altas-ab="${p.os}" title="Ver ficha del AB · OS ${p.os}">${p.ab}</button></td><td title="${esc(p.di)}">${esc(p.di || '—')}</td><td>${esc(p.ec)}</td><td>${esc(gestorDe(p) === 'SIN GESTOR' ? '—' : gestorDe(p))}</td>
-    <td data-v="${msIso(p.rec)}" style="white-space:nowrap">${fechaHora(p.rec)} ${edadB(p.rec)}</td><td>${AGENDA_B(p)}</td><td data-v="${esc(p.fp || '')}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${p.fp ? fIso(p.fp) : '—'}</td><td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
+    <td data-v="${msIso(p.rec)}" style="white-space:nowrap">${fechaHora(p.rec)} ${edadB(p.rec)}</td><td>${AGENDA_B(p)}</td>${estAg(p) === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${esc(p.fp || '')}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${p.fp ? fIso(p.fp) : '—'}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
     <td>${p.ges ? '<span class="b si">Gestionado</span>' : '<span class="b no">Sin gestión</span>'}</td></tr>`);
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-tit').textContent = `${nom} · ${f === 'ALL' ? 'todas las fechas' : fIso(f)}`;
@@ -1665,7 +1699,7 @@ function pintarPendientes0() {
       <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
       <td data-v="${visI(p) ? (visI(p) === 'VD' ? 3 : visI(p)) : 9}">${visI(p) ? `<span class="b v1" title="Tomado del comentario">${visTxtI(visI(p))}</span>` : '-'}</td>
-      <td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td><td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
+      ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }).join('') || '<tr><td colspan="16">No hay pendientes con este filtro.</td></tr>';
   prepararOrden($('tb-pend'));
@@ -1730,7 +1764,7 @@ const COLS_PEND = [
   (p) => [p.ec || '—'], (p) => [tecCorto(p.tec) || '—'], (p) => [p.ges ? 'Gestionado' : 'Sin gestión'],
   (p) => { const e = estAg(p); return [EST_TXT[e], String(EST_V[e])]; },
   (p) => { const v = visI(p); return v ? [visTxtI(v), String(v === 'VD' ? 3 : v)] : ['-', '9']; },
-  (p) => [p.fp ? fIso(p.fp) : '—', p.fp || '~'], (p) => [conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~'],
+  (p) => p.fp && estAg(p) !== 'SIN AGENDA' ? [fIso(p.fp), p.fp] : ['—', '~'], (p) => [conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~'],
   (p) => [p.ini ? 'SÍ' : 'NO'], (p) => [p.rec ? fIso(p.rec.slice(0, 10)) : '—', p.rec ? p.rec.slice(0, 10) : '~'] ];
 const colFil = {};   // columna -> Set de valores permitidos
 let pendBase = [];
