@@ -275,8 +275,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
     // g = 'ec|EECC' o 'tec|EECC|TÉCNICO': cada número abre la lista de sus AB
     const nb = (v, g, q) => v ? `<button type="button" class="nb" data-lista="${q}|${esc(g)}" title="Ver los AB">${n(v)}</button>` : n(v);
+    // barra del % cliente a escala de la EECC con el % más alto (la más llena = la mejor)
+    const maxCli = Math.max(0, ...Object.values(porEc).map(Lx => { const t = sum(Lx); return t.pr ? t.c / t.pr : 0; }));
     const fila = (nom, s, cls, attrs = '', g = '') => `<tr class="${cls}"${attrs}><td>${esc(nom)}</td><td>${nb(s.ins, g, 'g-todo')}</td><td>${nb(s.med, g, 'g-med')}</td><td class="tenue">${pc(s.ins ? s.med / s.ins * 100 : 0)}</td><td>${nb(s.pr, g, 'g-med')}</td>
-      <td><span class="mini"><span class="p"><i style="width:${s.pr ? Math.min(100, s.c / s.pr * 1000) : 0}%"></i></span>${s.c ? `<button type="button" class="nb" data-lista="g-cli|${esc(g)}">${pc(s.pr ? s.c / s.pr * 100 : 0)}</button>` : pc(0)}</span></td><td class="tenue">${nb(s.tn + s.s, g, 'g-tec')}</td><td class="tenue">${nb(s.s, g, 'g-sid')}</td><td class="${s.r ? 'alerta' : 'tenue'}">${nb(s.r, g, 'g-rep')}</td></tr>`;
+      <td><span class="mini"><span class="p"><i style="width:${s.pr && maxCli ? Math.min(100, s.c / s.pr / maxCli * 100) : 0}%"></i></span>${s.c ? `<button type="button" class="nb" data-lista="g-cli|${esc(g)}" title="${n(s.c)} de ${n(s.pr)} pruebas en el equipo del cliente">${n(s.c)}</button>` : '0'}<span class="tenue" style="min-width:48px;text-align:right">${pc(s.pr ? s.c / s.pr * 100 : 0)}</span></span></td><td class="tenue">${nb(s.tn + s.s, g, 'g-tec')}</td><td class="tenue">${nb(s.s, g, 'g-sid')}</td><td class="${s.r ? 'alerta' : 'tenue'}">${nb(s.r, g, 'g-rep')}</td></tr>`;
     $('tb-ec').tBodies[0].innerHTML = Object.keys(porEc).sort((x, y) => porEc[y].length - porEc[x].length).map(ec => {
       const ab = abiertos.has(ec), s = sum(porEc[ec]);
       let h = fila(ec, s, 'ec', ` tabindex="0" aria-expanded="${ab}" data-ec="${esc(ec)}"`, 'ec|' + ec);
