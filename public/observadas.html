@@ -1231,7 +1231,7 @@ let fluVista = 'dia', ING = null, ingClave = '';
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const dec1 = (v) => Number(v).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const WD = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], MESC = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const FLU = [['D', 'Instalaciones', '--magenta', '#FFFFFF'], ['O', 'Observadas', '#EDA100', '#0B0B0B'], ['A', 'Anuladas', '#5B5F6E', '#FFFFFF'], ['R', 'Pendientes', '#C9CCD6', '#0B0B0B']];
+const FLU = [['D', 'Instalaciones', '#1A9E5C', '#FFFFFF'], ['O', 'Observadas', '#F5C400', '#0B0B0B'], ['A', 'Anuladas', '#D7263D', '#FFFFFF'], ['R', 'Pendientes', '--magenta', '#FFFFFF']];
 const EST_F = { D: 'Descargada', O: 'Observada', A: 'Anulada', R: 'Registrada' };
 async function traerIngresos() {
   const f = (D && D.filial) || filialSel(), clave = f + '|' + mes; if (ingClave === clave && ING) return ING;
