@@ -27,7 +27,7 @@ import requests
 
 LOTE = 250            # filas por escritura (lotes chicos: Supabase gratuito responde mejor)
 LOTE_BORRADO = 400    # ids por borrado
-SIN_HUELLA = ("sincronizado_en", "huella", "cajas_cerca")
+SIN_HUELLA = ("sincronizado_en", "huella", "cajas_cerca", "detalle_os")   # detalle_os solo sirve para calcular «detalle» (que sí cuenta): así no se reescribe toda la base
 ESTADO_VERSION = 2
 
 
