@@ -6,6 +6,7 @@
 // POST ?accion=guardar  {usuario, nombre, filial, activo, nuevo, reset} → crea / edita / restablece la clave.
 // POST ?accion=masivo   {filas:[{nombre, usuario, filial}]}             → crea varios de una vez (clave inicial para cada uno).
 // POST ?accion=renombrar {usuario, nuevo_usuario, nombre} → edita el usuario y el nombre
+// GET  ?accion=ingresos&usuario=x → historial de ingresos (ciudad aproximada, equipo)
 // POST ?accion=borrar   {usuario}  ·  POST ?accion=general {activa}
 const crypto = require('crypto');
 const { consultar, pedir, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, FILIALES } = require('./_supabase');
@@ -25,6 +26,23 @@ async function leerCuerpo(req) {
   let s = ''; for await (const c of req) { s += c; if (s.length > 200000) throw new Error('Cuerpo demasiado grande'); }
   return JSON.parse(s || '{}');
 }
+// ---------- Ubicación aproximada del ingreso (la entrega Vercel según la conexión; sin pedir permiso) ----------
+const REG = { LMA: 'Lima Metropolitana', LIM: 'Lima', CAL: 'Callao', ANC: 'Áncash', ARE: 'Arequipa', CAJ: 'Cajamarca', HUC: 'Huánuco', LAL: 'La Libertad', LAM: 'Lambayeque', PIU: 'Piura',
+  AMA: 'Amazonas', APU: 'Apurímac', AYA: 'Ayacucho', CUS: 'Cusco', HUV: 'Huancavelica', ICA: 'Ica', JUN: 'Junín', LOR: 'Loreto', MDD: 'Madre de Dios', MOQ: 'Moquegua', PAS: 'Pasco', PUN: 'Puno', SAM: 'San Martín', TAC: 'Tacna', TUM: 'Tumbes', UCA: 'Ucayali' };
+const REG_FIL = { LIMA: ['LMA', 'LIM', 'CAL'], ANCASH: ['ANC'], AREQUIPA: ['ARE'], CAJAMARCA: ['CAJ'], HUANUCO: ['HUC'], 'LA LIBERTAD': ['LAL'], LAMBAYEQUE: ['LAM'], PIURA: ['PIU'] };
+REG_FIL.PROVINCIAS = ['ANC', 'ARE', 'CAJ', 'HUC', 'LAL', 'LAM', 'PIU'];
+function equipo(ua) { ua = String(ua || ''); const cel = /Mobi|Android|iPhone|iPad/i.test(ua) ? 'Celular' : 'PC';
+  const nav = /Edg\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Navegador'; return `${cel} · ${nav}`; }
+async function registrarIngreso(req, usuario, filial) {
+  try {
+    const h = (k) => { const v = req.headers[k]; try { return v ? decodeURIComponent(String(v)) : ''; } catch { return String(v || ''); } };
+    const pais = h('x-vercel-ip-country'), cod = h('x-vercel-ip-country-region'), lat = parseFloat(h('x-vercel-ip-latitude')), lon = parseFloat(h('x-vercel-ip-longitude'));
+    const region = pais === 'PE' ? (REG[cod] || cod) : cod, okReg = REG_FIL[filial];
+    const fuera = !!pais && (pais !== 'PE' || (!!okReg && !!cod && !okReg.includes(cod)));   // ingresó desde fuera de su filial
+    await pedir('ingresos', 'POST', [{ usuario, filial, ciudad: h('x-vercel-ip-city') || null, region: region || null, pais: pais || null, lat: isFinite(lat) ? lat : null, lon: isFinite(lon) ? lon : null, equipo: equipo(req.headers['user-agent']), fuera }]);
+    if (Math.random() < 0.02) await pedir(`ingresos?en=lt.${new Date(Date.now() - 180 * 864e5).toISOString()}`, 'DELETE');   // se guardan 6 meses
+  } catch { /* el registro nunca impide ingresar */ }
+}
 async function buscar(usuario) { const { datos } = await consultar(`usuarios?select=*&usuario=eq.${encodeURIComponent(usuario)}`); return datos[0] || null; }
 // Invalida al instante las sesiones abiertas de esos usuarios (cambió su filial, se desactivó o se restableció su clave).
 async function revocar(usuarios) { const a = await accesoConfig(true), rev = { ...(a.rev || {}) }, t = Date.now(); usuarios.forEach(u => rev[u] = t); await guardarAcceso({ ...a, rev }); }
@@ -36,13 +54,13 @@ module.exports = async (req, res) => {
       const b = await leerCuerpo(req), usuario = limpioU(b.usuario), clave = String(b.clave || '');
       if (!usuario) {   // clave general (compartida), mientras no se desactive
         const esperado = process.env.PORTAL_TOKEN, a = await accesoConfig(true);
-        if (esperado && clave && iguales(clave, esperado) && a.general !== false) return responder(res, 200, { token: esperado, nombre: 'Clave general', filial: 'TODAS', cambiar: false });
+        if (esperado && clave && iguales(clave, esperado) && a.general !== false) { await registrarIngreso(req, 'general', 'TODAS'); return responder(res, 200, { token: esperado, nombre: 'Clave general', filial: 'TODAS', cambiar: false }); }
         return responder(res, 401, { error: a.general === false ? 'La clave general ya no está activa: ingresa con tu usuario.' : 'Contraseña incorrecta.' });
       }
       const u = await buscar(usuario);
       if (!u || !verificar(clave, u.clave_hash)) return responder(res, 401, { error: 'Usuario o contraseña incorrectos.' });
       if (!u.activo) return responder(res, 403, { error: 'Tu usuario está desactivado. Pide al administrador que lo active.' });
-      await pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { ultimo_ingreso: new Date().toISOString() });
+      await Promise.all([pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { ultimo_ingreso: new Date().toISOString() }), registrarIngreso(req, u.usuario, u.filial)]);
       return responder(res, 200, { token: firmarSesion(u), nombre: u.nombre, filial: u.filial, cambiar: u.cambiar_clave, usuario: u.usuario });
     }
     if (req.method === 'POST' && accion === 'cambiar') {
@@ -65,7 +83,17 @@ module.exports = async (req, res) => {
     if (req.method === 'GET' && accion === 'lista') {
       const { datos } = await consultar('usuarios?select=*&order=filial.asc,nombre.asc');
       const a = await accesoConfig(true);
-      return responder(res, 200, { usuarios: datos.map(publico), general: a.general !== false, hayGeneral: !!process.env.PORTAL_TOKEN });
+      // Último ingreso de cada uno (ubicación) y los ingresos fuera de su filial de los últimos 7 días
+      const { datos: ing } = await consultar(`ingresos?select=usuario,en,ciudad,region,pais,lat,lon,equipo,fuera&en=gte.${new Date(Date.now() - 60 * 864e5).toISOString()}&order=en.desc&limit=5000`);
+      const ult = {}, fuera7 = {}, hace7 = Date.now() - 7 * 864e5;
+      ing.forEach(x => { if (!ult[x.usuario]) ult[x.usuario] = x; if (x.fuera && new Date(x.en) >= hace7) fuera7[x.usuario] = (fuera7[x.usuario] || 0) + 1; });
+      return responder(res, 200, { usuarios: datos.map(u => ({ ...publico(u), lugar: ult[u.usuario] || null, fuera7: fuera7[u.usuario] || 0 })), general: a.general !== false, hayGeneral: !!process.env.PORTAL_TOKEN,
+        generalLugar: ult.general || null });
+    }
+    if (req.method === 'GET' && accion === 'ingresos') {   // historial de un usuario (últimos 100)
+      const usuario = limpioU(new URL(req.url, 'http://x').searchParams.get('usuario'));
+      const { datos } = await consultar(`ingresos?select=en,ciudad,region,pais,lat,lon,equipo,fuera&usuario=eq.${encodeURIComponent(usuario)}&order=en.desc&limit=100`);
+      return responder(res, 200, datos);
     }
     if (req.method !== 'POST') return responder(res, 405, { error: 'Método no permitido' });
     const b = await leerCuerpo(req);
@@ -76,6 +104,7 @@ module.exports = async (req, res) => {
       const previo = await buscar(usuario); if (!previo) return responder(res, 404, { error: 'No existe ese usuario.' });
       if (nuevo !== usuario && await buscar(nuevo)) return responder(res, 400, { error: `El usuario «${nuevo}» ya existe.` });
       await pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { usuario: nuevo, nombre: nombre || previo.nombre });
+      if (nuevo !== usuario) await pedir(`ingresos?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { usuario: nuevo }).catch(() => {});
       if (nuevo !== usuario) await revocar([usuario, nuevo]); else if (nombre !== previo.nombre) await revocar([usuario]);
       return responder(res, 200, { ok: true });
     }

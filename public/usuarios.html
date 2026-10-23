@@ -133,6 +133,14 @@ tr.inact td { color: var(--fg-4); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--noche); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; z-index: 80; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
 .toast[hidden] { display: none; }
 #panel[hidden], .sec[hidden] { display: none !important; }
+.lugar { display: block; font-size: 12px; color: var(--fg-3); margin-top: 2px; } .lugar a { color: var(--magenta-txt); font-weight: 700; }
+.b.fuera { background: var(--aviso-bg); color: var(--aviso-fg); } tr.fuera td, .hist tr.fuera td { background: var(--aviso-bg); }
+.lnk2 { all: unset; cursor: pointer; color: var(--magenta-txt); font-size: 12px; font-weight: 700; text-decoration: underline; }
+.modal-fondo { position: fixed; inset: 0; background: rgba(14,14,26,.55); z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; }
+.modal-fondo[hidden] { display: none; }
+.modal { background: var(--sup); border-radius: 18px; width: min(980px, 100%); padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.modal-cab { display: flex; justify-content: space-between; gap: 12px; } .modal-cab h3 { margin: 0; font: 800 20px var(--f-disp); } .modal-cab p { margin: 4px 0 0; color: var(--fg-3); font-size: 14px; }
+.btn-x { border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); border-radius: 50%; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
 td { font-size: 13px; }
 </style>
 </head>
@@ -180,12 +188,15 @@ td { font-size: 13px; }
     <div class="sec-cab"><div><h2 id="t-lista">Usuarios</h2><p class="sub" id="lista-sub"></p></div></div>
     <div class="herr"><input type="search" id="buscar" placeholder="Busca por nombre o usuario…" aria-label="Buscar"></div>
     <div class="segs"><div class="g" id="f-fil"></div></div>
-    <div class="caja"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th>Estado</th><th>Contraseña</th><th>Último ingreso</th><th>Acciones</th></tr></thead><tbody id="filas"></tbody></table></div>
-    <p class="nota">Cambiar la filial, desactivar o restablecer la contraseña cierra al instante la sesión abierta de esa persona.</p>
+    <div class="caja"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th>Estado</th><th>Contraseña</th><th>Último ingreso · desde dónde</th><th>Acciones</th></tr></thead><tbody id="filas"></tbody></table></div>
+    <p class="nota">Cambiar la filial, desactivar o restablecer la contraseña cierra al instante la sesión abierta de esa persona · Ubicación = ciudad aproximada según la conexión a internet (con datos móviles o VPN puede marcar otra ciudad) · En amarillo: ingresó desde una región distinta a su filial.</p>
   </section>
   </div>
 </div></main>
 <div class="toast" id="toast" role="status" hidden></div>
+<div class="modal-fondo" id="modal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="h-tit">
+  <div class="modal-cab"><div><h3 id="h-tit"></h3><p id="h-sub"></p></div><button type="button" class="btn-x" id="h-x" aria-label="Cerrar">×</button></div>
+  <div id="h-cuerpo"></div></div></div>
 <script>
 (() => {
 'use strict';
@@ -198,7 +209,7 @@ const opciones = (sel) => FILS.map(([v, t]) => `<option value="${v}"${v === sel 
 const sinTilde = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const fecha = (iso) => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }); };
 let master = ''; try { master = sessionStorage.getItem('mf_master') || ''; } catch { /* nada */ }
-let U = [], general = true, hayGeneral = true;
+let U = [], general = true, hayGeneral = true, genLugar = null;
 const F = { q: '', fil: '' };
 let editando = '';   // usuario cuya fila está en edición
 const toast = (t) => { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => e.hidden = true, 3500); };
@@ -208,7 +219,7 @@ async function api(accion, cuerpo) {
   const d = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error(d.error || `Error ${r.status}`); e.estado = r.status; throw e; } return d;
 }
 async function cargar() {
-  try { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral;
+  try { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; genLugar = d.generalLugar;
     try { sessionStorage.setItem('mf_master', master); } catch { /* nada */ }
     $('sec-master').hidden = true; $('panel').hidden = false; pintar(); }
   catch (e) { $('panel').hidden = true; $('sec-master').hidden = false; $('m-err').textContent = master ? e.message : ''; if (e.estado === 403) { master = ''; try { sessionStorage.removeItem('mf_master'); } catch { /* nada */ } } $('master').focus(); }
@@ -226,15 +237,19 @@ function sugerir(nombre, usados) {
 }
 const usados = () => new Set(U.map(x => x.usuario));
 
+const mapa = (x) => x && x.lat != null ? `https://www.google.com/maps?q=${x.lat},${x.lon}` : '';
+const lugarTxt = (x) => !x ? '' : [x.ciudad, x.region, x.pais && x.pais !== 'PE' ? x.pais : ''].filter(Boolean).join(', ') || 'Ubicación no disponible';
+const lugarHtml = (x) => !x ? '' : `<span class="lugar">📍 ${mapa(x) ? `<a href="${mapa(x)}" target="_blank" rel="noopener">${esc(lugarTxt(x))}</a>` : esc(lugarTxt(x))} · ${esc(x.equipo || '')}</span>`;
 function pintar() {
   const act = U.filter(u => u.activo), pend = act.filter(u => u.cambiar_clave), hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   const ingHoy = U.filter(u => u.ultimo_ingreso && new Date(u.ultimo_ingreso).toLocaleDateString('en-CA', { timeZone: 'America/Lima' }) === hoy).length;
   $('res-sub').textContent = `${n(U.length)} usuarios · ${n(new Set(U.map(u => u.filial)).size)} filiales`;
   const k = (l, v, s, mal) => `<div class="kpi${mal ? ' mal' : ''}" style="cursor:default"><span class="l">${l}</span><span class="kv">${v}</span><span class="s">${s}</span></div>`;
   $('kpis').innerHTML = k('Usuarios activos', n(act.length), `${n(U.length - act.length)} desactivados`) + k('Ven todas las filiales', n(act.filter(u => u.filial === 'TODAS').length), 'el resto ve solo su filial')
-    + k('Pendientes de cambiar clave', n(pend.length), 'aún no ingresan por primera vez', pend.length > 0) + k('Ingresaron hoy', n(ingHoy), 'último ingreso de hoy');
+    + k('Pendientes de cambiar clave', n(pend.length), 'aún no ingresan por primera vez', pend.length > 0) + k('Ingresaron hoy', n(ingHoy), 'último ingreso de hoy')
+    + k('Fuera de su filial', n(U.filter(u => u.fuera7).length), 'usuarios que ingresaron desde otra región (7 días)', U.some(u => u.fuera7));
   $('general').innerHTML = !hayGeneral ? '<span>No hay clave general configurada: solo se ingresa con usuario.</span>'
-    : `<span><b>Clave general (compartida):</b> ${general ? 'activa — quien la conoce entra viendo todas las filiales.' : 'desactivada — solo se ingresa con usuario.'}${general ? ' Desactívala cuando todos tengan su usuario.' : ''}</span><button type="button" class="btn-out" id="gen-btn">${general ? 'Desactivar clave general' : 'Volver a activarla'}</button>`;
+    : `<span><b>Clave general (compartida):</b> ${general ? 'activa — quien la conoce entra viendo todas las filiales.' : 'desactivada — solo se ingresa con usuario.'}${general ? ' Desactívala cuando todos tengan su usuario.' : ''}${genLugar ? `<span class="lugar">Último uso: ${fecha(genLugar.en)} · ${mapa(genLugar) ? `<a href="${mapa(genLugar)}" target="_blank" rel="noopener">${esc(lugarTxt(genLugar))}</a>` : esc(lugarTxt(genLugar))} · ${esc(genLugar.equipo || '')} · <button type="button" class="lnk2" data-hist="general">historial</button></span>` : ''}</span><button type="button" class="btn-out" id="gen-btn">${general ? 'Desactivar clave general' : 'Volver a activarla'}</button>`;
   const C = {}; U.forEach(u => C[u.filial] = (C[u.filial] || 0) + 1);
   $('f-fil').innerHTML = `<span class="seg-t">Filial</span><button type="button" class="chip" data-f="" aria-pressed="${!F.fil}">Todos (${n(U.length)})</button>` + FILS.filter(([v]) => C[v]).map(([v, t]) => `<button type="button" class="chip" data-f="${v}" aria-pressed="${F.fil === v}">${esc(v === 'TODAS' ? 'Ven todo' : t.replace(/ \(.*\)/, ''))} (${n(C[v])})</button>`).join('');
   const L = U.filter(u => (!F.fil || u.filial === F.fil) && (!F.q || (u.nombre + ' ' + u.usuario).toLowerCase().includes(F.q)));
@@ -242,10 +257,10 @@ function pintar() {
   $('filas').innerHTML = L.map(u => editando === u.usuario ? `<tr class="edit" data-u="${esc(u.usuario)}"><td class="izq"><input class="in-ed" id="ed-nom" value="${esc(u.nombre)}" maxlength="60" aria-label="Nombre"></td><td><input class="in-ed" id="ed-usu" value="${esc(u.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario"></td>
     <td colspan="4" class="izq"><span class="nota">La contraseña no cambia. Si cambias el usuario, avísale a la persona: deberá ingresar con el nuevo.</span> <span class="err" id="ed-err"></span></td>
     <td><div class="acc"><button type="button" class="mini pri" data-acc="ed-ok">Guardar</button><button type="button" class="mini" data-acc="ed-no">Cancelar</button></div></td></tr>`
-    : `<tr class="${u.activo ? '' : 'inact'}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td><select data-acc="filial" aria-label="Filial de ${esc(u.usuario)}">${opciones(u.filial)}</select></td>
+    : `<tr class="${u.activo ? '' : 'inact'}${u.fuera7 ? ' fuera' : ''}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td><select data-acc="filial" aria-label="Filial de ${esc(u.usuario)}">${opciones(u.filial)}</select></td>
     <td>${u.activo ? '<span class="b ok">Activo</span>' : '<span class="b na">Desactivado</span>'}</td>
     <td>${u.cambiar_clave ? '<span class="b pend">Pendiente de cambio</span>' : `<span class="b ok" title="Cambiada el ${fecha(u.clave_en)}">Cambiada</span>`}</td>
-    <td>${fecha(u.ultimo_ingreso)}</td>
+    <td>${fecha(u.ultimo_ingreso)}${lugarHtml(u.lugar)}${u.fuera7 ? `<span class="b fuera" title="Ingresos desde una región distinta a su filial en los últimos 7 días">⚠ ${n(u.fuera7)} fuera de su filial</span> ` : ''}${u.ultimo_ingreso ? `<button type="button" class="lnk2" data-hist="${esc(u.usuario)}">historial</button>` : ''}</td>
     <td><div class="acc"><button type="button" class="mini pri" data-acc="cred">Enviar credenciales</button><button type="button" class="mini" data-acc="editar">Editar</button><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
     || `<tr><td colspan="7">${U.length ? 'Sin coincidencias.' : 'Aún no hay usuarios: créalos arriba.'}</td></tr>`;
 }
@@ -316,7 +331,7 @@ $('m-crear').addEventListener('click', async () => { leerMasivo(); const ok = M.
   try { const d = await api('masivo', { filas: ok }); mostrarCreados(d.creados, d.omitidos); $('masivo').value = ''; OV = {}; await cargarLista(); leerMasivo(); }
   catch (er) { $('mm-err').textContent = er.message; $('m-crear').disabled = false; } });
 
-async function cargarLista() { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; pintar(); }
+async function cargarLista() { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; genLugar = d.generalLugar; pintar(); }
 
 // Acciones de la tabla
 async function guardarU(u, cambios) { return api('guardar', { usuario: u.usuario, nombre: u.nombre, filial: u.filial, activo: u.activo, ...cambios }); }
@@ -340,6 +355,19 @@ $('filas').addEventListener('click', async (e) => { const b = e.target.closest('
     else if (b.dataset.acc === 'borrar') { if (!confirm(`¿Eliminar el usuario ${u.usuario} (${u.nombre})? No se puede deshacer.`)) return; await api('borrar', { usuario: u.usuario }); toast('Usuario eliminado.'); await cargarLista(); }
   } catch (er) { toast(er.message); } });
 
+// Historial de ingresos de un usuario
+async function verHist(usuario) {
+  const u = U.find(x => x.usuario === usuario) || { nombre: 'Clave general', usuario, filial: 'TODAS' };
+  $('h-tit').textContent = `Ingresos de ${u.nombre}`; $('h-sub').textContent = `${u.usuario} · ve: ${nomF(u.filial)} · últimos 100 ingresos (se guardan 6 meses)`; $('h-cuerpo').innerHTML = '<p class="nota">Cargando…</p>'; $('modal').hidden = false; $('h-x').focus();
+  try { const L = await api('ingresos&usuario=' + encodeURIComponent(usuario));
+    const fu = L.filter(x => x.fuera).length, ciu = new Set(L.map(lugarTxt)).size;
+    $('h-cuerpo').innerHTML = !L.length ? '<p class="nota">Aún no hay ingresos registrados.</p>' : `<p class="nota">${n(L.length)} ingresos · ${n(ciu)} ${ciu === 1 ? 'ubicación distinta' : 'ubicaciones distintas'}${fu ? ` · <b style="color:var(--aviso-fg)">${n(fu)} desde fuera de su filial</b>` : ''}</p>
+      <div class="caja hist" style="max-height:60vh"><table><thead><tr><th>Fecha y hora</th><th class="izq">Ciudad / región</th><th>Equipo</th><th>Mapa</th><th></th></tr></thead><tbody>${L.map(x => `<tr class="${x.fuera ? 'fuera' : ''}"><td>${fecha(x.en)}</td><td class="izq">${esc(lugarTxt(x))}</td><td>${esc(x.equipo || '—')}</td><td>${mapa(x) ? `<a class="lnk2" href="${mapa(x)}" target="_blank" rel="noopener">ver mapa</a>` : '—'}</td><td>${x.fuera ? '<span class="b fuera">Fuera de su filial</span>' : ''}</td></tr>`).join('')}</tbody></table></div>`; }
+  catch (er) { $('h-cuerpo').innerHTML = `<p class="err">${esc(er.message)}</p>`; }
+}
+document.addEventListener('click', (e) => { const h = e.target.closest('[data-hist]'); if (h) verHist(h.dataset.hist); });
+$('h-x').addEventListener('click', () => $('modal').hidden = true); $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modal').hidden = true; });
 cargar();
 })();
 </script>
