@@ -70,6 +70,11 @@ a.marca { text-decoration: none; }
 .per-f { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #B9BCCB; font-weight: 600; }
 .per-nota { font-weight: 500; text-transform: none; letter-spacing: 0; color: #9CA3AF; }
 .franja .chip[aria-pressed="true"] { background: #FF0091; border-color: #FF0091; }
+/* Franja ordenada: fila 1 Filial · Segmento · Canal | fila 2 Zona · EECC | fila 3 Periodo (chips compactos) */
+.franja .salto { flex-basis: 100%; height: 0; margin-bottom: -14px; }
+.franja .fila .chips { gap: 6px; }
+.franja .fila .chip { min-height: 34px; padding: 6px 13px; font-size: 12.5px; }
+#grupo-ec, #grupo-zona { min-width: 0; }
 .tabs { display: flex; gap: 4px; overflow-x: auto; }
 .tabs button { font-size: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #B9BCCB; background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 16px; cursor: pointer; white-space: nowrap; }
 .tabs button[aria-selected="true"] { color: #FFFFFF; border-bottom-color: #FF0091; }
@@ -736,12 +741,14 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div class="fila">
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Instalaciones</h1><p><span id="nom-filial">Lima</span> · altas FTTH · ingresos, liquidaciones, pendientes, agendas y avance</p></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px 28px">
-      <div id="grupo-fil" style="flex-basis:100%"><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div id="grupo-fil"><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Segmento</div><div class="chips" role="group" aria-label="Segmento" id="tipos"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
+      <div class="salto" aria-hidden="true"></div>
       <div id="grupo-zona"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Zona</div><div class="chips" role="group" aria-label="Zona" id="zonas"></div></div>
-      <div id="grupo-ec" hidden style="flex-basis:100%"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">EECC <span class="per-nota">· varias a la vez · filtra todas las pestañas</span></div><div class="chips" role="group" aria-label="EECC" id="eecs"></div></div>
-      <div id="grupo-per" style="flex-basis:100%"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Periodo <span class="per-nota">· no aplica a Pendientes</span></div>
+      <div id="grupo-ec" hidden><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">EECC <span class="per-nota">· varias a la vez</span></div><div class="chips" role="group" aria-label="EECC" id="eecs"></div></div>
+      <div class="salto" aria-hidden="true"></div>
+      <div id="grupo-per"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Periodo <span class="per-nota">· no aplica a Pendientes</span></div>
         <div class="per"><select id="per-mes" class="sel-per" aria-label="Mes"></select><div class="chips" role="group" aria-label="Semana" id="per-sem"></div>
           <label class="per-f">Desde <input type="date" id="per-desde"></label><label class="per-f">Hasta <input type="date" id="per-hasta"></label></div></div>
     </div>
