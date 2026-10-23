@@ -278,6 +278,9 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
   #tb-pend .b.edad { display: none; }
 }
 .b.v1 { background: #FFE58A; color: #3D2E00; }
+/* Tipo de trabajo: una etiqueta de color por tipo (mismo formato que Gestionado) */
+.b.tt-ins { background: #FFE3F1; color: #A3005A; } .b.tt-tex { background: #EDE7FF; color: #5B2DB8; } .b.tt-tin { background: #DDF3F1; color: #0E6E66; }
+.b.tt-ceq { background: #FFEBD6; color: #9A4310; } .b.tt-rei { background: #E1EAFF; color: #2A4BA8; } .b.tt-otr { background: #ECEDF0; color: #4B5563; }
 .pen-scroll { overflow-x: hidden; }
 .pen-acc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .btn-out { font: 600 13px var(--f-disp); border: 1px solid var(--fg); background: var(--sup); color: var(--fg); border-radius: 22px; padding: 8px 14px; cursor: pointer; min-height: 38px; display: inline-flex; gap: 6px; align-items: center; }
@@ -1607,7 +1610,9 @@ const TOS_MISC = ['TRASLADO EXT', 'OTROS', 'CAMBIO DE EQUIPO', 'REINSTALACION', 
 const esInst = () => filtro.penTos.size === 1 && filtro.penTos.has('INSTALACION SERVICIO');
 const penUni = () => [...(filtro.penTos.has('INSTALACION SERVICIO') ? D.pend : []), ...(D.pendx || []).filter(p => filtro.penTos.has(p.to))];
 // Tipo de trabajo corto para la tabla de pendientes (columna «Tipo trabajo»)
-const TIPO_TR = { 'INSTALACION SERVICIO': 'Instalación', 'TRASLADO EXT': 'Traslado ext.', 'TRASLADO INT': 'Traslado int.', 'CAMBIO DE EQUIPO': 'Cambio equipo', REINSTALACION: 'Reinstalación', OTROS: 'Otros' };
+const TIPO_TR = { 'INSTALACION SERVICIO': 'Instalación', 'TRASLADO EXT': 'Traslado ext.', 'TRASLADO INT': 'Traslado int.', 'CAMBIO DE EQUIPO': 'Cambio eq.', REINSTALACION: 'Reinstalac.', OTROS: 'Otros' };
+const TIPO_CLS = { 'INSTALACION SERVICIO': 'ins', 'TRASLADO EXT': 'tex', 'TRASLADO INT': 'tin', 'CAMBIO DE EQUIPO': 'ceq', REINSTALACION: 'rei', OTROS: 'otr' };
+const tipoCls = (p) => TIPO_CLS[p.to || 'INSTALACION SERVICIO'] || 'otr';
 const tipoTr = (p) => { const t = p.to || 'INSTALACION SERVICIO'; return TIPO_TR[t] || t.charAt(0) + t.slice(1).toLowerCase(); };
 const TO_TXT = (t) => t === 'INSTALACION SERVICIO' ? 'Instalaciones' : t.charAt(0) + t.slice(1).toLowerCase();
 const TOS_TXT = () => [...filtro.penTos].map(TO_TXT).join(', ');
@@ -1783,7 +1788,7 @@ function pintarPendientes0() {
   $('pen-n').innerHTML = `${L.length} de ${penUni().length} pendientes${esInst() ? '' : ' de ' + TOS_TXT().toLowerCase()}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   marcarFiltrosCol();
   $('pen-filas').innerHTML = diferir('tb-pend', L.map(p => { const ed = edadDias(p.rec), ea = estAg(p), ge = gestorDe(p);
-    return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnCorto(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}" data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td data-v="${esc(tipoTr(p))}" title="${esc(p.to || 'INSTALACION SERVICIO')}">${esc(tipoTr(p))}</td><td>${esc(p.ec)}</td>
+    return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnCorto(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}" data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td data-v="${esc(tipoTr(p))}" title="${esc(p.to || 'INSTALACION SERVICIO')}"><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></td><td>${esc(p.ec)}</td>
       <td title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
       <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
