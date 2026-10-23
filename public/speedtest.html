@@ -92,6 +92,7 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .rk .p { height: 10px; border-radius: 5px; background: var(--pista); } .rk .p i { display: block; height: 100%; border-radius: 5px; background: var(--magenta); min-width: 3px; }
 .rk.peor .p i { background: var(--mal); }
 .rk .v { text-align: right; font-variant-numeric: tabular-nums; } .rk .v b { font: 800 16px var(--f-disp); } .rk .v small { display: block; color: var(--fg-4); font-size: 12px; }
+.medidor.obj { position: relative; overflow: visible; } .medidor.obj em { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--fg); }
 .hb2-ley { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--fg-3); margin: 0 0 8px; }
 .hb2-ley .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; } .hb2-ley .sw.a { background: var(--magenta); } .hb2-ley .sw.b { background: var(--rosa-2); } .hb2-ley .sw.l { width: 3px; height: 14px; background: var(--fg); border-radius: 0; }
 .hb2 { display: grid; grid-template-columns: 26px minmax(130px, 210px) 1fr 64px; align-items: center; gap: 12px; padding: 9px 6px; border-radius: 10px; cursor: pointer; }
@@ -245,6 +246,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const mesTxt = (ym) => `${MESES[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
   const dmy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  const OBJ_CLI = 60;   // objetivo: % de pruebas hechas en el dispositivo del cliente
   const PLANES = ['Hasta 1.000 Mbps', 'Más de 1.000 Mbps', 'Sin plan identificado'];
   const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
 
@@ -300,7 +302,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('kpis').innerHTML = `
       <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span><span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
       <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv">${pc(pMed)}</span><div class="medidor" role="img" aria-label="${pc(pMed)} con medición"><i style="width:${pMed}%"></i></div><span class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> de ${n(a.ins)} instalaciones</span></div>
-      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg">${pc(pCli)}</span><div class="medidor mg" role="img" aria-label="${pc(pCli)} en dispositivo del cliente"><i style="width:${pCli}%"></i></div><span class="s">${n(a.c)} del cliente · ${n(a.tn + a.s)} del equipo del técnico${a.s ? ` (${n(a.s)} sin identificar)` : ''}</span></div>
+      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg">${pc(pCli)}</span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, objetivo ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Objetivo ${OBJ_CLI}%"></em></div><span class="s"><b>Objetivo ${OBJ_CLI}%</b> · ${n(a.c)} del cliente · ${n(a.tn + a.s)} del equipo del técnico${a.s ? ` (${n(a.s)} sin identificar)` : ''}</span></div>
       <div class="kpi"><span class="l">Enlaces repetidos</span><span class="kv">${n(nRep)}</span><span class="s">${n(a.r)} veces en <button type="button" class="nb" data-lista="rep|">${n(L.filter(o => o.r).length)} AB</button> · no cuentan como prueba</span></div>`;
     // Columnas por mes (sin el filtro de mes)
     const LM = O.filter(o => sel(o, 'mes')), porMes = meses.map(m => [m, sum(LM.filter(o => o.d.startsWith(m)))]);
@@ -317,11 +319,12 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('t-fil').textContent = porEcF ? `Pruebas en dispositivo del cliente, por EECC de ${F.filial}` : 'Pruebas en dispositivo del cliente, por filial';
     $('fil-sub').textContent = `Solo se listan ${porEcF ? 'EECC' : 'filiales'} con 5 o más pruebas registradas · clic en una barra para ver sus AB con medición.`;
     // Diseño: posición · nombre con «X de Y pruebas» · barra (con línea del promedio) · % ; sobre el promedio en fucsia, debajo en rosado
-    const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.pr ? tG.c / tG.pr * 100 : 0, esc100 = Math.max(prom * 1.15, fmax) || 1;
-    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw a"></i>Sobre el promedio</span><span><i class="sw b"></i>Bajo el promedio</span><span><i class="sw l"></i>Promedio ${pc(prom)} (${n(tG.c)} de ${n(tG.pr)})</span></div>`
-      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= prom ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas · promedio ${pc(prom)}">
+    // Objetivo: 60% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
+    const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.pr ? tG.c / tG.pr * 100 : 0;
+    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw l"></i><b>Objetivo ${pc(OBJ_CLI)}</b></span><span><i class="sw a"></i>Cumple</span><span><i class="sw b"></i>No cumple</span><span>Total ${pc(prom)} (${n(tG.c)} de ${n(tG.pr)}) · ${n(porFil.filter(x => x[1] >= OBJ_CLI).length)} de ${n(porFil.length)} cumplen</span></div>`
+      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CLI ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas · objetivo ${pc(OBJ_CLI)}${v >= OBJ_CLI ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.pr * OBJ_CLI / 100) - s.c)} pruebas del cliente)`}">
         <span class="pos">${k + 1}</span><span class="nom"><b>${esc(f)}</b><small>${n(s.c)} de ${n(s.pr)} pruebas</small></span>
-        <span class="tr"><i style="width:${v / esc100 * 100}%"></i><em style="left:${prom / esc100 * 100}%"></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin pruebas con estos filtros.</p>';
+        <span class="tr"><i style="width:${Math.min(100, v)}%"></i><em style="left:${OBJ_CLI}%"></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin pruebas con estos filtros.</p>';
     // Tabla por EECC
     const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
     // g = 'ec|EECC' o 'tec|EECC|TÉCNICO': cada número abre la lista de sus AB
