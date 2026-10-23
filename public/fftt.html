@@ -42,7 +42,7 @@ h1, h2, h3, .chip, th, .kv, .marca, .nav { font-family: var(--f-disp); }
 .filtros { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: flex-end; }
 .seg-t { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .8px; color: #B9BCCB; margin-bottom: 8px; display: block; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font-size: 13px; font-weight: 600; padding: 9px 15px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; cursor: pointer; min-height: 38px; }
+.chip { font-size: 12.5px; font-weight: 600; padding: 6px 13px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; cursor: pointer; min-height: 38px; }
 .chip:hover { border-color: #FF0091; }
 .chip[aria-pressed="true"] { background: #FF0091; border-color: #FF0091; }
 .fecha { font: 600 13px var(--f-txt); min-height: 38px; padding: 7px 12px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; color-scheme: dark; }
@@ -70,10 +70,10 @@ h2 { margin: 0; font-size: 22px; font-weight: 800; } .sub { margin: 4px 0 0; col
 .segs .chip { color: var(--fg); border-color: var(--borde-2); font-size: 12px; padding: 6px 11px; min-height: 32px; }
 .segs .chip[aria-pressed="true"] { color: #fff; }
 .caja { max-height: 640px; overflow: auto; border: 1px solid var(--borde); border-radius: 12px; }
-table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
-th { position: sticky; top: 0; z-index: 1; background: var(--sup); font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .4px; color: var(--fg-3); padding: 10px 6px; border-bottom: 2px solid var(--fg); white-space: nowrap; cursor: pointer; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 12px; }
+th { position: sticky; top: 0; z-index: 1; background: var(--sup); font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .4px; color: var(--fg-3); padding: 9px 4px; border-bottom: 2px solid var(--fg); white-space: nowrap; cursor: pointer; }
 th[aria-sort="ascending"]::after { content: ' ▲'; } th[aria-sort="descending"]::after { content: ' ▼'; }
-td { padding: 8px 6px; border-bottom: 1px solid var(--borde); white-space: nowrap; text-align: center; }
+td { padding: 7px 4px; border-bottom: 1px solid var(--borde); white-space: nowrap; text-align: center; }
 td.izq { text-align: left; }
 tr:hover td { background: var(--rosa); }
 td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 700; cursor: help; }
@@ -137,6 +137,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const n = (v) => Number(v || 0).toLocaleString('es-PE');
 const pc = (a, b) => b ? (a / b * 100).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' : '—';
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const tecCorto = (t) => { if (!t) return ''; const [ape, nom] = String(t).split(','); return nom ? `${nom.trim().split(' ')[0]} ${ape.trim().split(' ')[0]}` : t; };
 const dmy = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
 const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
 
@@ -228,7 +229,8 @@ $('cab').addEventListener('click', (e) => { const th = e.target.closest('[data-c
 const valor = (o, c) => c === 'err' ? (o.bad ? 0 : REGLAS[o.pl] ? 1 : 2) : c === 'ab' || c === 'os' ? o[c] : String(o[c] ?? '');
 const titulo = (o, k) => { const r = REGLAS[o.pl][k], s = r.sug ? r.sug(o[k]) : ''; return `${r.txt}${s && s !== String(o[k]).trim() ? `\nSugerencia: ${s}` : ''}`; };
 const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.bad ? `<span class="b no">${Object.keys(o.bad).map(x => CAMPOS[x]).join(', ')}</span>` : '<span class="b ok">OK</span>'}</td>`;
-  const v = k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : (o[k] ?? ''), bad = o.bad && o.bad[k];
+  const v = k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : k === 'tec' ? tecCorto(o.tec) : (o[k] ?? ''), bad = o.bad && o.bad[k];
+  if (k === 'tec') return `<td class="izq" title="${esc(o.tec)}">${esc(v || '—')}</td>`;
   if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
   return `<td class="${cl || ''}${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}"` : ''}>${esc(v === '' ? '—' : v)}</td>`; }).join('')}</tr>`;
 let resto = [];
