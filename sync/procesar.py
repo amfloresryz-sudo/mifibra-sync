@@ -418,9 +418,13 @@ def _elegir_zona_fftt(df: pd.DataFrame) -> None:
     ZONA_FFTT["candidatas"] = puntaje
     if not puntaje:
         return
-    mejor = max(puntaje, key=lambda k: (puntaje[k][0], puntaje[k][1]))
-    if puntaje[mejor][0] < 0.3:
-        return
+    # «ZONA» (en mayúsculas) es la columna del TAP que usaba el buscador FFTT; si no viene, la de más valores con forma de TAP.
+    if "ZONA" in puntaje:
+        mejor = "ZONA"
+    else:
+        mejor = max(puntaje, key=lambda k: (puntaje[k][0], puntaje[k][1]))
+        if puntaje[mejor][0] < 0.3:
+            return
     ZONA_FFTT["columna"] = mejor
     df["__zona_tap"] = df[next(c for c in cands if str(c) == mejor)]
 
