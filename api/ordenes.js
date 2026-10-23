@@ -51,7 +51,7 @@ const COLUMNAS_FICHA = 'nro_os,abonado_codigo,estado_os,distrito,segmento,servic
 const fechaValida = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 
 module.exports = async (req, res) => {
-  if (!autorizado(req)) return responder(res, 401, { error: 'No autorizado' });
+  if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
   const q = new URL(req.url, 'http://x').searchParams;
   if (q.has('ficha')) {
     const os = String(parseInt(q.get('ficha'), 10));

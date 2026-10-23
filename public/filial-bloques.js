@@ -16,10 +16,12 @@
     let ult = null;
     const pinta = () => {
       const v = sel.value || 'LIMA', prov = v !== 'LIMA'; ult = v;
-      box.querySelector('.blq-a').innerHTML = [['LIMA', 'Lima'], ['PROVINCIAS', 'Provincias']].map(([k, t]) =>
+      const ok = (k) => !window.mfPuede || window.mfPuede(k), fijo = !ok('LIMA') && !ok('PROVINCIAS');   // usuario de una sola provincia
+      box.querySelector('.blq-a').innerHTML = fijo ? `<button type="button" class="chip" aria-pressed="true" disabled style="opacity:1;cursor:default">${nom(v)}</button>`
+        : [['LIMA', 'Lima'], ['PROVINCIAS', 'Provincias']].filter(([k]) => ok(k)).map(([k, t]) =>
         `<button type="button" class="chip" data-blq="${k}" aria-pressed="${k === 'LIMA' ? !prov : prov}">${t}</button>`).join('');
-      const f = box.querySelector('.blq-f'); f.hidden = !prov;
-      f.innerHTML = prov ? [['PROVINCIAS', 'Todas'], ...PROV.map(p => [p, nom(p)])].map(([k, t]) =>
+      const f = box.querySelector('.blq-f'); f.hidden = !prov || fijo;
+      f.innerHTML = prov && !fijo ? [['PROVINCIAS', 'Todas'], ...PROV.map(p => [p, nom(p)])].filter(([k]) => ok(k)).map(([k, t]) =>
         `<button type="button" class="chip" data-blq="${k}" aria-pressed="${v === k}">${t}</button>`).join('') : '';
     };
     box.addEventListener('click', (e) => { const b = e.target.closest('[data-blq]'); if (!b || sel.value === b.dataset.blq) return;

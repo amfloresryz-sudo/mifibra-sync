@@ -4,7 +4,7 @@
 const { consultar, autorizado, responder, filialDe } = require('./_supabase');
 
 module.exports = async (req, res) => {
-  if (!autorizado(req)) return responder(res, 401, { error: 'No autorizado' });
+  if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
   const filial = filialDe(req);
   try {
     const { datos } = await consultar(`tableros?select=datos,actualizado&clave=eq.${encodeURIComponent('observadas:' + filial)}`);

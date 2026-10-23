@@ -3,7 +3,7 @@
 const { consultar, autorizado, responder, filialDe } = require('./_supabase');
 
 module.exports = async (req, res) => {
-  if (!autorizado(req)) return responder(res, 401, { error: 'No autorizado' });
+  if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
   const filial = filialDe(req);
   try {
     // ?mes=AAAA-MM: tablero de un mes cerrado (el robot guarda el mes anterior); sin mes = mes en curso.

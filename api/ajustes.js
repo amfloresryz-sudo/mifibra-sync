@@ -3,15 +3,7 @@
 // Ajustes que operaciones edita en el portal: metas (generales y por canal de atención), nombres de EECC, gestor de cada EECC
 // y rutas (técnicos) que asisten cada día por EECC. Se validan antes de guardar.
 const crypto = require('crypto');
-const { consultar, guardar, autorizado, responder, filialDe, FILIALES } = require('./_supabase');
-
-// Clave del usuario master (variable MASTER_TOKEN en Vercel): la única que puede editar agendas.
-function esMaster(req) {
-  const esperado = process.env.MASTER_TOKEN || '', dado = String(req.headers['x-master-token'] || '');
-  if (!esperado || !dado) return false;
-  const a = Buffer.from(esperado), b = Buffer.from(dado);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
+const { consultar, guardar, autorizado, responder, filialDe, FILIALES, esMaster } = require('./_supabase');
 
 const MODULOS = ['instalaciones', 'averias', 'rutas'];   // rutas: rutas fijas por filial y EECC (una sola fila para todo el portal)
 const METAS = ['meta_mes', 'meta_conv', 'meta_disp', 'meta_db', 'meta_prod', 'obj_tecnico', 'meta_cumpl'];
@@ -106,7 +98,7 @@ async function leerCuerpo(req) {
 }
 
 module.exports = async (req, res) => {
-  if (!autorizado(req)) return responder(res, 401, { error: 'No autorizado' });
+  if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
   const filial = filialDe(req);
   const modulo = new URL(req.url, 'http://x').searchParams.get('modulo') || 'instalaciones';
   if (!MODULOS.includes(modulo)) return responder(res, 400, { error: 'Módulo no válido' });

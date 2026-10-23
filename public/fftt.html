@@ -240,10 +240,10 @@ $('corte').innerHTML = `${n(R.length)} altas descargadas del ${dmy(R.reduce((a, 
 /* ---------- Filtros ---------- */
 const F = { filial: 'LIMA', mes: '', desde: '', hasta: '', q: '', kpi: '', ec: new Set(), pl: new Set(), cf: {} };
 const filiales = [...new Set(R.map(o => o.fi))].sort((a, b) => a === 'LIMA' ? -1 : b === 'LIMA' ? 1 : a.localeCompare(b));
-if (!filiales.includes('LIMA')) F.filial = '';
+if (!filiales.includes('LIMA')) F.filial = filiales.length === 1 ? filiales[0] : '';
 const meses = [...new Set(R.map(o => o.mes))].sort();
 const chips = (id, ops, sel) => { $(id).innerHTML = ops.map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${sel === v}">${esc(t)}</button>`).join(''); };
-const pintarChips = () => { chips('f-filial', [['', 'Todas'], ...filiales.map(f => [f, f.charAt(0) + f.slice(1).toLowerCase()])], F.filial);
+const pintarChips = () => { chips('f-filial', [...(filiales.length > 1 ? [['', 'Todas']] : []), ...filiales.map(f => [f, f.charAt(0) + f.slice(1).toLowerCase()])], F.filial);
   chips('f-mes', [['', 'Todos'], ...meses.map(m => [m, `${MESES[+m.slice(5) - 1]} ${m.slice(0, 4)}`])], F.mes); $('f-desde').value = F.desde; $('f-hasta').value = F.hasta; };
 $('f-filial').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.filial = b.dataset.v; F.ec.clear(); pintarChips(); pintar(); });
 $('f-mes').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.mes = b.dataset.v; F.desde = F.hasta = ''; pintarChips(); pintar(); });

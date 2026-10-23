@@ -152,3 +152,8 @@ td.vacio { text-align: center; color: var(--texto-4); padding: 32px; }
   .franja h1 { font-size: 30px; }
   .marca b { font-size: 24px; }
 }
+
+/* Usuarios */
+.acceso .nota-acc { margin: 0; font-size: 13px; color: var(--texto-2); text-align: center; }
+.acceso form[hidden] { display: none; }
+.usr { font-size: 12px; font-weight: 600; color: var(--texto-2); padding: 6px 10px; border-radius: 20px; background: #F3F4F6; white-space: nowrap; }

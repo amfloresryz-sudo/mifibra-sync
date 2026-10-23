@@ -1,22 +1,29 @@
 // GET /api/speedtest
 // Tablero de Speed Test (todas las filiales): lo calcula el robot en cada sincronización con los enlaces de
 // «Observaciones Tecnico» y lo guarda en la tabla "tableros" (clave "speedtest"). La página filtra en el navegador.
-const { consultar, autorizado, responder } = require('./_supabase');
+const { consultar, autorizado, responder, puedeVer, permitidas } = require('./_supabase');
 
 module.exports = async (req, res) => {
-  if (!autorizado(req)) return responder(res, 401, { error: 'No autorizado' });
+  if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
   try {
     // ?os=1,2,3: datos de esas OS de instalación para las listas de AB (F. Recep, F. atención, distrito y estado)
     const os = new URL(req.url, 'http://x').searchParams.get('os');
     if (os != null) {
       const L = [...new Set(os.split(',').map(v => parseInt(v, 10)).filter(v => v > 0))].slice(0, 300);
       if (!L.length) return responder(res, 200, []);
-      const { datos } = await consultar(`ordenes_servicio?select=nro_os,abonado_codigo,filial,fecha_registro,fecha_atencion,distrito,estado_os&tipo_orden=eq.${encodeURIComponent('INSTALACION SERVICIO')}&nro_os=in.(${L.join(',')})`);
+      const { datos } = await consultar(`ordenes_servicio?select=nro_os,abonado_codigo,filial,fecha_registro,fecha_atencion,distrito,estado_os&tipo_orden=eq.${encodeURIComponent('INSTALACION SERVICIO')}&nro_os=in.(${L.join(',')})${req.usuario.f !== 'TODAS' ? `&filial=in.(${permitidas(req.usuario.f).map(f => `"${f}"`).join(',')})` : ''}`);
       return responder(res, 200, datos);
     }
     const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.speedtest');
     if (!datos.length) return responder(res, 404, { error: 'Aún no hay datos de Speed Test: aparecen después de la próxima actualización del robot.' });
-    responder(res, 200, { ...datos[0].datos, actualizado: datos[0].actualizado }, 60);
+    let d = datos[0].datos;
+    if (req.usuario.f !== 'TODAS') {   // usuario de una filial: solo sus filas (y los enlaces repetidos re-numerados)
+      const nuevo = new Map(), o = [];
+      d.o.forEach((f, i) => { if (puedeVer(req, d.f[f[0]])) { nuevo.set(i, o.length); o.push(f); } });
+      const rep = (d.rep || []).map(([u, ix]) => [u, ix.filter(i => nuevo.has(i)).map(i => nuevo.get(i))]).filter(r => r[1].length);
+      d = { ...d, o, rep };
+    }
+    responder(res, 200, { ...d, actualizado: datos[0].actualizado }, 60);
   } catch (e) {
     responder(res, 500, { error: e.message });
   }

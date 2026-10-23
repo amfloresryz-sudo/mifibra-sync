@@ -41,25 +41,41 @@
   }
 
   function pedirAcceso(mensaje = '') {
-    acceso.hidden = false;
+    acceso.hidden = false; document.getElementById('form-acceso').hidden = false; document.getElementById('form-cambio').hidden = true;
     document.getElementById('error-acceso').textContent = mensaje;
-    document.getElementById('clave').focus();
+    document.getElementById(document.getElementById('usuario').value ? 'clave' : 'usuario').focus();
   }
 
-  document.getElementById('form-acceso').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const t = document.getElementById('clave').value.trim();
+  // Ingreso con usuario propio (o la clave general con el usuario en blanco). En el primer ingreso se pide crear la contraseña.
+  const $id = (x) => document.getElementById(x);
+  let tokenCambio = '';
+  async function post(ruta, cuerpo, t) {
+    const r = await fetch(ruta, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { 'x-portal-token': t } : {}) }, body: JSON.stringify(cuerpo) });
+    const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || `Error ${r.status}`); return d;
+  }
+  function entrar(d) {
+    try { localStorage.setItem('mifibra_usuario', JSON.stringify({ u: d.usuario || '', n: d.nombre || '', f: d.filial || 'TODAS' })); } catch { /* sin almacenamiento */ }
+    guardarToken(d.token); location.reload();   // al recargar se aplican la filial y los permisos del usuario en toda la página
+  }
+  $id('form-acceso').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const btn = ev.submitter || $id('form-acceso').querySelector('button'); btn.disabled = true; $id('error-acceso').textContent = '';
     try {
-      const datos = await api('/api/indicadores', t);
-      guardarToken(t);
-      cacheIndicadores = { datos, en: Date.now() };
-      acceso.hidden = true;
-      document.getElementById('clave').value = '';
-      mostrar();
-    } catch (e) {
-      document.getElementById('error-acceso').textContent = e instanceof NoAutorizado ? 'Contraseña incorrecta.' : `No se pudo conectar: ${e.message}`;
-    }
+      const d = await post('/api/usuarios?accion=ingresar', { usuario: $id('usuario').value.trim(), clave: $id('clave').value });
+      if (d.cambiar) { tokenCambio = d.token; $id('form-acceso').hidden = true; $id('form-cambio').hidden = false;
+        $id('cambio-hola').textContent = `Hola ${d.nombre}, es tu primer ingreso: cambia la contraseña inicial por una tuya (mínimo 6 caracteres).`; $id('nueva').focus(); return; }
+      entrar(d);
+    } catch (e) { $id('error-acceso').textContent = e.message; } finally { btn.disabled = false; }
   });
+  $id('form-cambio').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const n1 = $id('nueva').value, n2 = $id('nueva2').value;
+    if (n1 !== n2) { $id('error-cambio').textContent = 'Las contraseñas no coinciden.'; return; }
+    try { entrar(await post('/api/usuarios?accion=cambiar', { nueva: n1 }, tokenCambio)); }
+    catch (e) { $id('error-cambio').textContent = e.message; }
+  });
+  // Quién está conectado; el acceso a «Usuarios» se muestra solo a quien ve todas las filiales
+  const yo = window.mfUsuario;
+  if (yo && yo.n) { const nf = yo.f === 'TODAS' ? 'Todas las filiales' : yo.f.charAt(0) + yo.f.slice(1).toLowerCase(); $id('usr').textContent = `${yo.n} · ${nf}`; $id('usr').hidden = false; }
+  $id('adm').hidden = !!(yo && yo.f && yo.f !== 'TODAS');
 
   const selFilial = document.getElementById('filial');
   selFilial.value = filial();

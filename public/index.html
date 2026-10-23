@@ -23,6 +23,8 @@
       <a href="/speedtest.html">SPEED TEST</a>
       <a href="#dashboard" data-ruta="dashboard" class="dash">DASHBOARD</a>
       <select id="filial" class="filial" aria-label="Filial" title="Filial"><option value="LIMA">LIMA</option><optgroup label="PROVINCIAS"><option value="PROVINCIAS">PROVINCIAS (todas)</option><option value="ANCASH">· Ancash</option><option value="AREQUIPA">· Arequipa</option><option value="CAJAMARCA">· Cajamarca</option><option value="HUANUCO">· Huanuco</option><option value="LA LIBERTAD">· La Libertad</option><option value="LAMBAYEQUE">· Lambayeque</option><option value="PIURA">· Piura</option></optgroup></select>
+      <span class="usr" id="usr" hidden></span>
+      <a href="/usuarios.html" class="adm" id="adm" hidden>USUARIOS</a>
       <button type="button" class="salir" id="salir">Salir</button>
     </nav>
   </div>
@@ -41,11 +43,28 @@
   <form id="form-acceso">
     <div class="marca"><b>mifibra</b><span>Operaciones</span></div>
     <h1>Ingresa al portal</h1>
-    <label>Contraseña del portal
+    <label>Usuario
+      <input type="text" id="usuario" autocomplete="username" autocapitalize="none" spellcheck="false">
+    </label>
+    <label>Contraseña
       <input type="password" id="clave" autocomplete="current-password" required>
     </label>
     <p class="error" id="error-acceso" role="alert"></p>
     <button class="btn" type="submit">Ingresar</button>
+    <p class="nota-acc">¿Usas la clave general? Deja el usuario en blanco.</p>
+  </form>
+  <form id="form-cambio" hidden>
+    <div class="marca"><b>mifibra</b><span>Operaciones</span></div>
+    <h1>Crea tu contraseña</h1>
+    <p class="nota-acc" id="cambio-hola" style="text-align:left"></p>
+    <label>Nueva contraseña
+      <input type="password" id="nueva" autocomplete="new-password" minlength="6" required>
+    </label>
+    <label>Repite la contraseña
+      <input type="password" id="nueva2" autocomplete="new-password" minlength="6" required>
+    </label>
+    <p class="error" id="error-cambio" role="alert"></p>
+    <button class="btn" type="submit">Guardar y entrar</button>
   </form>
 </div>
 
