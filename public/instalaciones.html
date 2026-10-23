@@ -260,6 +260,10 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 #tb-av td.av-falta { background: var(--mal-bg); color: var(--mal); font-weight: 800; } #tb-av td.av-ok { background: var(--ok-bg); color: var(--ok); font-weight: 800; } #tb-av td.bm { color: var(--mal); font-weight: 700; }
 /* Detalle de pendientes: ancho fijo por columna, se ajusta a la pantalla sin scroll horizontal */
 #tb-pend { table-layout: fixed !important; }
+/* Copia de imagen del detalle de pendientes: más grande y legible */
+#tb-pend.img-g { font-size: 14px !important; } #tb-pend.img-g thead th { font-size: 12.5px !important; padding: 10px 3px !important; } #tb-pend.img-g td { padding: 10px 3px !important; }
+#tb-pend.img-g .b { font-size: 12.5px !important; padding: 3px 8px !important; } #tb-pend.img-g .b.edad { display: inline-block !important; }
+#tb-pend.img-g th.ordenable[aria-sort="none"]::after { content: "" !important; }
 #tb-pend td { overflow: hidden; text-overflow: ellipsis; }
 #tb-pend thead th { overflow: hidden; text-overflow: clip; padding: 7px 1px !important; }
 #tb-pend thead th .fcol { width: 16px; height: 18px; margin-left: 1px; }
@@ -3226,7 +3230,11 @@ document.addEventListener('click', async (e) => {
   try {
     if (bi) {
       const blob = (async () => { await cargar(URL_H2C); // Sin botones, selector de día ni avisos: la imagen muestra solo título, indicadores y tabla.
-        const cv = await html2canvas(tb, { backgroundColor: base, scale: 2, logging: false, ignoreElements: (el) => el.matches && el.matches('.pen-acc, .pen-aviso, .ag-est, .no-img') }); return await new Promise(r => cv.toBlob(r, 'image/png')); })();
+        // Imagen en 4K (3.840 px de ancho) para que en WhatsApp se lea nítida; el detalle de pendientes además se arma más grande (letra y columnas)
+        const grande = tb.id === 'tb-pend', anchoImg = grande ? 2000 : tb.offsetWidth, escala = Math.min(6, Math.max(2, 3840 / Math.max(1, anchoImg)));
+        const cv = await html2canvas(tb, { backgroundColor: base, scale: escala, logging: false, windowWidth: Math.max(innerWidth, anchoImg + 80),
+          onclone: (doc) => { if (!grande) return; const t = doc.getElementById('tb-pend'); if (t) { t.classList.add('img-g'); t.style.width = anchoImg + 'px'; } },
+          ignoreElements: (el) => el.matches && el.matches('.pen-acc, .pen-aviso, .ag-est, .no-img, .fcol') }); return await new Promise(r => cv.toBlob(r, 'image/png')); })();
       try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); aviso(id, 'Imagen de la tabla copiada. Pégala con Ctrl+V en WhatsApp, correo o Excel.'); }
       catch { await bajar(await blob, nombreArch(b.dataset.nom || id, 'png')); aviso(id, 'El navegador no permitió copiar; se descargó la imagen en PNG.'); }
     } else {
