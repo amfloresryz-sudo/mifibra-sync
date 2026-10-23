@@ -12,7 +12,8 @@ const crypto = require('crypto');
 const { consultar, pedir, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, FILIALES } = require('./_supabase');
 
 const FIL_OK = ['TODAS', ...FILIALES];
-const limpioU = (v) => String(v || '').trim().toLowerCase();
+// Usuario sin distinguir mayúsculas, espacios ni tildes (RDiaz, rdiaz y « rdíaz » son el mismo)
+const limpioU = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
 const nombreOk = (v) => String(v || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
 const usuarioValido = (u) => /^[a-z0-9._-]{3,30}$/.test(u);
 const ALFA = 'abcdefghjkmnpqrstuvwxyz23456789';
@@ -58,7 +59,9 @@ module.exports = async (req, res) => {
         return responder(res, 401, { error: a.general === false ? 'La clave general ya no está activa: ingresa con tu usuario.' : 'Contraseña incorrecta.' });
       }
       const u = await buscar(usuario);
-      if (!u || !verificar(clave, u.clave_hash)) return responder(res, 401, { error: 'Usuario o contraseña incorrectos.' });
+      // La contraseña inicial (generada en minúsculas) se acepta aunque el celular ponga mayúsculas; la propia sí distingue
+      const okClave = !!u && (verificar(clave, u.clave_hash) || (u.cambiar_clave && verificar(clave.trim().toLowerCase(), u.clave_hash)));
+      if (!u || !okClave) return responder(res, 401, { error: 'Usuario o contraseña incorrectos.' });
       if (!u.activo) return responder(res, 403, { error: 'Tu usuario está desactivado. Pide al administrador que lo active.' });
       await Promise.all([pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { ultimo_ingreso: new Date().toISOString() }), registrarIngreso(req, u.usuario, u.filial)]);
       return responder(res, 200, { token: firmarSesion(u), nombre: u.nombre, filial: u.filial, cambiar: u.cambiar_clave, usuario: u.usuario });
