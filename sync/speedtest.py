@@ -29,6 +29,15 @@ def plan_clase(tarifa) -> int:
     return 0 if nums[0] <= 1000 else 1
 
 
+def plan_nombre(tarifa) -> str:
+    """Plan tal como se ve en la pestaña: «500 Mbps», «2000 Mbps»… (el número de la tarifa); sin número, la tarifa tal cual."""
+    t = _txt(tarifa)
+    nums = [int(n) for n in _RE_PLAN.findall(t) if 50 <= int(n) <= 20000]
+    if nums:
+        return f"{nums[0]} Mbps"
+    return t.title() if t else "Sin plan"
+
+
 def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, str], corte: str) -> dict:
     """df: órdenes del periodo (columnas de la base). links: id_os → [[clave, enlace, quién]]."""
     x = df[(df["tipo_orden"] == "INSTALACION SERVICIO") & (df["estado_os"] == "DESCARGADA")].copy()
@@ -43,7 +52,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         for clave, _, _ in links.get(int(ido), []):
             veces[clave] += 1
 
-    tablas = {"f": [], "e": [], "k": []}
+    tablas = {"f": [], "e": [], "k": [], "pn": []}
     idx = {k: {} for k in tablas}
 
     def ix(t, v):
@@ -68,7 +77,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         dia = r.fa.strftime("%Y-%m-%d")
         ab = int(r.abonado_codigo) if pd.notna(r.abonado_codigo) else None
         os_ = int(r.nro_os) if pd.notna(r.nro_os) else None
-        filas.append([fi, dia, ei, ki, plan_clase(r.tarifa_servicio), ab, os_, cli, tec_n, sid, n_rep])
+        filas.append([fi, dia, ei, ki, plan_clase(r.tarifa_servicio), ab, os_, cli, tec_n, sid, n_rep, ix("pn", plan_nombre(r.tarifa_servicio))])
         for clave, url, _ in ls:
             if veces[clave] > 1:
                 rep[clave].append([len(filas) - 1, url])
@@ -76,4 +85,4 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
     # Enlaces repetidos: [enlace, [índices de filas donde aparece]].
     repetidos = [[v[0][1], [i for i, _ in v]] for _, v in sorted(rep.items(), key=lambda kv: (-len(kv[1]), kv[0]))]
     return {"corte": corte, **tablas, "o": filas, "rep": repetidos,
-            "cols": ["filial", "fecha_atencion", "eecc", "tecnico", "plan", "ab", "os", "cliente", "tecnico_n", "sin_identificar", "repetidos"]}
+            "cols": ["filial", "fecha_atencion", "eecc", "tecnico", "plan", "ab", "os", "cliente", "tecnico_n", "sin_identificar", "repetidos", "plan_nombre"]}
