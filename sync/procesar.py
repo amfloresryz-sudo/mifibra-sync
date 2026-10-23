@@ -71,7 +71,8 @@ ENTEROS = {"id_os", "nro_os", "abonado_codigo"}
 FECHAS = {"F. Atenc.": "fecha_atencion", "Fecha Instalación Abonado": "fecha_instalacion_abonado", "Fecha Asignacion": "fecha_programada", "Fecha Atencion": "fecha_cita"}
 
 MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-_RE_AGENDA = re.compile(r"#\s*AGENDA(?:\s+ATC)?\s+(\d{1,2})/(\d{1,2})\s+(\d{1,2})\s*-\s*(\d{1,2})\s*#", re.I)
+# #AGENDA ATC dd/mm h1-h2# y también #AGENDA MCD dd/mm h1-h2# (misma forma y detalle)
+_RE_AGENDA = re.compile(r"#\s*AGENDA(?:\s+(?:ATC|MCD))?\s+(\d{1,2})/(\d{1,2})\s+(\d{1,2})\s*-\s*(\d{1,2})\s*#", re.I)
 _RE_VISITA = re.compile(r"agenda|(?:primera|segunda)\s*vis", re.I)
 _RE_HORA = re.compile(r"^(\d{1,2}):(\d{2})")
 _RE_DMY = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?")
@@ -145,7 +146,7 @@ def _agenda(obs) -> dict:
     """Las observaciones son texto libre y NO se guardan: solo se extrae la agenda y un indicador.
 
     - obs_agenda: menciona agenda, primera visita o segunda visita (se excluye de la meta de 100 min).
-    - agenda_estado: ok (#AGENDA ATC dd/mm h1-h2#), sinformato (hay texto sin ese formato) o vacio.
+    - agenda_estado: ok (#AGENDA ATC dd/mm h1-h2# o #AGENDA MCD dd/mm h1-h2#), sinformato (hay texto sin ese formato) o vacio.
     - agenda_texto: la agenda ya formateada, p. ej. "15-oct. 8 - 10".
     """
     t = str(_texto(obs) or "")

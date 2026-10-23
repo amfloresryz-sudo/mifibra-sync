@@ -169,7 +169,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, z
     st["inf"] = (st["dinf"] >= 0) & (st["dinf"] <= 30)
 
     def clasificar(r) -> str:
-        if _txt(r["agenda_estado"]) == "ok":   # solo el formato #AGENDA ATC dd/mm hh-hh# es agenda (no corre el contador)
+        if _txt(r["agenda_estado"]) == "ok":   # solo el formato #AGENDA ATC (o MCD) dd/mm hh-hh# es agenda (no corre el contador)
             return "agenda"
         if _RE_VISITA.search(_txt(r.get("observaciones"))):   # 1.ª / 2.ª visita o VD en el comentario
             return "agenda"
@@ -241,7 +241,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, z
         })
 
     # Agendas de averías y TC (mismo criterio que instalaciones): si la OS trae franja en HORARIO ATENCION OS con su
-    # Fecha Asignacion, se respeta; si no, el día y franja de #AGENDA ATC dd/mm h1-h2# de las observaciones. Solo las del mes.
+    # Fecha Asignacion, se respeta; si no, el día y franja de #AGENDA ATC o MCD dd/mm h1-h2# de las observaciones. Solo las del mes.
     MES_N = {m: i + 1 for i, m in enumerate(["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"])}
     _RE_AGT = re.compile(r"(\d{1,2})-([a-z]{3})\.\s*(\d{1,2})\s*-\s*(\d{1,2})")
     fpg = pd.to_datetime(st["fecha_programada"], errors="coerce") if "fecha_programada" in st else pd.Series(pd.NaT, index=st.index)

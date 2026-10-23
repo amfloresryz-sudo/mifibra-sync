@@ -377,7 +377,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
       <div class="excl" id="cien-excl"></div>
       <div class="ley"><span><b style="background:var(--ok)"></b>Cumplió ≤ 100 min</span><span><b style="background:var(--mal)"></b>No cumplió &gt; 100 min</span><span><b style="background:var(--gris)"></b>Sin medir</span></div>
       <div class="scroll"><div id="cien-graf"></div></div>
-      <p class="nota">Clic en un número, en una barra o en un recuadro de “No se consideran” para ver los abonados · Cumplió = inició la atención en 100 min o menos desde la recepción · No cumplió = más de 100 min o sin iniciar pasados los 100 · Sin medir = en curso dentro de los 100 min o sin dato · Con franja OS: si cumple se considera; si pasa de 100 min se excluye · Con agenda (#AGENDA ATC dd/mm hh-hh#) o con 1° visita, 2° visita o VD en el comentario: no se consideran · Universo: SERVICIO TECNICO · LUGAR AVERIA = RED CLIENTE · motivos SIN SERVICIO DE INTERNET, RETENCIONES, MESA CONTROL DESPACHO, LENTITUD, PROBLEMA TV, CLIENTE ONLINE, PROBLEMAS CON JUEGOS, INTERMITENCIA, RED CLIENTE, ALCANCE DE WIFI y PROBLEMA CON ACCESORIOS con servicio INTERNET, y PROBLEMA TV con SERVICIO OTT · Bajo cada día: % que cumplió.</p>
+      <p class="nota">Clic en un número, en una barra o en un recuadro de “No se consideran” para ver los abonados · Cumplió = inició la atención en 100 min o menos desde la recepción · No cumplió = más de 100 min o sin iniciar pasados los 100 · Sin medir = en curso dentro de los 100 min o sin dato · Con franja OS: si cumple se considera; si pasa de 100 min se excluye · Con agenda (#AGENDA ATC (o MCD) dd/mm hh-hh#) o con 1° visita, 2° visita o VD en el comentario: no se consideran · Universo: SERVICIO TECNICO · LUGAR AVERIA = RED CLIENTE · motivos SIN SERVICIO DE INTERNET, RETENCIONES, MESA CONTROL DESPACHO, LENTITUD, PROBLEMA TV, CLIENTE ONLINE, PROBLEMAS CON JUEGOS, INTERMITENCIA, RED CLIENTE, ALCANCE DE WIFI y PROBLEMA CON ACCESORIOS con servicio INTERNET, y PROBLEMA TV con SERVICIO OTT · Bajo cada día: % que cumplió.</p>
     </section>
   </div>
 
@@ -411,7 +411,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
       <div class="kpis" id="agd-kpis"></div>
       <div class="ley"><span><b style="background:var(--ok)"></b>Cumplió</span><span><b style="background:var(--mal)"></b>No cumplió</span><span><b style="background:var(--gris)"></b>Por atender (aún no descargadas, no cuentan en el %)</span></div>
       <div class="scroll" id="agd-graf"></div>
-      <p class="nota">Agendas del mes por día de agenda (sin anuladas) · se respetan la Fecha Asignacion y la franja de la OS; solo si la OS no tiene franja se toma #AGENDA ATC dd/mm h1-h2# de las observaciones · solo se mide la OS DESCARGADA: Cumplió = el inicio de atención fue el día agendado, dentro de la franja o antes (8 - 10 con inicio 10:00 cumple; 10:01 no) · No cumplió = después de la franja o en otro día · bajo cada día: % de cumplimiento · clic en una barra para ver los abonados.</p>
+      <p class="nota">Agendas del mes por día de agenda (sin anuladas) · se respetan la Fecha Asignacion y la franja de la OS; solo si la OS no tiene franja se toma #AGENDA ATC (o MCD) dd/mm h1-h2# de las observaciones · solo se mide la OS DESCARGADA: Cumplió = el inicio de atención fue el día agendado, dentro de la franja o antes (8 - 10 con inicio 10:00 cumple; 10:01 no) · No cumplió = después de la franja o en otro día · bajo cada día: % de cumplimiento · clic en una barra para ver los abonados.</p>
     </section>
     <div class="agd-dos">
       <section class="sec" aria-labelledby="t-agd-ec"><div><h2 id="t-agd-ec">Ranking por EECC</h2><p class="sub">Del mes · Sí = cumplió · No = no cumplió · % de cumplimiento sobre descargadas</p></div><div id="agd-ec"></div></section>
@@ -440,7 +440,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
         <thead><tr><th>Zona</th><th>Distrito</th><th>Seg.</th><th>AB</th><th>OS</th><th>Tipo</th><th title="Infancia">Infan.</th><th title="Reiterada">Reiter.</th><th>EECC_F</th><th>Técnico</th><th>F. Recep</th><th>Agenda</th><th>Visita</th><th>Tiempo</th><th>H.LL</th><th>Inicio</th><th>Cumplió</th></tr></thead>
         <tbody id="pen-filas"></tbody>
       </table></div>
-      <p class="nota">Clic en cualquier encabezado para ordenar (otro clic invierte el orden) · H.LL = hora límite de llegada (recepción + 100 min) · Agenda: con formato #AGENDA ATC dd/mm h1-h2# no se mide tiempo · Visita: si el comentario indica 1° visita, 2° visita o VD (visita directa) tampoco corre el contador (sin visita se muestra -) · Reiterada: n.º de OS del abonado en 30 días · EECC_F: contrata del técnico asignado, o POR ASIGNAR.</p>
+      <p class="nota">Clic en cualquier encabezado para ordenar (otro clic invierte el orden) · H.LL = hora límite de llegada (recepción + 100 min) · Agenda: con formato #AGENDA ATC (o MCD) dd/mm h1-h2# no se mide tiempo · Visita: si el comentario indica 1° visita, 2° visita o VD (visita directa) tampoco corre el contador (sin visita se muestra -) · Reiterada: n.º de OS del abonado en 30 días · EECC_F: contrata del técnico asignado, o POR ASIGNAR.</p>
     </section>
   </div>
 
@@ -813,7 +813,7 @@ const val = (v) => v === null || v === undefined || v === '' ? '—' : esc(v);
 const grilla = (pares) => `<div class="fi-grid">${pares.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
 const sec = (t, html) => `<div class="fi-sec"><h4>${t}</h4>${html}</div>`;
 const VIV_TXT = (v) => !v ? '—' : v.replace('HORIZONTAL', 'Horizontal').replace('VERTICAL', 'Vertical').replace(' MULTIFAMILIAR', ' multifamiliar').replace(' HABITACION', ' habitación');
-const obsHtmlG = (t) => esc(t).replace(/(#\s*AGENDA(?:\s+ATC)?[^#\n]*#)/gi, '<b class="fi-ag">$1</b>')
+const obsHtmlG = (t) => esc(t).replace(/(#\s*AGENDA(?:\s+(?:ATC|MCD))?[^#\n]*#)/gi, '<b class="fi-ag">$1</b>')
   .replace(new RegExp(RE_VIS1.source, 'gi'), (m) => `<mark class="fi-v1">${m}</mark>`)
   .replace(/(#[^#\n]{3,40}#)/g, (m) => m.includes('fi-ag') || m.includes('fi-v1') ? m : `<b>${m}</b>`);
 const obsTecG = (t) => esc(t).replace(/\s*(#\s*\d{1,2}\/\d{1,2}\/\d{4}\s*\d{1,2}:\d{2}\s*#)/g, '\n$1').replace(/^\n/, '').replace(/#\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*(\d{1,2}:\d{2})\s*#/g, '<b>$1 $2</b>').replace(/%([^%]*)%/g, '<b>$1</b>');
@@ -832,7 +832,7 @@ function abrirFicha(tipoF, os) {
     const vv = visDe(p);
     html = (vv ? `<div class="fi-v1-aviso">⚑ El comentario indica <b>${esc(visTxt(vv))}</b> (${vv.n === 'VD' ? 'visita directa' : vv.n === 1 ? 'primera visita del técnico' : 'segunda visita del técnico'})${p.ags !== 'ok' ? ' · no corre el contador de 100 min' : ''}.</div>` : '')
       + (p.otro ? '' : sec('Observaciones de la OS', p.obs ? `<div class="fi-obs">${obsHtml(p.obs)}</div>` : '<p class="fi-nota">Sin observaciones registradas (o aún no sincronizadas) para esta OS.</p>')
-        + `<p class="fi-agl">${agd ? `Agenda leída: <b>${esc(p.ag.replace(/\s+(\d{1,2}\s*-\s*\d{1,2})$/, ' · franja $1'))} (ATC)</b> · no corre el contador de 100 min` : p.ags === 'sinformato' ? 'Sin agenda con formato <b>#AGENDA ATC dd/mm hh-hh#</b>: el contador de 100 min corre desde la recepción' : 'Sin agenda: el contador de 100 min corre desde la recepción'}</p>`)
+        + `<p class="fi-agl">${agd ? `Agenda leída: <b>${esc(p.ag.replace(/\s+(\d{1,2}\s*-\s*\d{1,2})$/, ' · franja $1'))} </b> · no corre el contador de 100 min` : p.ags === 'sinformato' ? 'Sin agenda con formato <b>#AGENDA ATC (o MCD) dd/mm hh-hh#</b>: el contador de 100 min corre desde la recepción' : 'Sin agenda: el contador de 100 min corre desde la recepción'}</p>`)
       + sec('Datos del abonado y la OS', grilla([
         ['OS', p.os], ['Plano', val(p.pl)], ['Plan', val(p.plan)], ['Vivienda', val(VIV_TXT(p.viv))],
         ['Coordenadas', p.co ? `${esc(p.co.replace(/\s+/g, ' '))}<br><a href="https://www.google.com/maps?q=${encodeURIComponent(p.co.replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver en Google Maps</a>` : '—'], ['Técnico', val(p.tec)],
@@ -1186,7 +1186,7 @@ function pintarAgendas() {
   $('agd-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · por día de agenda · Tipo: ${TIPO_TXT().toUpperCase()}${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
   if (!D.agd) { $('agd-kpis').innerHTML = ''; $('agd-graf').innerHTML = '<p class="nota">Aún no hay datos de agendas: aparecen después de la próxima actualización del robot.</p>'; return; }
   const btn = (txt, k) => `<button type="button" class="clic" data-ch="agd" data-d="ALL" data-k="${k}" style="all:unset;cursor:pointer">${txt}</button>`;
-  $('agd-kpis').innerHTML = kpi('Agendas del mes', btn(n(T.n), 'ALL'), `${A.filter(x => x.fo === 'os').length} con franja de la OS · ${A.filter(x => x.fo === 'obs').length} de #AGENDA ATC`, 'acento')
+  $('agd-kpis').innerHTML = kpi('Agendas del mes', btn(n(T.n), 'ALL'), `${A.filter(x => x.fo === 'os').length} con franja de la OS · ${A.filter(x => x.fo === 'obs').length} de #AGENDA ATC o MCD`, 'acento')
     + kpi('Descargadas', btn(n(T.D), 'D'), T.n ? `${(T.D / T.n * 100).toFixed(1).replace('.', ',')}% de las agendas` : '—')
     + kpi('Cumplió', `<span style="color:var(--ok)">${btn(n(T.si), 'si')}</span>`, 'inicio el día agendado, dentro de la franja o antes')
     + kpi('No cumplió', `<span style="color:var(--mal)">${btn(n(T.no), 'no')}</span>`, 'después de la franja o en otro día')
@@ -1229,7 +1229,7 @@ function pintarAgendas() {
   const L = A.filter(x => (agdF.ec === 'TODOS' || x.ec === agdF.ec) && (agdF.res === 'TODOS' || resTxt(x) === agdF.res) && (!qq || [x.ab, x.os, x.tec, x.di].some(v => String(v || '').toUpperCase().includes(qq))))
     .sort((a, b) => a.d - b.d || String(a.fr).localeCompare(String(b.fr), 'es', { numeric: true }));
   $('agd-n').textContent = `${n(L.length)} de ${n(A.length)} agendas`;
-  $('agd-filas').innerHTML = L.map(x => `<tr><td data-v="${x.d}">${fDiaA(x.d)}</td><td>${esc(x.fr)}</td><td>${x.fo === 'os' ? 'OS' : '<span title="#AGENDA ATC de las observaciones">Observación</span>'}</td><td><span class="b ${x.t === 'TC' ? 'tc' : 'av'}">${x.t === 'TC' ? 'TC' : 'AVERIA'}</span></td>
+  $('agd-filas').innerHTML = L.map(x => `<tr><td data-v="${x.d}">${fDiaA(x.d)}</td><td>${esc(x.fr)}</td><td>${x.fo === 'os' ? 'OS' : '<span title="#AGENDA ATC o MCD de las observaciones">Observación</span>'}</td><td><span class="b ${x.t === 'TC' ? 'tc' : 'av'}">${x.t === 'TC' ? 'TC' : 'AVERIA'}</span></td>
     <td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${x.ab}</td><td>${x.os}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
     <td data-v="${msIso(x.rec)}">${x.rec ? fechaHora(x.rec) : '—'}</td><td data-v="${msIso(x.ini)}">${x.ini ? fechaHora(x.ini) : '—'}</td><td>${({ D: 'Descargada', R: 'Registrada', O: 'Observada' })[x.e] || x.e}</td>
     <td>${RES_A[kMedA(x)] || `<span class="b vac">${resTxt(x) === 'NO DESCARGADA' ? 'No descargada' : resTxt(x) === 'HOY' ? 'Hoy' : 'Futura'}</span>`}</td></tr>`).join('') || '<tr><td colspan="14">No hay agendas con estos filtros.</td></tr>';
@@ -1419,7 +1419,7 @@ function pintarPendientes() {
     const vv = visDe(p);
     // Sin formato #AGENDA pero el comentario trae 1.ª / 2.ª visita: se muestra la visita en lugar de «Sin formato».
     const ag = p.ags === 'ok' ? esc(String(p.ag).replace(/\s*-\s*/g, '-').replace(/\.(?=\s)/, ''))
-      : p.ags === 'vacio' || vv ? '—' : '<span class="b sf" title="No cumple el formato #AGENDA ATC dd/mm h1-h2#">Sin formato</span>';
+      : p.ags === 'vacio' || vv ? '—' : '<span class="b sf" title="No cumple el formato #AGENDA ATC (o MCD) dd/mm h1-h2#">Sin formato</span>';
     const vis = vv ? `<span class="b v1" title="${esc(visTxt(vv))} (del comentario)">${esc(visTxt(vv))}</span>` : '-';
     const hll = rec && !p.otro && !sinCont(p) ? rec + SLA * 60000 : null, mas1 = hll && diaLima(hll) !== diaLima(rec);
     const cumple = sinCont(p) ? '-' : e.ok === true ? '<span class="b si">Sí</span>' : e.ok === false ? '<span class="b no">No</span>' : (e.corre ? '<span class="encurso">En curso</span>' : '—');
