@@ -90,6 +90,22 @@ function limpiarResponsables(r) {
   return o;
 }
 
+const PROV7 = ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
+// sync = { DISTRITO: FILIAL } de los distritos de la ventana. Solo se tocan esos distritos y ese mes en la otra vista.
+async function sincronizarLS(filial, mes, valores, sync, actualizado) {
+  const grupos = {};
+  Object.entries(sync).slice(0, 600).forEach(([d, f]) => { const k = texto(d, 80).toUpperCase(), fi = String(f || '').toUpperCase();
+    const destino = filial === 'PROVINCIAS' ? fi : filial;
+    if (k && PROV7.includes(destino) && (filial === 'PROVINCIAS' || PROV7.includes(filial))) (grupos[filial === 'PROVINCIAS' ? destino : 'PROVINCIAS'] ||= []).push(k); });
+  for (const [dest, dis] of Object.entries(grupos)) {
+    const cl = `averias:${dest}`, { datos } = await consultar(`ajustes?select=datos&clave=eq.${encodeURIComponent(cl)}`);
+    const prev = datos.length ? datos[0].datos || {} : {}, ls = { ...(prev.ls || {}) }, m = { ...(ls[mes] || {}) };
+    dis.forEach(d => { if (valores[d] != null) m[d] = valores[d]; else delete m[d]; });
+    if (Object.keys(m).length) ls[mes] = m; else delete ls[mes];
+    await guardar('ajustes', [{ clave: cl, datos: { ...prev, ls: limpiarLS(ls) }, actualizado }], 'clave');
+  }
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = '';
@@ -178,6 +194,10 @@ module.exports = async (req, res) => {
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
+      // LS de Averías: lo cargado en Provincias se replica en cada filial (según la filial de cada distrito) y lo de una filial en Provincias
+      if (modulo === 'averias' && accion === 'ls' && /^\d{4}-\d{2}$/.test(String(cuerpo?.mes || '')) && cuerpo?.sync && typeof cuerpo.sync === 'object') {
+        try { await sincronizarLS(filial, String(cuerpo.mes), nuevo.ls[String(cuerpo.mes)] || {}, cuerpo.sync, actualizado); } catch { /* lo guardado en esta filial ya quedó */ }
+      }
       return responder(res, 200, { ...nuevo, actualizado });
     }
     res.setHeader('Allow', 'GET, POST');
