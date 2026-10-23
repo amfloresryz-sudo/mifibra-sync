@@ -124,6 +124,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .modal table { min-width: 0; width: 100%; } .modal th, .modal td { padding: 9px 6px; } .modal td { font-size: 13px; } .modal th { font-size: 10.5px; letter-spacing: .3px; }
 .b-est { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; background: var(--gris-bg); color: var(--fg-2); } .b-est.D { background: var(--ok-bg); color: var(--ok); } .b-est.O { background: #FFF4DB; color: #8A5300; } .b-est.A { background: var(--mal-bg); color: var(--mal); }
 .urls { margin: 0; padding-left: 18px; font-size: 13px; word-break: break-all; } .urls li { margin: 2px 0; }
+.th-i { display: inline-flex; align-items: center; gap: 2px; }
+.fbtn { all: unset; cursor: pointer; line-height: 0; padding: 3px; margin-left: 2px; border-radius: 5px; color: var(--fg-4); }
+.fbtn:hover, .fbtn:focus-visible { background: var(--gris-bg); color: var(--fg); } .fbtn.on { background: var(--magenta); color: #fff; }
+.fpop { position: fixed; z-index: 90; width: 330px; background: var(--sup); color: var(--fg); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 14px 34px rgba(14,14,26,.25); padding: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.fpop[hidden] { display: none; } .fpop input[type=search] { font: inherit; padding: 7px 10px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
+.fpop .fl { max-height: 260px; overflow: auto; display: flex; flex-direction: column; } .fpop label { flex-shrink: 0; line-height: 1.3; min-height: 26px; display: flex; gap: 8px; align-items: center; padding: 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fpop label:hover { background: var(--rosa); } .fpop label span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; } .fpop label small { margin-left: auto; color: var(--fg-4); } .fpop .fb { display: flex; gap: 8px; justify-content: flex-end; } .fpop .btn-out { min-height: 32px; padding: 5px 12px; font-size: 12px; } .fpop .btn-out.pri { background: var(--magenta); border-color: var(--magenta); color: #fff; }
 </style>
 </head>
 <body>
@@ -169,6 +176,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="sec-cab"><div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos y en un número para ver sus AB.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" data-xls="tb-ec" data-nom="speedtest-eecc">Descargar Excel</button></div></div>
     <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Sin identificar</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody></table></div>
+    <p class="nota" id="ec-fil"></p>
     <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Sin identificar = AB con 2 o más enlaces sin etiqueta de cliente o técnico (se cuentan como del técnico) · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba.</p>
   </section>
 
@@ -285,7 +293,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       if (ab) { const porT = {}; porEc[ec].forEach(o => { (porT[o.t] = porT[o.t] || []).push(o); });
         h += Object.keys(porT).sort((x, y) => porT[y].length - porT[x].length).map(t => fila(t, sum(porT[t]), 'tec', '', 'tec|' + ec + '|' + t)).join(''); }
       return h; }).join('') || '<tr><td colspan="9" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
-    pintarDetalle();
+    filtrarEc(); pintarDetalle();
   }
   const tb = $('tb-ec').tBodies[0];
   const alternar = (tr) => { const ec = tr.dataset.ec; abiertos.has(ec) ? abiertos.delete(ec) : abiertos.add(ec); pintar(); const t = [...tb.querySelectorAll('tr.ec')].find(x => x.dataset.ec === ec); if (t) t.focus(); };
@@ -293,27 +301,91 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   tb.addEventListener('keydown', (e) => { const tr = e.target.closest('tr.ec'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alternar(tr); } });
 
   // ----- Detalle: AB sin medición / enlaces repetidos -----
-  let filasDet = [], cabDet = [], idxDet = [];
+  let filasDet = [], cabDet = [], idxDet = [], posDet = [];
+  // ----- Filtros en los encabezados (como Excel): det y modal filtran los datos; la tabla por EECC filtra sus filas -----
+  const FC = { ec: {}, det: {}, modal: {} };
+  const tCel = (v) => String(v ?? '').trim() || '—';
+  const okFila = (f, key, sin = -1) => Object.entries(FC[key]).every(([c, S]) => +c === sin || S.has(tCel(f[c])));
+  const embudo = '<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h10L6 5.5V10L4 8.5V5.5z" fill="currentColor"/></svg>';
+  const thF = (c, i, key) => `<th><span class="th-i">${esc(c)}<button type="button" class="fbtn${FC[key][i] ? ' on' : ''}" data-ft="${key}" data-fc="${i}" aria-label="Filtrar ${esc(c)}" title="Filtrar ${esc(c)}">${embudo}</button></span></th>`;
+  const pop = document.createElement('div'); pop.className = 'fpop'; pop.hidden = true; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Filtrar columna'); document.body.appendChild(pop);
+  let popCtx = null, popAbierto = 0;
+  function abrirFiltro(btn) {
+    const key = btn.dataset.ft, col = +btn.dataset.fc;
+    if (popCtx && popCtx.key === key && popCtx.col === col && !pop.hidden) { pop.hidden = true; popCtx = null; return; }
+    const vals = key === 'det' ? filasDetAll.filter(f => okFila(f, 'det', col)).map(f => tCel(f[col]))
+      : key === 'modal' ? modalFilasAll.filter(f => okFila(f, 'modal', col)).map(f => tCel(f[col]))
+      : [...$('tb-ec').tBodies[0].querySelectorAll('tr.ec')].filter(tr => okFila([...tr.cells].map(c => c.innerText), 'ec', col)).map(tr => tCel(tr.cells[col].innerText));
+    const C = new Map(); vals.forEach(v => C.set(v, (C.get(v) || 0) + 1));
+    const num = (v) => { const x = Number(String(v).replace(/\./g, '').replace(',', '.').replace('%', '')); return isNaN(x) ? null : x; };
+    const ops = [...C.entries()].sort((a, b) => num(a[0]) != null && num(b[0]) != null ? num(a[0]) - num(b[0]) : a[0].localeCompare(b[0], 'es', { numeric: true }));
+    let S = new Set(FC[key][col] || ops.map(o => o[0]));
+    popCtx = { key, col, ops, S };
+    pop.innerHTML = `<input type="search" placeholder="Buscar…" aria-label="Buscar valor"><label class="fp-todo"><input type="checkbox"> <b>(Seleccionar todo)</b></label><div class="fl"></div><div class="fb"><button type="button" class="btn-out" data-fp="quitar">Quitar filtro</button><button type="button" class="btn-out pri" data-fp="ok">Aplicar</button></div>`;
+    listaFiltro(); pop.hidden = false;
+    const r = btn.getBoundingClientRect(); pop.style.left = Math.max(8, Math.min(r.left - 110, innerWidth - pop.offsetWidth - 8)) + 'px'; pop.style.top = Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 8) + 'px';
+    pop.querySelector('input[type=search]').focus({ preventScroll: true }); popAbierto = Date.now();
+  }
+  function listaFiltro() { const { ops, S } = popCtx, q = pop.querySelector('input[type=search]').value.trim().toUpperCase(), V = ops.filter(([v]) => !q || v.toUpperCase().includes(q));
+    pop.querySelector('.fl').innerHTML = V.slice(0, 400).map(([v, c]) => `<label title="${esc(v)}"><input type="checkbox" data-fv="${esc(v)}"${S.has(v) ? ' checked' : ''}> <span>${esc(v)}</span><small>${n(c)}</small></label>`).join('') + (V.length > 400 ? `<p class="nota">${n(V.length - 400)} valores más: escribe para buscarlos.</p>` : '') || '<p class="nota">Sin coincidencias.</p>';
+    pop.querySelector('.fp-todo input').checked = V.length > 0 && V.every(([v]) => S.has(v)); }
+  pop.addEventListener('input', (e) => { if (e.target.type === 'search') { const q = e.target.value.trim().toUpperCase(); if (q) popCtx.S = new Set(popCtx.ops.filter(([v]) => v.toUpperCase().includes(q)).map(o => o[0])); listaFiltro(); } });
+  pop.addEventListener('change', (e) => { const c = e.target, S = popCtx.S;
+    if (c.closest('.fp-todo')) { const q = pop.querySelector('input[type=search]').value.trim().toUpperCase(); popCtx.ops.filter(([v]) => !q || v.toUpperCase().includes(q)).forEach(([v]) => c.checked ? S.add(v) : S.delete(v)); listaFiltro(); }
+    else if (c.dataset.fv !== undefined) { c.checked ? S.add(c.dataset.fv) : S.delete(c.dataset.fv); listaFiltro(); } });
+  pop.addEventListener('click', (e) => { const b = e.target.closest('[data-fp]'); if (!b) return; const { key, col, ops, S } = popCtx;
+    if (b.dataset.fp === 'quitar' || S.size === ops.length) delete FC[key][col]; else FC[key][col] = new Set(S);
+    pop.hidden = true; popCtx = null; key === 'det' ? pintarDetalle() : key === 'modal' ? pintarModal() : filtrarEc(); });
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.type === 'search') pop.querySelector('[data-fp="ok"]').click(); });
+  document.addEventListener('click', (e) => { const b = e.target.closest('.fbtn[data-ft]'); if (b) { e.stopPropagation(); abrirFiltro(b); return; } if (!pop.hidden && !e.target.closest('.fpop')) { pop.hidden = true; popCtx = null; } }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) { pop.hidden = true; popCtx = null; e.stopPropagation(); } }, true);
+  addEventListener('scroll', (e) => { if (!pop.hidden && Date.now() - popAbierto > 400 && !(e.target.closest && e.target.closest('.fpop'))) { pop.hidden = true; popCtx = null; } }, true);
+  // Tabla por EECC: filtra las filas de EECC (sus técnicos se ven u ocultan con ella)
+  function filtrarEc() {
+    const th = $('tb-ec').tHead.rows[0];
+    if (!th.querySelector('.fbtn')) th.innerHTML = [...th.cells].map((c, i) => thF(c.textContent, i, 'ec')).join('');
+    th.querySelectorAll('.fbtn').forEach(b => b.classList.toggle('on', !!FC.ec[b.dataset.fc]));
+    let ok = true; [...$('tb-ec').tBodies[0].rows].forEach(tr => { if (tr.classList.contains('ec')) ok = okFila([...tr.cells].map(c => c.innerText), 'ec'); if (tr.cells.length > 1) tr.hidden = !ok; });
+    const nf = Object.keys(FC.ec).length; $('ec-fil').innerHTML = nf ? `${nf} filtro${nf > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="ec-fil-q">quitar</button>` : '';
+  }
+  document.addEventListener('click', (e) => { if (e.target.id === 'ec-fil-q') { FC.ec = {}; filtrarEc(); } else if (e.target.id === 'det-fil-q') { FC.det = {}; pintarDetalle(); } else if (e.target.id === 'modal-fil-q') { FC.modal = {}; pintarModal(); } });
+  let filasDetAll = [];
+  // Dónde está la otra aparición de un enlace repetido (para entender por qué cuenta como repetido aunque aquí se vea 1 vez)
+  const MESC = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+  function dondeRep(todo, aqui) {
+    const filas = [...new Set(todo)], abs = new Set(filas.map(i => O[i].ab));
+    if (filas.length === 1) return 'Mismo AB: 2 veces en la misma OS';
+    const fuera = filas.filter(i => !aqui.includes(i));
+    const base = abs.size === 1 ? 'Mismo AB en otra OS' : 'Varios AB';
+    if (!fuera.length) return base;
+    const meses = [...new Set(fuera.map(i => O[i].d.slice(0, 7)))].filter(m => !aqui.some(i => O[i].d.startsWith(m))), fils = [...new Set(fuera.map(i => O[i].f))].filter(f => !aqui.some(i => O[i].f === f));
+    const donde = [...meses.map(m => MESC[+m.slice(5) - 1]), ...fils].join(', ');
+    return `${base} · también fuera de este filtro${donde ? ' (' + donde + ')' : ''}`;
+  }
   function pintarDetalle() {
     if (tab === 'sin') {
       const S = L.filter(o => !o.pr).sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
       cabDet = ['Filial', 'F. atención', 'AB', 'OS', 'EECC', 'Técnico', 'Plan', 'Enlaces repetidos'];
-      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, PLANES[o.p], o.r || 0]); idxDet = S.map(o => o.i);
+      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, PLANES[o.p], o.r || 0]); idxDet = S.map(o => o.i); posDet = S.map((o, k) => k);
       $('det-sub').textContent = `${n(S.length)} instalaciones sin ninguna prueba válida (sin enlace, o solo con enlaces repetidos)${S.length > 500 ? ' · se muestran las 500 más recientes; el Excel trae todas' : ''}`;
     } else {
-      const R = D.rep.map(([url, idx]) => [url, idx.filter(i => sel(O[i]))]).filter(([, idx]) => idx.length);
-      cabDet = ['Enlace', 'Veces', 'AB', 'Filiales', 'EECC'];
-      filasDet = R.map(([url, idx]) => [url, idx.length, [...new Set(idx.map(i => O[i].ab))].join(', '), [...new Set(idx.map(i => O[i].f))].join(', '), [...new Set(idx.map(i => O[i].e))].join(', ')]); idxDet = R.map(([, idx]) => idx);
+      const R = D.rep.map(([url, idx]) => [url, idx.filter(i => sel(O[i])), idx]).filter(([, idx]) => idx.length);
+      cabDet = ['Enlace', 'Veces', 'AB', 'Filiales', 'EECC', 'Dónde se repite'];
+      filasDet = R.map(([url, idx, todo]) => [url, idx.length < todo.length ? `${idx.length} de ${todo.length}` : idx.length, [...new Set(idx.map(i => O[i].ab))].join(', '), [...new Set(idx.map(i => O[i].f))].join(', '), [...new Set(idx.map(i => O[i].e))].join(', '), dondeRep(todo, idx)]); idxDet = R.map(([, idx]) => idx); posDet = R.map((r, k) => k);
       $('det-sub').textContent = `${n(R.length)} enlaces que aparecen más de una vez · no cuentan como prueba en ningún AB`;
     }
+    // filtros de los encabezados
+    filasDetAll = filasDet; const keep = filasDet.map((f, k) => k).filter(k => okFila(filasDet[k], 'det'));
+    filasDet = keep.map(k => filasDetAll[k]); idxDet = keep.map(k => idxDet[k]); posDet = keep.map(k => posDet[k]);
+    const nfd = Object.keys(FC.det).length; if (nfd) $('det-sub').innerHTML = esc($('det-sub').textContent) + ` · ${n(filasDet.length)} con ${nfd} filtro${nfd > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="det-fil-q">quitar</button>`;
     const V = filasDet.slice(0, 500);
     const nSin = L.filter(o => !o.pr).length, nRepT = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
     document.querySelector('.tabs-st [data-tab="sin"]').innerHTML = `AB sin medición <span class="cnt">${n(nSin)}</span>`;
     document.querySelector('.tabs-st [data-tab="rep"]').innerHTML = `Enlaces repetidos <span class="cnt">${n(nRepT)}</span>`;
-    $('det').innerHTML = V.length ? `<table class="det"><thead><tr>${cabDet.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' && j === 1 ? `<td><button type="button" class="nb" data-lista="url|${r}" title="Ver los ${v} AB">${esc(v)}</button></td>` : tab === 'sin' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : tab === 'rep' && j === 0 ? `<td class="izq"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a></td>` : tab === 'rep' && j === 2 ? `<td class="izq">${esc(v)}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+    $('det').innerHTML = filasDetAll.length ? `<table class="det"><thead><tr>${cabDet.map((c, i) => thF(c, i, 'det')).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' && j === 1 ? `<td><button type="button" class="nb" data-lista="url|${posDet[r]}" title="Ver los AB">${esc(v)}</button></td>` : tab === 'sin' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : tab === 'rep' && j === 0 ? `<td class="izq"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a></td>` : tab === 'rep' && j === 2 ? `<td class="izq">${esc(v)}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
       : '<p class="vacio">Sin registros con estos filtros.</p>';
   }
-  document.querySelector('.tabs-st').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab;
+  document.querySelector('.tabs-st').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; FC.det = {};
     document.querySelectorAll('.tabs-st [data-tab]').forEach(x => x.setAttribute('aria-selected', String(x === b))); pintarDetalle(); });
 
   // ----- Lista de AB (clic en cualquier número) -----
@@ -326,7 +398,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       (await r.json()).forEach(x => extraOs.set(x.filial + '|' + x.nro_os, x)); }));
   }
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.length > 10 ? iso.slice(11, 16) : ''}`.trim() : '—';
-  let modalFilas = [], modalCab = [], modalNom = 'lista', listaTurno = 0;
+  let modalFilas = [], modalFilasAll = [], modalCab = [], modalNom = 'lista', listaTurno = 0;
   async function listaAB(tit, sub, LL, extraHtml = '') {
     const turno = ++listaTurno;   // si se abre otra lista antes de que llegue la respuesta, esta ya no pinta
     const Ls = [...LL].sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
@@ -334,11 +406,17 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('modal-cuerpo').innerHTML = '<p class="vacio">Cargando los datos de las OS…</p>'; $('modal').hidden = false; $('modal-cerrar').focus();
     try { await traerExtra(Ls); if (turno !== listaTurno) return; } catch { if (turno !== listaTurno) return; $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudieron traer F. Recep, distrito y estado; se muestra lo que hay.'; }
     modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Pr. cliente', 'Pr. técnico', 'Repetidos'];
-    modalFilas = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', PLANES[o.p], o.c, o.tn + o.s, o.r]; });
-    $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map(f => `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
-      + (modalFilas.length > 1500 ? '<p class="nota" style="padding:10px">Se muestran 1.500; el Excel trae todos.</p>' : '');
+    FC.modal = {};
+    modalFilasAll = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', PLANES[o.p], o.c, o.tn + o.s, o.r]; });
+    pintarModal();
     modalNom = tit.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
+  function pintarModal() {
+    modalFilas = modalFilasAll.filter(f => okFila(f, 'modal'));
+    const nfm = Object.keys(FC.modal).length; if (nfm || $('modal-fil-q')) $('modal-aviso').innerHTML = nfm ? `${n(modalFilas.length)} de ${n(modalFilasAll.length)} AB con ${nfm} filtro${nfm > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="modal-fil-q">quitar</button>` : '';
+    $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map((c, i) => thF(c, i, 'modal')).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map(f => `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
+      + (modalFilas.length > 1500 ? '<p class="nota" style="padding:10px">Se muestran 1.500; el Excel trae todos.</p>' : '');
+      }
   const cerrarModal = () => { $('modal').hidden = true; };
   $('modal-cerrar').addEventListener('click', cerrarModal);
   $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) cerrarModal(); });
@@ -384,8 +462,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     try { await excel(cabDet, filasDet, `speedtest-${tab === 'sin' ? 'ab-sin-medicion' : 'enlaces-repetidos'}-${hoyTxt()}.xlsx`); $('aviso-det').textContent = `Excel descargado con ${n(filasDet.length)} filas.`; }
     catch { $('aviso-det').textContent = 'No se pudo generar el Excel. Revisa tu conexión.'; } finally { b.disabled = false; } });
   document.querySelector('[data-xls="tb-ec"]').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
-    const filas = [...tb.rows].filter(r => r.cells.length > 1).map(r => [...r.cells].map((c, j) => { const t = c.innerText.trim(); return j && /^[\d.]+$/.test(t) ? Number(t.replace(/\./g, '')) : t; }));
-    try { await excel([...$('tb-ec').tHead.rows[0].cells].map(c => c.textContent), filas, `speedtest-eecc-${hoyTxt()}.xlsx`); } catch { /* sin conexión */ } finally { b.disabled = false; } });
+    const filas = [...tb.rows].filter(r => r.cells.length > 1 && !r.hidden).map(r => [...r.cells].map((c, j) => { const t = c.innerText.trim(); return j && /^[\d.]+$/.test(t) ? Number(t.replace(/\./g, '')) : t; }));
+    try { await excel([...$('tb-ec').tHead.rows[0].cells].map(c => c.textContent.trim()), filas, `speedtest-eecc-${hoyTxt()}.xlsx`); } catch { /* sin conexión */ } finally { b.disabled = false; } });
 
   pintarChips(); pintar();
   $('cargando').hidden = true; $('vista').hidden = false;
