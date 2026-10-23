@@ -76,7 +76,15 @@ th[aria-sort="ascending"]::after { content: ' ▲'; } th[aria-sort="descending"]
 td { padding: 7px 4px; border-bottom: 1px solid var(--borde); white-space: nowrap; text-align: center; }
 td.izq { text-align: left; }
 tr:hover td { background: var(--rosa); }
-td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 700; cursor: help; }
+td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 700; cursor: pointer; }
+.err-b { border: 0; cursor: pointer; } .err-b:hover { text-decoration: underline; }
+.ay-pl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; } .ay-pl > span:first-child { font: 800 13px var(--f-disp); color: #1F2937; padding: 4px 10px; border-radius: 8px; }
+.ay-cajas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.ay-box { border-radius: 12px; padding: 14px 16px; border: 1px solid; } .ay-box.mal { background: var(--mal-bg); border-color: var(--mal); } .ay-box.bien { background: var(--ok-bg); border-color: var(--ok); }
+.ay-l { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .5px; color: var(--fg-3); }
+.ay-v { font: 800 22px var(--f-disp); color: var(--mal); margin-top: 6px; word-break: break-all; } .ay-t { font-size: 14px; margin-top: 6px; color: var(--fg); }
+.ay-sug { margin-top: 10px; } .ay-sug b { font: 800 20px var(--f-disp); color: var(--ok); }
+.ay-tb tr.cur td { background: var(--rosa); } .ay-tb tr.ko td { color: var(--mal); }
 td.dup { color: var(--magenta-txt); font-weight: 700; }
 .b { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; }
 .b.ok { background: var(--ok-bg); color: var(--ok); } .b.no { background: var(--mal-bg); color: var(--mal); } .b.na { background: var(--gris-bg); color: var(--fg-3); }
@@ -143,8 +151,8 @@ const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_
 
 /* ---------- Reglas de formato por planta (las mismas del buscador anterior) ---------- */
 const vacio = (v) => { const t = String(v || '').trim(); return t === '' || t === '(en blanco)'; };
-const CINT = { re: /^0*[1-9]\d{0,5}$/, txt: 'Cintillo (precinto) = número natural, se aceptan ceros adelante, no 0 (ej. 1562 ó 01562)' };
-const BORNE = { re: /^0?([1-9]|1[0-6])$/, txt: 'Borne (poste / puerto) = del 1 al 16 (ej. 8)' };
+const CINT = { re: /^0*[1-9]\d{0,5}$/, txt: 'Cintillo (precinto) = número natural, se aceptan ceros adelante, no 0 (ej. 1562 ó 01562)', sug: (v) => { const m = /(\d+)/.exec(String(v || '')); return m && /^0*[1-9]\d{0,5}$/.test(m[1]) ? m[1] : ''; } };
+const BORNE = { re: /^0?([1-9]|1[0-6])$/, txt: 'Borne (poste / puerto) = del 1 al 16 (ej. 8)', sug: (v) => { const m = /(\d{1,2})/.exec(String(v || '')); return m && +m[1] >= 1 && +m[1] <= 16 ? String(+m[1]) : ''; } };
 const napNum = { re: /^(?!0+$)\d{1,3}$/, txt: 'Caja (NAP) = solo el número de CTO, con o sin ceros (ej. 038 ó 38)', sug: (v) => { const m = /^\s*(?:cto|caja|c)?\s*[-.:#]?\s*(\d{1,3})\s*$/i.exec(String(v || '')); return m && !/^0+$/.test(m[1]) ? m[1] : ''; } };
 function sugTap(v) { const t = String(v || '').trim();
   const m = /^([A-Z0-9]{2})\s*[\/\-.\s]\s*([GH])?\s*(\d{3})\s*[\/\-.\s]+\s*D?\s*(\d{1,2})\b/i.exec(t) || /^([A-Z0-9]{2})([GH])(\d{3})D?(\d{2})$/i.exec(t);
@@ -165,7 +173,13 @@ const REGLAS = {
   ECONOCABLE: { zo: { re: /^P\d{9}$/i, txt: 'TAP = código de CTO: P + 9 dígitos (ej. P150110011)', sug: sugEcono }, nap: napNum, bor: BORNE, cin: CINT },
 };
 const PLANTAS = [['PANGEA', 'Pangea', '#EDA100'], ['FIBERLUX', 'Fiberlux', '#1A9E5C'], ['ATP', 'ATP', '#D7263D'], ['ECONOCABLE', 'Econocable', '#6250D6']];
-const CAMPOS = { zo: 'TAP (Zona)', nap: 'Caja (NAP)', bor: 'Borne', cin: 'Cintillo' };
+const CAMPOS = { zo: 'TAP (ZONA)', nap: 'CAJA (NAP)', bor: 'POSTE (BORNE)', cin: 'PRECINTO (CINTILLO)' };
+// Ejemplos correctos por planta (los mismos del buscador anterior)
+const EJ = { PANGEA: { zo: 'HM/G316/04 · LO/G573/D06 · CB/H200/15', nap: '25', bor: '8', cin: '1562' },
+  FIBERLUX: { zo: '181823 · 0185078 · 0001910 · 00210556', nap: '(vacío) ó .', bor: '4', cin: '4767' },
+  ATP: { zo: '0017/09/10 · vertical: 0010/LINC171, 0017/BR204 ó 0017/SINSI025 · BR204', nap: '004', bor: '6', cin: 'distinto de 0' },
+  ECONOCABLE: { zo: 'P150110011', nap: '038', bor: '7', cin: '358' } };
+const COLOR_PL = { PANGEA: '#FFE066', FIBERLUX: '#B2F2BB', ATP: '#FFC9C9', ECONOCABLE: '#E5DBFF' };
 
 /* ---------- Datos ---------- */
 let T;
@@ -228,11 +242,11 @@ $('cab').addEventListener('click', (e) => { const th = e.target.closest('[data-c
   $('cab').querySelectorAll('th').forEach(x => x.setAttribute('aria-sort', x.dataset.c === orden.c ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none')); pintarTabla(); });
 const valor = (o, c) => c === 'err' ? (o.bad ? 0 : REGLAS[o.pl] ? 1 : 2) : c === 'ab' || c === 'os' ? o[c] : String(o[c] ?? '');
 const titulo = (o, k) => { const r = REGLAS[o.pl][k], s = r.sug ? r.sug(o[k]) : ''; return `${r.txt}${s && s !== String(o[k]).trim() ? `\nSugerencia: ${s}` : ''}`; };
-const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.bad ? `<span class="b no">${Object.keys(o.bad).map(x => CAMPOS[x]).join(', ')}</span>` : '<span class="b ok">OK</span>'}</td>`;
+const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.bad ? `<button type="button" class="b no err-b" data-ayuda="${o.i}" title="Ver qué está mal y cómo debe quedar">${esc(o.pl)} · ${Object.keys(o.bad).map(x => CAMPOS[x].split(' ')[0]).join(', ')}</button>` : '<span class="b ok">OK</span>'}</td>`;
   const v = k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : k === 'tec' ? tecCorto(o.tec) : (o[k] ?? ''), bad = o.bad && o.bad[k];
   if (k === 'tec') return `<td class="izq" title="${esc(o.tec)}">${esc(v || '—')}</td>`;
-  if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
-  return `<td class="${cl || ''}${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}"` : ''}>${esc(v === '' ? '—' : v)}</td>`; }).join('')}</tr>`;
+  if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}" data-ayuda="${o.i}" data-campo="${k}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
+  return `<td class="${cl || ''}${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))} · clic para ver cómo corregir" data-ayuda="${o.i}" data-campo="${k}"` : ''}>${esc(v === '' ? '—' : v)}</td>`; }).join('')}</tr>`;
 let resto = [];
 const obs = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach(en => { if (en.isIntersecting) { obs.unobserve(en.target); mas(); } }), { root: document.querySelector('.caja'), rootMargin: '400px' }) : null;
 function mas(todo) { const sen = $('filas').querySelector('tr.fila-mas'); if (!sen) return; const parte = todo ? resto.splice(0) : resto.splice(0, 400);
@@ -250,8 +264,27 @@ function pintarTabla() {
 const abrir = (tit, sub, html) => { $('m-tit').textContent = tit; $('m-sub').textContent = sub; $('m-cuerpo').innerHTML = html; $('modal').hidden = false; $('m-x').focus(); };
 $('m-x').addEventListener('click', () => $('modal').hidden = true); $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modal').hidden = true; });
-$('filas').addEventListener('click', (e) => { const b = e.target.closest('[data-dup]'); if (!b) return; const o = R[+b.dataset.dup], L = porCin.get(cinKey(o.cin)).slice().sort((a, c) => a.fa.localeCompare(c.fa));
-  abrir(`Cintillo ${o.cin}`, `Se repite en ${L.length} altas de ${new Set(L.map(x => x.ab)).size} AB`, `<div class="caja"><table><thead><tr><th>F. Atenc.</th><th>Cintillo</th><th>AB</th><th>OS</th><th>Distrito</th><th>EECC</th><th>Técnico</th><th>Planta</th><th>TAP</th></tr></thead><tbody>${L.map(x => `<tr${x === o ? ' style="font-weight:700"' : ''}><td>${dmy(x.fa)}</td><td>${esc(x.cin)}</td><td>${x.ab}</td><td>${x.os}</td><td class="izq">${esc(x.di)}</td><td>${esc(x.ecN)}</td><td class="izq">${esc(x.tec)}</td><td>${esc(x.pl)}</td><td>${esc(x.zo || '—')}</td></tr>`).join('')}</tbody></table></div>`); });
+/* Aviso de error (como el buscador anterior): qué planta, qué campo, cómo está, cómo debe quedar y todos los campos de la orden */
+function ayuda(i, campo) {
+  const o = R[i], rg = REGLAS[o.pl]; if (!rg || !o.bad) return;
+  const malos = ['zo', 'nap', 'bor', 'cin'].filter(k => o.bad[k]), k = o.bad[campo] ? campo : malos[0], r = rg[k], v = String(o[k] ?? '').trim();
+  const sug = r.sug ? r.sug(o[k]) : '', vacio = (x) => !String(x ?? '').trim();
+  const filas = ['zo', 'nap', 'bor', 'cin'].map(c => { const ko = !!o.bad[c];
+    return `<tr class="${c === k ? 'cur ' : ''}${ko ? 'ko' : ''}"${ko && c !== k ? ` data-ayuda="${i}" data-campo="${c}" style="cursor:pointer" title="Ver este error"` : ''}><td class="izq"><b>${CAMPOS[c]}</b></td><td>${vacio(o[c]) ? '(vacío)' : esc(o[c])}${ko ? ' <span class="b no">✗</span>' : ' <span class="b ok">✓</span>'}</td><td class="izq">${esc(EJ[o.pl][c])}</td></tr>`; }).join('');
+  abrir(`⚠ Error FFTT · ${o.pl} · ${CAMPOS[k]}`, `OS ${o.os} · AB ${o.ab} · ${o.di} · ${o.ecN} · ${o.tec || 'sin técnico'} · ${dmy(o.fa)}`,
+    `<div class="ay-pl"><span style="background:${COLOR_PL[o.pl]}">${o.pl}</span>${malos.length > 1 ? `<span class="nota">Esta orden tiene ${malos.length} campos con error: ${malos.map(c => CAMPOS[c]).join(', ')}</span>` : ''}</div>
+     <div class="ay-cajas"><div class="ay-box mal"><div class="ay-l">Está registrado así</div><div class="ay-v">${vacio(o[k]) ? '(vacío)' : esc(v)}</div></div>
+       <div class="ay-box bien"><div class="ay-l">Formato correcto</div><div class="ay-t">${esc(r.txt)}</div>${sug && sug !== v ? `<div class="ay-sug"><span class="ay-l">Debería quedar:</span> <b>${esc(sug)}</b></div>` : ''}</div></div>
+     <div class="ay-l" style="margin:6px 0">Todos los campos de ${o.pl} en esta orden</div>
+     <div class="caja" style="max-height:none"><table class="ay-tb"><thead><tr><th>Campo</th><th>Registrado</th><th>Correcto (ej.)</th></tr></thead><tbody>${filas}</tbody></table></div>
+     ${o.dup ? `<div style="margin-top:12px"><button type="button" class="btn-out" data-dup="${o.i}">Ver cintillo repetido</button></div>` : ''}`);
+}
+document.addEventListener('click', (e) => { const a = e.target.closest('[data-ayuda]'); if (!a || e.target.closest('[data-dup]')) return; ayuda(+a.dataset.ayuda, a.dataset.campo); });
+$('m-cuerpo').addEventListener('click', (e) => { const b = e.target.closest('[data-dup]'); if (b) verDup(+b.dataset.dup); });
+$('filas').addEventListener('click', (e) => { const b = e.target.closest('[data-dup]'); if (!b) return; verDup(+b.dataset.dup); });
+function verDup(i) { const b = { dataset: { dup: i } }; const o = R[+b.dataset.dup], L = porCin.get(cinKey(o.cin)).slice().sort((a, c) => a.fa.localeCompare(c.fa));
+  abrir(`Cintillo ${o.cin}`, `Se repite en ${L.length} altas de ${new Set(L.map(x => x.ab)).size} AB`, `<div class="caja"><table><thead><tr><th>F. Atenc.</th><th>Cintillo</th><th>AB</th><th>OS</th><th>Distrito</th><th>EECC</th><th>Técnico</th><th>Planta</th><th>TAP</th></tr></thead><tbody>${L.map(x => `<tr${x === o ? ' style="font-weight:700"' : ''}><td>${dmy(x.fa)}</td><td>${esc(x.cin)}</td><td>${x.ab}</td><td>${x.os}</td><td class="izq">${esc(x.di)}</td><td>${esc(x.ecN)}</td><td class="izq">${esc(x.tec)}</td><td>${esc(x.pl)}</td><td>${esc(x.zo || '—')}</td></tr>`).join('')}</tbody></table></div>`);
+}
 $('ver-reglas').addEventListener('click', () => abrir('Reglas de formato por planta', 'Una alta tiene error FFTT si algún campo no cumple la regla de su planta', `<div class="reglas">${PLANTAS.map(([p, l]) => `<div><b>${l}</b><br>${Object.entries(REGLAS[p]).map(([k, r]) => `· ${esc(r.txt)}`).join('<br>')}</div>`).join('')}</div>`));
 
 /* ---------- Excel ---------- */
