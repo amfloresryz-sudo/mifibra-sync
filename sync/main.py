@@ -137,6 +137,11 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
             tableros[f"observadas:{filial}"] = {"obs": datos.pop("obs"), "filial": filial, "corte": datos["corte"]}
             tableros[f"instalaciones:{filial}"] = datos
         print(f"  Tableros de {filial} calculados en {time.time() - t0:.0f} s.", flush=True)
+    try:  # Buscador FFTT: un solo tablero con todas las filiales (la página filtra y valida)
+        from . import fftt
+        tableros["fftt"] = fftt.construir(df, actualizado)
+    except Exception as e:  # noqa: BLE001
+        print(f"Aviso: no se calculó el tablero FFTT: {e}", flush=True)
     try:  # Speed Test: un solo tablero con todas las filiales (la página filtra)
         from . import speedtest
         tableros["speedtest"] = speedtest.construir(df, links_st or {}, tecnicos, actualizado)

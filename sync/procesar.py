@@ -401,8 +401,36 @@ def leer(ruta: Path, **kw) -> pd.DataFrame:
         return pd.read_excel(ruta, engine="openpyxl", **kw)
 
 
+# TAP de facilidades técnicas (columna ZONA del buscador FFTT): Pangea AN/G312/01, Fiberlux 0185078, ATP 0017/09/10 o BR204,
+# Econocable P150110011. El reporte trae varias columnas «Zona…»; se usa la que tiene más valores con forma de TAP.
+_RE_TAP = re.compile(r"^(?:[A-Z0-9]{2}\s*/?\s*[GH]?\s*/?\s*\d{3}|\d{5,8}|\d{1,4}\s*/\s*\d{1,2}\s*/\s*\d{1,2}|\d{1,4}\s*/\s*[A-Z]{2,5}\d{3}|[A-Z]{2}\d{3}|P\d{9})", re.I)
+ZONA_FFTT = {"columna": None, "candidatas": {}}
+
+
+def _elegir_zona_fftt(df: pd.DataFrame) -> None:
+    """Copia en «__zona_tap» la columna del reporte que trae el TAP (la de más valores con forma de TAP)."""
+    cands = [c for c in df.columns if re.fullmatch(r"\s*zona[\s.\d]*", str(c), re.I)]
+    puntaje = {}
+    for c in cands:
+        v = df[c].dropna().astype(str).str.strip()
+        v = v[(v != "") & (v != ".")].head(3000)
+        puntaje[str(c)] = (round(float(v.map(lambda x: bool(_RE_TAP.match(x))).mean()), 3) if len(v) else 0.0, int(len(v)), v.head(4).tolist())
+    ZONA_FFTT["candidatas"] = puntaje
+    if not puntaje:
+        return
+    mejor = max(puntaje, key=lambda k: (puntaje[k][0], puntaje[k][1]))
+    if puntaje[mejor][0] < 0.3:
+        return
+    ZONA_FFTT["columna"] = mejor
+    df["__zona_tap"] = df[next(c for c in cands if str(c) == mejor)]
+
+
 def leer_excel(ruta: Path) -> pd.DataFrame:
     df = leer(ruta, header=FILA_ENCABEZADO, dtype={"Hora": str, "Hora I": str, "Hora F": str, "Hora Mod": str, "fecha_observacion": str, "Observaciones": str})
+    try:
+        _elegir_zona_fftt(df)
+    except Exception as e:  # noqa: BLE001 - la columna ZONA nunca detiene la corrida
+        print(f"Aviso: no se eligió la columna ZONA de FFTT: {e}", flush=True)
     faltan = [c for c in [*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"] if c not in df.columns]
     criticas = [c for c in faltan if c in OBLIGATORIAS]
     _usadas = {*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"}
@@ -465,6 +493,7 @@ def a_filas(df: pd.DataFrame, sincronizado_en: str, cajas=None) -> list[dict]:
         fila.update(_obs_visita(registro.get("OBS VISITA TÉCNICO"), _fm.to_pydatetime().replace(hour=0, minute=0, second=0) if pd.notna(_fm) else None))
         # Comentario completo del técnico (todas las anotaciones), solo para las altas; teléfonos ocultos.
         _todo = str(_texto(registro.get("OBS VISITA TÉCNICO")) or "").strip()
+        fila["zona_tap"] = (str(_texto(registro.get("__zona_tap")) or "").strip() or None) if "__zona_tap" in registro else None
         fila["detalle"] = detalle_de(fila.get("tipo_orden"), fila.get("motivo"), fila.get("lugar_averia"), fila.get("detalle_os"))
         fila["obs_visita_todo"] = (_sin_tel(_todo)[:4000] or None) if fila.get("tipo_orden") in ("INSTALACION SERVICIO", "SERVICIO TECNICO") else None
         # Coordenadas del abonado (Latitud MAPS / Longitud MAPS): solo para las altas (INSTALACION SERVICIO),
