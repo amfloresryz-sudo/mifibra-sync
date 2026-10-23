@@ -70,11 +70,17 @@ a.marca { text-decoration: none; }
 .per-f { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #B9BCCB; font-weight: 600; }
 .per-nota { font-weight: 500; text-transform: none; letter-spacing: 0; color: #9CA3AF; }
 .franja .chip[aria-pressed="true"] { background: #FF0091; border-color: #FF0091; }
-/* Franja ordenada: fila 1 Filial · Segmento · Canal | fila 2 Zona · EECC | fila 3 Periodo (chips compactos) */
-.franja .salto { flex-basis: 100%; height: 0; margin-bottom: -14px; }
-.franja .fila .chips { gap: 6px; }
-.franja .fila .chip { min-height: 34px; padding: 6px 13px; font-size: 12.5px; }
-#grupo-ec, #grupo-zona { min-width: 0; }
+/* Franja de filtros: una fila por filtro, con su nombre a la izquierda (dos columnas; EECC y Periodo a lo ancho) */
+.filtros-f { flex-basis: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 36px; padding: 14px 16px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(255,255,255,.03); }
+.filtros-f > div { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.filtros-f > div[hidden], .filtros-f .salto { display: none; }
+.filtros-f .seg-t { margin: 0 !important; width: 92px; flex: none; font-size: 10.5px; line-height: 1.3; color: #B9BCCB !important; }
+.filtros-f .per-nota { display: block; font-size: 10px; letter-spacing: 0; }
+.filtros-f #grupo-ec, .filtros-f #grupo-per { grid-column: 1 / -1; }
+.filtros-f .chips { gap: 6px; }
+.filtros-f .chip { min-height: 30px; padding: 4px 11px; font-size: 12px; }
+.filtros-f .sel-per, .filtros-f .per-f input { min-height: 30px; padding: 4px 10px; font-size: 12px; }
+@media (max-width: 900px) { .filtros-f { grid-template-columns: 1fr; } }
 .tabs { display: flex; gap: 4px; overflow-x: auto; }
 .tabs button { font-size: 14px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #B9BCCB; background: none; border: 0; border-bottom: 3px solid transparent; padding: 12px 16px; cursor: pointer; white-space: nowrap; }
 .tabs button[aria-selected="true"] { color: #FFFFFF; border-bottom-color: #FF0091; }
@@ -740,7 +746,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 <section class="franja"><div class="w">
   <div class="fila">
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Instalaciones</h1><p><span id="nom-filial">Lima</span> · altas FTTH · ingresos, liquidaciones, pendientes, agendas y avance</p></div>
-    <div style="display:flex;flex-wrap:wrap;gap:14px 28px">
+    <div class="filtros-f" id="filtros-f">
       <div id="grupo-fil"><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Segmento</div><div class="chips" role="group" aria-label="Segmento" id="tipos"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
@@ -1213,7 +1219,8 @@ function prepararDatos() {
   $('filial').value = fil;
   $('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
   $('grupo-zona').hidden = !(Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS');   // antes quedaba un hueco al ocultarla
-  $('grupo-ec').hidden = fil === 'PROVINCIAS';   // EECC: Lima o una filial de provincia (en Provincias › Todas se ve por filial)
+  $('grupo-ec').hidden = fil === 'PROVINCIAS';
+  $('grupo-fil').style.gridColumn = fil === 'LIMA' ? '' : '1 / -1';   // con provincias la fila de filiales va a lo ancho   // EECC: Lima o una filial de provincia (en Provincias › Todas se ve por filial)
   ZORD.splice(0, ZORD.length, ...(fil === 'PROVINCIAS' ? [...new Set(Object.values(D.zonas || {}))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
   $('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 20 min.`;
   const opDias = DIAS.slice().reverse().map(d => `<option value="${d}">${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
