@@ -92,6 +92,15 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .rk .p { height: 10px; border-radius: 5px; background: var(--pista); } .rk .p i { display: block; height: 100%; border-radius: 5px; background: var(--magenta); min-width: 3px; }
 .rk.peor .p i { background: var(--mal); }
 .rk .v { text-align: right; font-variant-numeric: tabular-nums; } .rk .v b { font: 800 16px var(--f-disp); } .rk .v small { display: block; color: var(--fg-4); font-size: 12px; }
+.hb2-ley { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--fg-3); margin: 0 0 8px; }
+.hb2-ley .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; } .hb2-ley .sw.a { background: var(--magenta); } .hb2-ley .sw.b { background: var(--rosa-2); } .hb2-ley .sw.l { width: 3px; height: 14px; background: var(--fg); border-radius: 0; }
+.hb2 { display: grid; grid-template-columns: 26px minmax(130px, 210px) 1fr 64px; align-items: center; gap: 12px; padding: 9px 6px; border-radius: 10px; cursor: pointer; }
+.hb2 + .hb2 { border-top: 1px solid var(--borde); } .hb2:hover, .hb2:focus-visible { background: var(--rosa); outline: none; }
+.hb2 .pos { font: 800 13px var(--f-disp); color: var(--fg-4); text-align: center; }
+.hb2 .nom b { display: block; font-size: 14px; font-weight: 700; line-height: 1.2; } .hb2 .nom small { font-size: 12px; color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.hb2 .tr { position: relative; height: 14px; border-radius: 7px; background: var(--pista); } .hb2 .tr i { display: block; height: 100%; border-radius: 7px; background: var(--rosa-2); min-width: 4px; }
+.hb2.sobre .tr i { background: var(--magenta); } .hb2 .tr em { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--fg); border-radius: 1px; }
+.hb2 .pct { text-align: right; font: 800 16px var(--f-disp); font-variant-numeric: tabular-nums; } .hb2:not(.sobre) .pct { color: var(--fg-3); }
 .hbar .v small { font-weight: 600; color: var(--fg-3); margin-right: 10px; font-size: 13px; }
 .hbar .v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hbar:hover .p, .hbar:focus-visible .p { outline: 2px solid var(--fg); outline-offset: 2px; }
@@ -307,7 +316,12 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const fmax = Math.max(0.1, ...porFil.map(x => x[1]));
     $('t-fil').textContent = porEcF ? `Pruebas en dispositivo del cliente, por EECC de ${F.filial}` : 'Pruebas en dispositivo del cliente, por filial';
     $('fil-sub').textContent = `Solo se listan ${porEcF ? 'EECC' : 'filiales'} con 5 o más pruebas registradas · clic en una barra para ver sus AB con medición.`;
-    $('g-fil').innerHTML = porFil.map(([f, v, s]) => `<div class="hbar" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas"><span>${esc(f)}</span><span class="p"><i style="width:${v / fmax * 100}%"></i></span><span class="v"><small>${n(s.c)} / ${n(s.pr)}</small>${pc(v)}</span></div>`).join('') || '<p class="vacio">Sin pruebas con estos filtros.</p>';
+    // Diseño: posición · nombre con «X de Y pruebas» · barra (con línea del promedio) · % ; sobre el promedio en fucsia, debajo en rosado
+    const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.pr ? tG.c / tG.pr * 100 : 0, esc100 = Math.max(prom * 1.15, fmax) || 1;
+    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw a"></i>Sobre el promedio</span><span><i class="sw b"></i>Bajo el promedio</span><span><i class="sw l"></i>Promedio ${pc(prom)} (${n(tG.c)} de ${n(tG.pr)})</span></div>`
+      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= prom ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas · promedio ${pc(prom)}">
+        <span class="pos">${k + 1}</span><span class="nom"><b>${esc(f)}</b><small>${n(s.c)} de ${n(s.pr)} pruebas</small></span>
+        <span class="tr"><i style="width:${v / esc100 * 100}%"></i><em style="left:${prom / esc100 * 100}%"></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin pruebas con estos filtros.</p>';
     // Tabla por EECC
     const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
     // g = 'ec|EECC' o 'tec|EECC|TÉCNICO': cada número abre la lista de sus AB
@@ -505,7 +519,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       return listaAB(`${tipo === 'tec' ? tec : ec} · ${Q[q][0]}`, per, base.filter(Q[q][1])); }
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-lista]'); if (b) { e.stopPropagation(); abrirLista(b.dataset.lista); } }, true);
-  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
+  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista], .hb2[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
 
   // ----- Excel -----
   const libs = {};
