@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+<head>
+<script src="/sesion.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Buscador FFTT · Mi Fibra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --magenta: #FF0091; --magenta-txt: #B0005F; --rosa: #FFF0F7; --rosa-2: #FFD6EA;
+  --noche: #1A1A2E; --bg: #F6F7F9; --sup: #FFFFFF; --fg: #1F2937; --fg-2: #374151; --fg-3: #4B5563; --fg-4: #6B7280;
+  --borde: #E5E7EB; --borde-2: #D1D5DB; --ok: #157A4A; --ok-bg: #E3F4EA; --mal: #B42318; --mal-bg: #FDE8E7;
+  --gris-bg: #E7E8EC; --pista: #EEF0F3; --aviso-bg: #FFF6D6; --aviso-fg: #6B4E00;
+  --f-disp: Montserrat, system-ui, sans-serif; --f-txt: 'DM Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --magenta: #FF3DAA; --magenta-txt: #FF8CCB; --rosa: #3A1430; --rosa-2: #4E1A40; --noche: #0E0E1A; --bg: #14141F; --sup: #1D1D2B;
+  --fg: #ECEDF2; --fg-2: #D4D6DE; --fg-3: #B4B7C3; --fg-4: #9497A6; --borde: #2E2F40; --borde-2: #3C3E52;
+  --ok: #5FD08F; --ok-bg: #173527; --mal: #FF8A80; --mal-bg: #3D1C1C; --gris-bg: #3A3C50; --pista: #262838; --aviso-bg: #3A3214; --aviso-fg: #F4DC8A; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-txt); font-size: 15px; }
+.w { max-width: 1760px; margin: 0 auto; padding-left: max(clamp(16px, 2vw, 32px), env(safe-area-inset-left, 0px)); padding-right: max(clamp(16px, 2vw, 32px), env(safe-area-inset-right, 0px)); }
+h1, h2, h3, .chip, th, .kv, .marca, .nav { font-family: var(--f-disp); }
+.aviso { background: var(--aviso-bg); color: var(--aviso-fg); font-size: 14px; }
+.aviso .w { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.cab { background: #FFFFFF; border-bottom: 1px solid #E5E7EB; }
+.cab .w { padding-block: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.marca { font-weight: 800; font-size: 26px; color: #FF0091; letter-spacing: -.5px; text-decoration: none; }
+.marca small { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; color: #374151; margin-left: 8px; }
+.nav { display: flex; flex-wrap: wrap; gap: 4px; font-size: 13px; font-weight: 600; }
+.nav span, .nav a { padding: 10px 12px; border-radius: 25px; color: #1F2937; text-decoration: none; }
+.nav a:hover { background: #FFF0F7; color: #B0005F; } .nav .on { background: #FFF0F7; color: #B0005F; font-weight: 700; }
+.franja { background: #1A1A2E; color: #FFFFFF; }
+.franja .w { padding-block: 26px 28px; display: flex; flex-direction: column; gap: 22px; }
+.franja h1 { margin: 4px 0; font-size: clamp(28px, 4vw, 38px); font-weight: 800; }
+.franja p { margin: 0; color: #D1D5DB; }
+.vol { color: #FFD6EA; font-size: 14px; text-decoration: none; } .vol:hover { text-decoration: underline; }
+.filtros { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: flex-end; }
+.seg-t { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .8px; color: #B9BCCB; margin-bottom: 8px; display: block; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 13px; font-weight: 600; padding: 9px 15px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; cursor: pointer; min-height: 38px; }
+.chip:hover { border-color: #FF0091; }
+.chip[aria-pressed="true"] { background: #FF0091; border-color: #FF0091; }
+.fecha { font: 600 13px var(--f-txt); min-height: 38px; padding: 7px 12px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; color-scheme: dark; }
+.limpiar { all: unset; cursor: pointer; color: #FFD6EA; font-size: 14px; text-decoration: underline; padding: 10px 4px; }
+main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 22px; }
+.sec { background: var(--sup); border: 1px solid var(--borde); border-radius: 20px; padding: 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sec-cab { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; }
+h2 { margin: 0; font-size: 22px; font-weight: 800; } .sub { margin: 4px 0 0; color: var(--fg-3); font-size: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { all: unset; box-sizing: border-box; cursor: pointer; border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; background: var(--sup); }
+.kpi:hover { border-color: var(--magenta); } .kpi:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+.kpi[aria-pressed="true"] { border-color: var(--magenta); background: var(--rosa); box-shadow: inset 0 0 0 1px var(--magenta); }
+.kpi .l { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); display: flex; align-items: center; gap: 6px; }
+.kpi .l i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.kpi .kv { font-size: 30px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 13px; color: var(--fg-3); }
+.kpi.mal .kv { color: var(--mal); }
+.herr { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.herr input[type=search] { flex: 1 1 280px; font: inherit; padding: 9px 14px; border: 1px solid var(--borde-2); border-radius: 22px; background: var(--sup); color: var(--fg); }
+.btn-out { font: 600 13px var(--f-disp); border: 1px solid var(--fg); background: var(--sup); color: var(--fg); border-radius: 22px; padding: 8px 14px; cursor: pointer; min-height: 38px; }
+.btn-out:hover { background: var(--gris-bg); } .btn-out[disabled] { opacity: .55; cursor: wait; }
+.nota { font-size: 13px; color: var(--fg-4); margin: 0; }
+.segs { display: flex; flex-direction: column; gap: 10px; }
+.segs .g { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .segs .seg-t { color: var(--fg-3); margin: 0 6px 0 0; min-width: 70px; }
+.segs .chip { color: var(--fg); border-color: var(--borde-2); font-size: 12px; padding: 6px 11px; min-height: 32px; }
+.segs .chip[aria-pressed="true"] { color: #fff; }
+.caja { max-height: 640px; overflow: auto; border: 1px solid var(--borde); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
+th { position: sticky; top: 0; z-index: 1; background: var(--sup); font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .4px; color: var(--fg-3); padding: 10px 6px; border-bottom: 2px solid var(--fg); white-space: nowrap; cursor: pointer; }
+th[aria-sort="ascending"]::after { content: ' ▲'; } th[aria-sort="descending"]::after { content: ' ▼'; }
+td { padding: 8px 6px; border-bottom: 1px solid var(--borde); white-space: nowrap; text-align: center; }
+td.izq { text-align: left; }
+tr:hover td { background: var(--rosa); }
+td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 700; cursor: help; }
+td.dup { color: var(--magenta-txt); font-weight: 700; }
+.b { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; }
+.b.ok { background: var(--ok-bg); color: var(--ok); } .b.no { background: var(--mal-bg); color: var(--mal); } .b.na { background: var(--gris-bg); color: var(--fg-3); }
+.lnk { all: unset; cursor: pointer; color: var(--magenta-txt); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+tr.fila-mas td { color: var(--fg-4); font-size: 12px; padding: 14px; }
+.modal-fondo { position: fixed; inset: 0; background: rgba(14,14,26,.55); z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; }
+.modal-fondo[hidden] { display: none; }
+.modal { background: var(--sup); border-radius: 18px; width: min(1200px, 100%); padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.modal-cab { display: flex; justify-content: space-between; gap: 12px; } .modal-cab h3 { margin: 0; font: 800 20px var(--f-disp); } .modal-cab p { margin: 4px 0 0; color: var(--fg-3); font-size: 14px; }
+.btn-x { border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); border-radius: 50%; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
+.reglas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; font-size: 13px; color: var(--fg-2); }
+.reglas div { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; } .reglas b { font-family: var(--f-disp); }
+.cargando { padding: 48px 0; text-align: center; color: var(--fg-3); }
+#vista[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: base del portal (ScordSoft) · altas de internet DESCARGADA · se actualiza con el robot cada 20 minutos</span></div></div>
+<header class="cab"><div class="w">
+  <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
+  <nav class="nav" aria-label="Módulos"><a href="/instalaciones.html">INSTALACIONES</a><a href="/averias.html">AVERÍAS</a><a href="/observadas.html">OBSERVADAS</a><a href="/#anuladas">ANULADAS</a><a href="/speedtest.html">SPEED TEST</a><span class="on" aria-current="page">FFTT</span></nav>
+</div></header>
+<section class="franja"><div class="w">
+  <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Buscador FFTT</h1><p>Errores de facilidades técnicas por planta (Pangea, Fiberlux, ATP, Econocable) y cintillos duplicados · clic en un indicador para filtrar</p></div>
+  <div class="filtros">
+    <div><span class="seg-t">Filial</span><div class="chips" id="f-filial" role="group" aria-label="Filial"></div></div>
+    <div><span class="seg-t">Mes (F. atención)</span><div class="chips" id="f-mes" role="group" aria-label="Mes"></div></div>
+    <div><label class="seg-t" for="f-desde">F. atención desde</label><input type="date" id="f-desde" class="fecha"></div>
+    <div><label class="seg-t" for="f-hasta">Hasta</label><input type="date" id="f-hasta" class="fecha"></div>
+    <button type="button" class="limpiar" id="limpiar">Limpiar filtros</button>
+  </div>
+</div></section>
+<main><div class="w">
+  <p class="cargando" id="cargando" role="status">Cargando las facilidades técnicas…</p>
+  <div id="vista" hidden style="display:flex;flex-direction:column;gap:22px">
+  <section class="sec" aria-labelledby="t-res">
+    <div class="sec-cab"><div><h2 id="t-res">Resumen</h2><p class="sub" id="res-sub"></p></div></div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+  <section class="sec" aria-labelledby="t-det">
+    <div class="sec-cab"><div><h2 id="t-det">Detalle por alta</h2><p class="sub" id="det-sub"></p></div>
+      <div class="herr"><button type="button" class="btn-out" id="ver-reglas">Ver reglas por planta</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
+    <div class="herr"><input type="search" id="buscar" placeholder="Busca por AB, OS, cintillo, TAP, distrito, técnico, EECC…" aria-label="Buscar"></div>
+    <div class="segs" id="segs"></div>
+    <div class="caja"><table id="tb"><thead><tr id="cab"></tr></thead><tbody id="filas"></tbody></table></div>
+    <p class="nota">Celda en rojo = no cumple el formato de su planta (pasa el puntero para ver la regla y la sugerencia) · Cintillo en fucsia = repetido en otro AB (clic para ver dónde) · Error FFTT solo se evalúa en Pangea, Fiberlux, ATP y Econocable.</p>
+  </section>
+  </div>
+</div></main>
+<div class="modal-fondo" id="modal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
+  <div class="modal-cab"><div><h3 id="m-tit"></h3><p id="m-sub"></p></div><button type="button" class="btn-x" id="m-x" aria-label="Cerrar">×</button></div>
+  <div id="m-cuerpo"></div></div></div>
+<script>
+(async () => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const n = (v) => Number(v || 0).toLocaleString('es-PE');
+const pc = (a, b) => b ? (a / b * 100).toLocaleString('es-PE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' : '—';
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const dmy = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
+const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
+
+/* ---------- Reglas de formato por planta (las mismas del buscador anterior) ---------- */
+const vacio = (v) => { const t = String(v || '').trim(); return t === '' || t === '(en blanco)'; };
+const CINT = { re: /^0*[1-9]\d{0,5}$/, txt: 'Cintillo (precinto) = número natural, se aceptan ceros adelante, no 0 (ej. 1562 ó 01562)' };
+const BORNE = { re: /^0?([1-9]|1[0-6])$/, txt: 'Borne (poste / puerto) = del 1 al 16 (ej. 8)' };
+const napNum = { re: /^(?!0+$)\d{1,3}$/, txt: 'Caja (NAP) = solo el número de CTO, con o sin ceros (ej. 038 ó 38)', sug: (v) => { const m = /^\s*(?:cto|caja|c)?\s*[-.:#]?\s*(\d{1,3})\s*$/i.exec(String(v || '')); return m && !/^0+$/.test(m[1]) ? m[1] : ''; } };
+function sugTap(v) { const t = String(v || '').trim();
+  const m = /^([A-Z0-9]{2})\s*[\/\-.\s]\s*([GH])?\s*(\d{3})\s*[\/\-.\s]+\s*D?\s*(\d{1,2})\b/i.exec(t) || /^([A-Z0-9]{2})([GH])(\d{3})D?(\d{2})$/i.exec(t);
+  if (!m) return ''; const d = String(+m[4]).padStart(2, '0'); return +m[4] >= 1 && +m[4] <= 32 ? `${m[1].toUpperCase()}/${(m[2] || 'G').toUpperCase()}${m[3]}/${d}` : ''; }
+function sugCto(v) { const m = /(\d{4,8})/.exec(String(v || '')); return m ? String(+m[1]) : ''; }
+function sugAtp(v) { const t = String(v || '');
+  const br = /^\s*(?!CT)([A-Z]{2})\s*[-.\/]?\s*(\d{3})\s*$/i.exec(t); if (br) return br[1].toUpperCase() + br[2];
+  const vt = /(\d{1,4})[^\d\/A-Z]{0,3}\/?\s*(?!CTO?\s*[-.]?\s*\d)([A-Z]{2,5})\s*[-.]?\s*(\d{3})(?!\d)/i.exec(t); if (vt) return `${vt[1].padStart(4, '0')}/${vt[2].toUpperCase()}${vt[3]}`;
+  const m = /^\s*(?:[A-Z]{2,4}[-.\s]+)?(\d{1,4})\s*[\/\-\s]+\s*(\d{1,2})\s*[\/\-\s]+\s*(\d{1,2})\s*$/i.exec(t); return m ? `${m[1].padStart(4, '0')}/${m[2].padStart(2, '0')}/${m[3].padStart(2, '0')}` : ''; }
+function sugEcono(v) { const m = /^P?\s*-?\s*(\d{9})(?!\d)/i.exec(String(v || '').trim()); return m ? 'P' + m[1] : ''; }
+const REGLAS = {
+  PANGEA: { zo: { re: /^[A-Z0-9]{2}(?:\s*\/\s*[GH]|[GH]\s*\/\s*)\d{3}\s*\/\s*D?(0?[1-9]|1[0-9]|2[0-9]|3[0-2])$/i, txt: 'TAP = NODO / DIVICAU (G o H + 3 dígitos) / DIVISOR 1 a 32 (ej. HM/G316/04, LO/G573/D06)', sug: sugTap },
+    nap: { re: /^0?[1-9]\d?$/, txt: 'Caja (NAP) = N° de CTO, 1 a 2 dígitos (ej. 25, 09)' }, bor: BORNE, cin: CINT },
+  FIBERLUX: { zo: { re: /^(?=\d{5,8}$)0*[1-9]\d{3,6}$/, txt: 'TAP = código de CTO, solo números con o sin ceros adelante (ej. 181823, 0185078)', sug: sugCto },
+    nap: { test: (v) => vacio(v) || String(v).trim() === '.', txt: 'Caja (NAP) = NO VA: debe estar vacía o con "."' }, bor: BORNE, cin: CINT },
+  ATP: { zo: { re: /^(?:\d{4}\s*\/\s*\d{2}\s*\/\s*\d{2}|\d{4}\s*\/\s*(?!CTO?\d)[A-Z]{2,5}\d{3}|(?!CT)[A-Z]{2}\d{3})$/i, txt: 'TAP = PROYECTO / TRONCAL / DIVICAU (ej. 0017/09/10) · verticales PROYECTO / UBICACIÓN (ej. 0010/LINC171) · o 2 letras + 3 números (ej. BR204)', sug: sugAtp },
+    nap: napNum, bor: BORNE, cin: CINT },
+  ECONOCABLE: { zo: { re: /^P\d{9}$/i, txt: 'TAP = código de CTO: P + 9 dígitos (ej. P150110011)', sug: sugEcono }, nap: napNum, bor: BORNE, cin: CINT },
+};
+const PLANTAS = [['PANGEA', 'Pangea', '#EDA100'], ['FIBERLUX', 'Fiberlux', '#1A9E5C'], ['ATP', 'ATP', '#D7263D'], ['ECONOCABLE', 'Econocable', '#6250D6']];
+const CAMPOS = { zo: 'TAP (Zona)', nap: 'Caja (NAP)', bor: 'Borne', cin: 'Cintillo' };
+
+/* ---------- Datos ---------- */
+let T;
+try { const r = await fetch('/api/fftt', { headers: { 'x-portal-token': tokenPortal() } }); if (r.status === 401) { location.href = '/'; return; }
+  T = await r.json(); if (!r.ok) throw new Error(T.error || `Error ${r.status}`);
+} catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar.'; return; }
+const ix = Object.fromEntries(T.cols.map((c, i) => [c, i]));
+const cinKey = (v) => { const t = String(v || '').replace(/\D/g, '').replace(/^0+/, ''); return t; };
+const R = T.filas.map((f, i) => { const o = { i }; T.cols.forEach(c => o[c] = f[ix[c]]); o.mes = o.fa.slice(0, 7); o.ecN = String(o.ec || '').replace(/^EECC\s+/i, '') || '—';
+  const rg = REGLAS[o.pl]; o.bad = null;
+  if (rg) { const b = {}; for (const k in rg) { const v = String(o[k] ?? '').trim(), ok = rg[k].test ? rg[k].test(v) : rg[k].re.test(v); if (!ok) b[k] = 1; } if (Object.keys(b).length) o.bad = b; }
+  o.q = [o.di, o.ab, o.os, o.cin, o.zo, o.nap, o.bor, o.ec, o.tec, o.pl, o.fi].join(' ').toUpperCase(); return o; });
+// Cintillos duplicados reales: el mismo cintillo en más de un AB
+const porCin = new Map(); R.forEach(o => { const k = cinKey(o.cin); if (!k) return; (porCin.get(k) || porCin.set(k, []).get(k)).push(o); });
+R.forEach(o => { const L = porCin.get(cinKey(o.cin)); o.dup = !!L && new Set(L.map(x => x.ab)).size > 1; });
+const act = T.actualizado ? new Date(T.actualizado) : null;
+$('corte').innerHTML = `${n(R.length)} altas descargadas del ${dmy(R.reduce((a, o) => !a || o.fa < a ? o.fa : a, ''))} al ${dmy(R.reduce((a, o) => o.fa > a ? o.fa : a, ''))}${act ? ` · actualizado ${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}`;
+
+/* ---------- Filtros ---------- */
+const F = { filial: 'LIMA', mes: '', desde: '', hasta: '', q: '', kpi: '', ec: new Set(), pl: new Set() };
+const filiales = [...new Set(R.map(o => o.fi))].sort((a, b) => a === 'LIMA' ? -1 : b === 'LIMA' ? 1 : a.localeCompare(b));
+if (!filiales.includes('LIMA')) F.filial = '';
+const meses = [...new Set(R.map(o => o.mes))].sort();
+const chips = (id, ops, sel) => { $(id).innerHTML = ops.map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${sel === v}">${esc(t)}</button>`).join(''); };
+const pintarChips = () => { chips('f-filial', [['', 'Todas'], ...filiales.map(f => [f, f.charAt(0) + f.slice(1).toLowerCase()])], F.filial);
+  chips('f-mes', [['', 'Todos'], ...meses.map(m => [m, `${MESES[+m.slice(5) - 1]} ${m.slice(0, 4)}`])], F.mes); $('f-desde').value = F.desde; $('f-hasta').value = F.hasta; };
+$('f-filial').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.filial = b.dataset.v; F.ec.clear(); pintarChips(); pintar(); });
+$('f-mes').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.mes = b.dataset.v; F.desde = F.hasta = ''; pintarChips(); pintar(); });
+$('f-desde').addEventListener('change', (e) => { F.desde = e.target.value; F.mes = ''; pintarChips(); pintar(); });
+$('f-hasta').addEventListener('change', (e) => { F.hasta = e.target.value; F.mes = ''; pintarChips(); pintar(); });
+$('limpiar').addEventListener('click', () => { Object.assign(F, { mes: '', desde: '', hasta: '', q: '', kpi: '' }); F.ec.clear(); F.pl.clear(); $('buscar').value = ''; pintarChips(); pintar(); });
+let tq; $('buscar').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { F.q = e.target.value.trim().toUpperCase(); pintarTabla(); }, 180); });
+const base = (sin = '') => R.filter(o => (!F.filial || o.fi === F.filial) && (!F.mes || o.mes === F.mes) && (!F.desde || o.fa >= F.desde) && (!F.hasta || o.fa <= F.hasta)
+  && (sin === 'ec' || !F.ec.size || F.ec.has(o.ecN)) && (sin === 'pl' || !F.pl.size || F.pl.has(o.pl)));
+const KPI_OK = { err: (o) => !!o.bad, dup: (o) => o.dup, PANGEA: (o) => o.pl === 'PANGEA' && !!o.bad, FIBERLUX: (o) => o.pl === 'FIBERLUX' && !!o.bad, ATP: (o) => o.pl === 'ATP' && !!o.bad, ECONOCABLE: (o) => o.pl === 'ECONOCABLE' && !!o.bad };
+
+let V = [];
+function pintar() {
+  const B = base(), ev = B.filter(o => REGLAS[o.pl]), err = B.filter(o => o.bad).length, dupAb = B.filter(o => o.dup).length;
+  const dupCin = new Set(B.filter(o => o.dup).map(o => cinKey(o.cin))).size;
+  $('res-sub').textContent = `${n(B.length)} altas · ${n(new Set(B.map(o => o.ecN)).size)} EECC · ${F.filial || 'todas las filiales'}${F.mes ? ' · ' + MESES[+F.mes.slice(5) - 1] : ''}`;
+  const k = (id, l, v, s, col, mal) => `<button type="button" class="kpi${mal ? ' mal' : ''}" data-kpi="${id}" aria-pressed="${F.kpi === id}"><span class="l">${col ? `<i style="background:${col}"></i>` : ''}${l}</span><span class="kv">${v}</span><span class="s">${s}</span></button>`;
+  $('kpis').innerHTML = k('err', 'Error FFTT', pc(err, ev.length), `${n(err)} de ${n(ev.length)} altas evaluadas`, '', err > 0)
+    + PLANTAS.map(([p, l, c]) => { const P = B.filter(o => o.pl === p), e = P.filter(o => o.bad).length; return k(p, `Error ${l}`, n(e), `${pc(e, P.length)} de ${n(P.length)}`, c, e > 0); }).join('')
+    + k('dup', 'Cintillos duplicados', n(dupCin), `${n(dupAb)} altas con un cintillo repetido`, '#FF0091', dupCin > 0);
+  // Segmentadores EECC y planta (varias opciones a la vez)
+  const seg = (key, t, f) => { const C = {}; base(key).forEach(o => { const v = f(o); C[v] = (C[v] || 0) + 1; }); const ops = Object.keys(C).sort((a, b) => C[b] - C[a]);
+    return `<div class="g" data-k="${key}"><span class="seg-t">${t}</span><button type="button" class="chip" data-v="" aria-pressed="${!F[key].size}">Todos</button>${ops.map(v => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${F[key].has(v)}">${esc(v)} (${n(C[v])})</button>`).join('')}</div>`; };
+  $('segs').innerHTML = seg('pl', 'Planta', o => o.pl) + seg('ec', 'EECC', o => o.ecN);
+  pintarTabla();
+}
+$('kpis').addEventListener('click', (e) => { const b = e.target.closest('[data-kpi]'); if (!b) return; F.kpi = F.kpi === b.dataset.kpi ? '' : b.dataset.kpi; pintar(); });
+$('segs').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'), g = e.target.closest('[data-k]'); if (!b || !g) return; const S = F[g.dataset.k], v = b.dataset.v; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintar(); });
+
+/* ---------- Tabla (se pinta por partes: 200 filas y el resto al bajar) ---------- */
+const COLS = [['di', 'Distrito', 'izq'], ['ab', 'Abonado'], ['os', 'Nro OS'], ['fa', 'F. Atenc.'], ['cin', 'Cintillo'], ['zo', 'TAP (Zona)'], ['nap', 'NAP'], ['bor', 'Borne'], ['ec', 'Área técnico ejecutor', 'izq'], ['tec', 'Técnico ejecutor', 'izq'], ['pl', 'Proveedor'], ['err', 'Error FFTT']];
+let orden = { c: 'fa', dir: -1 };
+$('cab').innerHTML = COLS.map(([k, t]) => `<th data-c="${k}" aria-sort="${orden.c === k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none'}">${t}</th>`).join('');
+$('cab').addEventListener('click', (e) => { const th = e.target.closest('[data-c]'); if (!th) return; const c = th.dataset.c; orden = { c, dir: orden.c === c ? -orden.dir : 1 };
+  $('cab').querySelectorAll('th').forEach(x => x.setAttribute('aria-sort', x.dataset.c === orden.c ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none')); pintarTabla(); });
+const valor = (o, c) => c === 'err' ? (o.bad ? 0 : REGLAS[o.pl] ? 1 : 2) : c === 'ab' || c === 'os' ? o[c] : String(o[c] ?? '');
+const titulo = (o, k) => { const r = REGLAS[o.pl][k], s = r.sug ? r.sug(o[k]) : ''; return `${r.txt}${s && s !== String(o[k]).trim() ? `\nSugerencia: ${s}` : ''}`; };
+const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.bad ? `<span class="b no">${Object.keys(o.bad).map(x => CAMPOS[x]).join(', ')}</span>` : '<span class="b ok">OK</span>'}</td>`;
+  const v = k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : (o[k] ?? ''), bad = o.bad && o.bad[k];
+  if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
+  return `<td class="${cl || ''}${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}"` : ''}>${esc(v === '' ? '—' : v)}</td>`; }).join('')}</tr>`;
+let resto = [];
+const obs = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach(en => { if (en.isIntersecting) { obs.unobserve(en.target); mas(); } }), { root: document.querySelector('.caja'), rootMargin: '400px' }) : null;
+function mas(todo) { const sen = $('filas').querySelector('tr.fila-mas'); if (!sen) return; const parte = todo ? resto.splice(0) : resto.splice(0, 400);
+  sen.insertAdjacentHTML('beforebegin', parte.map(fila).join('')); if (!resto.length) sen.remove(); else { sen.cells[0].textContent = `Cargando ${n(resto.length)} filas más…`; obs && obs.observe(sen); } }
+function pintarTabla() {
+  V = base().filter(o => (!F.kpi || KPI_OK[F.kpi](o)) && (!F.q || o.q.includes(F.q)));
+  V.sort((a, b) => { const x = valor(a, orden.c), y = valor(b, orden.c); return (x > y ? 1 : x < y ? -1 : b.os - a.os) * orden.dir; });
+  $('det-sub').textContent = `${n(V.length)} altas${F.kpi ? ' · filtro: ' + ($('kpis').querySelector(`[data-kpi="${F.kpi}"] .l`) || {}).textContent : ''}`;
+  resto = V.slice(200);
+  $('filas').innerHTML = V.slice(0, 200).map(fila).join('') + (resto.length ? `<tr class="fila-mas"><td colspan="${COLS.length}">Cargando ${n(resto.length)} filas más…</td></tr>` : '') || `<tr><td colspan="${COLS.length}">Sin resultados para los filtros elegidos.</td></tr>`;
+  const sen = $('filas').querySelector('tr.fila-mas'); if (sen) obs ? obs.observe(sen) : mas(true);
+}
+
+/* ---------- Duplicados y reglas ---------- */
+const abrir = (tit, sub, html) => { $('m-tit').textContent = tit; $('m-sub').textContent = sub; $('m-cuerpo').innerHTML = html; $('modal').hidden = false; $('m-x').focus(); };
+$('m-x').addEventListener('click', () => $('modal').hidden = true); $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modal').hidden = true; });
+$('filas').addEventListener('click', (e) => { const b = e.target.closest('[data-dup]'); if (!b) return; const o = R[+b.dataset.dup], L = porCin.get(cinKey(o.cin)).slice().sort((a, c) => a.fa.localeCompare(c.fa));
+  abrir(`Cintillo ${o.cin}`, `Se repite en ${L.length} altas de ${new Set(L.map(x => x.ab)).size} AB`, `<div class="caja"><table><thead><tr><th>F. Atenc.</th><th>Cintillo</th><th>AB</th><th>OS</th><th>Distrito</th><th>EECC</th><th>Técnico</th><th>Planta</th><th>TAP</th></tr></thead><tbody>${L.map(x => `<tr${x === o ? ' style="font-weight:700"' : ''}><td>${dmy(x.fa)}</td><td>${esc(x.cin)}</td><td>${x.ab}</td><td>${x.os}</td><td class="izq">${esc(x.di)}</td><td>${esc(x.ecN)}</td><td class="izq">${esc(x.tec)}</td><td>${esc(x.pl)}</td><td>${esc(x.zo || '—')}</td></tr>`).join('')}</tbody></table></div>`); });
+$('ver-reglas').addEventListener('click', () => abrir('Reglas de formato por planta', 'Una alta tiene error FFTT si algún campo no cumple la regla de su planta', `<div class="reglas">${PLANTAS.map(([p, l]) => `<div><b>${l}</b><br>${Object.entries(REGLAS[p]).map(([k, r]) => `· ${esc(r.txt)}`).join('<br>')}</div>`).join('')}</div>`));
+
+/* ---------- Excel ---------- */
+$('xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
+  try { await new Promise((ok, ko) => { if (window.ExcelJS) return ok(); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('FFTT', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.addRow(['Filial', ...COLS.map(c => c[1]), 'Duplicado']);
+    V.forEach(o => { const r = ws.addRow([o.fi, o.di, o.ab, o.os, dmy(o.fa), o.cin, o.zo, o.nap, o.bor, o.ec, o.tec, o.pl, !REGLAS[o.pl] ? 'No aplica' : o.bad ? Object.keys(o.bad).map(x => CAMPOS[x]).join(', ') : 'OK', o.dup ? 'Sí' : '']);
+      if (o.bad) Object.keys(o.bad).forEach(k => { const c = r.getCell(2 + ['di', 'ab', 'os', 'fa', 'cin', 'zo', 'nap', 'bor'].indexOf(k)); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE8E7' } }; c.font = { color: { argb: 'FFB42318' }, bold: true }; }); });
+    ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } }; });
+    ws.columns.forEach(c => { c.width = 16; }); ws.autoFilter = { from: 'A1', to: { row: 1, column: COLS.length + 2 } };
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = `fftt-${(F.filial || 'todas').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`; document.body.appendChild(a); a.click(); a.remove();
+  } catch { b.textContent = 'No se pudo generar el Excel'; setTimeout(() => { b.textContent = 'Descargar Excel'; }, 3000); } finally { b.disabled = false; } });
+
+pintarChips(); pintar();
+$('cargando').hidden = true; $('vista').hidden = false;
+})();
+</script>
+</body>
+</html>
