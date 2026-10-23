@@ -84,9 +84,10 @@ function limpiarLS(ls) {
 }
 
 // Responsables de zona de Lima: { "NORTE": "Nombre", ... }.
-function limpiarResponsables(r) {
+// libre: Averías acepta cualquier grupo (zonas de Lima o de una provincia, o las filiales en Provincias)
+function limpiarResponsables(r, libre = false) {
   const o = {};
-  Object.entries(r && typeof r === 'object' ? r : {}).forEach(([z, v]) => { const k = texto(z, 20).toUpperCase(), vv = texto(v, 60); if (['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'].includes(k) && vv) o[k] = vv; });
+  Object.entries(r && typeof r === 'object' ? r : {}).slice(0, 60).forEach(([z, v]) => { const k = texto(z, 40).toUpperCase(), vv = texto(v, 60); if ((libre || ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'].includes(k)) && k && vv) o[k] = vv; });
   return o;
 }
 
@@ -163,10 +164,11 @@ module.exports = async (req, res) => {
         nuevo = { ...previo, obsMetas: { ...(previo.obsMetas || {}), recup: Math.round(v * 10) / 10 } };
       } else if (accion === 'responsables') {
         // Responsables de zona (solo Lima): solo el usuario master. Reemplaza la lista completa.
-        if (filial !== 'LIMA' || modulo !== 'instalaciones') return responder(res, 400, { error: 'Los responsables de zona son solo para Lima.' });
+        if (modulo === 'instalaciones' && filial !== 'LIMA') return responder(res, 400, { error: 'Los responsables de zona son solo para Lima.' });
+        if (!['instalaciones', 'averias'].includes(modulo)) return responder(res, 400, { error: 'Módulo no válido.' });
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
         if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar los responsables.' });
-        nuevo = { ...previo, responsables: limpiarResponsables(cuerpo?.responsables) };
+        nuevo = { ...previo, responsables: limpiarResponsables(cuerpo?.responsables, modulo === 'averias') };
       } else if (accion === 'tecnicos') {
         // EECC de cada técnico: solo el usuario master. Reemplaza la lista completa.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
@@ -174,7 +176,7 @@ module.exports = async (req, res) => {
         nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos), eeccs: limpiarEeccs(cuerpo?.eeccs) };
       } else {
         // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {}, responsables: limpiarResponsables(previo.responsables) };
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {},  responsables: limpiarResponsables(previo.responsables, modulo === 'averias') };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
