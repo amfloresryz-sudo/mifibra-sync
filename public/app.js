@@ -210,7 +210,7 @@
       t('observadas', 'Observadas', 'Órdenes observadas por motivo comercial o técnico, con su submotivo y usuario.', `${num(i.obs_total)} observadas activas`),
       t('anuladas', 'Anuladas', 'Órdenes anuladas: motivo, usuario que la modificó y canal de atención.', `${num(i.anul_total)} anuladas en el periodo`),
       t('dashboard', 'Dashboard de resultados', 'Indicadores consolidados: efectividad, órdenes por día, estados y ranking de técnicos.', periodo(i), true),
-      t('facilidades', 'Facilidades Técnicas', 'Buscador de facilidades técnicas en vivo: cajas, puertos y disponibilidad de planta para nuevas altas.', 'Buscador FFTT en vivo', false, 'https://buscadorffttenvivo.vercel.app/', true),
+      t('facilidades', 'Facilidades Técnicas', 'Errores de facilidades técnicas por planta (TAP, caja, borne, cintillo) y cintillos duplicados, con la base del portal.', 'Buscador FFTT', false, '/fftt.html', false),
       t('speedtest', 'Speed Test', 'Pruebas de velocidad de cada alta: cobertura de medición, pruebas del cliente o del técnico, AB sin medición y enlaces repetidos.', 'Cobertura de medición por EECC y técnico', false, '/speedtest.html'),
     ].join('');
   }
