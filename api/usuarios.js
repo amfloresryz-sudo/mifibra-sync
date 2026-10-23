@@ -5,6 +5,7 @@
 // GET  ?accion=lista                             → usuarios (sin claves) y si la clave general sigue activa.
 // POST ?accion=guardar  {usuario, nombre, filial, activo, nuevo, reset} → crea / edita / restablece la clave.
 // POST ?accion=masivo   {filas:[{nombre, usuario, filial}]}             → crea varios de una vez (clave inicial para cada uno).
+// POST ?accion=renombrar {usuario, nuevo_usuario, nombre} → edita el usuario y el nombre
 // POST ?accion=borrar   {usuario}  ·  POST ?accion=general {activa}
 const crypto = require('crypto');
 const { consultar, pedir, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, FILIALES } = require('./_supabase');
@@ -69,6 +70,15 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return responder(res, 405, { error: 'Método no permitido' });
     const b = await leerCuerpo(req);
     if (accion === 'general') { const a = await accesoConfig(true); await guardarAcceso({ ...a, general: !!b.activa }); return responder(res, 200, { general: !!b.activa }); }
+    if (accion === 'renombrar') {   // cambia el usuario (y el nombre): la contraseña se mantiene, la sesión abierta se cierra
+      const usuario = limpioU(b.usuario), nuevo = limpioU(b.nuevo_usuario), nombre = nombreOk(b.nombre);
+      if (!usuarioValido(nuevo)) return responder(res, 400, { error: 'Usuario no válido: de 3 a 30 letras, números, punto o guion (sin espacios ni tildes).' });
+      const previo = await buscar(usuario); if (!previo) return responder(res, 404, { error: 'No existe ese usuario.' });
+      if (nuevo !== usuario && await buscar(nuevo)) return responder(res, 400, { error: `El usuario «${nuevo}» ya existe.` });
+      await pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { usuario: nuevo, nombre: nombre || previo.nombre });
+      if (nuevo !== usuario) await revocar([usuario, nuevo]); else if (nombre !== previo.nombre) await revocar([usuario]);
+      return responder(res, 200, { ok: true });
+    }
     if (accion === 'borrar') {
       const usuario = limpioU(b.usuario); await pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'DELETE'); await revocar([usuario]);
       return responder(res, 200, { ok: true });

@@ -122,9 +122,11 @@ td select { font-size: 12.5px; padding: 5px 8px; }
 .creados { border: 2px solid var(--ok); background: var(--ok-bg); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 .creados h3 { margin: 0; font: 800 16px var(--f-disp); color: var(--ok); }
 .clave { font: 700 14px ui-monospace, monospace; letter-spacing: 1px; background: var(--sup); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--borde-2); }
-.acc { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.acc { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; }
 .mini { font: 600 11.5px var(--f-disp); border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); border-radius: 16px; padding: 5px 10px; cursor: pointer; }
-.mini:hover { border-color: var(--fg); } .mini.rojo { color: var(--mal); }
+.mini:hover { border-color: var(--fg); } .mini.rojo { color: var(--mal); } .mini.pri { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+.in-ed { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); width: 100%; min-width: 110px; }
+tr.edit td { background: var(--rosa); } .prev .in-ed { max-width: 150px; text-align: center; }
 .b.pend { background: var(--aviso-bg); color: var(--aviso-fg); }
 tr.inact td { color: var(--fg-4); }
 .prev { font-size: 13px; } .prev .mal { color: var(--mal); }
@@ -198,6 +200,7 @@ const fecha = (iso) => { if (!iso) return '—'; const d = new Date(iso); return
 let master = ''; try { master = sessionStorage.getItem('mf_master') || ''; } catch { /* nada */ }
 let U = [], general = true, hayGeneral = true;
 const F = { q: '', fil: '' };
+let editando = '';   // usuario cuya fila está en edición
 const toast = (t) => { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => e.hidden = true, 3500); };
 
 async function api(accion, cuerpo) {
@@ -236,13 +239,18 @@ function pintar() {
   $('f-fil').innerHTML = `<span class="seg-t">Filial</span><button type="button" class="chip" data-f="" aria-pressed="${!F.fil}">Todos (${n(U.length)})</button>` + FILS.filter(([v]) => C[v]).map(([v, t]) => `<button type="button" class="chip" data-f="${v}" aria-pressed="${F.fil === v}">${esc(v === 'TODAS' ? 'Ven todo' : t.replace(/ \(.*\)/, ''))} (${n(C[v])})</button>`).join('');
   const L = U.filter(u => (!F.fil || u.filial === F.fil) && (!F.q || (u.nombre + ' ' + u.usuario).toLowerCase().includes(F.q)));
   $('lista-sub').textContent = `${n(L.length)} de ${n(U.length)}`;
-  $('filas').innerHTML = L.map(u => `<tr class="${u.activo ? '' : 'inact'}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td><select data-acc="filial" aria-label="Filial de ${esc(u.usuario)}">${opciones(u.filial)}</select></td>
+  $('filas').innerHTML = L.map(u => editando === u.usuario ? `<tr class="edit" data-u="${esc(u.usuario)}"><td class="izq"><input class="in-ed" id="ed-nom" value="${esc(u.nombre)}" maxlength="60" aria-label="Nombre"></td><td><input class="in-ed" id="ed-usu" value="${esc(u.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario"></td>
+    <td colspan="4" class="izq"><span class="nota">La contraseña no cambia. Si cambias el usuario, avísale a la persona: deberá ingresar con el nuevo.</span> <span class="err" id="ed-err"></span></td>
+    <td><div class="acc"><button type="button" class="mini pri" data-acc="ed-ok">Guardar</button><button type="button" class="mini" data-acc="ed-no">Cancelar</button></div></td></tr>`
+    : `<tr class="${u.activo ? '' : 'inact'}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td><select data-acc="filial" aria-label="Filial de ${esc(u.usuario)}">${opciones(u.filial)}</select></td>
     <td>${u.activo ? '<span class="b ok">Activo</span>' : '<span class="b na">Desactivado</span>'}</td>
     <td>${u.cambiar_clave ? '<span class="b pend">Pendiente de cambio</span>' : `<span class="b ok" title="Cambiada el ${fecha(u.clave_en)}">Cambiada</span>`}</td>
     <td>${fecha(u.ultimo_ingreso)}</td>
-    <td><div class="acc"><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
+    <td><div class="acc"><button type="button" class="mini" data-acc="editar">Editar</button><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
     || `<tr><td colspan="7">${U.length ? 'Sin coincidencias.' : 'Aún no hay usuarios: créalos arriba.'}</td></tr>`;
 }
+$('filas').addEventListener('keydown', (e) => { if (!e.target.classList.contains('in-ed')) return;
+  if (e.key === 'Enter') { e.preventDefault(); $('filas').querySelector('[data-acc="ed-ok"]').click(); } else if (e.key === 'Escape') { editando = ''; pintar(); } });
 $('buscar').addEventListener('input', (e) => { F.q = e.target.value.trim().toLowerCase(); pintar(); });
 $('f-fil').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { F.fil = b.dataset.f; pintar(); } });
 $('general').addEventListener('click', async (e) => { if (e.target.id !== 'gen-btn') return;
@@ -277,25 +285,27 @@ $('f-uno').addEventListener('submit', async (e) => { e.preventDefault(); $('u-er
 
 // Masivo: pegar desde Excel
 const FIL_TXT = Object.fromEntries(FILS.flatMap(([v, t]) => [[sinTilde(v).toUpperCase(), v], [sinTilde(t.replace(/ \(.*\)/, '')).toUpperCase(), v]]));
-let M = [];
+let M = [], OV = {};   // OV: usuario corregido a mano en la vista previa (por fila)
 function leerMasivo() {
-  const us = usados();
+  const us = usados(); let idx = 0;
   M = $('masivo').value.split(/\r?\n/).map(l => l.split('\t')).filter(c => c.join('').trim()).map(c => {
     let [nombre = '', usuario = '', filial = ''] = c.map(x => x.trim());
     if (c.length === 2) { filial = usuario; usuario = ''; }   // solo nombre y filial
     if (/^nombre$/i.test(nombre)) return null;               // fila de títulos
-    usuario = sinTilde(usuario).toLowerCase(); if (!usuario) usuario = sugerir(nombre, us); us.add(usuario);
+    const fila = idx++; usuario = sinTilde(OV[fila] != null ? OV[fila] : usuario).trim().toLowerCase(); if (!usuario) usuario = sugerir(nombre, us); us.add(usuario);
     const f = FIL_TXT[sinTilde(filial).toUpperCase()] || '';
     const mal = !nombre ? 'falta el nombre' : !/^[a-z0-9._-]{3,30}$/.test(usuario) ? 'usuario no válido' : !f ? `filial «${filial || 'vacía'}» no reconocida` : U.some(x => x.usuario === usuario) ? 'el usuario ya existe' : '';
-    return { nombre, usuario, filial: f, mal };
+    return { nombre, usuario, filial: f, mal, fila };
   }).filter(Boolean);
   const ok = M.filter(x => !x.mal);
-  $('m-prev').innerHTML = M.length ? `<div class="caja prev" style="max-height:220px"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th></th></tr></thead><tbody>${M.map(x => `<tr><td class="izq">${esc(x.nombre)}</td><td>${esc(x.usuario)}</td><td>${esc(x.filial ? nomF(x.filial) : '—')}</td><td class="${x.mal ? 'mal' : ''}">${x.mal ? '✗ ' + esc(x.mal) : '✓'}</td></tr>`).join('')}</tbody></table></div>` : '';
+  $('m-prev').innerHTML = M.length ? `<div class="caja prev" style="max-height:220px"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th></th></tr></thead><tbody>${M.map(x => `<tr><td class="izq">${esc(x.nombre)}</td><td><input class="in-ed" data-fila="${x.fila}" value="${esc(x.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario de ${esc(x.nombre)}" title="Puedes cambiar el usuario antes de crear"></td><td>${esc(x.filial ? nomF(x.filial) : '—')}</td><td class="${x.mal ? 'mal' : ''}">${x.mal ? '✗ ' + esc(x.mal) : '✓'}</td></tr>`).join('')}</tbody></table></div>` : '';
   $('m-crear').disabled = !ok.length; $('m-crear').textContent = ok.length ? `Crear ${n(ok.length)} usuario${ok.length === 1 ? '' : 's'}` : 'Crear usuarios';
 }
-$('masivo').addEventListener('input', leerMasivo);
-$('m-crear').addEventListener('click', async () => { const ok = M.filter(x => !x.mal); if (!ok.length) return; $('m-crear').disabled = true; $('mm-err').textContent = '';
-  try { const d = await api('masivo', { filas: ok }); mostrarCreados(d.creados, d.omitidos); $('masivo').value = ''; await cargarLista(); leerMasivo(); }
+$('masivo').addEventListener('input', () => { OV = {}; leerMasivo(); });
+$('m-prev').addEventListener('input', (e) => { const i = e.target.closest('[data-fila]'); if (i) OV[i.dataset.fila] = i.value; });
+$('m-prev').addEventListener('change', (e) => { if (e.target.closest('[data-fila]')) setTimeout(leerMasivo, 0); });   // revalida al salir del campo
+$('m-crear').addEventListener('click', async () => { leerMasivo(); const ok = M.filter(x => !x.mal); if (!ok.length) return; $('m-crear').disabled = true; $('mm-err').textContent = '';
+  try { const d = await api('masivo', { filas: ok }); mostrarCreados(d.creados, d.omitidos); $('masivo').value = ''; OV = {}; await cargarLista(); leerMasivo(); }
   catch (er) { $('mm-err').textContent = er.message; $('m-crear').disabled = false; } });
 
 async function cargarLista() { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; pintar(); }
@@ -306,6 +316,13 @@ $('filas').addEventListener('change', async (e) => { const s = e.target.closest(
   try { await guardarU(u, { filial: s.value }); u.filial = s.value; pintar(); toast(`${u.nombre} ahora ve: ${nomF(s.value)}.`); } catch (er) { toast(er.message); pintar(); } });
 $('filas').addEventListener('click', async (e) => { const b = e.target.closest('button[data-acc]'); if (!b) return; const u = U.find(x => x.usuario === b.closest('tr').dataset.u); if (!u) return;
   try {
+    if (b.dataset.acc === 'editar') { editando = u.usuario; pintar(); const i = $('ed-usu'); i.focus(); i.select(); return; }
+    if (b.dataset.acc === 'ed-no') { editando = ''; pintar(); return; }
+    if (b.dataset.acc === 'ed-ok') { const nu = sinTilde($('ed-usu').value).trim().toLowerCase(), nom = $('ed-nom').value.trim();
+      if (!nom) { $('ed-err').textContent = 'Falta el nombre.'; return; }
+      if (nu === u.usuario && nom === u.nombre) { editando = ''; pintar(); return; }
+      try { await api('renombrar', { usuario: u.usuario, nuevo_usuario: nu, nombre: nom }); editando = ''; toast(nu !== u.usuario ? `Usuario cambiado: ${u.usuario} → ${nu}.` : 'Nombre actualizado.'); await cargarLista(); }
+      catch (er) { $('ed-err').textContent = er.message; } return; }
     if (b.dataset.acc === 'reset') { if (!confirm(`¿Restablecer la contraseña de ${u.nombre}? Se generará una nueva contraseña inicial.`)) return;
       const d = await guardarU(u, { reset: true }); mostrarCreados([{ ...u, clave: d.clave }]); await cargarLista(); }
     else if (b.dataset.acc === 'activo') { await guardarU(u, { activo: !u.activo }); toast(`${u.nombre} ${u.activo ? 'desactivado' : 'activado'}.`); await cargarLista(); }
