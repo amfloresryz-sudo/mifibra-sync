@@ -981,7 +981,7 @@ function abrirLS(mesSel) {
     <div style="max-height:46vh;overflow:auto"><table class="det" id="tb-ls" style="width:100%"><thead><tr><th style="text-align:left">Distrito</th><th style="text-align:left">Zona</th><th style="text-align:right">Líneas en servicio</th></tr></thead><tbody>
       ${dis.map(d => `<tr><td style="text-align:left">${esc(d)}</td><td style="text-align:left">${esc(zd[d] || 'SIN ZONA')}</td><td style="text-align:right"><input type="number" min="0" step="1" inputmode="numeric" data-ls="${esc(d)}" value="${base[d] ?? ''}" aria-label="LS de ${esc(d)}" style="width:130px;text-align:right;font:inherit;padding:6px 8px;border:1px solid var(--borde-2);border-radius:8px;background:var(--sup);color:var(--fg)"></td></tr>`).join('')}
     </tbody><tfoot><tr><th style="text-align:left">Total ${esc(f)}</th><th></th><th style="text-align:right" id="ls-total"></th></tr></tfoot></table></div>
-    <p class="fi-nota">El TIF usa las LS del mes de la fecha elegida (o el último mes cargado antes). Con el filtro Zona, suma solo los distritos de esa zona. Vacío = el distrito no suma. Si una filial no tiene LS cargadas, Lima sigue usando la hoja LS_TIF.</p>
+    <p class="fi-nota">${f === 'PROVINCIAS' ? 'Al guardar, cada distrito se copia también a su filial (Piura, Arequipa…). ' : f !== 'LIMA' ? 'Al guardar, estos distritos se copian también a Provincias. ' : ''}El TIF usa las LS del mes de la fecha elegida (o el último mes cargado antes). Con el filtro Zona, suma solo los distritos de esa zona. Vacío = el distrito no suma. Si una filial no tiene LS cargadas, Lima sigue usando la hoja LS_TIF.</p>
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn-out" data-ls-cancelar>Cancelar</button><button type="submit" class="btn-out" style="background:var(--magenta);color:#fff;border-color:var(--magenta)">Guardar para todos</button></div></form>`;
   $('modal-tit').textContent = 'Líneas en servicio (LS)'; $('modal-sub').textContent = `Averías · ${f} · por distrito y mes · base del TIF · los cambios se guardan para todos`;
   $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-cuerpo').innerHTML = html;
@@ -1015,7 +1015,7 @@ function abrirLS(mesSel) {
     const todo = { ...LSP }; if (Object.keys(m).length) todo[$('ls-mes').value] = m; else delete todo[$('ls-mes').value];
     const bt = form.querySelectorAll('button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
     try {
-      const r = await fetch(urlAjAv(f) + '&accion=ls', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() }, body: JSON.stringify({ ls: todo }) });
+      const r = await fetch(urlAjAv(f) + '&accion=ls', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() }, body: JSON.stringify({ ls: todo, mes: $('ls-mes').value, sync: Object.fromEntries([...form.querySelectorAll('[data-ls]')].map(i => [i.dataset.ls, f === 'PROVINCIAS' ? (zd[i.dataset.ls] || '') : f])) }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
       LSP = j.ls || {}; pintarLiq(); cerrarModal(); avisoGlobal(`LS de ${nomMesL($('ls-mes') ? $('ls-mes').value : mes)} guardadas. Ya las ve todo el equipo.`);
