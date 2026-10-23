@@ -72,9 +72,11 @@ h2 { margin: 0; font-size: 22px; font-weight: 800; } .sub { margin: 4px 0 0; col
 .caja { max-height: 640px; overflow: auto; border: 1px solid var(--borde); border-radius: 12px; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 12px; }
 th { position: sticky; top: 0; z-index: 1; background: var(--sup); font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .4px; color: var(--fg-3); padding: 9px 4px; border-bottom: 2px solid var(--fg); white-space: nowrap; cursor: pointer; }
-th[aria-sort="ascending"]::after { content: ' ▲'; } th[aria-sort="descending"]::after { content: ' ▼'; }
+th[aria-sort="ascending"] .th-i::before { content: '▲'; font-size: 8px; color: var(--magenta-txt); } th[aria-sort="descending"] .th-i::before { content: '▼'; font-size: 8px; color: var(--magenta-txt); }
+td .err-b, td .b.dp { white-space: normal; line-height: 1.25; max-width: 150px; }
 td { padding: 7px 4px; border-bottom: 1px solid var(--borde); white-space: nowrap; text-align: center; }
 td.izq { text-align: left; }
+td.ec.cor { max-width: 170px; } td.cor { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 tr:hover td { background: var(--rosa); }
 td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 700; cursor: pointer; }
 .b.dp { background: #E3EEFB; color: #1F5FAD; }
@@ -104,6 +106,30 @@ tr.fila-mas td { color: var(--fg-4); font-size: 12px; padding: 14px; }
 .reglas div { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; } .reglas b { font-family: var(--f-disp); }
 .cargando { padding: 48px 0; text-align: center; color: var(--fg-3); }
 #vista[hidden] { display: none !important; }
+/* Colores por planta (los mismos de los indicadores) para los errores de la tabla */
+.pl-PANGEA { --pb: #FFF1C7; --pf: #8A5A00; --pc: #EDA100; } .pl-FIBERLUX { --pb: #DDF3E6; --pf: #11663D; --pc: #1A9E5C; }
+.pl-ATP { --pb: #FDE3E6; --pf: #B01E33; --pc: #D7263D; } .pl-ECONOCABLE { --pb: #ECE8FB; --pf: #4A3AB0; --pc: #6250D6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pl-PANGEA { --pb: #3A2E0E; --pf: #FFD36B; } :root:not([data-theme="light"]) .pl-FIBERLUX { --pb: #12301F; --pf: #7EDCA4; }
+  :root:not([data-theme="light"]) .pl-ATP { --pb: #3D1820; --pf: #FF8F9C; } :root:not([data-theme="light"]) .pl-ECONOCABLE { --pb: #26214A; --pf: #B9AEFF; } }
+td.bad[class*="pl-"] { background: var(--pb) !important; color: var(--pf); box-shadow: inset 3px 0 0 var(--pc); }
+.b.no[class*="pl-"] { background: var(--pb); color: var(--pf); box-shadow: inset 0 0 0 1px var(--pc); }
+/* Segmentadores plegados: se abren al pasar el puntero o con clic */
+.segs-w { position: relative; }
+.segs-res { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; width: 100%; padding: 8px 14px; border: 1px dashed var(--borde-2); border-radius: 12px; font-size: 13px; color: var(--fg-3); }
+.segs-res b { color: var(--fg); font-weight: 700; } .segs-res .fl { margin-left: auto; font: 700 12px var(--f-disp); color: var(--magenta-txt); }
+.segs-res:focus-visible { outline: 2px solid var(--magenta); outline-offset: 2px; }
+.segs-w .segs { display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 6; background: var(--sup); border: 1px solid var(--borde-2); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 28px rgba(14,14,26,.18); margin-top: -1px; }
+.segs-w:hover .segs, .segs-w.abierto .segs { display: flex; } .segs-w:hover .segs-res, .segs-w.abierto .segs-res { border-style: solid; border-color: var(--magenta); }
+/* Filtro por encabezado */
+th .th-i { display: inline-flex; align-items: center; gap: 2px; }
+.fbtn { all: unset; cursor: pointer; line-height: 0; padding: 3px; margin-left: 2px; border-radius: 5px; color: var(--fg-4); }
+.fbtn:hover, .fbtn:focus-visible { background: var(--gris-bg); color: var(--fg); } .fbtn.on { background: var(--magenta); color: #fff; }
+.pop { position: fixed; z-index: 70; width: 260px; background: var(--sup); color: var(--fg); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 14px 34px rgba(14,14,26,.25); padding: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.pop[hidden] { display: none; } .pop input[type=search] { font: inherit; padding: 7px 10px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
+.pop .lista { max-height: 260px; overflow: auto; display: flex; flex-direction: column; } .pop label { display: flex; gap: 8px; align-items: center; padding: 4px 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop label:hover { background: var(--rosa); } .pop label small { margin-left: auto; color: var(--fg-4); } .pop .acc { display: flex; gap: 8px; justify-content: flex-end; }
+.pop .acc button { font: 600 12px var(--f-disp); border-radius: 18px; padding: 6px 12px; cursor: pointer; border: 1px solid var(--fg); background: var(--sup); color: var(--fg); } .pop .acc .pri { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+.modal-acc { display: flex; gap: 8px; align-items: flex-start; }
 </style>
 </head>
 <body>
@@ -131,17 +157,18 @@ tr.fila-mas td { color: var(--fg-4); font-size: 12px; padding: 14px; }
   </section>
   <section class="sec" aria-labelledby="t-det">
     <div class="sec-cab"><div><h2 id="t-det">Detalle por alta</h2><p class="sub" id="det-sub"></p></div>
-      <div class="herr"><button type="button" class="btn-out" id="ver-reglas">Ver reglas por planta</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
+      <div class="herr"><button type="button" class="btn-out" id="ver-reglas">Ver reglas por planta</button><button type="button" class="btn-out" id="img">Copiar imagen</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
     <div class="herr"><input type="search" id="buscar" placeholder="Busca por AB, OS, cintillo, TAP, distrito, técnico, EECC…" aria-label="Buscar"></div>
-    <div class="segs" id="segs"></div>
+    <div class="segs-w" id="segs-w"><button type="button" class="segs-res" id="segs-res" aria-expanded="false" aria-controls="segs"></button><div class="segs" id="segs"></div></div>
     <div class="caja"><table id="tb"><thead><tr id="cab"></tr></thead><tbody id="filas"></tbody></table></div>
     <p class="nota">Celda en rojo = no cumple el formato de su planta (pasa el puntero para ver la regla y la sugerencia) · Cintillo en fucsia = repetido en otro AB (clic para ver dónde) · Error FFTT solo se evalúa en Pangea, Fiberlux, ATP y Econocable · Dif. proveedor = las FFTT no cumplen el formato de su planta pero sí el de otra: no se cuentan como error.</p>
   </section>
   </div>
 </div></main>
 <div class="modal-fondo" id="modal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
-  <div class="modal-cab"><div><h3 id="m-tit"></h3><p id="m-sub"></p></div><button type="button" class="btn-x" id="m-x" aria-label="Cerrar">×</button></div>
+  <div class="modal-cab"><div><h3 id="m-tit"></h3><p id="m-sub"></p></div><div class="modal-acc"><button type="button" class="btn-out" id="m-img" hidden>Copiar imagen</button><button type="button" class="btn-x" id="m-x" aria-label="Cerrar">×</button></div></div>
   <div id="m-cuerpo"></div></div></div>
+<div class="pop" id="pop" hidden role="dialog" aria-label="Filtrar columna"></div>
 <script>
 (async () => {
 'use strict';
@@ -211,7 +238,7 @@ const act = T.actualizado ? new Date(T.actualizado) : null;
 $('corte').innerHTML = `${n(R.length)} altas descargadas del ${dmy(R.reduce((a, o) => !a || o.fa < a ? o.fa : a, ''))} al ${dmy(R.reduce((a, o) => o.fa > a ? o.fa : a, ''))}${act ? ` · actualizado ${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : ''}`;
 
 /* ---------- Filtros ---------- */
-const F = { filial: 'LIMA', mes: '', desde: '', hasta: '', q: '', kpi: '', ec: new Set(), pl: new Set() };
+const F = { filial: 'LIMA', mes: '', desde: '', hasta: '', q: '', kpi: '', ec: new Set(), pl: new Set(), cf: {} };
 const filiales = [...new Set(R.map(o => o.fi))].sort((a, b) => a === 'LIMA' ? -1 : b === 'LIMA' ? 1 : a.localeCompare(b));
 if (!filiales.includes('LIMA')) F.filial = '';
 const meses = [...new Set(R.map(o => o.mes))].sort();
@@ -222,7 +249,7 @@ $('f-filial').addEventListener('click', (e) => { const b = e.target.closest('[da
 $('f-mes').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.mes = b.dataset.v; F.desde = F.hasta = ''; pintarChips(); pintar(); });
 $('f-desde').addEventListener('change', (e) => { F.desde = e.target.value; F.mes = ''; pintarChips(); pintar(); });
 $('f-hasta').addEventListener('change', (e) => { F.hasta = e.target.value; F.mes = ''; pintarChips(); pintar(); });
-$('limpiar').addEventListener('click', () => { Object.assign(F, { mes: '', desde: '', hasta: '', q: '', kpi: '' }); F.ec.clear(); F.pl.clear(); $('buscar').value = ''; pintarChips(); pintar(); });
+$('limpiar').addEventListener('click', () => { Object.assign(F, { mes: '', desde: '', hasta: '', q: '', kpi: '' }); F.ec.clear(); F.pl.clear(); F.cf = {}; $('buscar').value = ''; pintarChips(); pintar(); });
 let tq; $('buscar').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { F.q = e.target.value.trim().toUpperCase(); pintarTabla(); }, 180); });
 const base = (sin = '') => R.filter(o => (!F.filial || o.fi === F.filial) && (!F.mes || o.mes === F.mes) && (!F.desde || o.fa >= F.desde) && (!F.hasta || o.fa <= F.hasta)
   && (sin === 'ec' || !F.ec.size || F.ec.has(o.ecN)) && (sin === 'pl' || !F.pl.size || F.pl.has(o.pl)));
@@ -242,41 +269,103 @@ function pintar() {
   const seg = (key, t, f) => { const C = {}; base(key).forEach(o => { const v = f(o); C[v] = (C[v] || 0) + 1; }); const ops = Object.keys(C).sort((a, b) => C[b] - C[a]);
     return `<div class="g" data-k="${key}"><span class="seg-t">${t}</span><button type="button" class="chip" data-v="" aria-pressed="${!F[key].size}">Todos</button>${ops.map(v => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${F[key].has(v)}">${esc(v)} (${n(C[v])})</button>`).join('')}</div>`; };
   $('segs').innerHTML = seg('pl', 'Planta', o => o.pl) + seg('ec', 'EECC', o => o.ecN);
+  const resu = (S) => S.size ? [...S].join(', ') : 'Todos';
+  $('segs-res').innerHTML = `<span>Planta: <b>${esc(resu(F.pl))}</b></span><span>EECC: <b>${esc(resu(F.ec))}</b></span><span class="fl">Filtros ▾</span>`;
   pintarTabla();
 }
 $('kpis').addEventListener('click', (e) => { const b = e.target.closest('[data-kpi]'); if (!b) return; F.kpi = F.kpi === b.dataset.kpi ? '' : b.dataset.kpi; pintar(); });
+$('segs-res').addEventListener('click', () => { const w = $('segs-w'), a = !w.classList.contains('abierto'); w.classList.toggle('abierto', a); $('segs-res').setAttribute('aria-expanded', a); });
+document.addEventListener('click', (e) => { if (!e.target.closest('#segs-w')) { $('segs-w').classList.remove('abierto'); $('segs-res').setAttribute('aria-expanded', 'false'); } });
 $('segs').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'), g = e.target.closest('[data-k]'); if (!b || !g) return; const S = F[g.dataset.k], v = b.dataset.v; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintar(); });
 
 /* ---------- Tabla (se pinta por partes: 200 filas y el resto al bajar) ---------- */
-const COLS = [['di', 'Distrito', 'izq'], ['ab', 'Abonado'], ['os', 'Nro OS'], ['fa', 'F. Atenc.'], ['cin', 'Cintillo'], ['zo', 'TAP (Zona)'], ['nap', 'NAP'], ['bor', 'Borne'], ['ec', 'Área técnico ejecutor', 'izq'], ['tec', 'Técnico ejecutor', 'izq'], ['pl', 'Proveedor'], ['err', 'Error FFTT']];
+const COLS = [['di', 'Distrito', 'izq'], ['ab', 'Abonado'], ['os', 'Nro OS'], ['fa', 'F. Atenc.'], ['cin', 'Cintillo'], ['zo', 'TAP (Zona)'], ['nap', 'NAP'], ['bor', 'Borne'], ['ec', 'Área técnico ejecutor', 'izq ec'], ['tec', 'Técnico ejecutor', 'izq'], ['pl', 'Proveedor'], ['err', 'Error FFTT']];
 let orden = { c: 'fa', dir: -1 };
-$('cab').innerHTML = COLS.map(([k, t]) => `<th data-c="${k}" aria-sort="${orden.c === k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none'}">${t}</th>`).join('');
-$('cab').addEventListener('click', (e) => { const th = e.target.closest('[data-c]'); if (!th) return; const c = th.dataset.c; orden = { c, dir: orden.c === c ? -orden.dir : 1 };
+const pintarCab = () => { $('cab').innerHTML = COLS.map(([k, t]) => `<th data-c="${k}" aria-sort="${orden.c === k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none'}"><span class="th-i">${t}<button type="button" class="fbtn${F.cf[k] ? ' on' : ''}" data-f="${k}" aria-label="Filtrar ${t}" title="Filtrar ${t}"><svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 1h10L6 5.5V10L4 8.5V5.5z" fill="currentColor"/></svg></button></span></th>`).join(''); };
+pintarCab();
+$('cab').addEventListener('click', (e) => { const fb = e.target.closest('[data-f]'); if (fb) { abrirPop(fb); return; } const th = e.target.closest('[data-c]'); if (!th) return; const c = th.dataset.c; orden = { c, dir: orden.c === c ? -orden.dir : 1 };
   $('cab').querySelectorAll('th').forEach(x => x.setAttribute('aria-sort', x.dataset.c === orden.c ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none')); pintarTabla(); });
+const errTxt = (o) => !REGLAS[o.pl] ? 'No aplica' : o.difp ? `Dif. proveedor · ${o.difp}` : o.bad ? `${o.pl} · ${Object.keys(o.bad).map(x => CAMPOS[x].split(' ')[0]).join(', ')}` : 'OK';
+const lab = (o, k) => { const v = k === 'err' ? errTxt(o) : k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : k === 'tec' ? tecCorto(o.tec) : o[k]; return String(v ?? '').trim() || '—'; };
+const okCf = (o, sin) => { for (const k in F.cf) if (k !== sin && !F.cf[k].has(lab(o, k))) return false; return true; };
 const valor = (o, c) => c === 'err' ? (o.bad ? 0 : o.difp ? 1 : REGLAS[o.pl] ? 2 : 3) : c === 'ab' || c === 'os' ? o[c] : String(o[c] ?? '');
 const titulo = (o, k) => { const r = REGLAS[o.pl][k], s = r.sug ? r.sug(o[k]) : ''; return `${r.txt}${s && s !== String(o[k]).trim() ? `\nSugerencia: ${s}` : ''}`; };
-const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.difp ? `<span class="b dp" title="Las FFTT cumplen el formato de ${esc(o.difp)}, no de ${esc(o.pl)}">Dif. proveedor · ${esc(o.difp)}</span>` : o.bad ? `<button type="button" class="b no err-b" data-ayuda="${o.i}" title="Ver qué está mal y cómo debe quedar">${esc(o.pl)} · ${Object.keys(o.bad).map(x => CAMPOS[x].split(' ')[0]).join(', ')}</button>` : '<span class="b ok">OK</span>'}</td>`;
+const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.difp ? `<span class="b dp" title="Las FFTT cumplen el formato de ${esc(o.difp)}, no de ${esc(o.pl)}">Dif. proveedor · ${esc(o.difp)}</span>` : o.bad ? `<button type="button" class="b no err-b pl-${o.pl}" data-ayuda="${o.i}" title="Ver qué está mal y cómo debe quedar">${esc(o.pl)} · ${Object.keys(o.bad).map(x => CAMPOS[x].split(' ')[0]).join(', ')}</button>` : '<span class="b ok">OK</span>'}</td>`;
   const v = k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : k === 'tec' ? tecCorto(o.tec) : (o[k] ?? ''), bad = o.bad && o.bad[k];
   if (k === 'tec') return `<td class="izq" title="${esc(o.tec)}">${esc(v || '—')}</td>`;
-  if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}" data-ayuda="${o.i}" data-campo="${k}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
-  return `<td class="${cl || ''}${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))} · clic para ver cómo corregir" data-ayuda="${o.i}" data-campo="${k}"` : ''}>${esc(v === '' ? '—' : v)}</td>`; }).join('')}</tr>`;
+  if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad pl-' + o.pl : ''}"${bad ? ` title="${esc(titulo(o, k))}" data-ayuda="${o.i}" data-campo="${k}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
+  const cor = ['zo', 'nap', 'bor', 'cin', 'ec'].includes(k);
+  return `<td class="${cl || ''}${cor ? ' cor' : ''}${bad ? ' bad pl-' + o.pl : ''}"${bad ? ` title="${esc(titulo(o, k))} · clic para ver cómo corregir" data-ayuda="${o.i}" data-campo="${k}"` : cor && String(v).length > 14 ? ` title="${esc(v)}"` : ''}>${esc(v === '' ? '—' : v)}</td>`; }).join('')}</tr>`;
 let resto = [];
 const obs = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach(en => { if (en.isIntersecting) { obs.unobserve(en.target); mas(); } }), { root: document.querySelector('.caja'), rootMargin: '400px' }) : null;
 function mas(todo) { const sen = $('filas').querySelector('tr.fila-mas'); if (!sen) return; const parte = todo ? resto.splice(0) : resto.splice(0, 400);
   sen.insertAdjacentHTML('beforebegin', parte.map(fila).join('')); if (!resto.length) sen.remove(); else { sen.cells[0].textContent = `Cargando ${n(resto.length)} filas más…`; obs && obs.observe(sen); } }
 function pintarTabla() {
-  V = base().filter(o => (!F.kpi || KPI_OK[F.kpi](o)) && (!F.q || o.q.includes(F.q)));
+  V = base().filter(o => (!F.kpi || KPI_OK[F.kpi](o)) && (!F.q || o.q.includes(F.q)) && okCf(o));
   V.sort((a, b) => { const x = valor(a, orden.c), y = valor(b, orden.c); return (x > y ? 1 : x < y ? -1 : b.os - a.os) * orden.dir; });
-  $('det-sub').textContent = `${n(V.length)} altas${F.kpi ? ' · filtro: ' + ($('kpis').querySelector(`[data-kpi="${F.kpi}"] .l`) || {}).textContent : ''}`;
+  const ncf = Object.keys(F.cf).length;
+  $('det-sub').innerHTML = esc(`${n(V.length)} altas${F.kpi ? ' · filtro: ' + ($('kpis').querySelector(`[data-kpi="${F.kpi}"] .l`) || {}).textContent : ''}`) + (ncf ? ` · ${ncf} filtro${ncf > 1 ? 's' : ''} de columna <button type="button" class="lnk" id="cf-quitar">quitar</button>` : '');
+  pintarCab();
   resto = V.slice(200);
   $('filas').innerHTML = V.slice(0, 200).map(fila).join('') + (resto.length ? `<tr class="fila-mas"><td colspan="${COLS.length}">Cargando ${n(resto.length)} filas más…</td></tr>` : '') || `<tr><td colspan="${COLS.length}">Sin resultados para los filtros elegidos.</td></tr>`;
   const sen = $('filas').querySelector('tr.fila-mas'); if (sen) obs ? obs.observe(sen) : mas(true);
 }
 
+/* ---------- Filtro por encabezado (como Excel: buscar y marcar valores) ---------- */
+let popK = '', popSel = null, popOps = [];
+function abrirPop(btn) {
+  const k = btn.dataset.f; if (popK === k && !$('pop').hidden) { cerrarPop(); return; }
+  popK = k; const C = new Map(); base().filter(o => (!F.kpi || KPI_OK[F.kpi](o)) && (!F.q || o.q.includes(F.q)) && okCf(o, k)).forEach(o => { const v = lab(o, k); C.set(v, (C.get(v) || 0) + 1); });
+  const num = ['ab', 'os', 'nap', 'bor', 'cin'].includes(k), fec = k === 'fa', key = (v) => fec ? v.split('/').reverse().join('') : v;
+  popOps = [...C.entries()].sort((a, b) => num && !isNaN(a[0]) && !isNaN(b[0]) ? a[0] - b[0] : key(a[0]).localeCompare(key(b[0]), 'es', { numeric: true }));
+  popSel = new Set(F.cf[k] || popOps.map(x => x[0]));
+  const t = COLS.find(c => c[0] === k)[1];
+  $('pop').innerHTML = `<b style="font:700 12px var(--f-disp);text-transform:uppercase">${esc(t)}</b><input type="search" id="pop-q" placeholder="Buscar…" aria-label="Buscar valor"><label><input type="checkbox" id="pop-todo"> <b>(Seleccionar todo)</b></label><div class="lista" id="pop-lista"></div><div class="acc"><button type="button" id="pop-limpiar">Quitar filtro</button><button type="button" class="pri" id="pop-ok">Aplicar</button></div>`;
+  listaPop(); const r = btn.getBoundingClientRect(), p = $('pop'); p.hidden = false;
+  p.style.left = Math.max(8, Math.min(r.left - 120, innerWidth - p.offsetWidth - 8)) + 'px'; p.style.top = Math.min(r.bottom + 6, innerHeight - p.offsetHeight - 8) + 'px'; $('pop-q').focus();
+}
+function listaPop() { const q = ($('pop-q') ? $('pop-q').value : '').trim().toUpperCase(), L = popOps.filter(([v]) => !q || v.toUpperCase().includes(q));
+  $('pop-lista').innerHTML = L.slice(0, 400).map(([v, c]) => `<label title="${esc(v)}"><input type="checkbox" data-pv="${esc(v)}"${popSel.has(v) ? ' checked' : ''}> <span>${esc(v)}</span><small>${n(c)}</small></label>`).join('') + (L.length > 400 ? `<p class="nota">Hay ${n(L.length - 400)} valores más: escribe para buscarlos.</p>` : '') + (L.length ? '' : '<p class="nota">Sin coincidencias.</p>');
+  $('pop-todo').checked = L.length > 0 && L.every(([v]) => popSel.has(v)); }
+const cerrarPop = () => { $('pop').hidden = true; popK = ''; };
+$('pop').addEventListener('input', (e) => { if (e.target.id === 'pop-q') { const q = e.target.value.trim().toUpperCase(); if (q) { popSel = new Set(popOps.filter(([v]) => v.toUpperCase().includes(q)).map(x => x[0])); } listaPop(); } });
+$('pop').addEventListener('change', (e) => { const c = e.target;
+  if (c.id === 'pop-todo') { const q = $('pop-q').value.trim().toUpperCase(); popOps.filter(([v]) => !q || v.toUpperCase().includes(q)).forEach(([v]) => c.checked ? popSel.add(v) : popSel.delete(v)); listaPop(); }
+  else if (c.dataset.pv !== undefined) { c.checked ? popSel.add(c.dataset.pv) : popSel.delete(c.dataset.pv); listaPop(); } });
+$('pop').addEventListener('click', (e) => {
+  if (e.target.id === 'pop-limpiar') { delete F.cf[popK]; cerrarPop(); pintarTabla(); }
+  else if (e.target.id === 'pop-ok') { if (popSel.size === popOps.length) delete F.cf[popK]; else F.cf[popK] = new Set(popSel); cerrarPop(); pintarTabla(); } });
+$('pop').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'pop-q') $('pop-ok').click(); });
+document.addEventListener('mousedown', (e) => { if (!$('pop').hidden && !e.target.closest('#pop, .fbtn')) cerrarPop(); });
+$('det-sub').addEventListener('click', (e) => { if (e.target.id === 'cf-quitar') { F.cf = {}; pintarTabla(); } });
+addEventListener('scroll', (e) => { if (!$('pop').hidden && !(e.target.closest && e.target.closest('#pop'))) cerrarPop(); }, true);
+
+/* ---------- Copiar imagen (se pega con Ctrl+V en WhatsApp, correo o Excel) ---------- */
+let h2c; const cargarH2c = () => h2c || (h2c = new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; s.onload = ok; s.onerror = () => { h2c = null; ko(); }; document.head.appendChild(s); }));
+async function copiarImagen(btn, tit, sub, nodo, nombre) {
+  const txt = btn.textContent; btn.disabled = true; btn.textContent = 'Generando…';
+  const fondo = getComputedStyle(document.body).getPropertyValue('--sup').trim() || '#FFFFFF', caja = document.createElement('div');
+  caja.style.cssText = `position:fixed;left:-10000px;top:0;padding:16px;background:${fondo};color:var(--fg);width:max-content;font-family:var(--f-txt)`;
+  caja.innerHTML = `<h3 style="margin:0 0 4px;font:800 17px var(--f-disp)">${esc(tit)}</h3><p style="margin:0 0 10px;font-size:13px;color:var(--fg-3)">${esc(sub)}</p>`;
+  nodo.querySelectorAll('.caja').forEach(c => { c.style.maxHeight = 'none'; c.style.overflow = 'visible'; }); nodo.querySelectorAll('.fbtn, .fila-mas').forEach(x => x.remove()); nodo.querySelectorAll('th').forEach(t => t.style.position = 'static');
+  caja.appendChild(nodo); document.body.appendChild(caja);
+  try { await cargarH2c(); const blob = html2canvas(caja, { backgroundColor: fondo, scale: 2, logging: false, useCORS: true }).then(cv => new Promise(r => cv.toBlob(r, 'image/png'))).finally(() => caja.remove());
+    try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); btn.textContent = 'Imagen copiada ✓'; }
+    catch { const a = document.createElement('a'); a.href = URL.createObjectURL(await blob); a.download = nombre + '.png'; document.body.appendChild(a); a.click(); a.remove(); btn.textContent = 'Imagen descargada'; }
+  } catch { caja.remove(); btn.textContent = 'No se pudo copiar'; }
+  setTimeout(() => { btn.textContent = txt; btn.disabled = false; }, 2500);
+}
+const MAX_IMG = 150;
+$('img').addEventListener('click', (e) => {
+  const d = document.createElement('div'); d.innerHTML = `<div class="caja"><table><thead><tr>${COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${V.slice(0, MAX_IMG).map(fila).join('')}</tbody></table></div>${V.length > MAX_IMG ? `<p class="nota" style="margin-top:8px">Se muestran las primeras ${MAX_IMG} de ${n(V.length)} altas · descarga el Excel para verlas todas.</p>` : ''}`;
+  copiarImagen(e.currentTarget, 'Detalle por alta · FFTT', `${F.filial || 'Todas las filiales'} · ${$('det-sub').textContent.replace(/\s*quitar$/, '')}`, d, `fftt-detalle-${(F.filial || 'todas').toLowerCase()}`); });
+$('m-img').addEventListener('click', (e) => { const d = document.createElement('div'); d.innerHTML = $('m-cuerpo').innerHTML; d.querySelectorAll('button[data-dup]').forEach(b => b.closest('div').remove());
+  copiarImagen(e.currentTarget, $('m-tit').textContent, $('m-sub').textContent, d, 'fftt-' + $('m-tit').textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-')); });
+
 /* ---------- Duplicados y reglas ---------- */
-const abrir = (tit, sub, html) => { $('m-tit').textContent = tit; $('m-sub').textContent = sub; $('m-cuerpo').innerHTML = html; $('modal').hidden = false; $('m-x').focus(); };
+const abrir = (tit, sub, html) => { $('m-tit').textContent = tit; $('m-sub').textContent = sub; $('m-cuerpo').innerHTML = html; $('m-img').hidden = !$('m-cuerpo').querySelector('table'); $('modal').hidden = false; $('m-x').focus(); };
 $('m-x').addEventListener('click', () => $('modal').hidden = true); $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').hidden = true; });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('modal').hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; if (!$('pop').hidden) { cerrarPop(); return; } $('modal').hidden = true; $('segs-w').classList.remove('abierto'); });
 /* Aviso de error (como el buscador anterior): qué planta, qué campo, cómo está, cómo debe quedar y todos los campos de la orden */
 function ayuda(i, campo) {
   const o = R[i], rg = REGLAS[o.pl]; if (!rg || !o.bad) return;
