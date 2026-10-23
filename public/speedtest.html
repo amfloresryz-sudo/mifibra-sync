@@ -76,7 +76,7 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .col .barra .t { background: var(--gris-bg); border-radius: 4px 4px 0 0; } .col .barra .m { background: var(--magenta); }
 .col:hover .barra, .col:focus-visible .barra { filter: brightness(.95); outline: 2px solid var(--fg); outline-offset: 2px; }
 .meses { display: flex; justify-content: space-around; gap: 18px; padding: 8px 8px 0; color: var(--fg-3); font-size: 14px; } .meses span { flex: 1 1 0; max-width: 150px; text-align: center; }
-.hbar { display: grid; grid-template-columns: 130px 1fr 56px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; cursor: default; }
+.hbar { display: grid; grid-template-columns: 130px 1fr 150px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; cursor: default; }
 .hbar .p { height: 14px; border-radius: 4px; background: var(--pista); } .hbar .p i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--magenta); min-width: 3px; }
 #tb-ec tfoot td { font-weight: 800; border-top: 2px solid var(--fg); border-bottom: 0; background: var(--rosa); }
 .rk li.vacio { display: block; color: var(--fg-4); border: 0; }
@@ -92,6 +92,7 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .rk .p { height: 10px; border-radius: 5px; background: var(--pista); } .rk .p i { display: block; height: 100%; border-radius: 5px; background: var(--magenta); min-width: 3px; }
 .rk.peor .p i { background: var(--mal); }
 .rk .v { text-align: right; font-variant-numeric: tabular-nums; } .rk .v b { font: 800 16px var(--f-disp); } .rk .v small { display: block; color: var(--fg-4); font-size: 12px; }
+.hbar .v small { font-weight: 600; color: var(--fg-3); margin-right: 10px; font-size: 13px; }
 .hbar .v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hbar:hover .p, .hbar:focus-visible .p { outline: 2px solid var(--fg); outline-offset: 2px; }
 .scroll { overflow-x: auto; }
@@ -306,7 +307,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const fmax = Math.max(0.1, ...porFil.map(x => x[1]));
     $('t-fil').textContent = porEcF ? `Pruebas en dispositivo del cliente, por EECC de ${F.filial}` : 'Pruebas en dispositivo del cliente, por filial';
     $('fil-sub').textContent = `Solo se listan ${porEcF ? 'EECC' : 'filiales'} con 5 o más pruebas registradas · clic en una barra para ver sus AB con medición.`;
-    $('g-fil').innerHTML = porFil.map(([f, v, s]) => `<div class="hbar" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas"><span>${esc(f)}</span><span class="p"><i style="width:${v / fmax * 100}%"></i></span><span class="v">${pc(v)}</span></div>`).join('') || '<p class="vacio">Sin pruebas con estos filtros.</p>';
+    $('g-fil').innerHTML = porFil.map(([f, v, s]) => `<div class="hbar" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas"><span>${esc(f)}</span><span class="p"><i style="width:${v / fmax * 100}%"></i></span><span class="v"><small>${n(s.c)} / ${n(s.pr)}</small>${pc(v)}</span></div>`).join('') || '<p class="vacio">Sin pruebas con estos filtros.</p>';
     // Tabla por EECC
     const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
     // g = 'ec|EECC' o 'tec|EECC|TÉCNICO': cada número abre la lista de sus AB
