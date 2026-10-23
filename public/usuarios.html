@@ -246,7 +246,7 @@ function pintar() {
     <td>${u.activo ? '<span class="b ok">Activo</span>' : '<span class="b na">Desactivado</span>'}</td>
     <td>${u.cambiar_clave ? '<span class="b pend">Pendiente de cambio</span>' : `<span class="b ok" title="Cambiada el ${fecha(u.clave_en)}">Cambiada</span>`}</td>
     <td>${fecha(u.ultimo_ingreso)}</td>
-    <td><div class="acc"><button type="button" class="mini" data-acc="editar">Editar</button><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
+    <td><div class="acc"><button type="button" class="mini pri" data-acc="cred">Enviar credenciales</button><button type="button" class="mini" data-acc="editar">Editar</button><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
     || `<tr><td colspan="7">${U.length ? 'Sin coincidencias.' : 'Aún no hay usuarios: créalos arriba.'}</td></tr>`;
 }
 $('filas').addEventListener('keydown', (e) => { if (!e.target.classList.contains('in-ed')) return;
@@ -257,16 +257,24 @@ $('general').addEventListener('click', async (e) => { if (e.target.id !== 'gen-b
   if (general && !confirm('¿Desactivar la clave general? Desde ahora solo se podrá ingresar con usuario y contraseña.')) return;
   try { general = (await api('general', { activa: !general })).general; pintar(); toast(general ? 'Clave general activada.' : 'Clave general desactivada.'); } catch (er) { toast(er.message); } });
 
+// Mensaje con las credenciales para pegar en WhatsApp o correo
+const mensaje = (x) => `Hola ${x.nombre}, estas son tus credenciales del portal Mi Fibra Operaciones:\n\nLink: ${location.origin}\nUsuario: ${x.usuario}\nContraseña: ${x.clave}\nVes: ${nomF(x.filial)}\n\nAl ingresar por primera vez te pedirá crear tu propia contraseña.`;
+async function copiarCred(x, btn) {
+  try { await navigator.clipboard.writeText(mensaje(x)); if (btn) { const t = btn.textContent; btn.textContent = 'Copiado ✓'; setTimeout(() => btn.textContent = t, 2000); } toast(`Credenciales de ${x.nombre} copiadas: pégalas en WhatsApp o correo.`); }
+  catch { toast('No se pudo copiar.'); }
+}
+let CRE = [];
 // Mostrar las claves iniciales recién creadas (solo esta vez)
 function mostrarCreados(L, omitidos = []) {
-  const d = $('creados'); d.hidden = false;
+  const d = $('creados'); d.hidden = false; CRE = L;
   d.innerHTML = `<div class="creados"><h3>✓ ${n(L.length)} usuario${L.length === 1 ? '' : 's'} creado${L.length === 1 ? '' : 's'} · contraseñas iniciales</h3>
     <p class="nota" style="color:var(--fg-2)">Cópialas ahora y entrégalas a cada persona: por seguridad no se vuelven a mostrar. Al ingresar por primera vez, cada uno crea su propia contraseña.</p>
-    ${L.length ? `<div class="caja" style="max-height:320px"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th>Contraseña inicial</th></tr></thead><tbody>${L.map(x => `<tr><td class="izq">${esc(x.nombre)}</td><td><b>${esc(x.usuario)}</b></td><td>${esc(nomF(x.filial))}</td><td><span class="clave">${esc(x.clave)}</span></td></tr>`).join('')}</tbody></table></div>
+    ${L.length ? `<div class="caja" style="max-height:320px"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th>Contraseña inicial</th><th></th></tr></thead><tbody>${L.map((x, i) => `<tr><td class="izq">${esc(x.nombre)}</td><td><b>${esc(x.usuario)}</b></td><td>${esc(nomF(x.filial))}</td><td><span class="clave">${esc(x.clave)}</span></td><td><button type="button" class="mini pri" data-cred="${i}">Enviar credenciales</button></td></tr>`).join('')}</tbody></table></div>
     <div class="fila-f"><button type="button" class="btn-out" id="c-copiar">Copiar lista (para pegar en Excel o WhatsApp)</button><button type="button" class="btn-out" id="c-csv">Descargar Excel (CSV)</button></div>` : ''}
     ${omitidos.length ? `<p class="nota prev"><b>No se crearon ${n(omitidos.length)}:</b> ${omitidos.map(o => `${esc(o.usuario)} (${esc(o.motivo)})`).join(' · ')}</p>` : ''}</div>`;
   const tsv = 'Nombre\tUsuario\tFilial\tContraseña inicial\tLink\n' + L.map(x => [x.nombre, x.usuario, nomF(x.filial), x.clave, location.origin].join('\t')).join('\n');
   if (L.length) {
+    d.querySelectorAll('[data-cred]').forEach(b => b.onclick = () => copiarCred(CRE[+b.dataset.cred], b));
     $('c-copiar').onclick = async () => { try { await navigator.clipboard.writeText(tsv); toast('Lista copiada.'); } catch { toast('No se pudo copiar.'); } };
     $('c-csv').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + tsv.replace(/\t/g, ';')], { type: 'text/csv;charset=utf-8' })); a.download = `usuarios-mifibra-${new Date().toISOString().slice(0, 10)}.csv`; a.click(); };
   }
@@ -316,6 +324,9 @@ $('filas').addEventListener('change', async (e) => { const s = e.target.closest(
   try { await guardarU(u, { filial: s.value }); u.filial = s.value; pintar(); toast(`${u.nombre} ahora ve: ${nomF(s.value)}.`); } catch (er) { toast(er.message); pintar(); } });
 $('filas').addEventListener('click', async (e) => { const b = e.target.closest('button[data-acc]'); if (!b) return; const u = U.find(x => x.usuario === b.closest('tr').dataset.u); if (!u) return;
   try {
+    if (b.dataset.acc === 'cred') {   // la contraseña no se guarda a la vista: se genera una nueva inicial y se copia el mensaje
+      if (!confirm(`Para enviar las credenciales de ${u.nombre} se generará una nueva contraseña inicial (la actual deja de funcionar). ¿Continuar?`)) return;
+      const d = await guardarU(u, { reset: true }), x = { ...u, clave: d.clave }; await copiarCred(x); await cargarLista(); mostrarCreados([x]); return; }
     if (b.dataset.acc === 'editar') { editando = u.usuario; pintar(); const i = $('ed-usu'); i.focus(); i.select(); return; }
     if (b.dataset.acc === 'ed-no') { editando = ''; pintar(); return; }
     if (b.dataset.acc === 'ed-ok') { const nu = sinTilde($('ed-usu').value).trim().toLowerCase(), nom = $('ed-nom').value.trim();
