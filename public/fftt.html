@@ -84,7 +84,11 @@ td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 7
 .ay-l { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .5px; color: var(--fg-3); }
 .ay-v { font: 800 22px var(--f-disp); color: var(--mal); margin-top: 6px; word-break: break-all; } .ay-t { font-size: 14px; margin-top: 6px; color: var(--fg); }
 .ay-sug { margin-top: 10px; } .ay-sug b { font: 800 20px var(--f-disp); color: var(--ok); }
-.ay-tb tr.cur td { background: var(--rosa); } .ay-tb tr.ko td { color: var(--mal); }
+.ay-tb tr.cur td { background: var(--rosa); }
+.ay-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); gap: 20px; align-items: start; }
+.ay-img { border: 3px solid var(--magenta); border-radius: 12px; padding: 8px; max-height: 70vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.ay-img img { width: 100%; border-radius: 6px; display: block; } .ay-cap { font-size: 12px; color: var(--fg-3); text-align: center; margin-bottom: 8px; }
+@media (max-width: 900px) { .ay-grid { grid-template-columns: 1fr; } } .ay-tb tr.ko td { color: var(--mal); }
 td.dup { color: var(--magenta-txt); font-weight: 700; }
 .b { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; }
 .b.ok { background: var(--ok-bg); color: var(--ok); } .b.no { background: var(--mal-bg); color: var(--mal); } .b.na { background: var(--gris-bg); color: var(--fg-3); }
@@ -179,6 +183,10 @@ const EJ = { PANGEA: { zo: 'HM/G316/04 · LO/G573/D06 · CB/H200/15', nap: '25',
   FIBERLUX: { zo: '181823 · 0185078 · 0001910 · 00210556', nap: '(vacío) ó .', bor: '4', cin: '4767' },
   ATP: { zo: '0017/09/10 · vertical: 0010/LINC171, 0017/BR204 ó 0017/SINSI025 · BR204', nap: '004', bor: '6', cin: 'distinto de 0' },
   ECONOCABLE: { zo: 'P150110011', nap: '038', bor: '7', cin: '358' } };
+const IMGS = { PANGEA: [['pangea', 'App: así se llena para PANGEA'], ['pangea_guia', 'Guía CTO Pangea: NODO-DIVICAU, D = DIVISOR, número = CTO']],
+  FIBERLUX: [['fiberlux', 'App: así se llena para FIBERLUX (Caja NO VA)']],
+  ATP: [['atp', 'ATP: PROYECTO/TRONCAL/DIVICAU (arriba) y verticales PROYECTO/UBICACIÓN (abajo); Caja = CTO, Poste = borne']],
+  ECONOCABLE: [['econocable', 'App: así se llena para ECONOCABLE']] };
 const COLOR_PL = { PANGEA: '#FFE066', FIBERLUX: '#B2F2BB', ATP: '#FFC9C9', ECONOCABLE: '#E5DBFF' };
 
 /* ---------- Datos ---------- */
@@ -272,12 +280,12 @@ function ayuda(i, campo) {
   const filas = ['zo', 'nap', 'bor', 'cin'].map(c => { const ko = !!o.bad[c];
     return `<tr class="${c === k ? 'cur ' : ''}${ko ? 'ko' : ''}"${ko && c !== k ? ` data-ayuda="${i}" data-campo="${c}" style="cursor:pointer" title="Ver este error"` : ''}><td class="izq"><b>${CAMPOS[c]}</b></td><td>${vacio(o[c]) ? '(vacío)' : esc(o[c])}${ko ? ' <span class="b no">✗</span>' : ' <span class="b ok">✓</span>'}</td><td class="izq">${esc(EJ[o.pl][c])}</td></tr>`; }).join('');
   abrir(`⚠ Error FFTT · ${o.pl} · ${CAMPOS[k]}`, `OS ${o.os} · AB ${o.ab} · ${o.di} · ${o.ecN} · ${o.tec || 'sin técnico'} · ${dmy(o.fa)}`,
-    `<div class="ay-pl"><span style="background:${COLOR_PL[o.pl]}">${o.pl}</span>${malos.length > 1 ? `<span class="nota">Esta orden tiene ${malos.length} campos con error: ${malos.map(c => CAMPOS[c]).join(', ')}</span>` : ''}</div>
+    `<div class="ay-grid"><div><div class="ay-pl"><span style="background:${COLOR_PL[o.pl]}">${o.pl}</span>${malos.length > 1 ? `<span class="nota">Esta orden tiene ${malos.length} campos con error: ${malos.map(c => CAMPOS[c]).join(', ')}</span>` : ''}</div>
      <div class="ay-cajas"><div class="ay-box mal"><div class="ay-l">Está registrado así</div><div class="ay-v">${vacio(o[k]) ? '(vacío)' : esc(v)}</div></div>
        <div class="ay-box bien"><div class="ay-l">Formato correcto</div><div class="ay-t">${esc(r.txt)}</div>${sug && sug !== v ? `<div class="ay-sug"><span class="ay-l">Debería quedar:</span> <b>${esc(sug)}</b></div>` : ''}</div></div>
      <div class="ay-l" style="margin:6px 0">Todos los campos de ${o.pl} en esta orden</div>
      <div class="caja" style="max-height:none"><table class="ay-tb"><thead><tr><th>Campo</th><th>Registrado</th><th>Correcto (ej.)</th></tr></thead><tbody>${filas}</tbody></table></div>
-     ${o.dup ? `<div style="margin-top:12px"><button type="button" class="btn-out" data-dup="${o.i}">Ver cintillo repetido</button></div>` : ''}`);
+     ${o.dup ? `<div style="margin-top:12px"><button type="button" class="btn-out" data-dup="${o.i}">Ver cintillo repetido</button></div>` : ''}</div><div class="ay-img">${(IMGS[o.pl] || []).map(([f, c]) => `<img src="/img/fftt/${f}.jpg" alt="${esc(c)}" loading="lazy"><div class="ay-cap">${esc(c)}</div>`).join('')}</div></div>`);
 }
 document.addEventListener('click', (e) => { const a = e.target.closest('[data-ayuda]'); if (!a || e.target.closest('[data-dup]')) return; ayuda(+a.dataset.ayuda, a.dataset.campo); });
 $('m-cuerpo').addEventListener('click', (e) => { const b = e.target.closest('[data-dup]'); if (b) verDup(+b.dataset.dup); });
