@@ -77,6 +77,7 @@ td { padding: 7px 4px; border-bottom: 1px solid var(--borde); white-space: nowra
 td.izq { text-align: left; }
 tr:hover td { background: var(--rosa); }
 td.bad { background: var(--mal-bg) !important; color: var(--mal); font-weight: 700; cursor: pointer; }
+.b.dp { background: #E3EEFB; color: #1F5FAD; }
 .err-b { border: 0; cursor: pointer; } .err-b:hover { text-decoration: underline; }
 .ay-pl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; } .ay-pl > span:first-child { font: 800 13px var(--f-disp); color: #1F2937; padding: 4px 10px; border-radius: 8px; }
 .ay-cajas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
@@ -134,7 +135,7 @@ tr.fila-mas td { color: var(--fg-4); font-size: 12px; padding: 14px; }
     <div class="herr"><input type="search" id="buscar" placeholder="Busca por AB, OS, cintillo, TAP, distrito, técnico, EECC…" aria-label="Buscar"></div>
     <div class="segs" id="segs"></div>
     <div class="caja"><table id="tb"><thead><tr id="cab"></tr></thead><tbody id="filas"></tbody></table></div>
-    <p class="nota">Celda en rojo = no cumple el formato de su planta (pasa el puntero para ver la regla y la sugerencia) · Cintillo en fucsia = repetido en otro AB (clic para ver dónde) · Error FFTT solo se evalúa en Pangea, Fiberlux, ATP y Econocable.</p>
+    <p class="nota">Celda en rojo = no cumple el formato de su planta (pasa el puntero para ver la regla y la sugerencia) · Cintillo en fucsia = repetido en otro AB (clic para ver dónde) · Error FFTT solo se evalúa en Pangea, Fiberlux, ATP y Econocable · Dif. proveedor = las FFTT no cumplen el formato de su planta pero sí el de otra: no se cuentan como error.</p>
   </section>
   </div>
 </div></main>
@@ -197,8 +198,11 @@ try { const r = await fetch('/api/fftt', { headers: { 'x-portal-token': tokenPor
 const ix = Object.fromEntries(T.cols.map((c, i) => [c, i]));
 const cinKey = (v) => { const t = String(v || '').replace(/\D/g, '').replace(/^0+/, ''); return t; };
 const R = T.filas.map((f, i) => { const o = { i }; T.cols.forEach(c => o[c] = f[ix[c]]); o.mes = o.fa.slice(0, 7); o.ecN = String(o.ec || '').replace(/^EECC\s+/i, '') || '—';
-  const rg = REGLAS[o.pl]; o.bad = null;
-  if (rg) { const b = {}; for (const k in rg) { const v = String(o[k] ?? '').trim(), ok = rg[k].test ? rg[k].test(v) : rg[k].re.test(v); if (!ok) b[k] = 1; } if (Object.keys(b).length) o.bad = b; }
+  const rg = REGLAS[o.pl]; o.bad = null; o.difp = '';
+  const fallas = (r) => { const b = {}; for (const k in r) { const v = String(o[k] ?? '').trim(), ok = r[k].test ? r[k].test(v) : r[k].re.test(v); if (!ok) b[k] = 1; } return Object.keys(b).length ? b : null; };
+  if (rg) { o.bad = fallas(rg);
+    // No cumple su planta pero sí todas las reglas de otra: no es error, es «Dif. proveedor» (las FFTT son de otra planta)
+    if (o.bad) { const otra = Object.keys(REGLAS).find(p => p !== o.pl && !fallas(REGLAS[p])); if (otra) { o.difp = otra; o.bad = null; } } }
   o.q = [o.di, o.ab, o.os, o.cin, o.zo, o.nap, o.bor, o.ec, o.tec, o.pl, o.fi].join(' ').toUpperCase(); return o; });
 // Cintillos duplicados reales: el mismo cintillo en más de un AB
 const porCin = new Map(); R.forEach(o => { const k = cinKey(o.cin); if (!k) return; (porCin.get(k) || porCin.set(k, []).get(k)).push(o); });
@@ -222,7 +226,7 @@ $('limpiar').addEventListener('click', () => { Object.assign(F, { mes: '', desde
 let tq; $('buscar').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { F.q = e.target.value.trim().toUpperCase(); pintarTabla(); }, 180); });
 const base = (sin = '') => R.filter(o => (!F.filial || o.fi === F.filial) && (!F.mes || o.mes === F.mes) && (!F.desde || o.fa >= F.desde) && (!F.hasta || o.fa <= F.hasta)
   && (sin === 'ec' || !F.ec.size || F.ec.has(o.ecN)) && (sin === 'pl' || !F.pl.size || F.pl.has(o.pl)));
-const KPI_OK = { err: (o) => !!o.bad, dup: (o) => o.dup, PANGEA: (o) => o.pl === 'PANGEA' && !!o.bad, FIBERLUX: (o) => o.pl === 'FIBERLUX' && !!o.bad, ATP: (o) => o.pl === 'ATP' && !!o.bad, ECONOCABLE: (o) => o.pl === 'ECONOCABLE' && !!o.bad };
+const KPI_OK = { err: (o) => !!o.bad, dup: (o) => o.dup, difp: (o) => !!o.difp, PANGEA: (o) => o.pl === 'PANGEA' && !!o.bad, FIBERLUX: (o) => o.pl === 'FIBERLUX' && !!o.bad, ATP: (o) => o.pl === 'ATP' && !!o.bad, ECONOCABLE: (o) => o.pl === 'ECONOCABLE' && !!o.bad };
 
 let V = [];
 function pintar() {
@@ -232,6 +236,7 @@ function pintar() {
   const k = (id, l, v, s, col, mal) => `<button type="button" class="kpi${mal ? ' mal' : ''}" data-kpi="${id}" aria-pressed="${F.kpi === id}"><span class="l">${col ? `<i style="background:${col}"></i>` : ''}${l}</span><span class="kv">${v}</span><span class="s">${s}</span></button>`;
   $('kpis').innerHTML = k('err', 'Error FFTT', pc(err, ev.length), `${n(err)} de ${n(ev.length)} altas evaluadas`, '', err > 0)
     + PLANTAS.map(([p, l, c]) => { const P = B.filter(o => o.pl === p), e = P.filter(o => o.bad).length; return k(p, `Error ${l}`, n(e), `${pc(e, P.length)} de ${n(P.length)}`, c, e > 0); }).join('')
+    + k('difp', 'Dif. proveedor', n(B.filter(o => o.difp).length), 'FFTT de otra planta (no cuentan como error)', '#2A78D6', false)
     + k('dup', 'Cintillos duplicados', n(dupCin), `${n(dupAb)} altas con un cintillo repetido`, '#FF0091', dupCin > 0);
   // Segmentadores EECC y planta (varias opciones a la vez)
   const seg = (key, t, f) => { const C = {}; base(key).forEach(o => { const v = f(o); C[v] = (C[v] || 0) + 1; }); const ops = Object.keys(C).sort((a, b) => C[b] - C[a]);
@@ -248,9 +253,9 @@ let orden = { c: 'fa', dir: -1 };
 $('cab').innerHTML = COLS.map(([k, t]) => `<th data-c="${k}" aria-sort="${orden.c === k ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none'}">${t}</th>`).join('');
 $('cab').addEventListener('click', (e) => { const th = e.target.closest('[data-c]'); if (!th) return; const c = th.dataset.c; orden = { c, dir: orden.c === c ? -orden.dir : 1 };
   $('cab').querySelectorAll('th').forEach(x => x.setAttribute('aria-sort', x.dataset.c === orden.c ? (orden.dir > 0 ? 'ascending' : 'descending') : 'none')); pintarTabla(); });
-const valor = (o, c) => c === 'err' ? (o.bad ? 0 : REGLAS[o.pl] ? 1 : 2) : c === 'ab' || c === 'os' ? o[c] : String(o[c] ?? '');
+const valor = (o, c) => c === 'err' ? (o.bad ? 0 : o.difp ? 1 : REGLAS[o.pl] ? 2 : 3) : c === 'ab' || c === 'os' ? o[c] : String(o[c] ?? '');
 const titulo = (o, k) => { const r = REGLAS[o.pl][k], s = r.sug ? r.sug(o[k]) : ''; return `${r.txt}${s && s !== String(o[k]).trim() ? `\nSugerencia: ${s}` : ''}`; };
-const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.bad ? `<button type="button" class="b no err-b" data-ayuda="${o.i}" title="Ver qué está mal y cómo debe quedar">${esc(o.pl)} · ${Object.keys(o.bad).map(x => CAMPOS[x].split(' ')[0]).join(', ')}</button>` : '<span class="b ok">OK</span>'}</td>`;
+const fila = (o) => `<tr>${COLS.map(([k, , cl]) => { if (k === 'err') return `<td>${!REGLAS[o.pl] ? '<span class="b na">No aplica</span>' : o.difp ? `<span class="b dp" title="Las FFTT cumplen el formato de ${esc(o.difp)}, no de ${esc(o.pl)}">Dif. proveedor · ${esc(o.difp)}</span>` : o.bad ? `<button type="button" class="b no err-b" data-ayuda="${o.i}" title="Ver qué está mal y cómo debe quedar">${esc(o.pl)} · ${Object.keys(o.bad).map(x => CAMPOS[x].split(' ')[0]).join(', ')}</button>` : '<span class="b ok">OK</span>'}</td>`;
   const v = k === 'fa' ? dmy(o.fa) : k === 'ec' ? o.ecN : k === 'tec' ? tecCorto(o.tec) : (o[k] ?? ''), bad = o.bad && o.bad[k];
   if (k === 'tec') return `<td class="izq" title="${esc(o.tec)}">${esc(v || '—')}</td>`;
   if (k === 'cin' && o.dup) return `<td class="dup${bad ? ' bad' : ''}"${bad ? ` title="${esc(titulo(o, k))}" data-ayuda="${o.i}" data-campo="${k}"` : ''}><button type="button" class="lnk" data-dup="${o.i}" title="Cintillo repetido en otros AB: clic para ver">${esc(v)}</button></td>`;
@@ -300,7 +305,7 @@ $('xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.d
   try { await new Promise((ok, ko) => { if (window.ExcelJS) return ok(); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js'; s.onload = ok; s.onerror = ko; document.head.appendChild(s); });
     const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('FFTT', { views: [{ state: 'frozen', ySplit: 1 }] });
     ws.addRow(['Filial', ...COLS.map(c => c[1]), 'Duplicado']);
-    V.forEach(o => { const r = ws.addRow([o.fi, o.di, o.ab, o.os, dmy(o.fa), o.cin, o.zo, o.nap, o.bor, o.ec, o.tec, o.pl, !REGLAS[o.pl] ? 'No aplica' : o.bad ? Object.keys(o.bad).map(x => CAMPOS[x]).join(', ') : 'OK', o.dup ? 'Sí' : '']);
+    V.forEach(o => { const r = ws.addRow([o.fi, o.di, o.ab, o.os, dmy(o.fa), o.cin, o.zo, o.nap, o.bor, o.ec, o.tec, o.pl, !REGLAS[o.pl] ? 'No aplica' : o.difp ? `Dif. proveedor (${o.difp})` : o.bad ? Object.keys(o.bad).map(x => CAMPOS[x]).join(', ') : 'OK', o.dup ? 'Sí' : '']);
       if (o.bad) Object.keys(o.bad).forEach(k => { const c = r.getCell(2 + ['di', 'ab', 'os', 'fa', 'cin', 'zo', 'nap', 'bor'].indexOf(k)); c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE8E7' } }; c.font = { color: { argb: 'FFB42318' }, bold: true }; }); });
     ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } }; });
     ws.columns.forEach(c => { c.width = 16; }); ws.autoFilter = { from: 'A1', to: { row: 1, column: COLS.length + 2 } };
