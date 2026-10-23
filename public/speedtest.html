@@ -362,11 +362,14 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const donde = [...meses.map(m => MESC[+m.slice(5) - 1]), ...fils].join(', ');
     return `${base} · también fuera de este filtro${donde ? ' (' + donde + ')' : ''}`;
   }
+  // Otros AB donde está el mismo enlace de este AB (columna «Repetido en»)
+  const REP_EN = new Map(); D.rep.forEach(([, ix]) => { const u = [...new Set(ix)]; u.forEach(i => { const m = REP_EN.get(i) || REP_EN.set(i, { otros: new Set(), os: new Set(), mismo: false }).get(i); if (u.length === 1) m.mismo = true; u.forEach(j => { if (O[j].ab !== O[i].ab) m.otros.add(O[j].ab); else if (j !== i) m.os.add(O[j].os); }); }); });
+  const repEn = (o) => { const m = REP_EN.get(o.i); if (!m) return '—'; const L = [...m.otros].sort((a, b) => a - b); return [L.join(', '), m.os.size ? 'su OS ' + [...m.os].join(', ') : '', m.mismo ? 'el mismo AB (2 veces en la OS)' : ''].filter(Boolean).join(' · ') || '—'; };
   function pintarDetalle() {
     if (tab === 'sin') {
       const S = L.filter(o => !o.pr).sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
-      cabDet = ['Filial', 'F. atención', 'AB', 'OS', 'EECC', 'Técnico', 'Plan', 'Enlaces repetidos'];
-      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, PLANES[o.p], o.r || 0]); idxDet = S.map(o => o.i); posDet = S.map((o, k) => k);
+      cabDet = ['Filial', 'F. atención', 'AB', 'OS', 'EECC', 'Técnico', 'Plan', 'N.º enlaces repetidos', 'Repetido en'];
+      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, PLANES[o.p], o.r || 0, repEn(o)]); idxDet = S.map(o => o.i); posDet = S.map((o, k) => k);
       $('det-sub').textContent = `${n(S.length)} instalaciones sin ninguna prueba válida (sin enlace, o solo con enlaces repetidos)${S.length > 500 ? ' · se muestran las 500 más recientes; el Excel trae todas' : ''}`;
     } else {
       const R = D.rep.map(([url, idx]) => [url, idx.filter(i => sel(O[i])), idx]).filter(([, idx]) => idx.length);
