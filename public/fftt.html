@@ -111,8 +111,8 @@ tr.fila-mas td { color: var(--fg-4); font-size: 12px; padding: 14px; }
 .pl-ATP { --pb: #FDE3E6; --pf: #B01E33; --pc: #D7263D; } .pl-ECONOCABLE { --pb: #ECE8FB; --pf: #4A3AB0; --pc: #6250D6; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pl-PANGEA { --pb: #3A2E0E; --pf: #FFD36B; } :root:not([data-theme="light"]) .pl-FIBERLUX { --pb: #12301F; --pf: #7EDCA4; }
   :root:not([data-theme="light"]) .pl-ATP { --pb: #3D1820; --pf: #FF8F9C; } :root:not([data-theme="light"]) .pl-ECONOCABLE { --pb: #26214A; --pf: #B9AEFF; } }
-td.bad[class*="pl-"] { background: var(--pb) !important; color: var(--pf); box-shadow: inset 3px 0 0 var(--pc); }
-.b.no[class*="pl-"] { background: var(--pb); color: var(--pf); box-shadow: inset 0 0 0 1px var(--pc); }
+td.bad[class*="pl-"] { background: var(--pb) !important; color: var(--pf); border-left: 3px solid var(--pc); }
+.b.no[class*="pl-"] { background: var(--pb); color: var(--pf); border: 1px solid var(--pc); }
 /* Segmentadores plegados: se abren al pasar el puntero o con clic */
 .segs-w { position: relative; }
 .segs-res { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; width: 100%; padding: 8px 14px; border: 1px dashed var(--borde-2); border-radius: 12px; font-size: 13px; color: var(--fg-3); }
@@ -348,6 +348,8 @@ async function copiarImagen(btn, tit, sub, nodo, nombre) {
   caja.style.cssText = `position:fixed;left:-10000px;top:0;padding:16px;background:${fondo};color:var(--fg);width:max-content;font-family:var(--f-txt)`;
   caja.innerHTML = `<h3 style="margin:0 0 4px;font:800 17px var(--f-disp)">${esc(tit)}</h3><p style="margin:0 0 10px;font-size:13px;color:var(--fg-3)">${esc(sub)}</p>`;
   nodo.querySelectorAll('.caja').forEach(c => { c.style.maxHeight = 'none'; c.style.overflow = 'visible'; }); nodo.querySelectorAll('.fbtn, .fila-mas').forEach(x => x.remove()); nodo.querySelectorAll('th').forEach(t => t.style.position = 'static');
+  // La imagen no dibuja bien los botones: se pasan a etiquetas con el mismo estilo y color
+  nodo.querySelectorAll('button').forEach(b => { const sp = document.createElement('span'); sp.className = b.className; sp.innerHTML = b.innerHTML; b.replaceWith(sp); });
   caja.appendChild(nodo); document.body.appendChild(caja);
   try { await cargarH2c(); const blob = html2canvas(caja, { backgroundColor: fondo, scale: 2, logging: false, useCORS: true }).then(cv => new Promise(r => cv.toBlob(r, 'image/png'))).finally(() => caja.remove());
     try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); btn.textContent = 'Imagen copiada ✓'; }
