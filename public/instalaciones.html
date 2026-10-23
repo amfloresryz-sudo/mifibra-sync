@@ -630,6 +630,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .fil-act { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .tb-ind tr.ec-h td:first-child { padding-left: 18px; }
 .sub-f { color: var(--magenta-txt); font-weight: 700; }
+.pv-tb td, .pv-tb th { text-align: center; } .pv-tb td:first-child, .pv-tb th:first-child { text-align: left; } .pv-tb tr.pv-tot td { background: var(--rosa); border-top: 2px solid var(--fg); }
 .aj-cn { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; } .aj-cn .chip { color: var(--fg); border-color: var(--borde); }
 .aj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 18px; }
 .aj-grid label { display: flex; flex-direction: column; gap: 5px; font: 700 10.5px var(--f-disp); letter-spacing: .5px; text-transform: uppercase; color: var(--fg-3); }
@@ -1037,8 +1038,17 @@ const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rut
 let AJ = AJ_VACIO(), ajOk = false;
 const urlAj = (f) => '/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f);
 async function traerAjustes(f = filialSel()) {
-  try { const r = await fetch(urlAj(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) throw 0; AJ = { ...AJ_VACIO(), ...(await r.json()) }; ajOk = true; CACHE.set('aj:' + f, AJ); }
+  try { const pp = f === 'PROVINCIAS' ? traerAjProv() : null;   // Provincias › Todas: también los ajustes de cada provincia
+    const r = await fetch(urlAj(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) throw 0; const j = await r.json(), prov = pp ? await pp : null;
+    AJ = { ...AJ_VACIO(), ...j, ...(prov ? { prov } : {}) }; ajOk = true; CACHE.set('aj:' + f, AJ); }
   catch { const c = await CACHE.get('aj:' + f); AJ = c ? { ...AJ_VACIO(), ...c } : AJ_VACIO(); ajOk = false; }   // sin respuesta: se quedan los últimos ajustes vistos
+}
+/* Provincias › Todas: se juntan las metas y los gestores que se llenaron en cada provincia */
+const PROV7 = ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
+async function traerAjProv() {
+  const R = await Promise.all(PROV7.map(f => fetch(urlAj(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
+  const o = {}; PROV7.forEach((f, i) => { const a = R[i] || {}; o[f] = { metas: a.metas || {}, metasCn: a.metasCn || {}, nombres: a.nombres || {}, gestores: a.gestores || {}, tecnicos: a.tecnicos || {} }; });
+  return o;
 }
 /* Agenda editada a mano: solo el usuario master (clave master); se guarda solo esa OS y lo ven todos */
 const CLAVE_MASTER = 'mf_master';
@@ -1051,14 +1061,14 @@ async function guardarAgenda(os, ajuste, clave) {
   const j = await r.json().catch(() => ({}));
   if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Solo el usuario master puede editar agendas.'); }
   if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
-  ponerMaster(clave); AJ = { ...AJ_VACIO(), ...j }; ajOk = true;
+  ponerMaster(clave); AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true;
 }
 async function guardarAjustes() {
   const r = await fetch(urlAj(D.filial || filialSel()), { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() },
     body: JSON.stringify({ metas: AJ.metas, metasCn: AJ.metasCn || {}, nombres: AJ.nombres, gestores: AJ.gestores, rutas: AJ.rutas }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso para guardar: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
-  AJ = { ...AJ_VACIO(), ...j }; ajOk = true;
+  AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true;
 }
 const enCache = tokenPortal() ? await CACHE.get('instalaciones:' + filialSel()) : null, ajCache = tokenPortal() ? await CACHE.get('aj:' + filialSel()) : null;
 const ajP = traerAjustes();
@@ -1140,12 +1150,32 @@ const fijarEc = (x) => { if (x.ecR === undefined) x.ecR = x.ec0 !== undefined ? 
 const provTodas = () => (D && D.filial || filialSel()) === 'PROVINCIAS';
 const nomFil = (f) => f ? String(f).split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ') : 'Sin filial';
 window.esProvTodas = provTodas;   // filial-bloques.js cambia «EECC» y «Zona» por «Filial» en los textos
-const gestorDe = (x) => AJ.gestores[x.ec0 ?? x.ec] || 'SIN GESTOR';
-const hayGestores = () => Object.keys(AJ.gestores).length > 0;
+// En Provincias › Todas el gestor sale del cuadro de su provincia (EECC original del AB, o la asignada a su técnico en esa provincia)
+const ecProv = (x) => { const a = AJ.prov && AJ.prov[x.fi]; return (a && a.tecnicos && a.tecnicos[x.tec]) || x.ecR || x.ec0 || x.ec; };
+const gestorDe = (x) => provTodas() && AJ.prov && x.fi !== undefined ? ((AJ.prov[x.fi] || {}).gestores || {})[ecProv(x)] || 'SIN GESTOR' : AJ.gestores[x.ec0 ?? x.ec] || 'SIN GESTOR';
+const hayGestores = () => provTodas() && AJ.prov ? Object.values(AJ.prov).some(a => Object.keys(a.gestores || {}).length) : Object.keys(AJ.gestores).length > 0;
+const agrupaGestor = () => hayGestores() && !provTodas();   // en Provincias › Todas la comparativa sigue por filial (cada filial tiene varios gestores)
+/* Metas de Provincias › Todas: meta del mes = suma de las provincias; las demás = promedio ponderado por los pendientes de cada provincia */
+const METAS_K = ['meta_mes', 'meta_conv', 'meta_disp', 'meta_db', 'meta_prod', 'obj_tecnico', 'meta_cumpl'];
+function metaProvDe(a, c) { const mc = a.metasCn || {}, base = { ...a.metas };
+  if (c !== 'TODOS') return { ...base, ...(mc[c] || {}) };
+  const cn3 = ['IC', 'VI', 'OT']; if (base.meta_mes == null && cn3.every(k => mc[k]?.meta_mes != null)) base.meta_mes = cn3.reduce((s, k) => s + mc[k].meta_mes, 0);
+  return base; }
+function metasProv(c) {
+  let src = D; try { src = DP || D; } catch { /* aún no hay DP */ }
+  const peso = {}; (src.pend || []).forEach(p => { peso[p.fi] = (peso[p.fi] || 0) + 1; });
+  const E = PROV7.map(f => [f, metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, c)]), o = {};
+  METAS_K.forEach(k => { const V = E.filter(([, m]) => m[k] != null); if (!V.length) return;
+    if (k === 'meta_mes') { o[k] = V.reduce((s, [, m]) => s + m[k], 0); return; }
+    const W = V.reduce((s, [f]) => s + (peso[f] || 0), 0);
+    o[k] = Math.round((W ? V.reduce((s, [f, m]) => s + m[k] * (peso[f] || 0), 0) / W : V.reduce((s, [, m]) => s + m[k], 0) / V.length) * 100) / 100; });
+  return o;
+}
 /* Metas del canal elegido en la cabecera: lo vacío en el canal usa la meta de «Todos» (y lo vacío en «Todos», la del robot).
    En «Todos», si no hay meta del mes propia pero los 3 canales la tienen, la meta del mes = suma de los 3. */
 const cfgDe = (c = canal) => {
   const mc = AJ.metasCn || {}, base = { ...(D.config || {}), ...AJ.metas };
+  if (provTodas() && AJ.prov) return { ...base, ...(c !== 'TODOS' ? mc[c] || {} : {}), ...metasProv(c) };
   if (c !== 'TODOS') return { ...base, ...(mc[c] || {}) };
   const cn3 = ['IC', 'VI', 'OT'];
   if (AJ.metas.meta_mes == null && cn3.every(k => mc[k]?.meta_mes != null)) base.meta_mes = cn3.reduce((a, k) => a + mc[k].meta_mes, 0);
@@ -1684,12 +1714,12 @@ function pintarTarjeta(g, Pg, gs) {
 /* Filas de la tabla de indicadores: planas, o agrupadas por gestor si hay gestores asignados */
 const geAbiertos = new Set();   // gestores expandidos (por defecto todos contraídos)
 function filasInd(ecs, Pall, Lall, Iall, ind, fila) {
-  $('pen-acc-ind').hidden = !hayGestores();
-  $('t-pcomp').textContent = hayGestores() ? 'Comparativa entre gestores' : 'Comparativa entre EECC';
-  $('pen-ind-tit').textContent = hayGestores() ? 'Indicadores por gestor' : 'Indicadores por EECC';
+  $('pen-acc-ind').hidden = !agrupaGestor();
+  $('t-pcomp').textContent = agrupaGestor() ? 'Comparativa entre gestores' : 'Comparativa entre EECC';
+  $('pen-ind-tit').textContent = agrupaGestor() ? 'Indicadores por gestor' : 'Indicadores por EECC';
   const filaEc = (e, cls = '') => fila(`<button type="button" class="lnk num" data-pen-ec="${esc(e)}">${esc(e)}</button>`, ind(Pall.filter(p => p.ec === e), Lall.filter(x => x.ec === e), Iall.filter(x => x.ec === e)), '', (filtro.penEc === e ? 'sel ' : '') + cls);
-  $('pen-ind-sub').textContent = hayGestores() ? 'Total AB / AB SG (sin gestión) / Dispersión / DB / Productividad / Convertibilidad, por gestor. Toca ▸ para ver sus EECC y el nombre del gestor para ver sus objetivos por semana. Convertibilidad = AB de instalación ingresados en el mes (F. Recep) ya DESCARGADA ÷ todos los ingresados del mes (registrada, descargada, observada y anulada), por EECC; en observadas y anuladas la EECC es la del técnico escrito entre %…% en el comentario. Al usar el segmentador de gestores, la tabla se mantiene completa y resalta la fila filtrada.' : 'Total AB / AB SG (sin gestión) / Dispersión / DB / Productividad / Convertibilidad, por EECC. Clic en una EECC para filtrar. Asigna gestores en «Metas, EECC y gestores».';
-  if (!hayGestores()) return ecs.map(e => filaEc(e)).join('');
+  $('pen-ind-sub').textContent = agrupaGestor() ? 'Total AB / AB SG (sin gestión) / Dispersión / DB / Productividad / Convertibilidad, por gestor. Toca ▸ para ver sus EECC y el nombre del gestor para ver sus objetivos por semana. Convertibilidad = AB de instalación ingresados en el mes (F. Recep) ya DESCARGADA ÷ todos los ingresados del mes (registrada, descargada, observada y anulada), por EECC; en observadas y anuladas la EECC es la del técnico escrito entre %…% en el comentario. Al usar el segmentador de gestores, la tabla se mantiene completa y resalta la fila filtrada.' : 'Total AB / AB SG (sin gestión) / Dispersión / DB / Productividad / Convertibilidad, por EECC. Clic en una EECC para filtrar. Asigna gestores en «Metas, EECC y gestores».';
+  if (!agrupaGestor()) return ecs.map(e => filaEc(e)).join('');
   const geDeEc = {}; Pall.forEach(p => { geDeEc[p.ec] = gestorDe(p); });
   const grupos = [...new Set(ecs.map(e => geDeEc[e]))].sort((a, b) => a === 'SIN GESTOR' ? 1 : b === 'SIN GESTOR' ? -1 : Pall.filter(p => gestorDe(p) === b).length - Pall.filter(p => gestorDe(p) === a).length);
   return grupos.map(g => { const E = ecs.filter(e => geDeEc[e] === g), est = (x) => E.includes(x.ec), cer = !geAbiertos.has(g);
@@ -2921,6 +2951,7 @@ function pintarAjMetas() {
 }
 const leerAjMetas = () => { const o = {}; $('aj-metas').querySelectorAll('[data-meta]').forEach(i => { const v = i.value.trim(); if (v !== '' && isFinite(Number(v))) o[i.dataset.meta] = Number(v); }); ajMetas[ajCn] = o; };
 function abrirAjustes() {
+  if (provTodas() && AJ.prov) { abrirAjustesProv(); return; }
   const cuenta0 = {}; D.pend.forEach(p => { cuenta0[p.ec0] = (cuenta0[p.ec0] || 0) + 1; });
   const ecs0 = [...new Set([D.pend, D.prog, D.liq, D.ing].flatMap(L => (L || []).map(x => x.ec0)).filter(Boolean))]
     .sort((a, b) => (cuenta0[b] || 0) - (cuenta0[a] || 0) || (a < b ? -1 : 1));
@@ -2939,6 +2970,31 @@ function abrirAjustes() {
   $('modal-copiar').hidden = true; pintarAjMetas();
   if (!ajOk) $('modal-aviso').textContent = 'Aún no se pudieron leer los ajustes guardados; lo que guardes ahora los reemplazará.';
 }
+/* Provincias › Todas: resumen (solo lectura) de lo que se llenó en cada provincia; se edita en cada filial */
+let pvCn = 'TODOS';
+function pintarPvMetas() {
+  const f2 = (v, k) => v == null ? '<span style="color:var(--fg-4)">—</span>' : k === 'meta_mes' ? n(v) : dec(v);
+  const T = metasProv(pvCn), peso = {}; ((DP || D).pend || []).forEach(p => { peso[p.fi] = (peso[p.fi] || 0) + 1; });
+  $('pv-metas').innerHTML = `<div class="scroll"><table class="aj-tb pv-tb"><thead><tr><th>Filial</th>${METAS_AJ.map(([, t]) => `<th>${t.replace(' (instalaciones)', '').replace(' (%)', ' %')}</th>`).join('')}</tr></thead><tbody>
+    ${PROV7.map(f => { const m = metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, pvCn); return `<tr><td>${esc(nomFil(f))}<small>${n(peso[f] || 0)} pendientes</small></td>${METAS_AJ.map(([k]) => `<td>${f2(m[k], k)}</td>`).join('')}</tr>`; }).join('')}
+    <tr class="pv-tot"><td><b>Provincias</b><small>lo que se usa aquí</small></td>${METAS_AJ.map(([k]) => `<td><b>${T[k] != null ? f2(T[k], k) : `${f2(D.config?.[k], k)} <small>(robot)</small>`}</b></td>`).join('')}</tr></tbody></table></div>`;
+}
+function abrirAjustesProv() {
+  pvCn = canal;
+  const cnt = {}; ((DP || D).pend || []).forEach(p => { const k = p.fi + '|' + ecProv(p); cnt[k] = (cnt[k] || 0) + 1; });
+  const filas = PROV7.flatMap(f => { const a = AJ.prov[f] || {}, ecs = new Set([...Object.keys(a.gestores || {}), ...Object.keys(cnt).filter(k => k.startsWith(f + '|')).map(k => k.slice(f.length + 1))]);
+    return [...ecs].sort((x, y) => (cnt[f + '|' + y] || 0) - (cnt[f + '|' + x] || 0)).map(e => ({ f, e, nom: (a.nombres || {})[e] || e, ge: (a.gestores || {})[e] || '', n: cnt[f + '|' + e] || 0 })); });
+  const html = secF('Metas · Provincias = suma de las filiales', `<div class="aj-cn" role="group" aria-label="Canal de las metas" id="pv-cn">${CANALES.map(([k, t]) => `<button type="button" class="chip" data-pv-cn="${k}" aria-pressed="${k === pvCn}">${t}</button>`).join('')}</div>
+      <div id="pv-metas"></div><p class="fi-nota">Meta del mes = suma de las metas de cada provincia. Las demás metas = promedio de las provincias que la llenaron, ponderado por sus pendientes. Lo que ninguna provincia llenó usa el valor del robot.</p>`)
+    + secF('Gestores de cada filial', `<div class="scroll" style="max-height:40vh;overflow:auto"><table class="aj-tb"><thead><tr><th>Filial</th><th>EECC</th><th>Gestor</th><th>Pendientes</th></tr></thead><tbody>
+      ${filas.map(r => `<tr><td>${esc(nomFil(r.f))}</td><td>${esc(r.nom)}${r.nom !== r.e ? `<small>${esc(r.e)}</small>` : ''}</td><td>${r.ge ? esc(r.ge) : '<span style="color:var(--fg-4)">Sin gestor</span>'}</td><td>${n(r.n)}</td></tr>`).join('') || '<tr><td colspan="4">Ninguna provincia tiene EECC con pendientes.</td></tr>'}
+      </tbody></table></div><p class="fi-nota">En Provincias cada AB toma el gestor que su filial le asignó a su EECC. Para cambiar metas o gestores, elige la filial (Ancash, Arequipa…) y edítalos ahí: aquí se juntan solos.</p>`)
+    + `<div class="aj-pie"><button type="button" class="btn-pri" id="pv-cerrar">Entendido</button></div>`;
+  abrirFichaModal('Metas, EECC y gestores', 'Instalaciones · PROVINCIAS · se juntan las metas y los gestores llenados en cada filial', html);
+  $('modal-copiar').hidden = true; pintarPvMetas();
+}
+document.addEventListener('click', (e) => { if (e.target.closest('#pv-cerrar')) { cerrarModal(); return; }
+  const b = e.target.closest('[data-pv-cn]'); if (!b) return; pvCn = b.dataset.pvCn; document.querySelectorAll('#pv-cn [data-pv-cn]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarPvMetas(); });
 $('pen-ajustes').addEventListener('click', abrirAjustes);
 /* ---------- Técnicos y EECC: el usuario master cambia a qué EECC pertenece cada técnico (aplica en Instalaciones y Averías) ---------- */
 function abrirTecnicos() {
@@ -3014,7 +3070,7 @@ function abrirTecnicos() {
       const j = await r.json().catch(() => ({}));
       if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Solo el usuario master puede cambiar la EECC de los técnicos.'); }
       if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
-      ponerMaster(clave); AJ = { ...AJ_VACIO(), ...j }; ajOk = true; CACHE.set('aj:' + (D.filial || filialSel()), AJ);
+      ponerMaster(clave); AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true; CACHE.set('aj:' + (D.filial || filialSel()), AJ);
       filtro.penEc = 'TODOS'; aplicarAjustes(); pintarFiltros(); pintarTodo(); cerrarModal();
       const n = Object.keys(tecnicos).length; avisoGlobal(n ? `${n} técnico${n === 1 ? '' : 's'} con EECC cambiada. Ya lo ve todo el equipo.` : 'Todos los técnicos vuelven a la EECC de ScordSoft.');
     } catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message || 'No se pudo guardar.'; bt.forEach(b => b.disabled = false); }
