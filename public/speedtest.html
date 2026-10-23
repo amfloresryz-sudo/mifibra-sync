@@ -77,6 +77,16 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .meses { display: flex; justify-content: space-around; gap: 18px; padding: 8px 8px 0; color: var(--fg-3); font-size: 14px; } .meses span { flex: 1 1 0; max-width: 150px; text-align: center; }
 .hbar { display: grid; grid-template-columns: 130px 1fr 56px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; cursor: default; }
 .hbar .p { height: 14px; border-radius: 4px; background: var(--pista); } .hbar .p i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--magenta); min-width: 3px; }
+.rk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 26px; }
+.rk-t { margin: 0 0 8px; font: 700 12px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
+.rk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rk li { display: grid; grid-template-columns: 30px minmax(0, 1fr) 140px 120px; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 14px; }
+.rk .pos { font: 800 15px var(--f-disp); color: var(--fg-3); text-align: center; } .rk li:nth-child(-n+3) .pos { color: #fff; background: var(--magenta); border-radius: 50%; width: 26px; height: 26px; display: grid; place-items: center; font-size: 13px; }
+.rk.peor li:nth-child(-n+3) .pos { background: var(--mal); }
+.rk .nom { min-width: 0; } .rk .nom b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; } .rk .nom small { color: var(--fg-4); font-size: 12px; }
+.rk .p { height: 10px; border-radius: 5px; background: var(--pista); } .rk .p i { display: block; height: 100%; border-radius: 5px; background: var(--magenta); min-width: 3px; }
+.rk.peor .p i { background: var(--mal); }
+.rk .v { text-align: right; font-variant-numeric: tabular-nums; } .rk .v b { font: 800 16px var(--f-disp); } .rk .v small { display: block; color: var(--fg-4); font-size: 12px; }
 .hbar .v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hbar:hover .p, .hbar:focus-visible .p { outline: 2px solid var(--fg); outline-offset: 2px; }
 .scroll { overflow-x: auto; }
@@ -174,6 +184,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <div id="g-fil"></div>
     </section>
   </div>
+
+  <section class="sec" aria-labelledby="t-rk">
+    <div class="sec-cab"><div><h3 id="t-rk">Ranking de cumplimiento · prueba en dispositivo del cliente</h3><p class="sub" id="rk-sub"></p></div>
+      <div class="pen-acc"><div class="tabs-st" role="tablist" aria-label="Orden del ranking" id="rk-orden"><button type="button" role="tab" data-rk="mejor" aria-selected="true">Mayor cumplimiento</button><button type="button" role="tab" data-rk="peor" aria-selected="false">Menor cumplimiento</button></div></div></div>
+    <div class="rk-grid"><div><h4 class="rk-t">Empresas colaboradoras</h4><ol class="rk" id="rk-ec"></ol></div><div><h4 class="rk-t">Técnicos</h4><ol class="rk" id="rk-tec"></ol></div></div>
+    <p class="nota">Cumplimiento = instalaciones con al menos una prueba válida hecha en el dispositivo del cliente ÷ instalaciones · Solo entran EECC con 20 o más instalaciones y técnicos con 10 o más en el periodo filtrado · Empate: gana quien tiene más instalaciones · Clic en el número para ver los AB.</p>
+  </section>
 
   <section class="sec" aria-labelledby="t-ec">
     <div class="sec-cab"><div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos y en un número para ver sus AB.</p></div>
@@ -299,12 +316,29 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       if (ab) { const porT = {}; porEc[ec].forEach(o => { (porT[o.t] = porT[o.t] || []).push(o); });
         h += Object.keys(porT).sort((x, y) => porT[y].length - porT[x].length).map(t => fila(t, sum(porT[t]), 'tec', '', 'tec|' + ec + '|' + t)).join(''); }
       return h; }).join('') || '<tr><td colspan="9" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
-    filtrarEc(); pintarDetalle();
+    filtrarEc(); pintarRanking(); pintarDetalle();
   }
   const tb = $('tb-ec').tBodies[0];
   const alternar = (tr) => { const ec = tr.dataset.ec; abiertos.has(ec) ? abiertos.delete(ec) : abiertos.add(ec); pintar(); const t = [...tb.querySelectorAll('tr.ec')].find(x => x.dataset.ec === ec); if (t) t.focus(); };
   tb.addEventListener('click', (e) => { if (e.target.closest('[data-lista]')) return; const tr = e.target.closest('tr.ec'); if (tr) alternar(tr); });
   tb.addEventListener('keydown', (e) => { const tr = e.target.closest('tr.ec'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alternar(tr); } });
+
+  // ----- Ranking: % de instalaciones con prueba en el dispositivo del cliente -----
+  let rkOrden = 'mejor';
+  function pintarRanking() {
+    const grupo = (clave, min) => { const G = {}; L.forEach(o => { const k = clave(o); (G[k] = G[k] || []).push(o); });
+      return Object.entries(G).filter(([, X]) => X.length >= min).map(([k, X]) => ({ k, n: X.length, c: X.filter(o => o.c > 0).length, X }))
+        .map(r => ({ ...r, pct: r.c / r.n * 100 })).sort((a, b) => rkOrden === 'mejor' ? b.pct - a.pct || b.n - a.n : a.pct - b.pct || b.n - a.n); };
+    const RE = grupo(o => o.e, 20).slice(0, 10), RT = grupo(o => o.e + '|' + o.t, 10).slice(0, 15);
+    const li = (r, i, nom, sub, lista) => `<li><span class="pos">${i + 1}</span><span class="nom"><b title="${esc(nom)}">${esc(nom)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><span class="p"><i style="width:${r.pct}%"></i></span><span class="v"><b>${pc(r.pct)}</b><small><button type="button" class="nb" data-lista="${lista}" title="Ver los AB con prueba del cliente">${n(r.c)}</button> de ${n(r.n)} instal.</small></span></li>`;
+    $('rk-ec').className = 'rk ' + rkOrden; $('rk-tec').className = 'rk ' + rkOrden;
+    $('rk-ec').innerHTML = RE.map((r, i) => li(r, i, r.k, '', `g-cli|ec|${r.k}`)).join('') || '<li class="vacio">Ninguna EECC con 20 o más instalaciones.</li>';
+    $('rk-tec').innerHTML = RT.map((r, i) => { const [ec, t] = r.k.split('|'); return li(r, i, t, ec, `g-cli|tec|${ec}|${t}`); }).join('') || '<li class="vacio">Ningún técnico con 10 o más instalaciones.</li>';
+    const tot = L.filter(o => o.c > 0).length;
+    $('rk-sub').textContent = `${$('ctx').textContent} · cumplimiento general ${pc(L.length ? tot / L.length * 100 : 0)} (${n(tot)} de ${n(L.length)} instalaciones) · top 10 EECC y top 15 técnicos`;
+  }
+  $('rk-orden').addEventListener('click', (e) => { const b = e.target.closest('[data-rk]'); if (!b) return; rkOrden = b.dataset.rk;
+    $('rk-orden').querySelectorAll('[data-rk]').forEach(x => x.setAttribute('aria-selected', String(x === b))); pintarRanking(); });
 
   // ----- Detalle: AB sin medición / enlaces repetidos -----
   let filasDet = [], cabDet = [], idxDet = [], posDet = [];
@@ -394,7 +428,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('det').innerHTML = filasDetAll.length ? `<table class="det"><thead><tr>${cabDet.map((c, i) => thF(c, i, 'det')).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' && j === 1 ? `<td><button type="button" class="nb" data-lista="url|${posDet[r]}" title="Ver los AB">${esc(v)}</button></td>` : tab === 'sin' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : tab === 'rep' && j === 0 ? `<td class="izq"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a></td>` : tab === 'rep' && j === 2 ? `<td class="izq">${esc(v)}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
       : '<p class="vacio">Sin registros con estos filtros.</p>';
   }
-  document.querySelector('.tabs-st').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; FC.det = {};
+  document.querySelector('.tabs-st [data-tab]').parentElement.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; FC.det = {};
     document.querySelectorAll('.tabs-st [data-tab]').forEach(x => x.setAttribute('aria-selected', String(x === b))); pintarDetalle(); });
 
   // ----- Lista de AB (clic en cualquier número) -----
