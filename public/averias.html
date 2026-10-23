@@ -611,7 +611,7 @@ function pintarTipos() {
   $('zonas').innerHTML = ['TODAS', ...ZORD].map(z => `<button type="button" class="chip" data-z="${z}" aria-pressed="${z === zona}">${z === 'TODAS' ? 'Todas' : z} (${cz(z)})</button>`).join('');
   $('n-pend').textContent = c(tipo);
 }
-$('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (!b) return; tipo = b.dataset.t; pintarTipos(); pintarLiq(); pintarTodo(); });
+$('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (!b) return; tipo = b.dataset.t; tosDeTipo(); penTosIni = true; pintarTipos(); pintarLiq(); pintarTodo(); });
 $('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = b.dataset.cn; pintarTipos(); pintarLiq(); pintarCien(); pintarTodo(); });
 $('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = b.dataset.z; pintarTipos(); pintarLiq(); pintarCien(); pintarTodo(); });
 $('tabs').addEventListener('click', (e) => {
@@ -1114,14 +1114,17 @@ function segmentos(contenedor, grupos) {
   filtro[g.dataset.k] = b.dataset.v; pintarTodo();
 }));
 /* Tipo de trabajo pendiente: Averías (por defecto, respeta Tipo y Zona de la cabecera) u otro tipo de orden (sin instalaciones) */
-let penTo = 'AVERIA';
+// Varias a la vez y ligado al Tipo de la cabecera: TODOS = todos · AVERÍA = AVERÍA · TC = TC + MCD · MISCELÁNEOS = OTROS + CAMBIO DE EQUIPO + TRASLADO INT
+const penTos = new Set(); let penTosIni = false;
+const TOS_TIPO = { AVERIA: ['AVERIA'], TC: ['TC', 'MCD'], MISC: ['OTROS', 'CAMBIO DE EQUIPO', 'TRASLADO INT'] };
 const ddmmIso = (f) => f ? `${f.slice(8, 10)}/${f.slice(5, 7)}` : '';
 let pendxAv = null;
 const pendOtros = () => (pendxAv && pendxAv.src === D.pendx) ? pendxAv : (pendxAv = Object.assign((D.pendx || []).map(x => ({ ...x, t: x.to, inf: false, infd: null, rei: 0, prev: [], inst: null,
   ags: 'ok', ag: x.fp ? `${ddmmIso(x.fp)} ${/\d/.test(x.fr || '') ? x.fr : ''}`.trim() : '—', mot: x.to, otro: true })), { src: D.pendx }));
-const esAvTc = () => penTo === 'AVERIA' || penTo === 'TC';
-const pendUni = () => esAvTc() ? D.pend.filter(p => p.t === penTo) : pendOtros().filter(p => p.to === penTo);
-const pendTipo = () => esAvTc() ? D.pend.filter(p => p.t === penTo && enZona(p)) : pendOtros().filter(p => p.to === penTo && enZona(p));
+const tosDisponibles = () => ['AVERIA', 'TC', ...[...new Set(pendOtros().map(p => p.to))]];
+function tosDeTipo() { penTos.clear(); (tipo === 'TODOS' ? tosDisponibles() : TOS_TIPO[tipo] || []).forEach(t => penTos.add(t)); }
+const pendUni = () => { if (!penTosIni) { penTosIni = true; tosDeTipo(); } return [...D.pend.filter(p => (p.t === 'AVERIA' || p.t === 'TC') && penTos.has(p.t)), ...pendOtros().filter(p => penTos.has(p.to))]; };
+const pendTipo = () => pendUni().filter(enZona);
 const ecsDe = (L) => [...new Set(L.map(p => p.ec))].sort((a, b) => a === 'POR ASIGNAR' ? -1 : b === 'POR ASIGNAR' ? 1 : a < b ? -1 : 1);
 const agOk = (p, f) => f === 'TODOS' || (f === 'CON AGENDA') === conAgenda(p);
 
@@ -1359,14 +1362,16 @@ function celdaTiempo(p) {
 function pintarPendientes() {
   { const cnt = {}; pendOtros().forEach(p => cnt[p.to] = (cnt[p.to] || 0) + 1);
     const tos = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b));
-    $('pen-to').innerHTML = `<div class="g"><span class="seg-t">Tipo de trabajo</span><button type="button" class="chip" data-pto="AVERIA" aria-pressed="${penTo === 'AVERIA'}">AVERÍA (${D.pend.filter(p => p.t === 'AVERIA' && enZona(p)).length})</button><button type="button" class="chip" data-pto="TC" aria-pressed="${penTo === 'TC'}">TC (${D.pend.filter(p => p.t === 'TC' && enZona(p)).length})</button>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${penTo === t}">${esc(t)} (${cnt[t]})</button>`).join('')}</div>`; }
+    pendUni();
+    const nAv = (t) => D.pend.filter(p => p.t === t && enZona(p)).length;
+    $('pen-to').innerHTML = `<div class="g"><span class="seg-t">Tipo de trabajo</span><button type="button" class="chip" data-pto="" aria-pressed="${penTos.size === tosDisponibles().length}">Todos</button><button type="button" class="chip" data-pto="AVERIA" aria-pressed="${penTos.has('AVERIA')}">AVERÍA (${nAv('AVERIA')})</button><button type="button" class="chip" data-pto="TC" aria-pressed="${penTos.has('TC')}">TC (${nAv('TC')})</button>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${penTos.has(t)}">${esc(t)} (${pendOtros().filter(p => p.to === t && enZona(p)).length})</button>`).join('')}</div>`; }
   const P0 = pendTipo();
   segmentos('pen-segs', [
     { k: 'penEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
     { k: 'penAg', t: 'Agenda', ops: ['CON AGENDA','SIN AGENDA'], cnt: (o) => P0.filter(p => agOk(p, o)).length } ]);
   const L = filasPend();
   const nCol = Object.keys(colFil).length;
-  $('pen-n').innerHTML = `${L.length} de ${pendUni().length} pendientes${esAvTc() ? ' de ' + (penTo === 'TC' ? 'TC' : 'avería') : ' de ' + penTo.toLowerCase()}${zona === 'TODAS' ? '' : ' · zona ' + zona}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
+  $('pen-n').innerHTML = `${L.length} de ${pendUni().length} pendientes${penTos.size === tosDisponibles().length ? '' : ' de ' + [...penTos].map(t => t === 'AVERIA' ? 'avería' : t.toLowerCase()).join(', ')}${zona === 'TODAS' ? '' : ' · zona ' + zona}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   $('pen-filas').innerHTML = L.map(p => {
     const e = estado(p), rec = e.st, ed = rec ? edad(rec) : null;
     const tag = `<button type="button" class="lnk" data-ficha="rei" data-os="${p.os}" title="Ver detalle de Reiterada">${p.rei ? `<span class="b no">Sí · ${p.rei + 1}.ª</span>` : '<span class="b vac">No</span>'}</button>`;
@@ -1390,7 +1395,9 @@ function pintarPendientes() {
   prepararOrden($('tb-pend')); marcarFiltrosCol();
 }
 $('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; pintarPendientes(); });
-$('pen-to').addEventListener('click', (e) => { const b = e.target.closest('[data-pto]'); if (!b || penTo === b.dataset.pto) return; penTo = b.dataset.pto; filtro.penEc = filtro.penAg = 'TODOS'; Object.keys(colFil).forEach(k => delete colFil[k]); pintarPendientes(); });
+$('pen-to').addEventListener('click', (e) => { const b = e.target.closest('[data-pto]'); if (!b) return; const v = b.dataset.pto;
+  if (!v) { penTos.clear(); tosDisponibles().forEach(t => penTos.add(t)); } else if (penTos.has(v)) { if (penTos.size > 1) penTos.delete(v); } else penTos.add(v);
+  filtro.penEc = filtro.penAg = 'TODOS'; Object.keys(colFil).forEach(k => delete colFil[k]); pintarPendientes(); });
 setInterval(() => {
   if (tab !== 'pendientes') return;
   const porOs = {}; pendUni().forEach(p => porOs[p.os] = p);

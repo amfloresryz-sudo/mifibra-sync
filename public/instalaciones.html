@@ -1081,7 +1081,7 @@ const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#F
 const FRANJAS = ['8 - 10','10 - 12','12 - 14','14 - 16','16 - 18','18 - 20'];
 let DIAS = [], MC = '', MESL = '', CFG = {};
 let coTipo = 'TODOS', seg = 'TODOS', canal = 'TODOS', zona = 'TODAS', vista = 'eecc', tab = 'panel', diaCo = 0, diaAv = 0, diaPenAg = 0;
-const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTo: 'INSTALACION SERVICIO', penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
+const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTos: new Set(['INSTALACION SERVICIO']), penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
 const abiertos = new Set();
 const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: WD[f.getDay()], fin: f.getDay() === 0 }; };
 const fDia = (d) => `${String(d).padStart(2, '0')}-${MC}.`;
@@ -1559,9 +1559,13 @@ const GES = { 'GESTIONADO': (p) => p.ges, 'SIN GESTIÓN': (p) => !p.ges };
 const fechaOk = (p) => (!filtro.desde && !filtro.hasta) || (p.fp && (!filtro.desde || p.fp >= filtro.desde) && (!filtro.hasta || p.fp <= filtro.hasta));
 /* Pendientes con todos los segmentadores de la pestaña, salvo el que se indique (para los conteos) */
 /* Tipo de trabajo pendiente: Instalaciones (por defecto) u otro tipo de orden (sin averías ni TC) */
-const esInst = () => filtro.penTo === 'INSTALACION SERVICIO';
-const penUni = () => esInst() ? D.pend : (D.pendx || []).filter(p => p.to === filtro.penTo);
+// Tipo de trabajo (varios a la vez) y Tipo: Instalaciones (por defecto) o Misceláneos (traslados, otros, cambio de equipo, reinstalación)
+const TOS_MISC = ['TRASLADO EXT', 'OTROS', 'CAMBIO DE EQUIPO', 'REINSTALACION', 'TRASLADO INT'];
+const esInst = () => filtro.penTos.size === 1 && filtro.penTos.has('INSTALACION SERVICIO');
+const penUni = () => [...(filtro.penTos.has('INSTALACION SERVICIO') ? D.pend : []), ...(D.pendx || []).filter(p => filtro.penTos.has(p.to))];
 const TO_TXT = (t) => t === 'INSTALACION SERVICIO' ? 'Instalaciones' : t.charAt(0) + t.slice(1).toLowerCase();
+const TOS_TXT = () => [...filtro.penTos].map(TO_TXT).join(', ');
+const penTipo = () => esInst() ? 'INST' : !filtro.penTos.has('INSTALACION SERVICIO') && [...filtro.penTos].every(t => TOS_MISC.includes(t)) ? 'MISC' : '';
 let pfCache = null;   // memo durante un repintado de Pendientes (los conteos de los segmentadores la llaman muchas veces)
 function pendFiltrados(sin = '') {
   const ck = [].concat(sin).join(',');
@@ -1596,7 +1600,7 @@ function pintarResumenPend(P) {
   const ind = indicadoresPend;
   const T = ind(P, L, I), nEc = new Set(P.map(p => p.ec)).size;
   const cDisp = T.disp == null ? '' : T.disp <= CFG.meta_disp ? 'ok' : T.disp <= CFG.meta_disp * 1.5 ? 'mid' : 'mal';
-  $('t-pres').innerHTML = `Hay <span class="n">${n(T.n)}</span> ${esInst() ? 'abonados pendientes' : 'órdenes pendientes de ' + esc(TO_TXT(filtro.penTo).toLowerCase())} en ${nEc} EECC; <span class="${cDisp === 'ok' ? 'ok' : cDisp === 'mid' ? 'w' : 'mal'}">${dec(T.disp)}%</span> lleva más de 48 h, frente a la meta de ${CFG.meta_disp}%.`;
+  $('t-pres').innerHTML = `Hay <span class="n">${n(T.n)}</span> ${esInst() ? 'abonados pendientes' : 'órdenes pendientes de ' + esc(TOS_TXT().toLowerCase())} en ${nEc} EECC; <span class="${cDisp === 'ok' ? 'ok' : cDisp === 'mid' ? 'w' : 'mal'}">${dec(T.disp)}%</span> lleva más de 48 h, frente a la meta de ${CFG.meta_disp}%.`;
   const br = (pc, meta) => `<div class="br"><i style="width:${Math.min(100, pc || 0).toFixed(1)}%${meta != null ? ';background:currentColor' : ''}"></i>${meta != null ? `<b style="left:${Math.min(100, meta)}%"></b>` : ''}</div>`;
   const cel = (l, v, s, cls = '', barra = '') => `<div><span class="l">${l}</span><span class="v ${cls}">${v}</span>${barra}<span class="s">${s}</span></div>`;
   const cdb = T.db == null ? '' : T.db <= CFG.meta_db ? 'ok' : T.db <= CFG.meta_db * 1.5 ? 'mid' : 'mal';
@@ -1716,7 +1720,8 @@ function pintarPendientes0() {
   segmentos('pen-segs-ge', hayGestores() ? [{ k: 'penGe', t: 'Gestor', ops: [...new Set(pendFiltrados('penGe').map(gestorDe))].sort((a, b) => a === 'SIN GESTOR' ? 1 : b === 'SIN GESTOR' ? -1 : a < b ? -1 : 1), cnt: cnt('penGe', (p, o) => gestorDe(p) === o) }] : []);
   { const cntTo = {}; [...D.pend.map(p => p.to || 'INSTALACION SERVICIO'), ...(D.pendx || []).map(p => p.to)].forEach(t => cntTo[t] = (cntTo[t] || 0) + 1);
     const tos = ['INSTALACION SERVICIO', ...Object.keys(cntTo).filter(t => t !== 'INSTALACION SERVICIO').sort((a, b) => cntTo[b] - cntTo[a] || a.localeCompare(b))];
-    $('pen-segs-ge').insertAdjacentHTML('beforeend', `<div class="g g-to"><span class="seg-t">Tipo de trabajo</span>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${filtro.penTo === t}">${esc(t === 'INSTALACION SERVICIO' ? 'INSTALACIONES' : t)} (${n(cntTo[t] || 0)})</button>`).join('')}</div>`); }
+    const nMisc = TOS_MISC.reduce((a, t) => a + (cntTo[t] || 0), 0), tp = penTipo();
+    $('pen-segs-ge').insertAdjacentHTML('beforeend', `<div class="g g-to"><span class="seg-t">Tipo</span><button type="button" class="chip" data-ptp="INST" aria-pressed="${tp === 'INST'}">INSTALACIONES (${n(cntTo['INSTALACION SERVICIO'] || 0)})</button><button type="button" class="chip" data-ptp="MISC" aria-pressed="${tp === 'MISC'}">MISCELÁNEOS (${n(nMisc)})</button></div><div class="g g-to"><span class="seg-t">Tipo de trabajo</span>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${filtro.penTos.has(t)}">${esc(t === 'INSTALACION SERVICIO' ? 'INSTALACIONES' : t)} (${n(cntTo[t] || 0)})</button>`).join('')}</div>`); }
   const act = [['penEc', 'EECC'], ['penTp', 'Tipo'], ['penPr', 'Programación'], ['penAnt', 'Antigüedad'], ['penGes', 'Gestionado']].filter(([k]) => filtro[k] !== 'TODOS').map(([k, t]) => `${t}: ${filtro[k]}`);
   if (filtro.desde || filtro.hasta) act.push(`Fecha: ${filtro.desde ? fIso(filtro.desde) : '…'} – ${filtro.hasta ? fIso(filtro.hasta) : '…'}`);
   $('pen-activos').innerHTML = act.map(a => `<span>${esc(a)}</span>`).join('');
@@ -1729,7 +1734,7 @@ function pintarPendientes0() {
   pendBase = LB;
   const L = LB.filter(p => colOk(p));
   const nCol = Object.keys(colFil).length;
-  $('pen-n').innerHTML = `${L.length} de ${penUni().length} pendientes${esInst() ? '' : ' de ' + TO_TXT(filtro.penTo).toLowerCase()}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
+  $('pen-n').innerHTML = `${L.length} de ${penUni().length} pendientes${esInst() ? '' : ' de ' + TOS_TXT().toLowerCase()}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   marcarFiltrosCol();
   $('pen-filas').innerHTML = diferir('tb-pend', L.map(p => { const ed = edadDias(p.rec), ea = estAg(p), ge = gestorDe(p);
     return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnCorto(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}" data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td>${esc(p.ec)}</td>
@@ -1743,8 +1748,11 @@ function pintarPendientes0() {
   prepararOrden($('tb-pend'));
 }
 $('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; pintarPendientes(); });
-$('pen-segs-ge').addEventListener('click', (e) => { const b = e.target.closest('[data-pto]'); if (!b || filtro.penTo === b.dataset.pto) return;
-  filtro.penTo = b.dataset.pto; Object.assign(filtro, { penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS' }); Object.keys(colFil).forEach(k => delete colFil[k]); requestAnimationFrame(pintarPendientes); });
+$('pen-segs-ge').addEventListener('click', (e) => {
+  const tp = e.target.closest('[data-ptp]'), b = e.target.closest('[data-pto]'); if (!tp && !b) return; const S = filtro.penTos;
+  if (tp) { S.clear(); if (tp.dataset.ptp === 'INST') S.add('INSTALACION SERVICIO'); else { const hay = new Set((D.pendx || []).map(p => p.to)); TOS_MISC.filter(t => hay.has(t)).forEach(t => S.add(t)); if (!S.size) TOS_MISC.forEach(t => S.add(t)); } }
+  else { const v = b.dataset.pto; if (S.has(v)) { if (S.size === 1) return; S.delete(v); } else S.add(v); }
+  Object.assign(filtro, { penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS' }); Object.keys(colFil).forEach(k => delete colFil[k]); requestAnimationFrame(pintarPendientes); });
 /* ---------- Segmentadores propios del detalle (varias opciones a la vez); Gestores = el segmentador del inicio ---------- */
 const T_SEGS = [
   ['ges', 'Gestión', (p) => p.ges ? 'CON GESTIÓN' : 'SIN GESTIÓN', ['CON GESTIÓN', 'SIN GESTIÓN']],
