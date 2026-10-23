@@ -78,6 +78,10 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .meses { display: flex; justify-content: space-around; gap: 18px; padding: 8px 8px 0; color: var(--fg-3); font-size: 14px; } .meses span { flex: 1 1 0; max-width: 150px; text-align: center; }
 .hbar { display: grid; grid-template-columns: 130px 1fr 56px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; cursor: default; }
 .hbar .p { height: 14px; border-radius: 4px; background: var(--pista); } .hbar .p i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--magenta); min-width: 3px; }
+#tb-ec tfoot td { font-weight: 800; border-top: 2px solid var(--fg); border-bottom: 0; background: var(--rosa); }
+.rk li.vacio { display: block; color: var(--fg-4); border: 0; }
+.rep-en { margin: 4px 0 8px 14px; font-size: 13px; line-height: 1.7; } .rep-en small { color: var(--fg-3); } .rep-en span { color: var(--mal); font-weight: 700; }
+.det .nb + .nb { margin-left: 6px; }
 .rk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 26px; }
 .rk-t { margin: 0 0 8px; font: 700 12px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
 .rk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -190,13 +194,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="sec-cab"><div><h3 id="t-rk">Ranking de cumplimiento · prueba en dispositivo del cliente</h3><p class="sub" id="rk-sub"></p></div>
       <div class="pen-acc"><div class="tabs-st" role="tablist" aria-label="Orden del ranking" id="rk-orden"><button type="button" role="tab" data-rk="mejor" aria-selected="true">Mayor cumplimiento</button><button type="button" role="tab" data-rk="peor" aria-selected="false">Menor cumplimiento</button></div></div></div>
     <div class="rk-grid"><div><h4 class="rk-t">Empresas colaboradoras</h4><ol class="rk" id="rk-ec"></ol></div><div><h4 class="rk-t">Técnicos</h4><ol class="rk" id="rk-tec"></ol></div></div>
-    <p class="nota">Cumplimiento = instalaciones con al menos una prueba válida hecha en el dispositivo del cliente ÷ instalaciones · Solo entran EECC con 20 o más instalaciones y técnicos con 10 o más en el periodo filtrado · Empate: gana quien tiene más instalaciones · Clic en el número para ver los AB.</p>
+    <p class="nota">Cumplimiento = instalaciones con al menos una prueba válida hecha en el dispositivo del cliente ÷ instalaciones · <span id="rk-min"></span> · Empate: gana quien tiene más instalaciones · Clic en el número para ver los AB.</p>
   </section>
 
   <section class="sec" aria-labelledby="t-ec">
     <div class="sec-cab"><div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos y en un número para ver sus AB.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" data-xls="tb-ec" data-nom="speedtest-eecc">Descargar Excel</button></div></div>
-    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Sin identificar</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody></table></div>
+    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Sin identificar</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="nota" id="ec-fil"></p>
     <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Sin identificar = AB con 2 o más enlaces sin etiqueta de cliente o técnico (se cuentan como del técnico) · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba.</p>
   </section>
@@ -309,6 +313,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const nb = (v, g, q) => v ? `<button type="button" class="nb" data-lista="${q}|${esc(g)}" title="Ver los AB">${n(v)}</button>` : n(v);
     // barra del % cliente a escala de la EECC con el % más alto (la más llena = la mejor)
     const maxCli = Math.max(0, ...Object.values(porEc).map(Lx => { const t = sum(Lx); return t.pr ? t.c / t.pr : 0; }));
+    filaEc = (nom, s, cls, attrs = '', g = '') => fila(nom, s, cls, attrs, g);
     const fila = (nom, s, cls, attrs = '', g = '') => `<tr class="${cls}"${attrs}><td>${esc(nom)}</td><td>${nb(s.ins, g, 'g-todo')}</td><td>${nb(s.med, g, 'g-med')}</td><td class="tenue">${pc(s.ins ? s.med / s.ins * 100 : 0)}</td><td>${nb(s.pr, g, 'g-med')}</td>
       <td><span class="mini"><span class="p"><i style="width:${s.pr && maxCli ? Math.min(100, s.c / s.pr / maxCli * 100) : 0}%"></i></span>${s.c ? `<button type="button" class="nb" data-lista="g-cli|${esc(g)}" title="${n(s.c)} de ${n(s.pr)} pruebas en el equipo del cliente">${n(s.c)}</button>` : '0'}<span class="tenue" style="min-width:48px;text-align:right">${pc(s.pr ? s.c / s.pr * 100 : 0)}</span></span></td><td class="tenue">${nb(s.tn + s.s, g, 'g-tec')}</td><td class="tenue">${nb(s.s, g, 'g-sid')}</td><td class="${s.r ? 'alerta' : 'tenue'}">${nb(s.r, g, 'g-rep')}</td></tr>`;
     $('tb-ec').tBodies[0].innerHTML = Object.keys(porEc).sort((x, y) => porEc[y].length - porEc[x].length).map(ec => {
@@ -325,16 +330,19 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   tb.addEventListener('keydown', (e) => { const tr = e.target.closest('tr.ec'); if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); alternar(tr); } });
 
   // ----- Ranking: % de instalaciones con prueba en el dispositivo del cliente -----
-  let rkOrden = 'mejor';
+  let rkOrden = 'mejor', filaEc = null;
   function pintarRanking() {
     const grupo = (clave, min) => { const G = {}; L.forEach(o => { const k = clave(o); (G[k] = G[k] || []).push(o); });
       return Object.entries(G).filter(([, X]) => X.length >= min).map(([k, X]) => ({ k, n: X.length, c: X.filter(o => o.c > 0).length, X }))
         .map(r => ({ ...r, pct: r.c / r.n * 100 })).sort((a, b) => rkOrden === 'mejor' ? b.pct - a.pct || b.n - a.n : a.pct - b.pct || b.n - a.n); };
-    const RE = grupo(o => o.e, 20).slice(0, 10), RT = grupo(o => o.e + '|' + o.t, 10).slice(0, 15);
+    // Mínimo de instalaciones para entrar: se calcula solo según las altas del filtro (más altas = más exigente)
+    const minEc = Math.max(2, Math.round(L.length * 0.0015)), minTec = Math.max(2, Math.round(L.length * 0.0007));
+    const RE = grupo(o => o.e, minEc).slice(0, 10), RT = grupo(o => o.e + '|' + o.t, minTec).slice(0, 15);
+    $('rk-min').textContent = `Con ${n(L.length)} altas en el filtro, entran EECC con ${n(minEc)} o más instalaciones y técnicos con ${n(minTec)} o más (el mínimo sube o baja solo con la cantidad de altas).`;
     const li = (r, i, nom, sub, lista) => `<li><span class="pos">${i + 1}</span><span class="nom"><b title="${esc(nom)}">${esc(nom)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><span class="p"><i style="width:${r.pct}%"></i></span><span class="v"><b>${pc(r.pct)}</b><small><button type="button" class="nb" data-lista="${lista}" title="Ver los AB con prueba del cliente">${n(r.c)}</button> de ${n(r.n)} instal.</small></span></li>`;
     $('rk-ec').className = 'rk ' + rkOrden; $('rk-tec').className = 'rk ' + rkOrden;
-    $('rk-ec').innerHTML = RE.map((r, i) => li(r, i, r.k, '', `g-cli|ec|${r.k}`)).join('') || '<li class="vacio">Ninguna EECC con 20 o más instalaciones.</li>';
-    $('rk-tec').innerHTML = RT.map((r, i) => { const [ec, t] = r.k.split('|'); return li(r, i, t, ec, `g-cli|tec|${ec}|${t}`); }).join('') || '<li class="vacio">Ningún técnico con 10 o más instalaciones.</li>';
+    $('rk-ec').innerHTML = RE.map((r, i) => li(r, i, r.k, '', `g-cli|ec|${r.k}`)).join('') || `<li class="vacio">Ninguna EECC con ${n(minEc)} o más instalaciones.</li>`;
+    $('rk-tec').innerHTML = RT.map((r, i) => { const [ec, t] = r.k.split('|'); return li(r, i, t, ec, `g-cli|tec|${ec}|${t}`); }).join('') || `<li class="vacio">Ningún técnico con ${n(minTec)} o más instalaciones.</li>`;
     const tot = L.filter(o => o.c > 0).length;
     $('rk-sub').textContent = `${$('ctx').textContent} · cumplimiento general ${pc(L.length ? tot / L.length * 100 : 0)} (${n(tot)} de ${n(L.length)} instalaciones) · top 10 EECC y top 15 técnicos`;
   }
@@ -387,6 +395,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (!th.querySelector('.fbtn')) th.innerHTML = [...th.cells].map((c, i) => thF(c.textContent, i, 'ec')).join('');
     th.querySelectorAll('.fbtn').forEach(b => b.classList.toggle('on', !!FC.ec[b.dataset.fc]));
     let ok = true; [...$('tb-ec').tBodies[0].rows].forEach(tr => { if (tr.classList.contains('ec')) ok = okFila([...tr.cells].map(c => c.innerText), 'ec'); if (tr.cells.length > 1) tr.hidden = !ok; });
+    // Fila de totales: suma de las EECC que se ven (respeta los filtros de los encabezados)
+    const vis = new Set([...$('tb-ec').tBodies[0].querySelectorAll('tr.ec')].filter(tr => !tr.hidden).map(tr => tr.dataset.ec)), LT = L.filter(o => vis.has(o.e));
+    $('tb-ec').tFoot.innerHTML = filaEc && LT.length ? filaEc(`Total (${vis.size} EECC)`, sum(LT), 'tot', '', 'all|') : '';
     const nf = Object.keys(FC.ec).length; $('ec-fil').innerHTML = nf ? `${nf} filtro${nf > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="ec-fil-q">quitar</button>` : '';
   }
   document.addEventListener('click', (e) => { if (e.target.id === 'ec-fil-q') { FC.ec = {}; filtrarEc(); } else if (e.target.id === 'det-fil-q') { FC.det = {}; pintarDetalle(); } else if (e.target.id === 'modal-fil-q') { FC.modal = {}; pintarModal(); } });
@@ -405,6 +416,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   }
   // Otros AB donde está el mismo enlace de este AB (columna «Repetido en»)
   const REP_EN = new Map(); D.rep.forEach(([, ix]) => { const u = [...new Set(ix)]; u.forEach(i => { const m = REP_EN.get(i) || REP_EN.set(i, { otros: new Set(), os: new Set(), mismo: false }).get(i); if (u.length === 1) m.mismo = true; u.forEach(j => { if (O[j].ab !== O[i].ab) m.otros.add(O[j].ab); else if (j !== i) m.os.add(O[j].os); }); }); });
+  const repEnHtml = (o) => { const m = REP_EN.get(o.i); if (!m) return '—';
+    const bt = [...m.otros].sort((a, b) => a - b).map(ab => { const j = O.findIndex(x => x.ab === ab && D.rep.some(([, ix]) => ix.includes(x.i) && ix.includes(o.i))); return j >= 0 ? `<button type="button" class="nb" data-lista="ab|${j}" title="Ver el AB ${ab}">${ab}</button>` : esc(ab); });
+    return [bt.join(', '), m.os.size ? 'su OS ' + [...m.os].join(', ') : '', m.mismo ? 'el mismo AB (2 veces en la OS)' : ''].filter(Boolean).join(' · ') || '—'; };
   const repEn = (o) => { const m = REP_EN.get(o.i); if (!m) return '—'; const L = [...m.otros].sort((a, b) => a - b); return [L.join(', '), m.os.size ? 'su OS ' + [...m.os].join(', ') : '', m.mismo ? 'el mismo AB (2 veces en la OS)' : ''].filter(Boolean).join(' · ') || '—'; };
   function pintarDetalle() {
     if (tab === 'sin') {
@@ -426,7 +440,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const nSin = L.filter(o => !o.pr).length, nRepT = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
     document.querySelector('.tabs-st [data-tab="sin"]').innerHTML = `AB sin medición <span class="cnt">${n(nSin)}</span>`;
     document.querySelector('.tabs-st [data-tab="rep"]').innerHTML = `Enlaces repetidos <span class="cnt">${n(nRepT)}</span>`;
-    $('det').innerHTML = filasDetAll.length ? `<table class="det"><thead><tr>${cabDet.map((c, i) => thF(c, i, 'det')).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' && j === 1 ? `<td><button type="button" class="nb" data-lista="url|${posDet[r]}" title="Ver los AB">${esc(v)}</button></td>` : tab === 'sin' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : tab === 'rep' && j === 0 ? `<td class="izq"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a></td>` : tab === 'rep' && j === 2 ? `<td class="izq">${esc(v)}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+    $('det').innerHTML = filasDetAll.length ? `<table class="det"><thead><tr>${cabDet.map((c, i) => thF(c, i, 'det')).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' && j === 1 ? `<td><button type="button" class="nb" data-lista="url|${posDet[r]}" title="Ver los AB">${esc(v)}</button></td>` : tab === 'sin' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : tab === 'sin' && j === 7 && v > 0 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver sus enlaces repetidos y dónde se repiten">${esc(v)}</button></td>` : tab === 'sin' && j === 8 ? `<td>${repEnHtml(O[idxDet[r]])}</td>` : tab === 'rep' && j === 0 ? `<td class="izq"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener">${esc(v)}</a></td>` : tab === 'rep' && j === 2 ? `<td class="izq">${[...new Set(idxDet[r])].map(i => `<button type="button" class="nb" data-lista="ab|${i}" title="Ver el AB ${O[i].ab}">${O[i].ab}</button>`).join(', ')}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
       : '<p class="vacio">Sin registros con estos filtros.</p>';
   }
   document.querySelector('.tabs-st [data-tab]').parentElement.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; FC.det = {};
@@ -442,7 +456,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       (await r.json()).forEach(x => extraOs.set(x.filial + '|' + x.nro_os, x)); }));
   }
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.length > 10 ? iso.slice(11, 16) : ''}`.trim() : '—';
-  let modalFilas = [], modalFilasAll = [], modalCab = [], modalNom = 'lista', listaTurno = 0;
+  let modalObjs = [], modalIdx = [], modalFilas = [], modalFilasAll = [], modalCab = [], modalNom = 'lista', listaTurno = 0;
   async function listaAB(tit, sub, LL, extraHtml = '') {
     const turno = ++listaTurno;   // si se abre otra lista antes de que llegue la respuesta, esta ya no pinta
     const Ls = [...LL].sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
@@ -451,14 +465,15 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     try { await traerExtra(Ls); if (turno !== listaTurno) return; } catch { if (turno !== listaTurno) return; $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudieron traer F. Recep, distrito y estado; se muestra lo que hay.'; }
     modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Pr. cliente', 'Pr. técnico', 'Repetidos'];
     FC.modal = {};
+    modalObjs = Ls;
     modalFilasAll = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', o.pn, o.c, o.tn + o.s, o.r]; });
     pintarModal();
     modalNom = tit.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
   function pintarModal() {
-    modalFilas = modalFilasAll.filter(f => okFila(f, 'modal'));
+    modalIdx = modalFilasAll.map((f, k) => k).filter(k => okFila(modalFilasAll[k], 'modal')); modalFilas = modalIdx.map(k => modalFilasAll[k]);
     const nfm = Object.keys(FC.modal).length; if (nfm || $('modal-fil-q')) $('modal-aviso').innerHTML = nfm ? `${n(modalFilas.length)} de ${n(modalFilasAll.length)} AB con ${nfm} filtro${nfm > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="modal-fil-q">quitar</button>` : '';
-    $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map((c, i) => thF(c, i, 'modal')).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map(f => `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
+    $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map((c, i) => thF(c, i, 'modal')).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map((f, r) => { const o = modalObjs[modalIdx[r]]; return `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : (j === 1 && modalObjs.length > 1) || (j === 12 && v > 0) ? `<td><button type="button" class="nb" data-lista="ab|${o.i}" title="${j === 12 ? 'Ver sus enlaces repetidos y dónde se repiten' : 'Ver el detalle del AB'}">${esc(v)}</button></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
       + (modalFilas.length > 1500 ? '<p class="nota" style="padding:10px">Se muestran 1.500; el Excel trae todos.</p>' : '');
       }
   const cerrarModal = () => { $('modal').hidden = true; };
@@ -474,7 +489,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (q === 'url') { const [url, idx] = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i]))]).filter(([, ix]) => ix.length)[+v] || []; if (!url) return;
       return listaAB('Enlace repetido', `${idx.length} veces · ${per}`, idx.map(i => O[i]), `<ul class="urls"><li><a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></li></ul>`); }
     if (q === 'ab') { const o = O[+v], urls = D.rep.filter(([, ix]) => ix.includes(o.i)).map(([u]) => u);
-      return listaAB(`AB ${o.ab}`, `OS ${o.os} · ${o.e} · sin prueba válida`, [o], urls.length ? `<p class="nota" style="margin-bottom:4px">Enlaces repetidos de este AB (no cuentan como prueba):</p><ul class="urls">${urls.map(u => `<li><a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a></li>`).join('')}</ul>` : '<p class="nota">Este AB no tiene ningún enlace de Speedtest en «Observaciones Tecnico».</p>'); }
+      return listaAB(`AB ${o.ab}`, `OS ${o.os} · ${o.e} · sin prueba válida`, [o], urls.length ? `<p class="nota" style="margin-bottom:4px">Enlaces repetidos de este AB (no cuentan como prueba) y dónde más aparecen:</p><ul class="urls">${urls.map(u => { const ix = D.rep.find(([x]) => x === u)[1], otros = [...new Set(ix)].filter(i => i !== o.i), mismo = ix.filter(i => i === o.i).length > 1;
+        return `<li><a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a><div class="rep-en">${mismo ? '<span>2 veces en esta misma OS</span>' : ''}${otros.map(i => `<button type="button" class="nb" data-lista="ab|${i}" title="Ver el AB ${O[i].ab}">AB ${O[i].ab}</button> <small>OS ${O[i].os} · ${dmy(O[i].d)} · ${esc(O[i].f)} · ${esc(O[i].e)} · ${esc(O[i].t)}</small>`).join('<br>')}</div></li>`; }).join('')}</ul>` : '<p class="nota">Este AB no tiene ningún enlace de Speedtest en «Observaciones Tecnico».</p>'); }
     if (q === 'mes') return listaAB(`Instalaciones de ${mesTxt(v)}`, `${F.filial || 'todas las filiales'}`, O.filter(o => sel(o, 'mes') && o.d.startsWith(v)));
     if (q === 'fil') return listaAB(`${v} · AB con medición`, per, O.filter(o => sel(o, 'filial') && o.f === v && o.pr > 0));
     if (q === 'ec') return listaAB(`${v} · AB con medición`, per, L.filter(o => o.e === v && o.pr > 0));
@@ -482,7 +498,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (q === 'sin') return listaAB('Instalaciones sin medición', per, L.filter(o => !o.pr));
     if (q === 'med') return listaAB('Instalaciones con medición', per, L.filter(o => o.pr > 0));
     if (q === 'rep') return listaAB('AB con enlaces repetidos', per, L.filter(o => o.r > 0));
-    if (Q[q]) { const [tipo, ec, tec] = v.split('|'), base = L.filter(o => o.e === ec && (tipo !== 'tec' || o.t === tec));
+    if (Q[q]) { const [tipo, ec, tec] = v.split('|'), vis = new Set([...$('tb-ec').tBodies[0].querySelectorAll('tr.ec')].filter(tr => !tr.hidden).map(tr => tr.dataset.ec));
+      const base = tipo === 'all' ? L.filter(o => vis.has(o.e)) : L.filter(o => o.e === ec && (tipo !== 'tec' || o.t === tec));
+      if (tipo === 'all') return listaAB(`Total · ${Q[q][0]}`, per, base.filter(Q[q][1]));
       return listaAB(`${tipo === 'tec' ? tec : ec} · ${Q[q][0]}`, per, base.filter(Q[q][1])); }
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-lista]'); if (b) { e.stopPropagation(); abrirLista(b.dataset.lista); } }, true);
