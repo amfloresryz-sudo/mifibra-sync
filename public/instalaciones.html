@@ -736,11 +736,12 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div class="fila">
     <div><a class="vol" href="/#inicio">← Volver al inicio</a><h1>Instalaciones</h1><p><span id="nom-filial">Lima</span> · altas FTTH · ingresos, liquidaciones, pendientes, agendas y avance</p></div>
     <div style="display:flex;flex-wrap:wrap;gap:14px 28px">
-      <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
+      <div id="grupo-fil" style="flex-basis:100%"><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Segmento</div><div class="chips" role="group" aria-label="Segmento" id="tipos"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
       <div id="grupo-zona"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Zona</div><div class="chips" role="group" aria-label="Zona" id="zonas"></div></div>
-      <div id="grupo-per"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Periodo <span class="per-nota">· no aplica a Pendientes</span></div>
+      <div id="grupo-ec" hidden style="flex-basis:100%"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">EECC <span class="per-nota">· varias a la vez · filtra todas las pestañas</span></div><div class="chips" role="group" aria-label="EECC" id="eecs"></div></div>
+      <div id="grupo-per" style="flex-basis:100%"><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Periodo <span class="per-nota">· no aplica a Pendientes</span></div>
         <div class="per"><select id="per-mes" class="sel-per" aria-label="Mes"></select><div class="chips" role="group" aria-label="Semana" id="per-sem"></div>
           <label class="per-f">Desde <input type="date" id="per-desde"></label><label class="per-f">Hasta <input type="date" id="per-hasta"></label></div></div>
     </div>
@@ -1081,7 +1082,9 @@ const CANALES = [['TODOS','Todos'],['IC','Integral de campo'],['VI','Ventas inbo
 const okCn = (x, c = canal) => c === 'TODOS' || x.cn === c;
 const cnCorto = (c) => ({ IC: 'CAMPO', VI: 'INBOUND', OT: 'OTROS' })[c] || '—';
 const cnNom = (c) => (CANALES.find(k => k[0] === c) || [0, c || '—'])[1];
-const ok = (x) => (seg === 'TODOS' || x.seg === seg) && okCn(x) && (zona === 'TODAS' || x.z === zona);
+const ecSel = new Set();   // segmentador de EECC de la franja (varias a la vez; vacío = todas)
+const okEc = (x) => !ecSel.size || ecSel.has(x.ec);
+const ok = (x) => (seg === 'TODOS' || x.seg === seg) && okCn(x) && (zona === 'TODAS' || x.z === zona) && okEc(x);
 const tecCorto = (t) => { if (!t) return '—'; const [ape, nom] = t.split(','); return nom ? `${nom.trim().split(' ')[0]} ${ape.trim().split(' ')[0]}` : t; };
 // El robot clasifica (t): CO si de la F. Recep al inicio de la franja (la de la OS si la trae; si no, la del comentario del técnico) hay 24 h o menos; AG si hay más.
 const tipoProg = (p) => p.t || (/\d\s*-\s*\d/.test(p.fr || '') ? 'AG' : 'CO');
@@ -1202,7 +1205,8 @@ function prepararDatos() {
   const fil = D.filial || 'LIMA';
   $('filial').value = fil;
   $('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
-  $('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS' ? 'visible' : 'hidden';
+  $('grupo-zona').hidden = !(Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS');   // antes quedaba un hueco al ocultarla
+  $('grupo-ec').hidden = fil === 'PROVINCIAS';   // EECC: Lima o una filial de provincia (en Provincias › Todas se ve por filial)
   ZORD.splice(0, ZORD.length, ...(fil === 'PROVINCIAS' ? [...new Set(Object.values(D.zonas || {}))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
   $('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 20 min.`;
   const opDias = DIAS.slice().reverse().map(d => `<option value="${d}">${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
@@ -1215,15 +1219,23 @@ prepararDatos();
 
 /* ---------- filtros de la franja y pestañas ---------- */
 function pintarFiltros() {
-  const c = (s) => D.pend.filter(p => (s === 'TODOS' || p.seg === s) && okCn(p) && (zona === 'TODAS' || p.z === zona)).length;
+  const c = (s) => D.pend.filter(p => (s === 'TODOS' || p.seg === s) && okCn(p) && (zona === 'TODAS' || p.z === zona) && okEc(p)).length;
   const segs = ['TODOS', ...[...new Set(D.pend.concat(D.liq).map(x => x.seg).filter(Boolean))].sort()];
   $('tipos').innerHTML = segs.map(k => `<button type="button" class="chip" data-s="${k}" aria-pressed="${k === seg}">${k === 'TODOS' ? 'Todos' : k} (${c(k)})</button>`).join('');
-  const cc = (k) => D.pend.filter(p => (seg === 'TODOS' || p.seg === seg) && okCn(p, k) && (zona === 'TODAS' || p.z === zona)).length;
+  const cc = (k) => D.pend.filter(p => (seg === 'TODOS' || p.seg === seg) && okCn(p, k) && (zona === 'TODAS' || p.z === zona) && okEc(p)).length;
   $('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${k === canal}">${t} (${cc(k)})</button>`).join('');
-  const cz = (z) => D.pend.filter(p => (seg === 'TODOS' || p.seg === seg) && okCn(p) && (z === 'TODAS' || p.z === z)).length;
+  const cz = (z) => D.pend.filter(p => (seg === 'TODOS' || p.seg === seg) && okCn(p) && (z === 'TODAS' || p.z === z) && okEc(p)).length;
   $('zonas').innerHTML = ['TODAS', ...ZORD].map(z => `<button type="button" class="chip" data-z="${z}" aria-pressed="${z === zona}">${z === 'TODAS' ? 'Todas' : z} (${cz(z)})</button>`).join('');
   $('n-pend').textContent = c(seg);
+  // EECC: todas las que tienen ingresos, liquidaciones, pendientes o programación; el número = pendientes con los demás filtros
+  const sinEc = (p) => (seg === 'TODOS' || p.seg === seg) && okCn(p) && (zona === 'TODAS' || p.z === zona);
+  const cnt = {}; D.pend.filter(sinEc).forEach(p => { cnt[p.ec] = (cnt[p.ec] || 0) + 1; });
+  const vol = {}; [D.liq, D.pend, D.prog].forEach(L => L.filter(sinEc).forEach(x => { if (x.ec) vol[x.ec] = (vol[x.ec] || 0) + 1; }));
+  ecSel.forEach(e => { if (!(e in vol)) vol[e] = 0; });
+  const ecs = Object.keys(vol).sort((a, b) => (a === 'POR ASIGNAR') - (b === 'POR ASIGNAR') || vol[b] - vol[a] || a.localeCompare(b));
+  $('eecs').innerHTML = `<button type="button" class="chip" data-ec="" aria-pressed="${!ecSel.size}">Todas</button>` + ecs.map(e => `<button type="button" class="chip" data-ec="${esc(e)}" aria-pressed="${ecSel.has(e)}">${esc(e)} (${cnt[e] || 0})</button>`).join('');
 }
+$('eecs').addEventListener('click', (e) => { const b = e.target.closest('[data-ec]'); if (!b) return; const v = b.dataset.ec; if (!v) ecSel.clear(); else ecSel.has(v) ? ecSel.delete(v) : ecSel.add(v); pintarFiltros(); pintarTodo(); });
 $('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; seg = b.dataset.s; pintarFiltros(); pintarTodo(); });
 $('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = b.dataset.cn; CFG = cfgDe(); pintarFiltros(); pintarTodo(); });
 $('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = b.dataset.z; pintarFiltros(); pintarTodo(); });
@@ -3171,7 +3183,7 @@ $('cargando').hidden = true; $('v-panel').hidden = false; $('v-panel').style.dis
 $('filial').addEventListener('change', async (e) => {
   const f = e.target.value, antes = D.filial || 'LIMA';
   e.target.disabled = true; $('estado-datos').textContent = `Cargando ${f}…`;
-  try { const [nd] = await Promise.all([traer(f), traerAjustes(f)]); DC = nd; guardarFilial(f); zona = 'TODAS'; abiertos.clear(); filtro.penEc = filtro.penGe = 'TODOS'; Object.assign(PER, { mes: '', a: 1, b: 31, sem: 'MES' }); vistaPeriodo(); prepararDatos(); pintarPer(); pintarFiltros(); pintarTodo(); }
+  try { const [nd] = await Promise.all([traer(f), traerAjustes(f)]); DC = nd; guardarFilial(f); zona = 'TODAS'; ecSel.clear(); abiertos.clear(); filtro.penEc = filtro.penGe = 'TODOS'; Object.assign(PER, { mes: '', a: 1, b: 31, sem: 'MES' }); vistaPeriodo(); prepararDatos(); pintarPer(); pintarFiltros(); pintarTodo(); }
   catch (err) { e.target.value = antes; $('estado-datos').textContent = err.message; }
   finally { e.target.disabled = false; }
 });
