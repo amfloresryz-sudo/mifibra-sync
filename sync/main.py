@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
         print(f"[tiempo] guardado: {time.time() - t_tab:.0f} s · total {time.time() - t_ini:.0f} s", flush=True)
-        subir.registrar_corrida("periodo", total, True, f"ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros",
+        subir.registrar_corrida("periodo", total, True, f"ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros · {procesar.DIAG_COLS}",
                                 inicio, _ahora())
         return 0
     except Exception as e:  # noqa: BLE001 - se registra el fallo y el job termina en rojo para que llegue el aviso

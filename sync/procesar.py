@@ -387,6 +387,7 @@ def _coordenadas(lat_v, lon_v) -> tuple[float | None, float | None, str | None]:
     return lat, lon, f"{lt},\t{ln}"
 
 
+DIAG_COLS = ''
 OBLIGATORIAS = {"IdOS", "Nro OS", "Tipo Orden", "Estado Os", "F. Recep."}
 
 
@@ -407,6 +408,13 @@ def leer_excel(ruta: Path) -> pd.DataFrame:
     criticas = [c for c in faltan if c in OBLIGATORIAS]
     _usadas = {*COLUMNAS, "F. Recep.", "Hora", "F. Atenc.", "Hora I", "Hora F", "Fecha Mod", "Hora Mod", "fecha_observacion", *FECHAS, "Observaciones"}
     print(f"  Columnas del reporte sin usar: {[str(c) for c in df.columns if c not in _usadas]}", flush=True)
+    # Diagnóstico (se guarda en el registro de la corrida): columnas sin usar y las de ZONA con cuántas filas traen dato
+    global DIAG_COLS
+    try:
+        zz = {str(c): int(df[c].notna().sum()) for c in df.columns if "ZONA" in str(c).upper()}
+        DIAG_COLS = f"cols sin usar: {[str(c) for c in df.columns if c not in _usadas]} · zonas: {zz}"
+    except Exception as e:  # noqa: BLE001
+        DIAG_COLS = f"diag: {e}"
     if criticas:
         raise ErrorFormato(f"El reporte ya no trae estas columnas: {criticas}")
     if faltan:  # columnas secundarias: se guardan vacías y se avisa en el registro
