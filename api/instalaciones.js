@@ -1,9 +1,10 @@
 // GET /api/instalaciones?filial=LIMA[&mes=AAAA-MM]
 // Devuelve el tablero de Instalaciones de una filial, que el robot calcula en cada sincronización (tabla "tableros").
-const { consultar, autorizado, responder, filialDe } = require('./_supabase');
+const { consultar, autorizado, responder, filialDe, puedeModulo } = require('./_supabase');
 
 module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
+  if (!puedeModulo(req, 'instalaciones', 'observadas')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
   const filial = filialDe(req);
   try {
     // ?mes=AAAA-MM: tablero de un mes cerrado (el robot guarda el mes anterior); sin mes = mes en curso.

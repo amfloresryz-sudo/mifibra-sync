@@ -2,7 +2,7 @@
 //      &estado=DESCARGADA &motivo=... &distrito=... &tecnico=... &desde=2026-10-01 &hasta=2026-10-14
 //      &buscar=12345 &pagina=1 &por_pagina=50
 // Devuelve las filas de la tabla de cada módulo, paginadas.
-const { consultar, autorizado, responder, filialDe, filtroFilial } = require('./_supabase');
+const { consultar, autorizado, responder, filialDe, filtroFilial, puedeModulo } = require('./_supabase');
 
 const COLUMNAS = {
   instalaciones: 'id_os,nro_os,abonado_codigo,distrito,categoria,tarifa_servicio,fecha_registro,horario_atencion,tecnico_ejecutor,contrata,estado_os',
@@ -64,6 +64,7 @@ module.exports = async (req, res) => {
   }
   const modulo = q.get('modulo');
   if (!COLUMNAS[modulo]) return responder(res, 400, { error: 'modulo debe ser instalaciones, averias, observadas o anuladas' });
+  if (!puedeModulo(req, modulo, ...(modulo === 'instalaciones' || modulo === 'averias' ? ['observadas', 'averias', 'instalaciones'] : []))) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
 
   const partes = [`select=${COLUMNAS[modulo]}`, FILTRO_BASE[modulo], filtroFilial(filialDe(req))];
   for (const [param, col] of Object.entries(FILTROS)) {

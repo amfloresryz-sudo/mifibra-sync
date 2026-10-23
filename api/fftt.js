@@ -1,8 +1,9 @@
 // GET /api/fftt → tablero del buscador FFTT (todas las filiales; la página filtra y valida el formato por planta).
-const { consultar, autorizado, responder, puedeVer } = require('./_supabase');
+const { consultar, autorizado, responder, puedeVer, puedeModulo } = require('./_supabase');
 
 module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
+  if (!puedeModulo(req, 'fftt')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
   try {
     const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.fftt');
     if (!datos.length) return responder(res, 404, { error: 'Aún no hay datos de FFTT: aparecen después de la próxima actualización del robot.' });

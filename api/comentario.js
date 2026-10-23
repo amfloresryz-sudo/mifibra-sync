@@ -1,10 +1,11 @@
 // GET /api/comentario?id=<id_os>
 // Comentario del técnico (OBS VISITA TÉCNICO) de una OS, para verlo al hacer clic en el AB.
 // Se busca por id_os (llave primaria): una sola fila, sin recorrer la tabla. Los teléfonos ya vienen ocultos.
-const { consultar, autorizado, responder, puedeVer } = require('./_supabase');
+const { consultar, autorizado, responder, puedeVer, puedeModulo } = require('./_supabase');
 
 module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
+  if (!puedeModulo(req, 'instalaciones', 'observadas', 'averias')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
   const id = String(parseInt(new URL(req.url, 'http://x').searchParams.get('id'), 10));
   if (!/^\d{1,12}$/.test(id)) return responder(res, 400, { error: 'OS no válida' });
   try {

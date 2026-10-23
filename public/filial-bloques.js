@@ -16,12 +16,13 @@
     let ult = null;
     const pinta = () => {
       const v = sel.value || 'LIMA', prov = v !== 'LIMA'; ult = v;
-      const ok = (k) => !window.mfPuede || window.mfPuede(k), fijo = !ok('LIMA') && !ok('PROVINCIAS');   // usuario de una sola provincia
+      // Filiales permitidas del usuario: Lima y/o algunas provincias (la vista conjunta «Todas» solo si las tiene todas)
+      const ok = (k) => !window.mfPuede || window.mfPuede(k), provOk = PROV.filter(ok), fijo = (ok('LIMA') ? 1 : 0) + provOk.length + (ok('PROVINCIAS') ? 1 : 0) <= 1;
       box.querySelector('.blq-a').innerHTML = fijo ? `<button type="button" class="chip" aria-pressed="true" disabled style="opacity:1;cursor:default">${nom(v)}</button>`
-        : [['LIMA', 'Lima'], ['PROVINCIAS', 'Provincias']].filter(([k]) => ok(k)).map(([k, t]) =>
-        `<button type="button" class="chip" data-blq="${k}" aria-pressed="${k === 'LIMA' ? !prov : prov}">${t}</button>`).join('');
-      const f = box.querySelector('.blq-f'); f.hidden = !prov || fijo;
-      f.innerHTML = prov && !fijo ? [['PROVINCIAS', 'Todas'], ...PROV.map(p => [p, nom(p)])].filter(([k]) => ok(k)).map(([k, t]) =>
+        : [['LIMA', 'Lima'], ['PROVINCIAS', provOk.length === 1 && !ok('PROVINCIAS') ? nom(provOk[0]) : 'Provincias']].filter(([k]) => k === 'LIMA' ? ok(k) : provOk.length).map(([k, t]) =>
+        `<button type="button" class="chip" data-blq="${k === 'PROVINCIAS' && !ok('PROVINCIAS') ? provOk[0] : k}" aria-pressed="${k === 'LIMA' ? !prov : prov}">${t}</button>`).join('');
+      const L = [['PROVINCIAS', 'Todas'], ...PROV.map(p => [p, nom(p)])].filter(([k]) => ok(k)), f = box.querySelector('.blq-f'); f.hidden = !prov || fijo || L.length <= 1;
+      f.innerHTML = prov && !fijo && L.length > 1 ? L.map(([k, t]) =>
         `<button type="button" class="chip" data-blq="${k}" aria-pressed="${v === k}">${t}</button>`).join('') : '';
     };
     box.addEventListener('click', (e) => { const b = e.target.closest('[data-blq]'); if (!b || sel.value === b.dataset.blq) return;

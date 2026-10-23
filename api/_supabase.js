@@ -37,7 +37,7 @@ const secreto = () => process.env.SESION_SECRET || process.env.MASTER_TOKEN || p
 const firma = (c) => crypto.createHmac('sha256', 'mf-sesion|' + secreto()).update(c).digest('base64url');
 function iguales(a, b) { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 function firmarSesion(u) {
-  const ahora = Date.now(), c = Buffer.from(JSON.stringify({ u: u.usuario, n: u.nombre, f: u.filial, cc: !!u.cambiar_clave, iat: ahora, exp: ahora + DURACION_SESION })).toString('base64url');
+  const ahora = Date.now(), c = Buffer.from(JSON.stringify({ u: u.usuario, n: u.nombre, f: u.filial, m: u.modulos || 'TODOS', cc: !!u.cambiar_clave, iat: ahora, exp: ahora + DURACION_SESION })).toString('base64url');
   return `u1.${c}.${firma(c)}`;
 }
 function leerSesion(t) {
@@ -79,7 +79,18 @@ function responder(res, estado, cuerpo, cacheSeg = 0) {
 // Filial elegida en el portal (?filial=LIMA). Por defecto LIMA.
 const FILIALES = ['LIMA', 'PROVINCIAS', 'ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
 // Filiales que puede ver una sesión: TODAS, PROVINCIAS (las 7) o una sola.
-const permitidas = (f) => !f || f === 'TODAS' ? FILIALES : f === 'PROVINCIAS' ? FILIALES.filter(x => x !== 'LIMA') : FILIALES.includes(f) ? [f] : [];
+// f puede ser una lista: "LIMA,PIURA". PROVINCIAS = las 7 provincias (y su vista conjunta); con las 7 marcadas también se ve la conjunta.
+const PROV7 = ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
+function permitidas(f) {
+  const L = String(f || 'TODAS').toUpperCase().split(',').map(x => x.trim()).filter(Boolean);
+  if (!L.length || L.includes('TODAS')) return FILIALES;
+  const S = new Set(); L.forEach(x => { if (x === 'PROVINCIAS') { S.add('PROVINCIAS'); PROV7.forEach(p => S.add(p)); } else if (FILIALES.includes(x)) S.add(x); });
+  if (PROV7.every(p => S.has(p))) S.add('PROVINCIAS');
+  return FILIALES.filter(x => S.has(x));
+}
+// Ventanas (módulos) que puede ver la sesión: "TODOS" o lista "instalaciones,fftt"
+const MODULOS_PORTAL = ['instalaciones', 'averias', 'observadas', 'anuladas', 'dashboard', 'fftt', 'speedtest'];
+const puedeModulo = (req, ...ms) => { const m = req.usuario && req.usuario.m; if (!m || m === 'TODOS') return true; const L = m.split(','); return ms.some(x => L.includes(x)); };
 const puedeVer = (req, filial) => { const u = req.usuario; return !u || !u.f || u.f === 'TODAS' || permitidas(u.f).includes(String(filial || '').toUpperCase()); };
 function filialDe(req) {
   let f = (new URL(req.url, 'http://x').searchParams.get('filial') || 'LIMA').toUpperCase();
@@ -99,4 +110,4 @@ async function pedir(ruta, method, cuerpo, prefer = 'return=minimal') {
   return prefer.includes('representation') ? r.json() : null;
 }
 
-module.exports = { consultar, guardar, pedir, autorizado, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, filialDe, filtroFilial, permitidas, puedeVer, FILIALES };
+module.exports = { PROV7, MODULOS_PORTAL, puedeModulo, consultar, guardar, pedir, autorizado, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, filialDe, filtroFilial, permitidas, puedeVer, FILIALES };

@@ -54,7 +54,7 @@
     const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || `Error ${r.status}`); return d;
   }
   function entrar(d) {
-    try { localStorage.setItem('mifibra_usuario', JSON.stringify({ u: d.usuario || '', n: d.nombre || '', f: d.filial || 'TODAS' })); } catch { /* sin almacenamiento */ }
+    try { localStorage.setItem('mifibra_usuario', JSON.stringify({ u: d.usuario || '', n: d.nombre || '', f: d.filial || 'TODAS', m: d.modulos || 'TODOS' })); } catch { /* sin almacenamiento */ }
     guardarToken(d.token); location.reload();   // al recargar se aplican la filial y los permisos del usuario en toda la página
   }
   $id('form-acceso').addEventListener('submit', async (ev) => {
@@ -74,7 +74,7 @@
   });
   // Quién está conectado; el acceso a «Usuarios» se muestra solo a quien ve todas las filiales
   const yo = window.mfUsuario;
-  if (yo && yo.n) { const nf = yo.f === 'TODAS' ? 'Todas las filiales' : yo.f.charAt(0) + yo.f.slice(1).toLowerCase(); $id('usr').textContent = `${yo.n} · ${nf}`; $id('usr').hidden = false; }
+  if (yo && yo.n) { const nf = yo.f === 'TODAS' ? 'Todas las filiales' : yo.f.split(',').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join(', '); $id('usr').textContent = `${yo.n} · ${nf}`; $id('usr').hidden = false; }
   $id('adm').hidden = !!(yo && yo.f && yo.f !== 'TODAS');
 
   const selFilial = document.getElementById('filial');
@@ -220,6 +220,7 @@
         <h2>${titulo}</h2><p>${texto}</p><span class="cifra">${cifra}</span>
         <span class="btn${destacada ? ' oscuro' : ''}">${destacada ? 'Ver resultados →' : externo ? 'Abrir ↗' : 'Ingresar →'}</span>
       </a>`;
+    const ver = (k) => !window.mfModulo || window.mfModulo(k === 'facilidades' ? 'fftt' : k);   // ventanas permitidas del usuario
     document.getElementById('tarjetas').innerHTML = [
       t('instalaciones', 'Instalaciones', 'Órdenes de instalación: registradas, descargadas, observadas y anuladas por técnico y distrito.', `${num(i.inst_registradas)} por atender · ${dec(i.inst_efectividad_pct)}% efectividad`),
       t('averias', 'Averías', 'Órdenes de servicio técnico: motivo, lugar de la avería, causa, solución y estado.', `${num(i.st_registradas)} por atender · mediana ${dec(i.st_horas_mediana)} h`),
@@ -228,7 +229,7 @@
       t('dashboard', 'Dashboard de resultados', 'Indicadores consolidados: efectividad, órdenes por día, estados y ranking de técnicos.', periodo(i), true),
       t('facilidades', 'Facilidades Técnicas', 'Errores de facilidades técnicas por planta (TAP, caja, borne, cintillo) y cintillos duplicados, con la base del portal.', 'Buscador FFTT', false, '/fftt.html', false),
       t('speedtest', 'Speed Test', 'Pruebas de velocidad de cada alta: cobertura de medición, pruebas del cliente o del técnico, AB sin medición y enlaces repetidos.', 'Cobertura de medición por EECC y técnico', false, '/speedtest.html'),
-    ].join('');
+    ].filter((h, i) => ver(['instalaciones', 'averias', 'observadas', 'anuladas', 'dashboard', 'facilidades', 'speedtest'][i])).join('') || '<p class="cargando">Tu usuario no tiene ventanas asignadas. Pide acceso al administrador.</p>';
   }
 
   async function vistaModulo(clave) {
@@ -405,7 +406,8 @@
   }
 
   async function mostrar() {
-    const ruta = (location.hash.replace('#', '') || 'inicio').toLowerCase();
+    let ruta = (location.hash.replace('#', '') || 'inicio').toLowerCase();
+    if (window.mfModulo && ruta !== 'inicio' && !window.mfModulo(ruta)) { history.replaceState(null, '', '#inicio'); ruta = 'inicio'; }   // ventana no permitida
     if (ruta === 'averias') { location.replace('/averias.html'); return; } // el módulo Averías y TC vive en su propia página
     if (ruta === 'instalaciones') { location.replace('/instalaciones.html'); return; } // el módulo Instalaciones vive en su propia página
     if (ruta === 'observadas') { location.replace('/observadas.html'); return; } // el módulo Observadas vive en su propia página

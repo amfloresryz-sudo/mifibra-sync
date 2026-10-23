@@ -1,10 +1,11 @@
 // GET /api/observadas?filial=LIMA
 // Devuelve las OS en estado OBSERVADA de una filial (fecha de observación, motivo, submotivo…), que el robot arma en
 // cada sincronización (tabla "tableros", clave "observadas:<FILIAL>").
-const { consultar, autorizado, responder, filialDe } = require('./_supabase');
+const { consultar, autorizado, responder, filialDe, puedeModulo } = require('./_supabase');
 
 module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
+  if (!puedeModulo(req, 'observadas')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
   const filial = filialDe(req);
   try {
     const { datos } = await consultar(`tableros?select=datos,actualizado&clave=eq.${encodeURIComponent('observadas:' + filial)}`);

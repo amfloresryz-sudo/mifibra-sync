@@ -133,6 +133,8 @@ tr.inact td { color: var(--fg-4); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--noche); color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 14px; z-index: 80; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
 .toast[hidden] { display: none; }
 #panel[hidden], .sec[hidden] { display: none !important; }
+.pick { display: flex; flex-wrap: wrap; gap: 6px; } .pick .chip { color: var(--fg); border-color: var(--borde-2); font-size: 12px; padding: 6px 11px; min-height: 32px; } .pick .chip[aria-pressed="true"] { color: #fff; }
+.pick-t { font-size: 13px; font-weight: 700; color: var(--fg-2); margin: 4px 0 6px; } .perm-txt { font-size: 12.5px; max-width: 220px; white-space: normal; line-height: 1.35; }
 .lugar { display: block; font-size: 12px; color: var(--fg-3); margin-top: 2px; } .lugar a { color: var(--magenta-txt); font-weight: 700; }
 .b.fuera { background: var(--aviso-bg); color: var(--aviso-fg); } tr.fuera td, .hist tr.fuera td { background: var(--aviso-bg); }
 .lnk2 { all: unset; cursor: pointer; color: var(--magenta-txt); font-size: 12px; font-weight: 700; text-decoration: underline; }
@@ -171,12 +173,13 @@ td { font-size: 13px; }
         <h3>Uno por uno</h3>
         <label>Nombre y apellido<input id="u-nom" required maxlength="60" placeholder="Ej. Juan Pérez"></label>
         <label>Usuario<input id="u-usu" required maxlength="30" autocapitalize="none" spellcheck="false" placeholder="se llena solo: jperez"></label>
-        <label>Filial que puede ver<select id="u-fil"></select></label>
+        <div><div class="pick-t">Filiales que puede ver</div><div class="pick" id="u-fil" role="group" aria-label="Filiales"></div></div>
+        <div><div class="pick-t">Ventanas que puede ver</div><div class="pick" id="u-mod" role="group" aria-label="Ventanas"></div></div>
         <button class="btn-pri" type="submit">Crear usuario</button><span class="err" id="u-err" role="alert"></span>
       </form>
       <div class="tarjeta">
         <h3>Varios a la vez (desde Excel)</h3>
-        <p class="nota">Copia de Excel 3 columnas y pégalas aquí: <b>Nombre · Usuario · Filial</b>. Si dejas el usuario vacío se arma solo. Filial: Todas, Lima, Provincias, Ancash, Arequipa, Cajamarca, Huanuco, La Libertad, Lambayeque o Piura.</p>
+        <p class="nota">Copia de Excel y pega aquí: <b>Nombre · Usuario · Filial · Ventanas</b> (Ventanas es opcional: vacío = todas). Si dejas el usuario vacío se arma solo. Filial: Todas, Lima, Provincias, Ancash, Arequipa, Cajamarca, Huanuco, La Libertad, Lambayeque o Piura; varias separadas por «;» (ej. Lima; Piura). Ventanas: Instalaciones; Averías; Observadas; Anuladas; Dashboard; FFTT; Speed Test.</p>
         <textarea id="masivo" rows="6" placeholder="Juan Pérez&#9;jperez&#9;Lima&#10;Rosa Díaz&#9;&#9;Piura"></textarea>
         <div id="m-prev"></div>
         <button class="btn-pri" type="button" id="m-crear" disabled>Crear usuarios</button><span class="err" id="mm-err" role="alert"></span>
@@ -188,7 +191,7 @@ td { font-size: 13px; }
     <div class="sec-cab"><div><h2 id="t-lista">Usuarios</h2><p class="sub" id="lista-sub"></p></div></div>
     <div class="herr"><input type="search" id="buscar" placeholder="Busca por nombre o usuario…" aria-label="Buscar"></div>
     <div class="segs"><div class="g" id="f-fil"></div></div>
-    <div class="caja"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th>Estado</th><th>Contraseña</th><th>Último ingreso · desde dónde</th><th>Acciones</th></tr></thead><tbody id="filas"></tbody></table></div>
+    <div class="caja"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filiales</th><th>Ventanas</th><th>Estado</th><th>Contraseña</th><th>Último ingreso · desde dónde</th><th>Acciones</th></tr></thead><tbody id="filas"></tbody></table></div>
     <p class="nota">Cambiar la filial, desactivar o restablecer la contraseña cierra al instante la sesión abierta de esa persona · Ubicación = ciudad aproximada según la conexión a internet (con datos móviles o VPN puede marcar otra ciudad) · En amarillo: ingresó desde una región distinta a su filial.</p>
   </section>
   </div>
@@ -204,7 +207,19 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const n = (v) => Number(v || 0).toLocaleString('es-PE');
 const FILS = [['TODAS', 'Todas (ve todo)'], ['LIMA', 'Lima'], ['PROVINCIAS', 'Provincias (las 7)'], ['ANCASH', 'Ancash'], ['AREQUIPA', 'Arequipa'], ['CAJAMARCA', 'Cajamarca'], ['HUANUCO', 'Huanuco'], ['LA LIBERTAD', 'La Libertad'], ['LAMBAYEQUE', 'Lambayeque'], ['PIURA', 'Piura']];
-const nomF = (f) => (FILS.find(x => x[0] === f) || [f, f])[1];
+const nomF1 = (f) => (FILS.find(x => x[0] === f) || [f, f])[1];
+const nomF = (f) => String(f || '').split(',').map(x => f.includes(',') ? nomF1(x).replace(/ \(.*\)/, '') : nomF1(x)).join(', ');
+const MODS = [['instalaciones', 'Instalaciones'], ['averias', 'Averías'], ['observadas', 'Observadas'], ['anuladas', 'Anuladas'], ['dashboard', 'Dashboard'], ['fftt', 'FFTT'], ['speedtest', 'Speed Test']];
+const nomM = (m) => !m || m === 'TODOS' ? 'Todas' : m.split(',').map(k => (MODS.find(x => x[0] === k) || [k, k])[1]).join(', ');
+// Selector de varias opciones con chips: «Todas» o una o varias
+function picker(el, ops, todo, sel) {
+  let S = new Set(String(sel || todo).split(','));
+  const pinta = () => { el.innerHTML = [[todo, 'Todas'], ...ops].map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${S.has(v)}">${esc(t)}</button>`).join(''); };
+  el.onclick = (e) => { const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v;
+    if (v === todo) S = new Set([todo]); else { S.delete(todo); S.has(v) ? S.delete(v) : S.add(v); if (!S.size) S.add(todo); } pinta(); };
+  pinta(); return { valor: () => [...S].join(','), poner: (x) => { S = new Set(String(x || todo).split(',')); pinta(); } };
+}
+const FIL_OPS = FILS.filter(([v]) => v !== 'TODAS').map(([v, t]) => [v, t.replace(' (las 7)', ' (todas)')]);
 const opciones = (sel) => FILS.map(([v, t]) => `<option value="${v}"${v === sel ? ' selected' : ''}>${t}</option>`).join('');
 const sinTilde = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 const fecha = (iso) => { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }); };
@@ -251,18 +266,18 @@ function pintar() {
   $('general').innerHTML = !hayGeneral ? '<span>No hay clave general configurada: solo se ingresa con usuario.</span>'
     : `<span><b>Clave general (compartida):</b> ${general ? 'activa — quien la conoce entra viendo todas las filiales.' : 'desactivada — solo se ingresa con usuario.'}${general ? ' Desactívala cuando todos tengan su usuario.' : ''}${genLugar ? `<span class="lugar">Último uso: ${fecha(genLugar.en)} · ${mapa(genLugar) ? `<a href="${mapa(genLugar)}" target="_blank" rel="noopener">${esc(lugarTxt(genLugar))}</a>` : esc(lugarTxt(genLugar))} · ${esc(genLugar.equipo || '')} · <button type="button" class="lnk2" data-hist="general">historial</button></span>` : ''}</span><button type="button" class="btn-out" id="gen-btn">${general ? 'Desactivar clave general' : 'Volver a activarla'}</button>`;
   const C = {}; U.forEach(u => C[u.filial] = (C[u.filial] || 0) + 1);
-  $('f-fil').innerHTML = `<span class="seg-t">Filial</span><button type="button" class="chip" data-f="" aria-pressed="${!F.fil}">Todos (${n(U.length)})</button>` + FILS.filter(([v]) => C[v]).map(([v, t]) => `<button type="button" class="chip" data-f="${v}" aria-pressed="${F.fil === v}">${esc(v === 'TODAS' ? 'Ven todo' : t.replace(/ \(.*\)/, ''))} (${n(C[v])})</button>`).join('');
+  $('f-fil').innerHTML = `<span class="seg-t">Filial</span><button type="button" class="chip" data-f="" aria-pressed="${!F.fil}">Todos (${n(U.length)})</button>` + Object.keys(C).sort((a, b) => a === 'TODAS' ? -1 : b === 'TODAS' ? 1 : a.localeCompare(b)).map(v => `<button type="button" class="chip" data-f="${esc(v)}" aria-pressed="${F.fil === v}">${esc(v === 'TODAS' ? 'Ven todo' : nomF(v).replace(/ \(.*\)/, ''))} (${n(C[v])})</button>`).join('');
   const L = U.filter(u => (!F.fil || u.filial === F.fil) && (!F.q || (u.nombre + ' ' + u.usuario).toLowerCase().includes(F.q)));
   $('lista-sub').textContent = `${n(L.length)} de ${n(U.length)}`;
   $('filas').innerHTML = L.map(u => editando === u.usuario ? `<tr class="edit" data-u="${esc(u.usuario)}"><td class="izq"><input class="in-ed" id="ed-nom" value="${esc(u.nombre)}" maxlength="60" aria-label="Nombre"></td><td><input class="in-ed" id="ed-usu" value="${esc(u.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario"></td>
-    <td colspan="4" class="izq"><span class="nota">La contraseña no cambia. Si cambias el usuario, avísale a la persona: deberá ingresar con el nuevo.</span> <span class="err" id="ed-err"></span></td>
+    <td colspan="5" class="izq"><span class="nota">La contraseña no cambia. Si cambias el usuario, avísale a la persona: deberá ingresar con el nuevo.</span> <span class="err" id="ed-err"></span></td>
     <td><div class="acc"><button type="button" class="mini pri" data-acc="ed-ok">Guardar</button><button type="button" class="mini" data-acc="ed-no">Cancelar</button></div></td></tr>`
-    : `<tr class="${u.activo ? '' : 'inact'}${u.fuera7 ? ' fuera' : ''}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td><select data-acc="filial" aria-label="Filial de ${esc(u.usuario)}">${opciones(u.filial)}</select></td>
+    : `<tr class="${u.activo ? '' : 'inact'}${u.fuera7 ? ' fuera' : ''}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td class="perm-txt">${esc(u.filial === 'TODAS' ? 'Todas' : nomF(u.filial))}</td><td class="perm-txt">${esc(nomM(u.modulos))}</td>
     <td>${u.activo ? '<span class="b ok">Activo</span>' : '<span class="b na">Desactivado</span>'}</td>
     <td>${u.cambiar_clave ? '<span class="b pend">Pendiente de cambio</span>' : `<span class="b ok" title="Cambiada el ${fecha(u.clave_en)}">Cambiada</span>`}</td>
     <td>${fecha(u.ultimo_ingreso)}${lugarHtml(u.lugar)}${u.fuera7 ? `<span class="b fuera" title="Ingresos desde una región distinta a su filial en los últimos 7 días">⚠ ${n(u.fuera7)} fuera de su filial</span> ` : ''}${u.ultimo_ingreso ? `<button type="button" class="lnk2" data-hist="${esc(u.usuario)}">historial</button>` : ''}</td>
-    <td><div class="acc"><button type="button" class="mini pri" data-acc="cred">Enviar credenciales</button><button type="button" class="mini" data-acc="editar">Editar</button><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
-    || `<tr><td colspan="7">${U.length ? 'Sin coincidencias.' : 'Aún no hay usuarios: créalos arriba.'}</td></tr>`;
+    <td><div class="acc"><button type="button" class="mini pri" data-acc="cred">Enviar credenciales</button><button type="button" class="mini" data-acc="permisos">Permisos</button><button type="button" class="mini" data-acc="editar">Editar</button><button type="button" class="mini" data-acc="reset">Restablecer clave</button><button type="button" class="mini" data-acc="activo">${u.activo ? 'Desactivar' : 'Activar'}</button><button type="button" class="mini rojo" data-acc="borrar">Eliminar</button></div></td></tr>`).join('')
+    || `<tr><td colspan="8">${U.length ? 'Sin coincidencias.' : 'Aún no hay usuarios: créalos arriba.'}</td></tr>`;
 }
 $('filas').addEventListener('keydown', (e) => { if (!e.target.classList.contains('in-ed')) return;
   if (e.key === 'Enter') { e.preventDefault(); $('filas').querySelector('[data-acc="ed-ok"]').click(); } else if (e.key === 'Escape') { editando = ''; pintar(); } });
@@ -297,31 +312,33 @@ function mostrarCreados(L, omitidos = []) {
 }
 
 // Uno por uno
-$('u-fil').innerHTML = opciones('LIMA');
+const pkFil = picker($('u-fil'), FIL_OPS, 'TODAS', 'LIMA'), pkMod = picker($('u-mod'), MODS, 'TODOS', 'TODOS');
 let usuEditado = false;
 $('u-nom').addEventListener('input', () => { if (!usuEditado) $('u-usu').value = $('u-nom').value.trim() ? sugerir($('u-nom').value, usados()) : ''; });
 $('u-usu').addEventListener('input', () => { usuEditado = !!$('u-usu').value; });
 $('f-uno').addEventListener('submit', async (e) => { e.preventDefault(); $('u-err').textContent = '';
-  try { const d = await api('guardar', { nuevo: true, nombre: $('u-nom').value, usuario: $('u-usu').value, filial: $('u-fil').value });
-    mostrarCreados([d.creado]); $('f-uno').reset(); $('u-fil').value = 'LIMA'; usuEditado = false; await cargarLista(); }
+  try { const d = await api('guardar', { nuevo: true, nombre: $('u-nom').value, usuario: $('u-usu').value, filial: pkFil.valor(), modulos: pkMod.valor() });
+    mostrarCreados([d.creado]); $('f-uno').reset(); pkFil.poner('LIMA'); pkMod.poner('TODOS'); usuEditado = false; await cargarLista(); }
   catch (er) { $('u-err').textContent = er.message; } });
 
 // Masivo: pegar desde Excel
+const MOD_TXT = Object.fromEntries([['TODAS', 'TODOS'], ['TODOS', 'TODOS'], ...MODS.flatMap(([k, t]) => [[sinTilde(t).toUpperCase().replace(/\s+/g, ''), k], [k.toUpperCase(), k]])]);
 const FIL_TXT = Object.fromEntries(FILS.flatMap(([v, t]) => [[sinTilde(v).toUpperCase(), v], [sinTilde(t.replace(/ \(.*\)/, '')).toUpperCase(), v]]));
 let M = [], OV = {};   // OV: usuario corregido a mano en la vista previa (por fila)
 function leerMasivo() {
   const us = usados(); let idx = 0;
   M = $('masivo').value.split(/\r?\n/).map(l => l.split('\t')).filter(c => c.join('').trim()).map(c => {
-    let [nombre = '', usuario = '', filial = ''] = c.map(x => x.trim());
+    let [nombre = '', usuario = '', filial = '', vent = ''] = c.map(x => x.trim());
     if (c.length === 2) { filial = usuario; usuario = ''; }   // solo nombre y filial
     if (/^nombre$/i.test(nombre)) return null;               // fila de títulos
     const fila = idx++; usuario = sinTilde(OV[fila] != null ? OV[fila] : usuario).trim().toLowerCase(); if (!usuario) usuario = sugerir(nombre, us); us.add(usuario);
-    const f = FIL_TXT[sinTilde(filial).toUpperCase()] || '';
-    const mal = !nombre ? 'falta el nombre' : !/^[a-z0-9._-]{3,30}$/.test(usuario) ? 'usuario no válido' : !f ? `filial «${filial || 'vacía'}» no reconocida` : U.some(x => x.usuario === usuario) ? 'el usuario ya existe' : '';
-    return { nombre, usuario, filial: f, mal, fila };
+    const ft = filial.split(/[;,\/]+/).map(x => x.trim()).filter(Boolean), fk = ft.map(x => FIL_TXT[sinTilde(x).toUpperCase()]), f = ft.length && fk.every(Boolean) ? [...new Set(fk)].join(',') : '';
+    const vt = vent.split(/[;,\/]+/).map(x => x.trim()).filter(Boolean), vk = vt.map(x => MOD_TXT[sinTilde(x).toUpperCase().replace(/\s+/g, '')]), m = !vt.length ? 'TODOS' : vk.every(Boolean) ? [...new Set(vk)].join(',') : '';
+    const mal = !nombre ? 'falta el nombre' : !/^[a-z0-9._-]{3,30}$/.test(usuario) ? 'usuario no válido' : !f ? `filial «${filial || 'vacía'}» no reconocida` : !m ? `ventana «${vent}» no reconocida` : U.some(x => x.usuario === usuario) ? 'el usuario ya existe' : '';
+    return { nombre, usuario, filial: f, modulos: m.includes('TODOS') ? 'TODOS' : m, mal, fila };
   }).filter(Boolean);
   const ok = M.filter(x => !x.mal);
-  $('m-prev').innerHTML = M.length ? `<div class="caja prev" style="max-height:220px"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th></th></tr></thead><tbody>${M.map(x => `<tr><td class="izq">${esc(x.nombre)}</td><td><input class="in-ed" data-fila="${x.fila}" value="${esc(x.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario de ${esc(x.nombre)}" title="Puedes cambiar el usuario antes de crear"></td><td>${esc(x.filial ? nomF(x.filial) : '—')}</td><td class="${x.mal ? 'mal' : ''}">${x.mal ? '✗ ' + esc(x.mal) : '✓'}</td></tr>`).join('')}</tbody></table></div>` : '';
+  $('m-prev').innerHTML = M.length ? `<div class="caja prev" style="max-height:220px"><table><thead><tr><th class="izq">Nombre</th><th>Usuario</th><th>Filial</th><th>Ventanas</th><th></th></tr></thead><tbody>${M.map(x => `<tr><td class="izq">${esc(x.nombre)}</td><td><input class="in-ed" data-fila="${x.fila}" value="${esc(x.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario de ${esc(x.nombre)}" title="Puedes cambiar el usuario antes de crear"></td><td>${esc(x.filial ? nomF(x.filial) : '—')}</td><td>${esc(x.modulos ? nomM(x.modulos) : '—')}</td><td class="${x.mal ? 'mal' : ''}">${x.mal ? '✗ ' + esc(x.mal) : '✓'}</td></tr>`).join('')}</tbody></table></div>` : '';
   $('m-crear').disabled = !ok.length; $('m-crear').textContent = ok.length ? `Crear ${n(ok.length)} usuario${ok.length === 1 ? '' : 's'}` : 'Crear usuarios';
 }
 $('masivo').addEventListener('input', () => { OV = {}; leerMasivo(); });
@@ -334,14 +351,14 @@ $('m-crear').addEventListener('click', async () => { leerMasivo(); const ok = M.
 async function cargarLista() { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; genLugar = d.generalLugar; pintar(); }
 
 // Acciones de la tabla
-async function guardarU(u, cambios) { return api('guardar', { usuario: u.usuario, nombre: u.nombre, filial: u.filial, activo: u.activo, ...cambios }); }
-$('filas').addEventListener('change', async (e) => { const s = e.target.closest('[data-acc="filial"]'); if (!s) return; const u = U.find(x => x.usuario === s.closest('tr').dataset.u);
-  try { await guardarU(u, { filial: s.value }); u.filial = s.value; pintar(); toast(`${u.nombre} ahora ve: ${nomF(s.value)}.`); } catch (er) { toast(er.message); pintar(); } });
+async function guardarU(u, cambios) { return api('guardar', { usuario: u.usuario, nombre: u.nombre, filial: u.filial, modulos: u.modulos, activo: u.activo, ...cambios }); }
+
 $('filas').addEventListener('click', async (e) => { const b = e.target.closest('button[data-acc]'); if (!b) return; const u = U.find(x => x.usuario === b.closest('tr').dataset.u); if (!u) return;
   try {
     if (b.dataset.acc === 'cred') {   // la contraseña no se guarda a la vista: se genera una nueva inicial y se copia el mensaje
       if (!confirm(`Para enviar las credenciales de ${u.nombre} se generará una nueva contraseña inicial (la actual deja de funcionar). ¿Continuar?`)) return;
       const d = await guardarU(u, { reset: true }), x = { ...u, clave: d.clave }; await copiarCred(x); await cargarLista(); mostrarCreados([x]); return; }
+    if (b.dataset.acc === 'permisos') { abrirPermisos(u); return; }
     if (b.dataset.acc === 'editar') { editando = u.usuario; pintar(); const i = $('ed-usu'); i.focus(); i.select(); return; }
     if (b.dataset.acc === 'ed-no') { editando = ''; pintar(); return; }
     if (b.dataset.acc === 'ed-ok') { const nu = sinTilde($('ed-usu').value).trim().toLowerCase(), nom = $('ed-nom').value.trim();
@@ -355,6 +372,17 @@ $('filas').addEventListener('click', async (e) => { const b = e.target.closest('
     else if (b.dataset.acc === 'borrar') { if (!confirm(`¿Eliminar el usuario ${u.usuario} (${u.nombre})? No se puede deshacer.`)) return; await api('borrar', { usuario: u.usuario }); toast('Usuario eliminado.'); await cargarLista(); }
   } catch (er) { toast(er.message); } });
 
+// Permisos: filiales y ventanas que ve el usuario
+function abrirPermisos(u) {
+  $('h-tit').textContent = `Permisos de ${u.nombre}`; $('h-sub').textContent = `${u.usuario} · al guardar, su sesión abierta se cierra y vuelve a ingresar con los nuevos permisos`;
+  $('h-cuerpo').innerHTML = `<div class="pick-t">Filiales que puede ver</div><div class="pick" id="p-fil"></div><p class="nota" style="margin:6px 0 14px">«Provincias (todas)» = las 7 provincias y su vista conjunta. Puedes marcar varias, por ejemplo Lima y Piura.</p>
+    <div class="pick-t">Ventanas que puede ver</div><div class="pick" id="p-mod"></div><p class="nota" style="margin:6px 0 14px">Las ventanas no marcadas no aparecen en el inicio ni en el menú, y no se pueden abrir con el link directo.</p>
+    <div class="fila-f"><button type="button" class="btn-pri" id="p-ok">Guardar permisos</button><button type="button" class="btn-out" id="p-no">Cancelar</button><span class="err" id="p-err"></span></div>`;
+  const pf = picker($('p-fil'), FIL_OPS, 'TODAS', u.filial), pm = picker($('p-mod'), MODS, 'TODOS', u.modulos || 'TODOS');
+  $('p-no').onclick = () => $('modal').hidden = true;
+  $('p-ok').onclick = async () => { try { await guardarU(u, { filial: pf.valor(), modulos: pm.valor() }); $('modal').hidden = true; toast(`Permisos de ${u.nombre} guardados.`); await cargarLista(); } catch (er) { $('p-err').textContent = er.message; } };
+  $('modal').hidden = false;
+}
 // Historial de ingresos de un usuario
 async function verHist(usuario) {
   const u = U.find(x => x.usuario === usuario) || { nombre: 'Clave general', usuario, filial: 'TODAS' };

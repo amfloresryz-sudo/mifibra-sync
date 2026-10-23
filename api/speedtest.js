@@ -1,10 +1,11 @@
 // GET /api/speedtest
 // Tablero de Speed Test (todas las filiales): lo calcula el robot en cada sincronización con los enlaces de
 // «Observaciones Tecnico» y lo guarda en la tabla "tableros" (clave "speedtest"). La página filtra en el navegador.
-const { consultar, autorizado, responder, puedeVer, permitidas } = require('./_supabase');
+const { consultar, autorizado, responder, puedeVer, permitidas, puedeModulo } = require('./_supabase');
 
 module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
+  if (!puedeModulo(req, 'speedtest')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
   try {
     // ?os=1,2,3: datos de esas OS de instalación para las listas de AB (F. Recep, F. atención, distrito y estado)
     const os = new URL(req.url, 'http://x').searchParams.get('os');
