@@ -27,7 +27,7 @@ COLUMNAS_BD = (
     "id_os,nro_os,estado_os,abonado_codigo,distrito,segmento,servicio,motivo,lugar_averia,fecha_registro,hora_recepcion,"
     "fecha_atencion,atencion_inicio,atencion_fin,horario_atencion,tecnico_ejecutor,tecnico_responsable,contrata,"
     "causa,sub_causa,solucion,fecha_instalacion_abonado,obs_agenda,agenda_estado,agenda_texto,"
-    "tarifa_servicio,plano,tipo_vivienda,zona_fftt,nap,borne,dispositivo,detalle,canal_atencion,fecha_programada,observaciones,obs_visita_todo,obs_visita_en,coordenadas,inicio_fachada"
+    "tarifa_servicio,plano,tipo_vivienda,zona_fftt,zona_tap,nap,borne,dispositivo,detalle,canal_atencion,fecha_programada,observaciones,obs_visita_todo,obs_visita_en,coordenadas,inicio_fachada"
 )
 # Instalaciones del abonado (para el detalle de Infancia).
 COLUMNAS_INST = "abonado_codigo,nro_os,fecha_atencion,contrata,tecnico_ejecutor,distrito,canal_atencion"
@@ -234,7 +234,8 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, z
             "inst": instalacion(r["abonado_codigo"], r["fr"]),
             "prev": anteriores(r["abonado_codigo"], r["id_os"], r["fr"]) if r["nrei"] else [],
             "pl": _txt(r.get("plano")), "viv": _txt(r.get("tipo_vivienda")), "plan": _txt(r.get("tarifa_servicio")),
-            "zf": _txt(r.get("zona_fftt")), "nap": _txt(r.get("nap")), "bor": _txt(r.get("borne")), "dis": _txt(r.get("dispositivo")),
+            "zf": _txt(r.get("zona_tap")) or _txt(r.get("zona_fftt")),   # TAP: la columna «ZONA» del reporte (la misma del buscador FFTT)
+            "nap": _txt(r.get("nap")), "bor": _txt(r.get("borne")), "dis": _txt(r.get("dispositivo")),
             "ca": _txt(r["causa"]), "sol": _txt(r["solucion"]), "cn": _canal(r.get("canal_atencion")),
             "obs": _txt(r.get("observaciones")), "ovt": _txt(r.get("obs_visita_todo")), "ove": _txt(r.get("obs_visita_en")),
             "co": _txt(r.get("coordenadas")), "ecp": _eecc_plano(r.get("distrito"), r.get("plano")),
