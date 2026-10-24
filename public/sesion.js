@@ -25,10 +25,12 @@
       if (PROV.every(p => S.has(p))) S.add('PROVINCIAS');
       P = ['LIMA', 'PROVINCIAS', ...PROV].filter(x => S.has(x)); }
     if (usr && usr.m && usr.m !== 'TODOS') M = String(usr.m).split(',');
-    if (P && !P.includes(ss.getItem(FILIAL))) { ss.setItem(FILIAL, P[0]); ls.setItem(FILIAL, P[0]); }
+    // Varias filiales a la vez («LIMA,AREQUIPA»): se permiten si el usuario puede ver cada una
+    var filOk = (v) => !P || String(v || '').split(',').every(x => P.includes(x));
+    if (P && !filOk(ss.getItem(FILIAL))) { ss.setItem(FILIAL, P[0]); ls.setItem(FILIAL, P[0]); }
     // Mantener sincronizadas sesión y filial cuando la página las cambie.
     const set0 = Storage.prototype.setItem, rem0 = Storage.prototype.removeItem;
-    Storage.prototype.setItem = function (k, v) { if (P && k === FILIAL && !P.includes(String(v))) v = P[0]; set0.call(this, k, v);
+    Storage.prototype.setItem = function (k, v) { if (P && k === FILIAL && !filOk(String(v))) v = P[0]; set0.call(this, k, v);
       if (this === ss) { if (k === TOKEN) set0.call(ls, PERSIST, JSON.stringify({ t: String(v), vence: Date.now() + DURACION })); else if (k === FILIAL) set0.call(ls, FILIAL, String(v)); } };
     Storage.prototype.removeItem = function (k) { rem0.call(this, k); if (this === ss && k === TOKEN) { rem0.call(ls, PERSIST); rem0.call(ls, USR); } };
   } catch { /* sin almacenamiento: la sesión queda solo en la pestaña */ }
@@ -44,6 +46,6 @@
   // Selectores de filial: se quitan las filiales que el usuario no puede ver
   const podar = () => { if (!P) return; document.querySelectorAll('select#filial').forEach(sel => {
     [...sel.options].forEach(o => { if (!P.includes(o.value)) o.remove(); }); sel.querySelectorAll('optgroup').forEach(g => { if (!g.children.length) g.remove(); });
-    if (!P.includes(sel.value)) sel.value = P[0]; }); };
+    if (!String(sel.value).split(',').every(x => P.includes(x))) sel.value = P[0]; }); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', podar); else podar();
 })();

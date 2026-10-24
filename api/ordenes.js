@@ -2,7 +2,7 @@
 //      &estado=DESCARGADA &motivo=... &distrito=... &tecnico=... &desde=2026-10-01 &hasta=2026-10-14
 //      &buscar=12345 &pagina=1 &por_pagina=50
 // Devuelve las filas de la tabla de cada módulo, paginadas.
-const { consultar, autorizado, responder, filialDe, filtroFilial, puedeModulo } = require('./_supabase');
+const { consultar, autorizado, responder, filialDe, filialesDe, filtroFilial, puedeModulo } = require('./_supabase');
 
 const COLUMNAS = {
   instalaciones: 'id_os,nro_os,abonado_codigo,distrito,categoria,tarifa_servicio,fecha_registro,horario_atencion,tecnico_ejecutor,contrata,estado_os',
@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
     const os = String(parseInt(q.get('ficha'), 10));
     if (!/^\d{1,10}$/.test(os)) return responder(res, 400, { error: 'OS no válida' });
     try {
-      const { datos } = await consultar(`ordenes_servicio?select=${COLUMNAS_FICHA}&nro_os=eq.${os}&${filtroFilial(filialDe(req))}`
+      const { datos } = await consultar(`ordenes_servicio?select=${COLUMNAS_FICHA}&nro_os=eq.${os}&${filtroFilial(filialesDe(req))}`
         + `&tipo_orden=eq.${encodeURIComponent('SERVICIO TECNICO')}&order=fecha_registro.desc&limit=1`);
       return responder(res, 200, { fila: datos[0] || null }, 60);
     } catch (e) { return responder(res, 500, { error: e.message }); }
@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
   if (!COLUMNAS[modulo]) return responder(res, 400, { error: 'modulo debe ser instalaciones, averias, observadas o anuladas' });
   if (!puedeModulo(req, modulo, ...(modulo === 'instalaciones' || modulo === 'averias' ? ['observadas', 'averias', 'instalaciones'] : []))) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
 
-  const partes = [`select=${COLUMNAS[modulo]}`, FILTRO_BASE[modulo], filtroFilial(filialDe(req))];
+  const partes = [`select=${COLUMNAS[modulo]}`, FILTRO_BASE[modulo], filtroFilial(filialesDe(req))];
   for (const [param, col] of Object.entries(FILTROS)) {
     const v = q.get(param);
     if (v) partes.push(`${col}=eq.${encodeURIComponent(v)}`);

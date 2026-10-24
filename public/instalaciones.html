@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <script src="/sesion.js"></script>
+<script src="/filial-bloques.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Instalaciones · Mi Fibra</title>
@@ -1033,7 +1034,13 @@ const CACHE = (() => {
   };
 })();
 const reciente = (x) => x && x.actualizado && Date.now() - new Date(x.actualizado).getTime() < 36 * 3600e3;
+const MFF = window.MFF;
+const esCombo = (f) => MFF.esCombo(f);
+const filTxt = (f) => esCombo(f) ? MFF.txt(f) : (f || 'LIMA');
+const SOLO_UNA = 'Con varias filiales elegidas no se puede editar: elige una sola filial (o Provincias) para hacer este cambio.';
 async function traer(f = filialSel()) {
+  // Varias filiales: se trae el tablero de cada una y se juntan (se analiza por filial, como Provincias)
+  if (esCombo(f)) { const j = await MFF.traerVarias(f, x => '/api/instalaciones?filial=' + encodeURIComponent(x), { fiKey: 'fi' }); CACHE.set('instalaciones:' + f, j); return j; }
   const r = await fetch('/api/instalaciones?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } });
   if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
   const j = await r.json().catch(() => ({}));
@@ -1046,6 +1053,12 @@ const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rut
 let AJ = AJ_VACIO(), ajOk = false;
 const urlAj = (f) => '/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f);
 async function traerAjustes(f = filialSel()) {
+  if (esCombo(f)) {   // varias filiales: los ajustes de cada una (metas y gestores se juntan como en Provincias)
+    try { const prov = await traerAjProv(MFF.partes(f)), agendas = {};
+      Object.values(prov).forEach(a => Object.assign(agendas, a.agendas || {}));
+      AJ = { ...AJ_VACIO(), agendas, prov }; ajOk = true; CACHE.set('aj:' + f, AJ); }
+    catch { const c = await CACHE.get('aj:' + f); AJ = c ? { ...AJ_VACIO(), ...c } : AJ_VACIO(); ajOk = false; }
+    return; }
   try { const pp = f === 'PROVINCIAS' ? traerAjProv() : null;   // Provincias › Todas: también los ajustes de cada provincia
     const r = await fetch(urlAj(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) throw 0; const j = await r.json(), prov = pp ? await pp : null;
     AJ = { ...AJ_VACIO(), ...j, ...(prov ? { prov } : {}) }; ajOk = true; CACHE.set('aj:' + f, AJ); }
@@ -1053,9 +1066,9 @@ async function traerAjustes(f = filialSel()) {
 }
 /* Provincias › Todas: se juntan las metas y los gestores que se llenaron en cada provincia */
 const PROV7 = ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
-async function traerAjProv() {
-  const R = await Promise.all(PROV7.map(f => fetch(urlAj(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
-  const o = {}; PROV7.forEach((f, i) => { const a = R[i] || {}; o[f] = { metas: a.metas || {}, metasCn: a.metasCn || {}, nombres: a.nombres || {}, gestores: a.gestores || {}, tecnicos: a.tecnicos || {} }; });
+async function traerAjProv(LF = PROV7) {
+  const R = await Promise.all(LF.map(f => fetch(urlAj(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)));
+  const o = {}; LF.forEach((f, i) => { const a = R[i] || {}; o[f] = { metas: a.metas || {}, metasCn: a.metasCn || {}, nombres: a.nombres || {}, gestores: a.gestores || {}, tecnicos: a.tecnicos || {}, agendas: a.agendas || {} }; });
   return o;
 }
 /* Agenda editada a mano: solo el usuario master (clave master); se guarda solo esa OS y lo ven todos */
@@ -1063,6 +1076,7 @@ const CLAVE_MASTER = 'mf_master';
 const claveMaster = () => { try { return sessionStorage.getItem(CLAVE_MASTER) || ''; } catch { return ''; } };
 const ponerMaster = (v) => { try { v ? sessionStorage.setItem(CLAVE_MASTER, v) : sessionStorage.removeItem(CLAVE_MASTER); } catch { /* sin almacenamiento */ } };
 async function guardarAgenda(os, ajuste, clave) {
+  if (esCombo(D.filial)) throw new Error(SOLO_UNA);
   const r = await fetch(urlAj(D.filial || filialSel()) + '&accion=agenda', { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave },
     body: JSON.stringify({ os, ajuste }) });
@@ -1072,6 +1086,7 @@ async function guardarAgenda(os, ajuste, clave) {
   ponerMaster(clave); AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true;
 }
 async function guardarAjustes() {
+  if (esCombo(D.filial)) throw new Error(SOLO_UNA);
   const r = await fetch(urlAj(D.filial || filialSel()), { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() },
     body: JSON.stringify({ metas: AJ.metas, metasCn: AJ.metasCn || {}, nombres: AJ.nombres, gestores: AJ.gestores, rutas: AJ.rutas }) });
   const j = await r.json().catch(() => ({}));
@@ -1163,7 +1178,7 @@ const tecEc = (tec) => (tec && AJ.tecnicos && AJ.tecnicos[tec]) || null;
 const fijarEc = (x) => { if (x.ecR === undefined) x.ecR = x.ec0 !== undefined ? x.ec0 : x.ec; x.ec0 = tecEc(x.tec) || x.ecR; x.ec = nomEc(x.ec0);
   if (provTodas() && x.fi !== undefined) { x.ec0 = x.ec = nomFil(x.fi); } };   // Provincias › Todas: se analiza por filial (la filial ocupa el lugar de la EECC)
 /* Provincias › Todas: todos los cuadros se analizan por filial; al elegir una filial, por EECC (detalle). */
-const provTodas = () => (D && D.filial || filialSel()) === 'PROVINCIAS';
+const provTodas = () => { const f = (D && D.filial) || filialSel(); return f === 'PROVINCIAS' || esCombo(f); };
 const nomFil = (f) => f ? String(f).split(' ').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join(' ') : 'Sin filial';
 window.esProvTodas = provTodas;   // filial-bloques.js cambia «EECC» y «Zona» por «Filial» en los textos
 // En Provincias › Todas el gestor sale del cuadro de su provincia (EECC original del AB, o la asignada a su técnico en esa provincia)
@@ -1180,7 +1195,7 @@ function metaProvDe(a, c) { const mc = a.metasCn || {}, base = { ...a.metas };
 function metasProv(c) {
   let src = D; try { src = DP || D; } catch { /* aún no hay DP */ }
   const peso = {}; (src.pend || []).forEach(p => { peso[p.fi] = (peso[p.fi] || 0) + 1; });
-  const E = PROV7.map(f => [f, metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, c)]), o = {};
+  const E = Object.keys(AJ.prov || {}).map(f => [f, metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, c)]), o = {};
   METAS_K.forEach(k => { const V = E.filter(([, m]) => m[k] != null); if (!V.length) return;
     if (k === 'meta_mes') { o[k] = V.reduce((s, [, m]) => s + m[k], 0); return; }
     const W = V.reduce((s, [f]) => s + (peso[f] || 0), 0);
@@ -1215,6 +1230,7 @@ const mesAnt = () => { const m = DC.mes === 1 ? 12 : DC.mes - 1, y = DC.mes === 
 const kMes = (mes) => (DC.filial || filialSel()) + ':' + mes;
 async function traerMes(mes) {
   if (DMES[kMes(mes)]) return DMES[kMes(mes)];
+  if (esCombo(DC.filial || filialSel())) return DMES[kMes(mes)] = await MFF.traerVarias(DC.filial || filialSel(), x => '/api/instalaciones?filial=' + encodeURIComponent(x) + '&mes=' + mes, { fiKey: 'fi' });
   const r = await fetch('/api/instalaciones?filial=' + encodeURIComponent(DC.filial || filialSel()) + '&mes=' + mes, { headers: { 'x-portal-token': tokenPortal() } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(r.status === 404 ? 'Ese mes aún no está guardado: aparece después de la próxima actualización del robot.' : (j.error || `Error ${r.status}`));
@@ -1277,13 +1293,14 @@ function prepararDatos() {
   const act = D.actualizado ? new Date(D.actualizado) : null;
   const txt = act ? act.toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
   const fil = D.filial || 'LIMA';
+  if (![...$('filial').options].some(o => o.value === fil)) $('filial').add(new Option(fil, fil));
   $('filial').value = fil;
-  $('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
-  $('grupo-zona').hidden = !(Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS');   // antes quedaba un hueco al ocultarla
-  $('grupo-ec').hidden = fil === 'PROVINCIAS';
+  $('nom-filial').textContent = MFF.txt(fil);
+  $('grupo-zona').hidden = !(Object.keys(D.zonas || {}).length && !provTodas());   // antes quedaba un hueco al ocultarla
+  $('grupo-ec').hidden = provTodas();
   $('grupo-fil').style.gridColumn = fil === 'LIMA' ? '' : '1 / -1';   // con provincias la fila de filiales va a lo ancho   // EECC: Lima o una filial de provincia (en Provincias › Todas se ve por filial)
-  ZORD.splice(0, ZORD.length, ...(fil === 'PROVINCIAS' ? [...new Set(Object.values(D.zonas || {}))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
-  $('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 20 min.`;
+  ZORD.splice(0, ZORD.length, ...(provTodas() ? [...new Set([...Object.values(D.zonas || {}), ...(D.sel || [])])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
+  $('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 20 min.`;
   const opDias = DIAS.slice().reverse().map(d => `<option value="${d}">${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
   $('co-dia').innerHTML = opDias; $('av-dia').innerHTML = opDias;
   // Pendientes › Agendas del día: siempre los días del mes en curso (no depende del periodo)
@@ -2055,7 +2072,7 @@ function pintarResumenCoord() {
   const TXT = { CO: ['Coordinadas', 'hasta 24 h'], AG: ['Agendas', 'más de 24 h'], SA: ['Sin fecha ni franja', 'sin agenda'], IN: ['Inconsistentes', 'la franja asignada no coincide con la hora de ingreso de la orden'] };
   const ap = (k) => coTipo !== 'TODOS' && k !== coTipo ? ' ap' : '';
   const ult = D.liq.length ? Math.max(...D.liq.map(x => x.d)) : D.dias;
-  $('cr-sub2').textContent = $('cr-sub').textContent = `${D.filial || 'LIMA'} · Instalaciones hasta el ${String(ult).padStart(2, '0')}/${String(D.mes).padStart(2, '0')}${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}`;
+  $('cr-sub2').textContent = $('cr-sub').textContent = `${filTxt(D.filial)} · Instalaciones hasta el ${String(ult).padStart(2, '0')}/${String(D.mes).padStart(2, '0')}${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}`;
   $('cr-asig').innerHTML = `<div class="cr-tot"><button type="button" class="cr-clic" data-cr-lista="ALL" title="Ver las ${n(N)} altas"><b>${n(N)}</b></button><span>altas descargadas<br>en ${MESL}</span>${nIn ? `<small style="display:block;margin-top:6px;color:var(--fg-3);font-size:11.5px">${nIn} con franja inconsistente (incluidas en AG/CO)</small>` : ''}</div>
     <div class="cr-der"><div class="cr-bar">${['CO','AG','SA'].filter(k => T[k].length).map(k => `<div class="${ap(k)} cr-clic" data-cr-lista="${k}" role="button" tabindex="0" style="width:${T[k].length / N * 100}%;background:${COL[k]}" title="${TXT[k][0]}: ${T[k].length} · clic para ver el detalle">${T[k].length / N >= .06 ? pc(T[k].length) : ''}</div>`).join('')}</div>
       <div class="cr-ley">${['CO','AG','SA'].map(k => `<div class="${ap(k)}" style="border-color:${COL[k]}"><span class="l">${TXT[k][0]}</span><button type="button" class="cr-clic" data-cr-lista="${k}" title="Ver el detalle"><b>${n(T[k].length)}<small>${pc(T[k].length)}</small></b></button><span class="s">${TXT[k][1]}${T[k].length ? ` · <button type="button" class="lnk num" data-cr-lista="${k}">Ver detalle</button>` : ''}</span></div>`).join('')}</div></div>`;
@@ -2636,6 +2653,7 @@ function abrirEditarAgenda(os) {
   });
 }
 async function guardarAgendas(os, ajuste, clave, okTxt) {
+  if (esCombo(D.filial)) { alert(SOLO_UNA); return; }
   const bt = document.querySelectorAll('#f-ag button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
   try { await guardarAgenda(os, ajuste, clave); aplicarAjustes(); pintarFiltros(); pintarTodo(); cerrarModal(); avisoGlobal(okTxt); }
   catch (err) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = err.message || 'No se pudo guardar.'; bt.forEach(b => b.disabled = false); }
@@ -2725,10 +2743,10 @@ async function traerRutasFijas() {
 const rfSuma = (f, okD) => { const m = RF[f]; if (!m || !Object.keys(m).length) return null; return Object.entries(m).reduce((a, [d, v]) => a + (okD && !okD(d) ? 0 : v), 0); };
 function gruposRutas() {   // [[filial, título, [EECC]]]: Lima y cada filial con sus EECC; Provincias › Todas, una caja por filial
   const fil = D.filial || 'LIMA', L = [...(D.ing || []), ...(D.liq || []), ...(D.pend || []), ...(D.progRaw || D.prog || [])];
-  const ecDe = (x) => fil === 'PROVINCIAS' ? nomEc(tecEc(x.tec) || x.ecR || '') : x.ec;
+  const pt = provTodas(), ecDe = (x) => pt ? nomEc(tecEc(x.tec) || x.ecR || '') : x.ec;
   const fuera = (e) => !e || /^(POR ASIGNAR|SIN EECC|SIN TÉCNICO)$/i.test(e);
-  const ecs = (f) => { const S = new Set(Object.keys(RF[f] || {})); L.forEach(x => { if (fil !== 'PROVINCIAS' || (x.fi || '') === f) { const e = String(ecDe(x) || '').toUpperCase().trim(); if (!fuera(e)) S.add(e); } }); return [...S].sort(); };
-  if (fil === 'PROVINCIAS') return [...new Set([...L.map(x => x.fi).filter(Boolean), ...Object.keys(RF).filter(f => f !== 'LIMA')])].sort().map(f => [f, nomFil(f), ecs(f)]);
+  const ecs = (f) => { const S = new Set(Object.keys(RF[f] || {})); L.forEach(x => { if (!pt || (x.fi || '') === f) { const e = String(ecDe(x) || '').toUpperCase().trim(); if (!fuera(e)) S.add(e); } }); return [...S].sort(); };
+  if (pt) return [...new Set([...L.map(x => x.fi).filter(Boolean), ...Object.keys(RF).filter(f => esCombo(fil) ? (D.sel || []).includes(f) : f !== 'LIMA')])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)).map(f => [f, nomFil(f), ecs(f)]);
   return [[fil, nomFil(fil), ecs(fil)]];
 }
 function abrirRutas() {
@@ -2737,7 +2755,7 @@ function abrirRutas() {
     <form id="f-rutas"><div class="rf-grid">${G.map(([f, t, L]) => `<div class="rf-g"><div class="rf-cab"><b>${esc(t)}</b><span data-rf-tot="${esc(t)}">${n(tot(f, L))} rutas</span></div>
       <table class="mat"><tbody>${L.map(d => `<tr><td>${esc(d)}</td><td style="width:90px"><input type="number" min="0" max="999" class="in-ruta" data-rf-f="${esc(f)}" data-rf-d="${esc(d)}" data-rf-t="${esc(t)}" value="${RF[f]?.[d] ?? ''}" placeholder="—" disabled></td></tr>`).join('') || '<tr><td colspan="2">Sin EECC con datos.</td></tr>'}</tbody></table></div>`).join('')}</div>
     <div class="rf-acc"><label class="seg-t">Clave master <input type="password" id="rf-clave" autocomplete="current-password" value="${esc(claveMaster())}"></label><button type="button" class="btn-out" id="rf-editar">Editar</button><button type="submit" class="btn-out rf-ok" id="rf-guardar" disabled>Guardar rutas</button></div></form>`;
-  abrirFichaModal('Rutas por EECC', `${D.filial === 'PROVINCIAS' ? 'Provincias · por filial' : nomFil(D.filial || 'LIMA')} · fijas para todos los días · Rutas declaradas del Avance`, html);
+  abrirFichaModal('Rutas por EECC', `${provTodas() ? MFF.txt(D.filial) + ' · por filial' : nomFil(D.filial || 'LIMA')} · fijas para todos los días · Rutas declaradas del Avance`, html);
   const f = $('f-rutas');
   f.addEventListener('input', (e) => { const i = e.target.closest('[data-rf-t]'); if (!i) return; const t = i.dataset.rfT;
     const s = [...f.querySelectorAll(`[data-rf-t="${CSS.escape(t)}"]`)].reduce((a, x) => a + (Number(x.value) || 0), 0); const sp = f.querySelector(`[data-rf-tot="${CSS.escape(t)}"]`); if (sp) sp.textContent = `${n(s)} rutas`; });
@@ -2780,9 +2798,9 @@ function pintarAvance() {
   // · ingresaron hoy (F. Recep = hoy) · más de 24 h (el resto: F. Recep de días anteriores).
   const esHoy = (p) => !!p.rec && p.rec.slice(0, 10) === hoyIso(), dSel = isoDia(diaAv);
   const grupoB = (p) => { const t = tipoProg(p); if ((t === 'AG' || t === 'CO') && p.fp) { if (p.fp === dSel) return 'prog'; if (p.fp > dSel) return 'fut'; } return esHoy(p) ? 'hoy' : 'm24'; };
-  if (D.filial !== 'PROVINCIAS') Object.keys(RD).forEach(k => e0(k));
+  if (!provTodas()) Object.keys(RD).forEach(k => e0(k));
   // Provincias (todas): una fila por filial; al elegir una filial, una fila por EECC.
-  const porFil = D.filial === 'PROVINCIAS', gk = (x) => porFil ? nomFil(x.fi) : x.ec;
+  const porFil = provTodas(), gk = (x) => porFil ? nomFil(x.fi) : x.ec;
   Ld.forEach(x => { const e = e0(gk(x)); e.liq++; if (x.tec) e.tec.add(x.tec); });
   P.forEach(p => { const e = e0(gk(p)); e.bolsa++; e[grupoB(p)]++; });
   const rk = Object.keys(ecs).filter(k => ecs[k].liq || ecs[k].prog || ecs[k].bolsa || RD[k] != null).sort((a, b) => ecs[b].liq - ecs[a].liq || ecs[b].bolsa - ecs[a].bolsa);
@@ -3006,13 +3024,13 @@ function pintarPvMetas() {
   const f2 = (v, k) => v == null ? '<span style="color:var(--fg-4)">—</span>' : k === 'meta_mes' ? n(v) : dec(v);
   const T = metasProv(pvCn), peso = {}; ((DP || D).pend || []).forEach(p => { peso[p.fi] = (peso[p.fi] || 0) + 1; });
   $('pv-metas').innerHTML = `<div class="scroll"><table class="aj-tb pv-tb"><thead><tr><th>Filial</th>${METAS_AJ.map(([, t]) => `<th>${t.replace(' (instalaciones)', '').replace(' (%)', ' %')}</th>`).join('')}</tr></thead><tbody>
-    ${PROV7.map(f => { const m = metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, pvCn); return `<tr><td>${esc(nomFil(f))}<small>${n(peso[f] || 0)} pendientes</small></td>${METAS_AJ.map(([k]) => `<td>${f2(m[k], k)}</td>`).join('')}</tr>`; }).join('')}
-    <tr class="pv-tot"><td><b>Provincias</b><small>lo que se usa aquí</small></td>${METAS_AJ.map(([k]) => `<td><b>${T[k] != null ? f2(T[k], k) : `${f2(D.config?.[k], k)} <small>(robot)</small>`}</b></td>`).join('')}</tr></tbody></table></div>`;
+    ${Object.keys(AJ.prov || {}).map(f => { const m = metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, pvCn); return `<tr><td>${esc(nomFil(f))}<small>${n(peso[f] || 0)} pendientes</small></td>${METAS_AJ.map(([k]) => `<td>${f2(m[k], k)}</td>`).join('')}</tr>`; }).join('')}
+    <tr class="pv-tot"><td><b>${esc(MFF.txt(D.filial))}</b><small>lo que se usa aquí</small></td>${METAS_AJ.map(([k]) => `<td><b>${T[k] != null ? f2(T[k], k) : `${f2(D.config?.[k], k)} <small>(robot)</small>`}</b></td>`).join('')}</tr></tbody></table></div>`;
 }
 function abrirAjustesProv() {
   pvCn = msUno(canal) || 'TODOS';
   const cnt = {}; ((DP || D).pend || []).forEach(p => { const k = p.fi + '|' + ecProv(p); cnt[k] = (cnt[k] || 0) + 1; });
-  const filas = PROV7.flatMap(f => { const a = AJ.prov[f] || {}, ecs = new Set([...Object.keys(a.gestores || {}), ...Object.keys(cnt).filter(k => k.startsWith(f + '|')).map(k => k.slice(f.length + 1))]);
+  const filas = Object.keys(AJ.prov || {}).flatMap(f => { const a = AJ.prov[f] || {}, ecs = new Set([...Object.keys(a.gestores || {}), ...Object.keys(cnt).filter(k => k.startsWith(f + '|')).map(k => k.slice(f.length + 1))]);
     return [...ecs].sort((x, y) => (cnt[f + '|' + y] || 0) - (cnt[f + '|' + x] || 0)).map(e => ({ f, e, nom: (a.nombres || {})[e] || e, ge: (a.gestores || {})[e] || '', n: cnt[f + '|' + e] || 0 })); });
   const html = secF('Metas · Provincias = suma de las filiales', `<div class="aj-cn" role="group" aria-label="Canal de las metas" id="pv-cn">${CANALES.map(([k, t]) => `<button type="button" class="chip" data-pv-cn="${k}" aria-pressed="${k === pvCn}">${t}</button>`).join('')}</div>
       <div id="pv-metas"></div><p class="fi-nota">Meta del mes = suma de las metas de cada provincia. Las demás metas = promedio de las provincias que la llenaron, ponderado por sus pendientes. Lo que ninguna provincia llenó usa el valor del robot.</p>`)
@@ -3020,7 +3038,7 @@ function abrirAjustesProv() {
       ${filas.map(r => `<tr><td>${esc(nomFil(r.f))}</td><td>${esc(r.nom)}${r.nom !== r.e ? `<small>${esc(r.e)}</small>` : ''}</td><td>${r.ge ? esc(r.ge) : '<span style="color:var(--fg-4)">Sin gestor</span>'}</td><td>${n(r.n)}</td></tr>`).join('') || '<tr><td colspan="4">Ninguna provincia tiene EECC con pendientes.</td></tr>'}
       </tbody></table></div><p class="fi-nota">En Provincias cada AB toma el gestor que su filial le asignó a su EECC. Para cambiar metas o gestores, elige la filial (Ancash, Arequipa…) y edítalos ahí: aquí se juntan solos.</p>`)
     + `<div class="aj-pie"><button type="button" class="btn-pri" id="pv-cerrar">Entendido</button></div>`;
-  abrirFichaModal('Metas, EECC y gestores', 'Instalaciones · PROVINCIAS · se juntan las metas y los gestores llenados en cada filial', html);
+  abrirFichaModal('Metas, EECC y gestores', `Instalaciones · ${esc(MFF.txt(D.filial))} · se juntan las metas y los gestores llenados en cada filial`, html);
   $('modal-copiar').hidden = true; pintarPvMetas();
 }
 document.addEventListener('click', (e) => { if (e.target.closest('#pv-cerrar')) { cerrarModal(); return; }
@@ -3028,6 +3046,7 @@ document.addEventListener('click', (e) => { if (e.target.closest('#pv-cerrar')) 
 $('pen-ajustes').addEventListener('click', abrirAjustes);
 /* ---------- Técnicos y EECC: el usuario master cambia a qué EECC pertenece cada técnico (aplica en Instalaciones y Averías) ---------- */
 function abrirTecnicos() {
+  if (esCombo(D.filial)) { abrirFichaModal('Técnicos y EECC', MFF.txt(D.filial), `<p class="fi-nota">${SOLO_UNA}</p>`); return; }
   const listas = [DC, DP].filter(Boolean).flatMap(b => [b.ing, b.liq, b.pend, b.pendx, b.progRaw || b.prog]).filter(Boolean);
   const porTec = {}, nOs = {};
   listas.forEach(L => L.forEach(x => { if (!x.tec || !String(x.tec).trim()) return; const e = x.ecR ?? x.ec0 ?? x.ec; const m = porTec[x.tec] || (porTec[x.tec] = {}); m[e] = (m[e] || 0) + 1; nOs[x.tec] = (nOs[x.tec] || 0) + 1; }));
@@ -3400,6 +3419,5 @@ new MutationObserver(repintar).observe(document.documentElement, { attributes: t
   window.addEventListener('scroll', () => { if (!caja.hidden) ocultar(); }, true);
 })();
 </script>
-<script src="/filial-bloques.js"></script>
 </body>
 </html>

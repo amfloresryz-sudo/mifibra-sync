@@ -35,6 +35,15 @@ h1, h2, .marca, .btn, .pestana, .nav a, th { font-family: Montserrat, system-ui,
 .nav a.dash { color: var(--blanco); background: var(--magenta); padding: 12px 18px; }
 .nav a.dash.activo { background: var(--noche); color: var(--blanco); }
 .nav select.filial { font: 600 13px Montserrat, system-ui, sans-serif; min-height: 40px; padding: 8px 12px; margin-left: 6px; border-radius: 25px; border: 1px solid var(--magenta); color: var(--magenta-oscuro); background: var(--rosa); cursor: pointer; }
+.fmenu { position: relative; margin-left: 6px; }
+.fmenu-b { font: 600 13px Montserrat, system-ui, sans-serif; min-height: 40px; padding: 8px 14px; border-radius: 25px; border: 1px solid var(--magenta); color: var(--magenta-oscuro); background: var(--rosa); cursor: pointer; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fmenu-p { position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; min-width: 230px; background: var(--blanco); border: 1px solid #E5E7EB; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.14); padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.fmenu-p[hidden] { display: none; }
+.fmenu-p label { display: flex; align-items: center; gap: 10px; font: 600 13px Montserrat, system-ui, sans-serif; color: var(--texto); padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.fmenu-p label:hover { background: var(--rosa); } .fmenu-p input { accent-color: var(--magenta); width: 16px; height: 16px; }
+.fmenu-p .fm-todas { border-top: 1px solid #E5E7EB; margin-top: 4px; padding-top: 10px; } .fmenu-p .fm-p { padding-left: 34px; font-weight: 500; }
+.fm-acc { border-top: 1px solid #E5E7EB; margin-top: 4px; padding: 8px 2px 2px; display: flex; justify-content: flex-end; }
+.fm-ok { font: 700 13px Montserrat, system-ui, sans-serif; border: 0; border-radius: 20px; padding: 8px 18px; background: var(--magenta); color: #fff; cursor: pointer; }
 .nav button.salir { font: inherit; font-size: 13px; color: var(--texto-3); background: none; border: 0; padding: 12px 10px; cursor: pointer; }
 
 /* Franja de título */

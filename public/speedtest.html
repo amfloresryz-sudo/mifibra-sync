@@ -304,21 +304,24 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 
   // ----- Filtros -----
   const F = { filial: '', mes: '', desde: '', hasta: '', plan: '' };
+  // Filial: varias a la vez («LIMA,PIURA»); vacío = todas
+  const fset = () => F.filial ? F.filial.split(',') : [], fTxt = () => fset().join(' + ');
   const mbps = (t) => { const m = /^(\d+) Mbps$/.exec(t); return m ? +m[1] : 1e9; };
   const planes = (() => { const C = {}; O.forEach(o => C[o.pn] = (C[o.pn] || 0) + 1); return Object.keys(C).sort((a, b) => mbps(a) - mbps(b) || C[b] - C[a] || a.localeCompare(b)); })();
   const filiales = [...new Set(O.map(o => o.f))].sort(), meses = [...new Set(O.map(o => o.d.slice(0, 7)))].sort();
   const chips = (id, ops, todos, k) => {
-    $(id).innerHTML = [['', todos], ...ops].map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${String(F[k]) === String(v)}">${esc(t)}</button>`).join('');
+    $(id).innerHTML = [['', todos], ...ops].map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${k === 'filial' && v ? fset().includes(v) : String(F[k]) === String(v)}">${esc(t)}</button>`).join('');
   };
   const pintarChips = () => { chips('f-filial', filiales.map(f => [f, f]), 'Todas', 'filial'); chips('f-mes', meses.map(m => [m, mesTxt(m)]), 'Todos', 'mes'); chips('f-plan', planes.map(t => [t, t]), 'Todos', 'plan'); $('f-desde').value = F.desde; $('f-hasta').value = F.hasta; $('f-desde').max = F.hasta || ''; $('f-hasta').min = F.desde || ''; };
   const enlazar = (id, k) => $(id).addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
-    F[k] = b.dataset.v; if (k === 'mes') F.desde = F.hasta = ''; pintarChips(); pintar(); });
+    if (k === 'filial' && b.dataset.v) { const S = new Set(fset()); S.has(b.dataset.v) ? S.delete(b.dataset.v) : S.add(b.dataset.v); F.filial = filiales.filter(f => S.has(f)).join(','); }
+    else F[k] = b.dataset.v; if (k === 'mes') F.desde = F.hasta = ''; pintarChips(); pintar(); });
   enlazar('f-filial', 'filial'); enlazar('f-mes', 'mes'); enlazar('f-plan', 'plan');
   // Rango de fechas: si solo se llena «Desde», va hasta el último día con datos; si «Hasta» queda antes que «Desde», se intercambian
   const ponerRango = () => { F.desde = $('f-desde').value; F.hasta = $('f-hasta').value; if (F.desde && F.hasta && F.hasta < F.desde) [F.desde, F.hasta] = [F.hasta, F.desde]; if (F.desde || F.hasta) F.mes = ''; pintarChips(); pintar(); };
   $('f-desde').addEventListener('change', ponerRango); $('f-hasta').addEventListener('change', ponerRango);
   $('limpiar').addEventListener('click', () => { Object.assign(F, { filial: '', mes: '', desde: '', hasta: '', plan: '' }); pintarChips(); pintar(); });
-  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || o.f === F.filial) && (sin === 'mes' || sin === 'fecha' || !F.mes || o.d.startsWith(F.mes)) && (sin === 'fecha' || !F.desde || o.d >= F.desde) && (sin === 'fecha' || !F.hasta || o.d <= F.hasta) && (!F.plan || o.pn === F.plan);
+  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || fset().includes(o.f)) && (sin === 'mes' || sin === 'fecha' || !F.mes || o.d.startsWith(F.mes)) && (sin === 'fecha' || !F.desde || o.d >= F.desde) && (sin === 'fecha' || !F.hasta || o.d <= F.hasta) && (!F.plan || o.pn === F.plan);
 
   // ----- Ventana flotante de los gráficos -----
   const flot = document.createElement('div'); flot.className = 'flot'; flot.hidden = true; document.body.appendChild(flot);
@@ -334,11 +337,11 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   function pintar() {
     L = O.filter(o => sel(o));
     const a = sum(L), pCli = a.pr ? a.c / a.pr * 100 : 0, pMed = a.ins ? a.med / a.ins * 100 : 0;
-    const quien = F.filial ? `En ${F.filial}` : `En las ${filiales.length} filiales`;
+    const quien = F.filial ? `En ${fTxt()}` : `En las ${filiales.length} filiales`;
     $('t-tit').innerHTML = a.pr ? `${quien}, <em>${pc(pCli)}</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.` : `${quien} no hay pruebas registradas con estos filtros.`;
     const per = F.desde || F.hasta ? (F.desde === F.hasta ? dmy(F.desde) : `${F.desde ? dmy(F.desde) : 'inicio'} al ${F.hasta ? dmy(F.hasta) : 'hoy'}`) : F.mes ? mesTxt(F.mes) : meses.length ? `${mesTxt(meses[0])} a ${mesTxt(meses[meses.length - 1]).toLowerCase()}` : '';
     pintarEvo();
-    $('ctx').textContent = `${per} · ${F.filial || 'Todas las filiales'} · ${!F.plan ? 'Todos los planes' : F.plan}`;
+    $('ctx').textContent = `${per} · ${fTxt() || 'Todas las filiales'} · ${!F.plan ? 'Todos los planes' : F.plan}`;
     const nRep = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
     $('kpis').innerHTML = `
       <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span><span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
@@ -354,7 +357,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('g-mes-x').innerHTML = meses.map(m => `<span>${mesTxt(m)}</span>`).join('');
     // Barras por filial (sin el filtro de filial)
     // Todas las filiales: una barra por filial · con una filial elegida: una barra por EECC de esa filial
-    const porEcF = !!F.filial, LF = porEcF ? L : O.filter(o => sel(o, 'filial')), claves = porEcF ? [...new Set(L.map(o => o.e))] : filiales;
+    const porEcF = fset().length === 1, LF = porEcF ? L : O.filter(o => sel(o, 'filial')), claves = porEcF ? [...new Set(L.map(o => o.e))] : filiales;
     const porFil = claves.map(f => [f, sum(LF.filter(o => (porEcF ? o.e : o.f) === f))]).filter(([, s]) => s.pr >= 5).map(([f, s]) => [f, s.c / s.pr * 100, s]).sort((x, y) => y[1] - x[1]);
     const fmax = Math.max(0.1, ...porFil.map(x => x[1]));
     $('t-fil').textContent = porEcF ? `Pruebas en dispositivo del cliente, por EECC de ${F.filial}` : 'Pruebas en dispositivo del cliente, por filial';
@@ -615,10 +618,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (q === 'ab') { const o = O[+v], urls = D.rep.filter(([, ix]) => ix.includes(o.i)).map(([u]) => u);
       return listaAB(`AB ${o.ab}`, `OS ${o.os} · ${o.e} · sin prueba válida`, [o], urls.length ? `<p class="nota" style="margin-bottom:4px">Enlaces repetidos de este AB (no cuentan como prueba) y dónde más aparecen:</p><ul class="urls">${urls.map(u => { const ix = D.rep.find(([x]) => x === u)[1], otros = [...new Set(ix)].filter(i => i !== o.i), mismo = ix.filter(i => i === o.i).length > 1;
         return `<li><a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a><div class="rep-en">${mismo ? '<span>2 veces en esta misma OS</span>' : ''}${otros.map(i => `<button type="button" class="nb" data-lista="ab|${i}" title="Ver el AB ${O[i].ab}">AB ${O[i].ab}</button> <small>OS ${O[i].os} · ${dmy(O[i].d)} · ${esc(O[i].f)} · ${esc(O[i].e)} · ${esc(O[i].t)}</small>`).join('<br>')}</div></li>`; }).join('')}</ul>` : '<p class="nota">Este AB no tiene ningún enlace de Speedtest en «Observaciones Tecnico».</p>'); }
-    if (q === 'mes') return listaAB(`Instalaciones de ${mesTxt(v)}`, `${F.filial || 'todas las filiales'}`, O.filter(o => sel(o, 'mes') && o.d.startsWith(v)));
+    if (q === 'mes') return listaAB(`Instalaciones de ${mesTxt(v)}`, `${fTxt() || 'todas las filiales'}`, O.filter(o => sel(o, 'mes') && o.d.startsWith(v)));
     if (q === 'fil') return listaAB(`${v} · AB con medición`, per, O.filter(o => sel(o, 'filial') && o.f === v && o.pr > 0));
     if (q === 'ec') return listaAB(`${v} · AB con medición`, per, L.filter(o => o.e === v && o.pr > 0));
-    if (q === 'dia') return listaAB(`Instalaciones del ${dmy(v)}`, `${F.filial || 'todas las filiales'} · ${F.plan || 'todos los planes'}`, O.filter(o => sel(o, 'fecha') && o.d === v));
+    if (q === 'dia') return listaAB(`Instalaciones del ${dmy(v)}`, `${fTxt() || 'todas las filiales'} · ${F.plan || 'todos los planes'}`, O.filter(o => sel(o, 'fecha') && o.d === v));
     if (q === 'todo') return listaAB('Instalaciones del periodo', per, L);
     if (q === 'sin') return listaAB('Instalaciones sin medición', per, L.filter(o => !o.pr));
     if (q === 'med') return listaAB('Instalaciones con medición', per, L.filter(o => o.pr > 0));

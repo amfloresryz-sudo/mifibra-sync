@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <script src="/sesion.js"></script>
+<script src="/filial-bloques.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Observadas · Mi Fibra</title>
@@ -920,7 +921,10 @@ const tokenPortal = () => { try { return sessionStorage.getItem(CLAVE_SESION) ||
 const filialSel = () => { try { return sessionStorage.getItem(CLAVE_FILIAL) || 'LIMA'; } catch { return 'LIMA'; } };
 const guardarFilial = (f) => { try { sessionStorage.setItem(CLAVE_FILIAL, f); } catch { /* sin almacenamiento */ } };
 let AJ = { gestores: {}, nombres: {}, tecnicos: {} };
+const MFF = window.MFF, esCombo = (f) => MFF.esCombo(f), filTxt = (f) => esCombo(f) ? MFF.txt(f) : (f || 'LIMA');
 async function traer(f) {
+  // Varias filiales: se trae cada una y se juntan (se analiza por filial, como Provincias)
+  if (esCombo(f)) return MFF.traerVarias(f, x => '/api/observadas?filial=' + encodeURIComponent(x));
   const r = await fetch('/api/observadas?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } });
   if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
   const j = await r.json().catch(() => ({}));
@@ -928,6 +932,7 @@ async function traer(f) {
   return j;
 }
 async function traerAjustes(f) {
+  if (esCombo(f)) { AJ = { gestores: {}, nombres: {}, tecnicos: {} }; return; }   // varias filiales: por filial, sin gestores
   try { const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' });
     if (r.ok) AJ = { gestores: {}, nombres: {}, tecnicos: {}, ...(await r.json()) }; } catch { /* sin ajustes: EECC del robot y sin gestor */ }
 }
@@ -942,17 +947,17 @@ function preparar() {
     if (provTodas()) { r.ecN = r.z || r.ecN; r.ge = 'SIN GESTOR'; }   // Provincias › Todas: por filial (la «zona» es la filial)
   });
 }
-const provTodas = () => (D && D.filial || filialSel()) === 'PROVINCIAS';
+const provTodas = () => { const f = (D && D.filial) || filialSel(); return f === 'PROVINCIAS' || esCombo(f); };
 window.esProvTodas = provTodas;
 async function cargarTodo(f) {
   $('cargando').hidden = false; $('cargando').textContent = 'Cargando las observadas…'; $('vista').hidden = true;
   try {
     const [j] = await Promise.all([traer(f), traerAjustes(f)]);
-    D = j; ZORD.splice(0, ZORD.length, ...(f === 'PROVINCIAS' ? [...new Set(D.obs.map(r => r.z).filter(Boolean))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'])); preparar();
+    D = j; ZORD.splice(0, ZORD.length, ...(f === 'PROVINCIAS' || esCombo(f) ? [...new Set(D.obs.map(r => r.z).filter(Boolean))].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'])); preparar();
     const meses = [...new Set(D.obs.filter(r => !r.rc).map(r => r.f.slice(0, 7)))].sort();
     if (!meses.includes(mes)) mes = meses[meses.length - 1] || '';
     $('meses').innerHTML = meses.map(m => `<button type="button" class="chip" data-mes="${m}" aria-pressed="${m === mes}">${mesTxt(m).replace(/^./, c => c.toUpperCase())}</button>`).join('') || '<span style="color:#D1D5DB">Sin observadas en el periodo</span>';
-    $('nom-filial').textContent = f.charAt(0) + f.slice(1).toLowerCase();
+    $('nom-filial').textContent = esCombo(f) ? MFF.txt(f) : f.charAt(0) + f.slice(1).toLowerCase();
     $('actualizado').textContent = D.actualizado ? 'actualizado ' + new Date(D.actualizado).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
     $('cargando').hidden = true; $('vista').hidden = false; pintar();
   } catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar.'; }
@@ -1127,6 +1132,7 @@ const CLAVE_MASTER = 'mf_master';
 const claveMaster = () => { try { return sessionStorage.getItem(CLAVE_MASTER) || ''; } catch { return ''; } };
 const ponerMaster = (v) => { try { v ? sessionStorage.setItem(CLAVE_MASTER, v) : sessionStorage.removeItem(CLAVE_MASTER); } catch { /* sin almacenamiento */ } };
 function editarMeta() {
+  if (esCombo(filialSel())) { abrirModal('Meta de la tasa de recuperación', filTxt(filialSel()), '<p class="nota">Con varias filiales elegidas no se puede editar: elige una sola filial (o Provincias) para cambiar la meta.</p>', false); return; }
   abrirModal('Meta de la tasa de recuperación', `${filialSel()} · aplica para todos los usuarios · requiere la clave master`,
     `<form id="f-meta" class="f-meta"><label>Meta (%)<input type="number" id="meta-v" min="0" max="100" step="0.1" required value="${metaRecup()}"></label>
       <label>Clave master<input type="password" id="meta-k" autocomplete="current-password" required value="${esc(claveMaster())}"></label>
@@ -1236,8 +1242,9 @@ const EST_F = { D: 'Descargada', O: 'Observada', A: 'Anulada', R: 'Registrada' }
 async function traerIngresos() {
   const f = (D && D.filial) || filialSel(), clave = f + '|' + mes; if (ingClave === clave && ING) return ING;
   const corteMes = (D.corte || '').slice(0, 7);
-  const r = await fetch('/api/instalaciones?filial=' + encodeURIComponent(f) + (mes && mes !== corteMes ? '&mes=' + mes : ''), { headers: { 'x-portal-token': tokenPortal() } });
-  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+  const url = (x) => '/api/instalaciones?filial=' + encodeURIComponent(x) + (mes && mes !== corteMes ? '&mes=' + mes : '');
+  let j; if (esCombo(f)) j = await MFF.traerVarias(f, url, { fiKey: 'fi' });
+  else { const r = await fetch(url(f), { headers: { 'x-portal-token': tokenPortal() } }); j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`); }
   ING = j; ingClave = clave; return j;
 }
 async function pintarFlujo() {
@@ -1311,7 +1318,7 @@ const libs = {};
 function cargar(url) { if (!libs[url]) libs[url] = new Promise((r, m) => { const sc = document.createElement('script'); sc.src = url; sc.onload = r; sc.onerror = () => { delete libs[url]; m(new Error('No se pudo cargar ' + url)); }; document.head.appendChild(sc); }); return libs[url]; }
 const URL_H2C = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
 const URL_XLS = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
-const nombreArch = (base, ext) => { const f = new Date(), z = (x) => String(x).padStart(2, '0'); return `${base}-${filialSel().toLowerCase().replace(/\s+/g, '-')}-${f.getFullYear()}${z(f.getMonth() + 1)}${z(f.getDate())}-${z(f.getHours())}${z(f.getMinutes())}.${ext}`; };
+const nombreArch = (base, ext) => { const f = new Date(), z = (x) => String(x).padStart(2, '0'); return `${base}-${filialSel().toLowerCase().replace(/[\s,]+/g, '-')}-${f.getFullYear()}${z(f.getMonth() + 1)}${z(f.getDate())}-${z(f.getHours())}${z(f.getMinutes())}.${ext}`; };
 async function bajar(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
 const lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = 1; const ctx1 = lienzo.getContext('2d', { willReadFrequently: true });
 function aHex(color, fondo) { ctx1.clearRect(0, 0, 1, 1); ctx1.fillStyle = fondo || '#FFFFFF'; ctx1.fillRect(0, 0, 1, 1); ctx1.fillStyle = '#000'; ctx1.fillStyle = color; ctx1.fillRect(0, 0, 1, 1); const [r, g, b] = ctx1.getImageData(0, 0, 1, 1).data; return [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase(); }
@@ -1391,10 +1398,10 @@ $('modal-copiar').addEventListener('click', async () => {
 });
 
 /* ---------- inicio ---------- */
+if (![...$('filial').options].some(o => o.value === filialSel())) $('filial').add(new Option(filialSel(), filialSel()));
 $('filial').value = filialSel();
 await cargarTodo(filialSel());
 })();
 </script>
-<script src="/filial-bloques.js"></script>
 </body>
 </html>

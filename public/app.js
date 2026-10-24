@@ -8,7 +8,7 @@
   let cacheIndicadores = null;
   const CLAVE_FILIAL = 'mifibra_filial';
   const filial = () => { try { return sessionStorage.getItem(CLAVE_FILIAL) || 'LIMA'; } catch { return 'LIMA'; } };
-  const nomFilial = () => { const f = filial(); return f.charAt(0) + f.slice(1).toLowerCase(); };
+  const nomFilial = () => { const f = filial(); return window.MFF && window.MFF.esCombo(f) ? window.MFF.txt(f) : f.charAt(0) + f.slice(1).toLowerCase(); };
 
   // ---------- utilidades ----------
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -78,12 +78,44 @@
   $id('adm').hidden = !!(yo && yo.f && yo.f !== 'TODAS');
 
   const selFilial = document.getElementById('filial');
-  selFilial.value = filial();
-  selFilial.addEventListener('change', () => {
-    try { sessionStorage.setItem(CLAVE_FILIAL, selFilial.value); } catch { /* sin almacenamiento */ }
+  selFilial._bloques = true;   // aquí no van los botones de filial-bloques: el menú es compacto (casillas)
+  const ponerSel = (v) => { if (![...selFilial.options].some(o => o.value === v)) selFilial.add(new Option(v, v)); selFilial.value = v; };
+  ponerSel(filial());
+  const cambiarFilial = (v) => { ponerSel(v);
+    try { sessionStorage.setItem(CLAVE_FILIAL, v); } catch { /* sin almacenamiento */ }
     cacheIndicadores = null;
     mostrar();
-  });
+  };
+  selFilial.addEventListener('change', () => cambiarFilial(selFilial.value));
+  // Varias filiales a la vez: botón con un menú de casillas (Lima, Provincias y cada provincia)
+  if (window.MFF) {
+    const M = window.MFF, ok = M.ok, pv = M.PROV.filter(ok), opc = [...(ok('LIMA') ? ['LIMA'] : []), ...pv];
+    if (opc.length > 1) {
+      selFilial.hidden = true;
+      const caja = document.createElement('div'); caja.className = 'fmenu';
+      caja.innerHTML = '<button type="button" class="fmenu-b" aria-haspopup="true" aria-expanded="false"></button><div class="fmenu-p" hidden role="group" aria-label="Filiales"></div>';
+      selFilial.after(caja);
+      const btn = caja.querySelector('.fmenu-b'), pan = caja.querySelector('.fmenu-p');
+      let S = new Set();
+      const etq = () => { btn.textContent = M.txt(filial()) + ' ▾'; btn.title = 'Filial: ' + M.txt(filial()); };
+      const pintaP = () => {
+        const todas = pv.length && pv.every(p => S.has(p));
+        pan.innerHTML = (ok('LIMA') ? `<label><input type="checkbox" data-f="LIMA" ${S.has('LIMA') ? 'checked' : ''}> Lima</label>` : '')
+          + (pv.length > 1 ? `<label class="fm-todas"><input type="checkbox" data-f="PROV" ${todas ? 'checked' : ''}> Provincias (todas)</label>` : '')
+          + pv.map(p => `<label class="fm-p"><input type="checkbox" data-f="${p}" ${S.has(p) ? 'checked' : ''}> ${M.nom(p)}</label>`).join('')
+          + '<div class="fm-acc"><button type="button" class="fm-ok">Ver</button></div>';
+      };
+      const abrir = (si) => { pan.hidden = !si; btn.setAttribute('aria-expanded', String(si)); if (si) { S = new Set(M.partes(filial())); pintaP(); } };
+      btn.addEventListener('click', () => abrir(pan.hidden));
+      pan.addEventListener('change', (e) => { const f = e.target.dataset.f; if (!f) return;
+        if (f === 'PROV') pv.forEach(p => e.target.checked ? S.add(p) : S.delete(p)); else e.target.checked ? S.add(f) : S.delete(f);
+        pintaP(); });
+      pan.addEventListener('click', (e) => { if (!e.target.closest('.fm-ok')) return; if (!S.size) return; abrir(false); const v = M.canon([...S]); if (v !== filial()) cambiarFilial(v); etq(); });
+      document.addEventListener('click', (e) => { if (!caja.contains(e.target) && !pan.hidden) abrir(false); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pan.hidden) { abrir(false); btn.focus(); } });
+      etq();
+    }
+  }
 
   document.getElementById('salir').addEventListener('click', () => { borrarToken(); cacheIndicadores = null; pedirAcceso(); });
 
