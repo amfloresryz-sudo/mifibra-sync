@@ -13,4 +13,4 @@ jobs:
       - run: python3 diag/st_test.py
       - run: |
           git config user.name robot; git config user.email robot@users.noreply.github.com
-          git add diag/resultado.json && git commit -m "diag: resultado speedtest" && git push
+          git add diag/ && git commit -m "diag: resultado speedtest" && git push

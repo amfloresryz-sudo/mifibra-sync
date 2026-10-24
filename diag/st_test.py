@@ -22,5 +22,23 @@ for u in URLS:
     except Exception as e:
         r["error"] = repr(e)
     out.append(r)
+# HTML completo de uno y prueba de endpoints candidatos
+req = urllib.request.Request(URLS[0], headers={"User-Agent": UA})
+open("diag/pagina.html", "w").write(urllib.request.urlopen(req, timeout=20).read().decode("utf-8", "replace"))
+cand = ["https://www.speedtest.net/api/results.php?id=7281239966", "https://www.speedtest.net/result/i/7281239966.png",
+        "https://www.speedtest.net/result/d/7f1668de-8937-49b8-9e9d-3daffdd5bec3.png",
+        "https://www.speedtest.net/api/js/results/d/7f1668de-8937-49b8-9e9d-3daffdd5bec3",
+        "https://www.speedtest.net/api/results/d/7f1668de-8937-49b8-9e9d-3daffdd5bec3",
+        "https://www.speedtest.net/api/js/results/i/7281239966"]
+for c in cand:
+    r = {"url": c}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(c, headers={"User-Agent": UA, "Accept": "application/json, */*"}), timeout=20) as resp:
+            b = resp.read(); r["status"] = resp.status; r["tipo"] = resp.headers.get("Content-Type"); r["len"] = len(b)
+            r["inicio"] = b[:600].decode("utf-8", "replace") if "image" not in (r["tipo"] or "") else None
+            if "image" in (r["tipo"] or ""): open("diag/" + re.sub(r"\W+", "_", c[-20:]) + ".png", "wb").write(b)
+    except Exception as e:
+        r["error"] = repr(e)
+    out.append(r)
 json.dump(out, open("diag/resultado.json", "w"), ensure_ascii=False, indent=1)
 print(json.dumps([{k: v for k, v in x.items() if k in ("url", "status", "len", "nums", "error")} for x in out], indent=1))
