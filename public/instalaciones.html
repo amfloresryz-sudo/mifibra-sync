@@ -294,6 +294,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 }
 .b.v1 { background: #FFE58A; color: #3D2E00; }
 /* Tipo de trabajo: una etiqueta de color por tipo (mismo formato que Gestionado) */
+.b.sg-b2b { background: #FFF1C2; color: #7A5200; } .b.sg-ref { background: #FFE0E0; color: #B42318; } .b.cn-in { background: #DFF5E3; color: #17703F; }
 .b.tt-ins { background: #FFE3F1; color: #A3005A; } .b.tt-tex { background: #EDE7FF; color: #5B2DB8; } .b.tt-tin { background: #DDF3F1; color: #0E6E66; }
 .b.tt-ceq { background: #FFEBD6; color: #9A4310; } .b.tt-rei { background: #E1EAFF; color: #2A4BA8; } .b.tt-otr { background: #ECEDF0; color: #4B5563; }
 .pen-scroll { overflow-x: hidden; }
@@ -1157,6 +1158,9 @@ const msTxt = (v) => [...MS(v)].join(', ');
 const msUno = (v) => MS(v).size === 1 ? [...MS(v)][0] : null;
 const okCn = (x, c = canal) => msOk(c, x.cn);
 const cnCorto = (c) => ({ IC: 'CAMPO', VI: 'INBOUND', OT: 'OTROS' })[c] || '—';
+// Pendientes: B2B, REF e INBOUND resaltados con una etiqueta de color (como T. trabajo); B2C, CAMPO y OTROS quedan como texto simple
+const segB = (v) => { const t = String(v || '').toUpperCase(); return t === 'B2B' ? '<span class="b sg-b2b">B2B</span>' : t === 'REF' ? '<span class="b sg-ref">REF</span>' : `<span class="b seg">${esc(v || '—')}</span>`; };
+const cnB = (c) => c === 'VI' ? '<span class="b cn-in">INBOUND</span>' : cnCorto(c);
 const cnNom = (c) => (CANALES.find(k => k[0] === c) || [0, c || '—'])[1];
 const ecSel = new Set();   // segmentador de EECC de la franja (varias a la vez; vacío = todas)
 const okEc = (x) => !ecSel.size || ecSel.has(x.ec);
@@ -1833,7 +1837,7 @@ function pintarPendientes0() {
   $('pen-n').innerHTML = `${L.length} de ${penUni().length} pendientes${esInst() ? '' : ' de ' + TOS_TXT().toLowerCase()}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   marcarFiltrosCol();
   $('pen-filas').innerHTML = diferir('tb-pend', L.map(p => { const ed = edadDias(p.rec), ea = estAg(p), ge = gestorDe(p);
-    return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnCorto(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}" data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td data-v="${esc(tipoTr(p))}" title="${esc(p.to || 'INSTALACION SERVICIO')}"><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></td><td>${esc(p.ec)}</td>
+    return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td data-v="${esc(p.seg || '')}">${segB(p.seg)}</td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnB(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}" data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td data-v="${esc(tipoTr(p))}" title="${esc(p.to || 'INSTALACION SERVICIO')}"><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></td><td>${esc(p.ec)}</td>
       <td title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
       <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
