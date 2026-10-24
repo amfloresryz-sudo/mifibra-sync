@@ -627,6 +627,8 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 #tb-av th { white-space: normal !important; line-height: 1.25; padding: 10px 6px !important; vertical-align: bottom; font-size: clamp(11px, 0.78vw, 12.5px); }
 #tb-av td { padding: 11px 6px !important; white-space: nowrap; }
 #tb-av th.sep, #tb-av td.sep { border-left: 2px solid var(--borde-2); }
+/* Líneas que separan los grupos: rutas · bolsa de pendientes · objetivo y liquidadas · productividad y % avance */
+#tb-av tr > :nth-child(5), #tb-av tr > :nth-child(10), #tb-av tr > :nth-child(13) { border-left: 2px solid var(--borde-2); }
 #tb-av .barra-pct { min-width: 0; } #tb-av .barra-pct i { flex: 0 0 clamp(48px, 4.5vw, 72px); height: 10px; }
 #tb-av .in-ruta { width: 58px; font: 600 14px var(--f-txt, inherit); text-align: center; padding: 4px 2px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
 #av-kpis { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; } #av-kpis .kpi { padding: 14px 14px; } #av-kpis .kv { font-size: 26px; }
