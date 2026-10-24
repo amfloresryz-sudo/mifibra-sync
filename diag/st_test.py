@@ -23,8 +23,11 @@ for u in URLS:
         r["error"] = repr(e)
     out.append(r)
 # HTML completo de uno y prueba de endpoints candidatos
-req = urllib.request.Request(URLS[0], headers={"User-Agent": UA})
-open("diag/pagina.html", "w").write(urllib.request.urlopen(req, timeout=20).read().decode("utf-8", "replace"))
+try:
+    req = urllib.request.Request(URLS[0], headers={"User-Agent": UA})
+    open("diag/pagina.html", "w").write(urllib.request.urlopen(req, timeout=20).read().decode("utf-8", "replace"))
+except Exception as e:
+    open("diag/pagina.html", "w").write("ERROR " + repr(e))
 cand = ["https://www.speedtest.net/api/results.php?id=7281239966", "https://www.speedtest.net/result/i/7281239966.png",
         "https://www.speedtest.net/result/d/7f1668de-8937-49b8-9e9d-3daffdd5bec3.png",
         "https://www.speedtest.net/api/js/results/d/7f1668de-8937-49b8-9e9d-3daffdd5bec3",
