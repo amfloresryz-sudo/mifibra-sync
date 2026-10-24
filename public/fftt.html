@@ -242,16 +242,18 @@ const F = { filial: 'LIMA', mes: '', desde: '', hasta: '', q: '', kpi: '', ec: n
 const filiales = [...new Set(R.map(o => o.fi))].sort((a, b) => a === 'LIMA' ? -1 : b === 'LIMA' ? 1 : a.localeCompare(b));
 if (!filiales.includes('LIMA')) F.filial = filiales.length === 1 ? filiales[0] : '';
 const meses = [...new Set(R.map(o => o.mes))].sort();
-const chips = (id, ops, sel) => { $(id).innerHTML = ops.map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${sel === v}">${esc(t)}</button>`).join(''); };
+// Filial: varias a la vez («LIMA,PIURA»); vacío = todas
+const fset = () => F.filial ? F.filial.split(',') : [], fTxt = () => fset().map(f => f.charAt(0) + f.slice(1).toLowerCase()).join(' + ');
+const chips = (id, ops, sel) => { $(id).innerHTML = ops.map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${id === 'f-filial' && v ? fset().includes(v) : sel === v}">${esc(t)}</button>`).join(''); };
 const pintarChips = () => { chips('f-filial', [...(filiales.length > 1 ? [['', 'Todas']] : []), ...filiales.map(f => [f, f.charAt(0) + f.slice(1).toLowerCase()])], F.filial);
   chips('f-mes', [['', 'Todos'], ...meses.map(m => [m, `${MESES[+m.slice(5) - 1]} ${m.slice(0, 4)}`])], F.mes); $('f-desde').value = F.desde; $('f-hasta').value = F.hasta; };
-$('f-filial').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.filial = b.dataset.v; F.ec.clear(); pintarChips(); pintar(); });
+$('f-filial').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; if (b.dataset.v) { const S = new Set(fset()); S.has(b.dataset.v) ? S.delete(b.dataset.v) : S.add(b.dataset.v); F.filial = filiales.filter(f => S.has(f)).join(','); } else F.filial = ''; F.ec.clear(); pintarChips(); pintar(); });
 $('f-mes').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; F.mes = b.dataset.v; F.desde = F.hasta = ''; pintarChips(); pintar(); });
 $('f-desde').addEventListener('change', (e) => { F.desde = e.target.value; F.mes = ''; pintarChips(); pintar(); });
 $('f-hasta').addEventListener('change', (e) => { F.hasta = e.target.value; F.mes = ''; pintarChips(); pintar(); });
 $('limpiar').addEventListener('click', () => { Object.assign(F, { mes: '', desde: '', hasta: '', q: '', kpi: '' }); F.ec.clear(); F.pl.clear(); F.cf = {}; $('buscar').value = ''; pintarChips(); pintar(); });
 let tq; $('buscar').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { F.q = e.target.value.trim().toUpperCase(); pintarTabla(); }, 180); });
-const base = (sin = '') => R.filter(o => (!F.filial || o.fi === F.filial) && (!F.mes || o.mes === F.mes) && (!F.desde || o.fa >= F.desde) && (!F.hasta || o.fa <= F.hasta)
+const base = (sin = '') => R.filter(o => (!F.filial || fset().includes(o.fi)) && (!F.mes || o.mes === F.mes) && (!F.desde || o.fa >= F.desde) && (!F.hasta || o.fa <= F.hasta)
   && (sin === 'ec' || !F.ec.size || F.ec.has(o.ecN)) && (sin === 'pl' || !F.pl.size || F.pl.has(o.pl)));
 const KPI_OK = { err: (o) => !!o.bad, dup: (o) => o.dup, difp: (o) => !!o.difp, PANGEA: (o) => o.pl === 'PANGEA' && !!o.bad, FIBERLUX: (o) => o.pl === 'FIBERLUX' && !!o.bad, ATP: (o) => o.pl === 'ATP' && !!o.bad, ECONOCABLE: (o) => o.pl === 'ECONOCABLE' && !!o.bad };
 
@@ -259,7 +261,7 @@ let V = [];
 function pintar() {
   const B = base(), ev = B.filter(o => REGLAS[o.pl]), err = B.filter(o => o.bad).length, dupAb = B.filter(o => o.dup).length;
   const dupCin = new Set(B.filter(o => o.dup).map(o => cinKey(o.cin))).size;
-  $('res-sub').textContent = `${n(B.length)} altas · ${n(new Set(B.map(o => o.ecN)).size)} EECC · ${F.filial || 'todas las filiales'}${F.mes ? ' · ' + MESES[+F.mes.slice(5) - 1] : ''}`;
+  $('res-sub').textContent = `${n(B.length)} altas · ${n(new Set(B.map(o => o.ecN)).size)} EECC · ${fTxt() || 'todas las filiales'}${F.mes ? ' · ' + MESES[+F.mes.slice(5) - 1] : ''}`;
   const k = (id, l, v, s, col, mal) => `<button type="button" class="kpi${mal ? ' mal' : ''}" data-kpi="${id}" aria-pressed="${F.kpi === id}"><span class="l">${col ? `<i style="background:${col}"></i>` : ''}${l}</span><span class="kv">${v}</span><span class="s">${s}</span></button>`;
   $('kpis').innerHTML = k('err', 'Error FFTT', pc(err, ev.length), `${n(err)} de ${n(ev.length)} altas evaluadas`, '', err > 0)
     + PLANTAS.map(([p, l, c]) => { const P = B.filter(o => o.pl === p), e = P.filter(o => o.bad).length; return k(p, `Error ${l}`, n(e), `${pc(e, P.length)} de ${n(P.length)}`, c, e > 0); }).join('')
@@ -360,7 +362,7 @@ async function copiarImagen(btn, tit, sub, nodo, nombre) {
 const MAX_IMG = 150;
 $('img').addEventListener('click', (e) => {
   const d = document.createElement('div'); d.innerHTML = `<div class="caja"><table><thead><tr>${COLS.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${V.slice(0, MAX_IMG).map(fila).join('')}</tbody></table></div>${V.length > MAX_IMG ? `<p class="nota" style="margin-top:8px">Se muestran las primeras ${MAX_IMG} de ${n(V.length)} altas · descarga el Excel para verlas todas.</p>` : ''}`;
-  copiarImagen(e.currentTarget, 'Detalle por alta · FFTT', `${F.filial || 'Todas las filiales'} · ${$('det-sub').textContent.replace(/\s*quitar$/, '')}`, d, `fftt-detalle-${(F.filial || 'todas').toLowerCase()}`); });
+  copiarImagen(e.currentTarget, 'Detalle por alta · FFTT', `${fTxt() || 'Todas las filiales'} · ${$('det-sub').textContent.replace(/\s*quitar$/, '')}`, d, `fftt-detalle-${(F.filial || 'todas').toLowerCase().replace(/[\s,]+/g, '-')}`); });
 $('m-img').addEventListener('click', (e) => { const d = document.createElement('div'); d.innerHTML = $('m-cuerpo').innerHTML; d.querySelectorAll('button[data-dup]').forEach(b => b.closest('div').remove());
   copiarImagen(e.currentTarget, $('m-tit').textContent, $('m-sub').textContent, d, 'fftt-' + $('m-tit').textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-')); });
 
@@ -401,7 +403,7 @@ $('xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.d
     ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A1A2E' } }; });
     ws.columns.forEach(c => { c.width = 16; }); ws.autoFilter = { from: 'A1', to: { row: 1, column: COLS.length + 2 } };
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = `fftt-${(F.filial || 'todas').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`; document.body.appendChild(a); a.click(); a.remove();
+    a.download = `fftt-${(F.filial || 'todas').toLowerCase().replace(/[\s,]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.xlsx`; document.body.appendChild(a); a.click(); a.remove();
   } catch { b.textContent = 'No se pudo generar el Excel'; setTimeout(() => { b.textContent = 'Descargar Excel'; }, 3000); } finally { b.disabled = false; } });
 
 pintarChips(); pintar();

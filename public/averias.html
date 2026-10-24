@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <script src="/sesion.js"></script>
+<script src="/filial-bloques.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Averías y TC · Mi Fibra</title>
@@ -474,7 +475,10 @@ const visTxt = (v) => v.n === 'VD' ? 'VD' : `${v.n}° visita`;
 const visV = (v) => v ? (v.n === 'VD' ? 3 : v.n) : 9;
 const vis1 = (p) => !!visDe(p);
 let GEST = {}, NOMS = {}, TECS = {};   // gestores y nombres de EECC (los mismos de Instalaciones › Metas, EECC y gestores)
-async function traerGestores(f) { try { const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); GEST = j.gestores || {}; NOMS = j.nombres || {}; const antesT = JSON.stringify(TECS); TECS = j.tecnicos || {}; if (JSON.stringify(TECS) !== antesT && typeof repintarPer === 'function' && DC) repintarPer(); } catch { /* sin gestores */ } }
+async function traerGestores(f) { if (MFF.esCombo(f)) return traerGestoresVarias(f); try { const r = await fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); GEST = j.gestores || {}; NOMS = j.nombres || {}; const antesT = JSON.stringify(TECS); TECS = j.tecnicos || {}; if (JSON.stringify(TECS) !== antesT && typeof repintarPer === 'function' && DC) repintarPer(); } catch { /* sin gestores */ } }
+async function traerGestoresVarias(f) { try { const R = await Promise.all(MFF.partes(f).map(x => fetch('/api/ajustes?modulo=instalaciones&filial=' + encodeURIComponent(x), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }).then(r => r.ok ? r.json() : {}).catch(() => ({}))));
+  GEST = {}; NOMS = {}; const T = {}; R.forEach(j => { Object.assign(GEST, j.gestores || {}); Object.assign(NOMS, j.nombres || {}); Object.assign(T, j.tecnicos || {}); });
+  const antesT = JSON.stringify(TECS); TECS = T; if (JSON.stringify(TECS) !== antesT && typeof repintarPer === 'function' && DC) repintarPer(); } catch { /* sin gestores */ } }
 const gestorDe = (ec) => { if (GEST[ec]) return GEST[ec]; const k = Object.keys(NOMS).find(c => NOMS[c] === ec || c.replace('EECC ', '') === ec); return (k && GEST[k]) || ''; };
 const tokenPortal = () => { try { return sessionStorage.getItem(CLAVE_SESION) || ''; } catch { return ''; } };
 const CLAVE_FILIAL = 'mifibra_filial';
@@ -492,7 +496,11 @@ const CACHE = (() => {
   };
 })();
 const reciente = (x) => x && x.actualizado && Date.now() - new Date(x.actualizado).getTime() < 36 * 3600e3;
+const MFF = window.MFF, esCombo = (f) => MFF.esCombo(f), filTxt = (f) => esCombo(f) ? MFF.txt(f) : (f || 'LIMA');
+const SOLO_UNA = 'Con varias filiales elegidas no se puede editar: elige una sola filial (o Provincias) para hacer este cambio.';
 async function traer(f = filialSel()) {
+  // Varias filiales: se trae el tablero de cada una y se juntan (se analiza por filial, como Provincias)
+  if (esCombo(f)) { const j = await MFF.traerVarias(f, x => '/api/averias?filial=' + encodeURIComponent(x), { arrZ: { alta: 1 } }); CACHE.set('averias:' + f, j); return j; }
   const r = await fetch('/api/averias?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } });
   if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
   const j = await r.json().catch(() => ({}));
@@ -517,6 +525,7 @@ const mesAnt = () => { const m = DC.mes === 1 ? 12 : DC.mes - 1, y = DC.mes === 
 const kMes = (mes) => (DC.filial || filialSel()) + ':' + mes;
 async function traerMes(mes) {
   if (DMES[kMes(mes)]) return DMES[kMes(mes)];
+  if (esCombo(DC.filial || filialSel())) return DMES[kMes(mes)] = await MFF.traerVarias(DC.filial || filialSel(), x => '/api/averias?filial=' + encodeURIComponent(x) + '&mes=' + mes, { arrZ: { alta: 1 } });
   const r = await fetch('/api/averias?filial=' + encodeURIComponent(DC.filial || filialSel()) + '&mes=' + mes, { headers: { 'x-portal-token': tokenPortal() } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(r.status === 404 ? 'Ese mes aún no está guardado: aparece después de la próxima actualización del robot.' : (j.error || `Error ${r.status}`));
@@ -530,9 +539,9 @@ function aplicarTecs(b) {
     if (!x || typeof x !== 'object' || Array.isArray(x)) return;
     if (x.ecR === undefined) x.ecR = x.ec; x.ec = (x.tec && TECS[x.tec]) || x.ecR;
     // Provincias › Todas: se analiza por filial (la filial ocupa el lugar de la EECC; la «zona» ya es la filial)
-    if ((b.filial || '') === 'PROVINCIAS') { const z = x.z || (b.zonas || {})[String(x.di || '').toUpperCase().trim()]; if (z) x.ec = z; } }));
+    if ((b.filial || '') === 'PROVINCIAS' || esCombo(b.filial)) { const z = x.z || (b.zonas || {})[String(x.di || '').toUpperCase().trim()]; if (z) x.ec = z; } }));
 }
-window.esProvTodas = () => ((typeof D !== 'undefined' && D && D.filial) || filialSel()) === 'PROVINCIAS';
+window.esProvTodas = () => { const f = (typeof D !== 'undefined' && D && D.filial) || filialSel(); return f === 'PROVINCIAS' || esCombo(f); };
 function vistaPeriodo() {
   aplicarTecs(DC); if (PER.mes && DMES[kMes(PER.mes)]) aplicarTecs(DMES[kMes(PER.mes)]);
   const base = (PER.mes && DMES[kMes(PER.mes)]) || DC;
@@ -544,7 +553,12 @@ vistaPeriodo();
 /* Resultados de 100 min corregidos a mano por el usuario master (se guardan por OS y los ve todo el equipo) */
 let AJC = {};
 const urlAjAv = (f) => '/api/ajustes?modulo=averias&filial=' + encodeURIComponent(f);
-async function traerAjCien(f) { try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AJC = j.cien || {}; LSP = j.ls || {}; RESPA = j.responsables || {}; } catch { /* sin ajustes */ } }
+async function traerAjCien(f) {
+  if (esCombo(f)) { try { const L = MFF.partes(f), R = await Promise.all([...L, ...(L.some(x => x !== 'LIMA') ? ['PROVINCIAS'] : [])].map(x => fetch(urlAjAv(x), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }).then(r => r.ok ? r.json() : {}).catch(() => ({}))));
+      AJC = {}; LSP = {}; RESPA = {};
+      R.forEach((j, i) => { if (i < L.length) { Object.assign(AJC, j.cien || {}); Object.entries(j.ls || {}).forEach(([m, o]) => { const M = LSP[m] || (LSP[m] = {}); Object.entries(o || {}).forEach(([d, c]) => { M[d] = (M[d] || 0) + (+c || 0); }); }); } else Object.assign(RESPA, j.responsables || {}); });
+    } catch { /* sin ajustes */ } return; }
+  try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AJC = j.cien || {}; LSP = j.ls || {}; RESPA = j.responsables || {}; } catch { /* sin ajustes */ } }
 let RESPA = {};                       // responsable de cada zona (o filial en Provincias) para «Averías pendientes»
 const altasAbiertas = new Set();      // zonas expandidas en «Averías pendientes» (empiezan contraídas)
 let LSP = {};   // líneas en servicio cargadas en el portal: { 'AAAA-MM': { DISTRITO: n } } (por filial)
@@ -572,12 +586,13 @@ function prepararDatos() {
   document.querySelectorAll('.mes-anio').forEach(x => x.textContent = `${MESL} ${D.anio}`);
   const act = D.actualizado ? new Date(D.actualizado) : null;
   const txt = act ? act.toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
-  const fil = D.filial || 'LIMA';
+  const fil = D.filial || 'LIMA', pt = window.esProvTodas();
+  if (![...document.getElementById('filial').options].some(o => o.value === fil)) document.getElementById('filial').add(new Option(fil, fil));
   document.getElementById('filial').value = fil;
-  document.getElementById('nom-filial').textContent = fil.charAt(0) + fil.slice(1).toLowerCase();
-  document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && fil !== 'PROVINCIAS' ? 'visible' : 'hidden';
-  ZORD.splice(0, ZORD.length, ...((D.filial || '') === 'PROVINCIAS' ? [...new Set(Object.values(D.zonas || {}))].sort() : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial  // ocupa su lugar para que Filial no se mueva
-  document.getElementById('estado-datos').textContent = `${fil} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 20 min.`;
+  document.getElementById('nom-filial').textContent = esCombo(fil) ? MFF.txt(fil) : fil.charAt(0) + fil.slice(1).toLowerCase();
+  document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && !pt ? 'visible' : 'hidden';
+  ZORD.splice(0, ZORD.length, ...(pt ? [...new Set([...Object.values(D.zonas || {}), ...(D.sel || [])])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial  // ocupa su lugar para que Filial no se mueva
+  document.getElementById('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 20 min.`;
   aplicarAjCien();
 }
 /* El resultado corregido por el master reemplaza al del robot (k0 guarda lo calculado) */
@@ -902,7 +917,7 @@ async function abrirFichaCien(os) {
     + `<p class="fi-volver"><button type="button" class="btn-out" data-cien-ed="${x.os}">✎ Modificar resultado</button></p>`;
   mostrarEnModal(`AB ${x.ab}`, sub, btnVolver() + res + '<p class="fi-nota" id="fc-carga">Cargando cómo se solucionó y los comentarios…</p>');
   let f = null, err = '';
-  try { const r = await fetch(`/api/ordenes?ficha=${encodeURIComponent(x.os)}&filial=${encodeURIComponent(D.filial || filialSel())}`, { headers: { 'x-portal-token': tokenPortal() } });
+  try { const r = await fetch(`/api/ordenes?ficha=${encodeURIComponent(x.os)}&filial=${encodeURIComponent(esCombo(D.filial) ? (x.z || 'LIMA') : (D.filial || filialSel()))}`, { headers: { 'x-portal-token': tokenPortal() } });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`); f = j.fila; }
   catch (e2) { err = e2.message; }
   const el = $('fc-carga'); if (!el || $('modal-tit').textContent !== `AB ${x.ab}`) return;  // el usuario ya cambió de vista
@@ -951,6 +966,7 @@ function abrirEditarCien(os, msg = '') {
   });
 }
 async function guardarCien(x, ajuste, clave, okTxt) {
+  if (esCombo(D.filial)) { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = SOLO_UNA; return; }
   const bt = document.querySelectorAll('#f-cien button'); bt.forEach(b => b.disabled = true); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = 'Guardando…';
   try {
     const r = await fetch(urlAjAv(D.filial || filialSel()) + '&accion=cien', { method: 'POST',
@@ -972,6 +988,7 @@ function cerrarModal() {
 $('modal-cerrar').addEventListener('click', cerrarModal);
 /* ---------- Líneas en servicio (LS) por distrito y mes: base del TIF. Se guarda por filial para todo el equipo. ---------- */
 function abrirLS(mesSel) {
+  if (esCombo(D.filial)) { mostrarEnModal('Líneas en servicio', filTxt(D.filial), `<p class="fi-nota">${SOLO_UNA}</p>`, false); return; }
   const f = D.filial || filialSel(), zd = zonaDi(), hoyMes = `${DC.anio}-${p2(DC.mes)}`;
   const mesAntK = (() => { const m = DC.mes === 1 ? 12 : DC.mes - 1, y = DC.mes === 1 ? DC.anio - 1 : DC.anio; return `${y}-${p2(m)}`; })();
   const meses = [...new Set([hoyMes, mesAntK, ...Object.keys(LSP)])].sort().reverse();
@@ -1303,6 +1320,7 @@ document.addEventListener('click', (e) => { const z = e.target.closest('[data-al
 $('altas-todo').addEventListener('click', () => { const zs = [...document.querySelectorAll('#tb-altas [data-al-zona]')].map(b => b.dataset.alZona), todas = zs.every(z => altasAbiertas.has(z));
   zs.forEach(z => todas ? altasAbiertas.delete(z) : altasAbiertas.add(z)); plegarAltas(); });
 function abrirRespAv() {
+  if (esCombo(D.filial)) { mostrarEnModal('Responsables', filTxt(D.filial), `<p class="fi-nota">${SOLO_UNA}</p>`, false); return; }
   const f = D.filial || filialSel(), prov = f === 'PROVINCIAS';
   const grupos = [...new Set([...(prov ? ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'] : []), ...(D.pend || []).map(p => p.z).filter(z => z && z !== 'SIN ZONA'), ...Object.keys(RESPA)])].sort((a, b) => zIdx(a) - zIdx(b) || String(a).localeCompare(b, 'es'));
   const html = `<p class="fi-nota" style="margin:0 0 10px">Responsable de cada ${prov ? 'filial' : 'zona'} de ${esc(f)} en Averías. Se muestra en «Averías pendientes» y lo ven todos; para cambiarlo se necesita la clave master.</p>
@@ -1655,6 +1673,5 @@ new MutationObserver(repintar).observe(document.documentElement, { attributes: t
   window.addEventListener('scroll', () => { if (!caja.hidden) ocultar(); }, true);
 })();
 </script>
-<script src="/filial-bloques.js"></script>
 </body>
 </html>

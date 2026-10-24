@@ -99,8 +99,19 @@ function filialDe(req) {
   return P.includes(f) ? f : (P[0] || 'LIMA');
 }
 
-// Filtro de PostgREST por filial: PROVINCIAS = todas menos Lima.
-const filtroFilial = (f) => f === 'PROVINCIAS' ? 'filial=neq.LIMA' : `filial=eq.${encodeURIComponent(f)}`;
+// Varias filiales a la vez (?filial=LIMA,AREQUIPA): cada una debe estar permitida; si ninguna lo está, la primera permitida.
+function filialesDe(req) {
+  const P = permitidas(req.usuario ? req.usuario.f : 'TODAS');
+  const L = [...new Set((new URL(req.url, 'http://x').searchParams.get('filial') || 'LIMA').toUpperCase().split(',').map(x => x.trim()).filter(x => FILIALES.includes(x) && P.includes(x)))];
+  return L.length ? L : [P[0] || 'LIMA'];
+}
+// Filtro de PostgREST por filial: PROVINCIAS = todas menos Lima; una lista = las filiales de la lista.
+const filtroFilial = (f) => {
+  const L = [...new Set((Array.isArray(f) ? f : [f]).flatMap(x => x === 'PROVINCIAS' ? PROV7 : [x]))];
+  if (L.length === PROV7.length && PROV7.every(x => L.includes(x))) return 'filial=neq.LIMA';
+  if (L.length === 1) return `filial=eq.${encodeURIComponent(L[0])}`;
+  return 'filial=in.(' + L.map(x => encodeURIComponent(`"${x}"`)).join(',') + ')';
+};
 
 // Pedido genérico (PATCH / DELETE / POST) para la tabla de usuarios.
 async function pedir(ruta, method, cuerpo, prefer = 'return=minimal') {
@@ -110,4 +121,4 @@ async function pedir(ruta, method, cuerpo, prefer = 'return=minimal') {
   return prefer.includes('representation') ? r.json() : null;
 }
 
-module.exports = { PROV7, MODULOS_PORTAL, puedeModulo, consultar, guardar, pedir, autorizado, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, filialDe, filtroFilial, permitidas, puedeVer, FILIALES };
+module.exports = { PROV7, MODULOS_PORTAL, puedeModulo, consultar, guardar, pedir, autorizado, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, filialDe, filialesDe, filtroFilial, permitidas, puedeVer, FILIALES };
