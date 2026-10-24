@@ -1476,8 +1476,13 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
   $(segsId).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span><button type="button" class="chip" data-mv="" aria-pressed="${!g.S.size}">Todos</button>${g.ops.map(o => `<button type="button" class="chip" data-mv="${esc(o)}" aria-pressed="${g.S.has(o)}">${esc(o)} (${g.cnt(o)})</button>`).join('')}</div>`).join('');
   const P = P0.filter(p => okE(p) && okT(p));
   altasP[tbId] = P;
-  const lima = (D.filial || 'LIMA') === 'LIMA', RESP = (AJ && AJ.responsables) || {};
-  $('altas-resp').hidden = !lima;
+  // Responsable: por zona en Lima (se edita con la clave master); en Provincias, por filial = los gestores que cada provincia
+  // asignó a sus EECC en «Metas, EECC y gestores» (primero el que tiene más pendientes)
+  const pvT = provTodas(), lima = (D.filial || 'LIMA') === 'LIMA' || pvT, RESP = pvT ? {} : (AJ && AJ.responsables) || {};
+  if (pvT) { const cnt = {}; P0.forEach(p => { const g = gestorDe(p); if (g && g !== 'SIN GESTOR') { const c = cnt[p.z] || (cnt[p.z] = {}); c[g] = (c[g] || 0) + 1; } });
+    Object.keys(cnt).forEach(z => { RESP[z] = Object.keys(cnt[z]).sort((a, b) => cnt[z][b] - cnt[z][a] || a.localeCompare(b)).join(' / '); });
+    Object.entries(AJ.prov || {}).forEach(([f, a]) => { if (!RESP[f]) { const g = [...new Set(Object.values(a.gestores || {}).filter(Boolean))]; if (g.length) RESP[f] = g.join(' / '); } }); }
+  $('altas-resp').hidden = (D.filial || 'LIMA') !== 'LIMA'; $('altas-resp').style.display = $('altas-resp').hidden ? 'none' : '';   // solo Lima edita responsables
   $(subId).textContent = `${P.length} altas pendientes${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}${SE.size ? ' · EECC: ' + [...SE].join(', ') : ''}${ST.size ? ' · Tipo: ' + [...ST].join(', ') : ''}`;
   if (!P.length) { $(matId).innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const f10 = (p) => p.rec.slice(0, 10), fechas = [...new Set(P.map(f10))].sort();
