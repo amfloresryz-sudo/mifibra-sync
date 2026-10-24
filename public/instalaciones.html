@@ -3244,7 +3244,9 @@ document.addEventListener('click', async (e) => {
     if (bi) {
       const blob = (async () => { await cargar(URL_H2C); // Sin botones, selector de día ni avisos: la imagen muestra solo título, indicadores y tabla.
         // Imagen en 4K (3.840 px de ancho) para que en WhatsApp se lea nítida; el detalle de pendientes además se arma más grande (letra y columnas)
-        const grande = tb.id === 'tb-pend', anchoImg = grande ? 2000 : tb.offsetWidth, escala = Math.min(6, Math.max(2, 3840 / Math.max(1, anchoImg)));
+        // 4K UHD = 3.840 px de ancho exactos. Solo las tablas larguísimas bajan la escala: el navegador no arma imágenes de más de 32.000 px de alto ni ~250 millones de píxeles.
+        const grande = tb.id === 'tb-pend', anchoImg = grande ? 1920 : Math.max(1, tb.offsetWidth), altoImg = Math.max(1, tb.offsetHeight * (grande ? 1.15 : 1));
+        const escala = Math.max(1, Math.min(6, 3840 / anchoImg, 32000 / altoImg, Math.sqrt(250e6 / (anchoImg * altoImg))));
         const cv = await html2canvas(tb, { backgroundColor: base, scale: escala, logging: false, windowWidth: Math.max(innerWidth, anchoImg + 80),
           onclone: (doc) => { if (!grande) return; const t = doc.getElementById('tb-pend'); if (t) { t.classList.add('img-g'); t.style.width = anchoImg + 'px'; } },
           ignoreElements: (el) => el.matches && el.matches('.pen-acc, .pen-aviso, .ag-est, .no-img, .fcol') }); return await new Promise(r => cv.toBlob(r, 'image/png')); })();
