@@ -221,9 +221,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   <section class="sec" aria-labelledby="t-ec">
     <div class="sec-cab"><div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos y en un número para ver sus AB.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" data-xls="tb-ec" data-nom="speedtest-eecc">Descargar Excel</button></div></div>
-    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Sin identificar</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="nota" id="ec-fil"></p>
-    <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Sin identificar = AB con 2 o más enlaces sin etiqueta de cliente o técnico (se cuentan como del técnico) · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba.</p>
+    <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Del cliente = el enlace dice test/prueba cliente (o del cliente, abonado, CL); del técnico = test velocidad técnico, técnico, TEC; sin etiqueta (aunque haya 2 o más enlaces) = del técnico · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba.</p>
   </section>
 
   <section class="sec" aria-labelledby="t-det">
@@ -281,7 +281,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   // fila: [filial, día, eecc, técnico, plan, ab, os, cliente, técnico_n, sin_identificar, repetidos]
   // pn = plan contratado tal como viene en la tarifa («500 Mbps», «2000 Mbps»…); si el tablero aún no lo trae, se usa el rango
   const O = D.o.map((x, i) => ({ i, f: D.f[x[0]], d: x[1], e: D.e[x[2]], t: D.k[x[3]], p: x[4], ab: x[5], os: x[6], c: x[7], tn: x[8], s: x[9], r: x[10], pn: D.pn && x[11] != null ? D.pn[x[11]] : PLANES[x[4]] }));
-  O.forEach(o => { o.pr = o.c + o.tn + o.s; });
+  // Enlaces sin etiqueta (aunque sean 2 o más) cuentan como prueba del técnico: ya no hay «Sin identificar»
+  O.forEach(o => { o.tn += o.s; o.s = 0; o.pr = o.c + o.tn; });
   const act = D.actualizado ? new Date(D.actualizado) : null;
   $('corte').innerHTML = `Instalaciones del <b>${dmy(O.length ? O.reduce((a, o) => o.d < a ? o.d : a, O[0].d) : '')}</b> al <b>${O.length ? dmy(O.reduce((a, o) => o.d > a ? o.d : a, O[0].d)) : '—'}</b>${act ? ` · actualizado ${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}`;
 
@@ -356,13 +357,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const maxCli = Math.max(0, ...Object.values(porEc).map(Lx => { const t = sum(Lx); return t.pr ? t.c / t.pr : 0; }));
     filaEc = (nom, s, cls, attrs = '', g = '') => fila(nom, s, cls, attrs, g);
     const fila = (nom, s, cls, attrs = '', g = '') => `<tr class="${cls}"${attrs}><td>${esc(nom)}</td><td>${nb(s.ins, g, 'g-todo')}</td><td>${nb(s.med, g, 'g-med')}</td><td class="tenue">${pc(s.ins ? s.med / s.ins * 100 : 0)}</td><td>${nb(s.pr, g, 'g-med')}</td>
-      <td><span class="mini"><span class="p"><i style="width:${s.pr && maxCli ? Math.min(100, s.c / s.pr / maxCli * 100) : 0}%"></i></span>${s.c ? `<button type="button" class="nb" data-lista="g-cli|${esc(g)}" title="${n(s.c)} de ${n(s.pr)} pruebas en el equipo del cliente">${n(s.c)}</button>` : '0'}<span class="tenue" style="min-width:48px;text-align:right">${pc(s.pr ? s.c / s.pr * 100 : 0)}</span></span></td><td class="tenue">${nb(s.tn + s.s, g, 'g-tec')}</td><td class="tenue">${nb(s.s, g, 'g-sid')}</td><td class="${s.r ? 'alerta' : 'tenue'}">${nb(s.r, g, 'g-rep')}</td></tr>`;
+      <td><span class="mini"><span class="p"><i style="width:${s.pr && maxCli ? Math.min(100, s.c / s.pr / maxCli * 100) : 0}%"></i></span>${s.c ? `<button type="button" class="nb" data-lista="g-cli|${esc(g)}" title="${n(s.c)} de ${n(s.pr)} pruebas en el equipo del cliente">${n(s.c)}</button>` : '0'}<span class="tenue" style="min-width:48px;text-align:right">${pc(s.pr ? s.c / s.pr * 100 : 0)}</span></span></td><td class="tenue">${nb(s.tn + s.s, g, 'g-tec')}</td><td class="${s.r ? 'alerta' : 'tenue'}">${nb(s.r, g, 'g-rep')}</td></tr>`;
     $('tb-ec').tBodies[0].innerHTML = Object.keys(porEc).sort((x, y) => porEc[y].length - porEc[x].length).map(ec => {
       const ab = abiertos.has(ec), s = sum(porEc[ec]);
       let h = fila(ec, s, 'ec', ` tabindex="0" aria-expanded="${ab}" data-ec="${esc(ec)}" data-n="${porEc[ec].length}"`, 'ec|' + ec);
       if (ab) { const porT = {}; porEc[ec].forEach(o => { (porT[o.t] = porT[o.t] || []).push(o); });
         h += Object.keys(porT).sort((x, y) => porT[y].length - porT[x].length).map(t => fila(t, sum(porT[t]), 'tec', '', 'tec|' + ec + '|' + t)).join(''); }
-      return h; }).join('') || '<tr><td colspan="9" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
+      return h; }).join('') || '<tr><td colspan="8" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
     filtrarEc(); pintarRanking(); pintarDetalle();
   }
   const tb = $('tb-ec').tBodies[0];
