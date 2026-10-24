@@ -1122,12 +1122,20 @@ const hoyIso = () => `${D.anio}-${String(D.mes).padStart(2, '0')}-${String(D.dia
 const edadDias = (iso) => iso ? Math.round((msIso(hoyIso()) - msIso(iso.slice(0, 10))) / 86400000) : null;
 const zIdx = (z) => { const i = ZORD.indexOf(z); return i < 0 ? 99 : i; };
 const CANALES = [['TODOS','Todos'],['IC','Integral de campo'],['VI','Ventas inbound'],['OT','Otros canales']];
-const okCn = (x, c = canal) => c === 'TODOS' || x.cn === c;
+/* Segmentadores con varias opciones a la vez: el valor es 'TODOS'/'TODAS' (todas), un texto (una) o un Set (varias). */
+const MS = (v) => v instanceof Set ? v : (v == null || v === '' || v === 'TODOS' || v === 'TODAS' ? new Set() : new Set([v]));
+const msOk = (v, x) => { const S = MS(v); return !S.size || S.has(x); };
+const msAny = (v, f) => { const S = MS(v); return !S.size || [...S].some(f); };
+const msOn = (v, o) => o === '' || o === 'TODOS' || o === 'TODAS' ? !MS(v).size : MS(v).has(o);
+const msTog = (v, o) => { if (o === '' || o === 'TODOS' || o === 'TODAS') return new Set(); const S = new Set(MS(v)); S.has(o) ? S.delete(o) : S.add(o); return S; };
+const msTxt = (v) => [...MS(v)].join(', ');
+const msUno = (v) => MS(v).size === 1 ? [...MS(v)][0] : null;
+const okCn = (x, c = canal) => msOk(c, x.cn);
 const cnCorto = (c) => ({ IC: 'CAMPO', VI: 'INBOUND', OT: 'OTROS' })[c] || '—';
 const cnNom = (c) => (CANALES.find(k => k[0] === c) || [0, c || '—'])[1];
 const ecSel = new Set();   // segmentador de EECC de la franja (varias a la vez; vacío = todas)
 const okEc = (x) => !ecSel.size || ecSel.has(x.ec);
-const ok = (x) => (seg === 'TODOS' || x.seg === seg) && okCn(x) && (zona === 'TODAS' || x.z === zona) && okEc(x);
+const ok = (x) => msOk(seg, x.seg) && okCn(x) && msOk(zona, x.z) && okEc(x);
 const tecCorto = (t) => { if (!t) return '—'; const [ape, nom] = t.split(','); return nom ? `${nom.trim().split(' ')[0]} ${ape.trim().split(' ')[0]}` : t; };
 // El robot clasifica (t): CO si de la F. Recep al inicio de la franja (la de la OS si la trae; si no, la del comentario del técnico) hay 24 h o menos; AG si hay más.
 const tipoProg = (p) => p.t || (/\d\s*-\s*\d/.test(p.fr || '') ? 'AG' : 'CO');
@@ -1180,8 +1188,10 @@ function metasProv(c) {
 }
 /* Metas del canal elegido en la cabecera: lo vacío en el canal usa la meta de «Todos» (y lo vacío en «Todos», la del robot).
    En «Todos», si no hay meta del mes propia pero los 3 canales la tienen, la meta del mes = suma de los 3. */
-const cfgDe = (c = canal) => {
-  const mc = AJ.metasCn || {}, base = { ...(D.config || {}), ...AJ.metas };
+const cfgDe = (c0 = canal) => {
+  const mc = AJ.metasCn || {}, base = { ...(D.config || {}), ...AJ.metas }, S = MS(c0), c = S.size === 1 ? [...S][0] : 'TODOS';
+  // Varios canales a la vez: metas de «Todos» y meta del mes = suma de los canales elegidos (si todos la tienen)
+  if (S.size > 1) { const r = provTodas() && AJ.prov ? { ...base, ...metasProv('TODOS') } : base; if ([...S].every(k => mc[k]?.meta_mes != null)) r.meta_mes = [...S].reduce((a, k) => a + mc[k].meta_mes, 0); return r; }
   if (provTodas() && AJ.prov) return { ...base, ...(c !== 'TODOS' ? mc[c] || {} : {}), ...metasProv(c) };
   if (c !== 'TODOS') return { ...base, ...(mc[c] || {}) };
   const cn3 = ['IC', 'VI', 'OT'];
@@ -1283,16 +1293,16 @@ prepararDatos();
 
 /* ---------- filtros de la franja y pestañas ---------- */
 function pintarFiltros() {
-  const c = (s) => D.pend.filter(p => (s === 'TODOS' || p.seg === s) && okCn(p) && (zona === 'TODAS' || p.z === zona) && okEc(p)).length;
+  const c = (s) => D.pend.filter(p => (msOk(s, p.seg)) && okCn(p) && (msOk(zona, p.z)) && okEc(p)).length;
   const segs = ['TODOS', ...[...new Set(D.pend.concat(D.liq).map(x => x.seg).filter(Boolean))].sort()];
-  $('tipos').innerHTML = segs.map(k => `<button type="button" class="chip" data-s="${k}" aria-pressed="${k === seg}">${k === 'TODOS' ? 'Todos' : k} (${c(k)})</button>`).join('');
-  const cc = (k) => D.pend.filter(p => (seg === 'TODOS' || p.seg === seg) && okCn(p, k) && (zona === 'TODAS' || p.z === zona) && okEc(p)).length;
-  $('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${k === canal}">${t} (${cc(k)})</button>`).join('');
-  const cz = (z) => D.pend.filter(p => (seg === 'TODOS' || p.seg === seg) && okCn(p) && (z === 'TODAS' || p.z === z) && okEc(p)).length;
-  $('zonas').innerHTML = ['TODAS', ...ZORD].map(z => `<button type="button" class="chip" data-z="${z}" aria-pressed="${z === zona}">${z === 'TODAS' ? 'Todas' : z} (${cz(z)})</button>`).join('');
-  $('n-pend').textContent = c(seg);
+  $('tipos').innerHTML = segs.map(k => `<button type="button" class="chip" data-s="${k}" aria-pressed="${msOn(seg, k)}">${k === 'TODOS' ? 'Todos' : k} (${c(k)})</button>`).join('');
+  const cc = (k) => D.pend.filter(p => (msOk(seg, p.seg)) && okCn(p, k) && (msOk(zona, p.z)) && okEc(p)).length;
+  $('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${msOn(canal, k)}">${t} (${cc(k)})</button>`).join('');
+  const cz = (z) => D.pend.filter(p => (msOk(seg, p.seg)) && okCn(p) && (msOk(z, p.z)) && okEc(p)).length;
+  $('zonas').innerHTML = ['TODAS', ...ZORD].map(z => `<button type="button" class="chip" data-z="${z}" aria-pressed="${msOn(zona, z)}">${z === 'TODAS' ? 'Todas' : z} (${cz(z)})</button>`).join('');
+  $('n-pend').textContent = D.pend.filter(ok).length;
   // EECC: todas las que tienen ingresos, liquidaciones, pendientes o programación; el número = pendientes con los demás filtros
-  const sinEc = (p) => (seg === 'TODOS' || p.seg === seg) && okCn(p) && (zona === 'TODAS' || p.z === zona);
+  const sinEc = (p) => (msOk(seg, p.seg)) && okCn(p) && (msOk(zona, p.z));
   const cnt = {}; D.pend.filter(sinEc).forEach(p => { cnt[p.ec] = (cnt[p.ec] || 0) + 1; });
   const vol = {}; [D.liq, D.pend, D.prog].forEach(L => L.filter(sinEc).forEach(x => { if (x.ec) vol[x.ec] = (vol[x.ec] || 0) + 1; }));
   ecSel.forEach(e => { if (!(e in vol)) vol[e] = 0; });
@@ -1300,9 +1310,9 @@ function pintarFiltros() {
   $('eecs').innerHTML = `<button type="button" class="chip" data-ec="" aria-pressed="${!ecSel.size}">Todas</button>` + ecs.map(e => `<button type="button" class="chip" data-ec="${esc(e)}" aria-pressed="${ecSel.has(e)}">${esc(e)} (${cnt[e] || 0})</button>`).join('');
 }
 $('eecs').addEventListener('click', (e) => { const b = e.target.closest('[data-ec]'); if (!b) return; const v = b.dataset.ec; if (!v) ecSel.clear(); else ecSel.has(v) ? ecSel.delete(v) : ecSel.add(v); pintarFiltros(); pintarTodo(); });
-$('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; seg = b.dataset.s; pintarFiltros(); pintarTodo(); });
-$('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = b.dataset.cn; CFG = cfgDe(); pintarFiltros(); pintarTodo(); });
-$('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = b.dataset.z; pintarFiltros(); pintarTodo(); });
+$('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; seg = msTog(seg, b.dataset.s); pintarFiltros(); pintarTodo(); });
+$('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = msTog(canal, b.dataset.cn); CFG = cfgDe(); pintarFiltros(); pintarTodo(); });
+$('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = msTog(zona, b.dataset.z); pintarFiltros(); pintarTodo(); });
 const VISTAS = ['panel','ingresos','pendientes','coord','avance','avt'];
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]'); if (!b) return; tab = b.dataset.t;
@@ -1339,7 +1349,7 @@ function pintarPanel() {
   const promDia = conL.length ? L.length / conL.length : 0;
   const meta = CFG.meta_mes, av = meta ? L.length / meta * 100 : null;
   const esperado = meta ? meta * D.dias / new Date(D.anio, D.mes, 0).getDate() : null;
-  $('res-sub').textContent = `Altas FTTH · corte ${fDia(D.dias)} ${D.corte.slice(11, 16)}${seg === 'TODOS' ? '' : ' · segmento ' + seg}${canal === 'TODOS' ? '' : ' · canal ' + CANALES.find(c => c[0] === canal)[1].toLowerCase()}${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
+  $('res-sub').textContent = `Altas FTTH · corte ${fDia(D.dias)} ${D.corte.slice(11, 16)}${!MS(seg).size ? '' : ' · segmento ' + msTxt(seg)}${!MS(canal).size ? '' : ' · canal ' + [...MS(canal)].map(cnNom).join(', ').toLowerCase()}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}`;
   $('res-kpis').innerHTML =
     kpi(PER.a === 1 && PER.b >= D.dias ? 'Ingresos del mes' : 'Ingresos del periodo', `<button type="button" class="clic" data-ch="ing" data-d="ALL" data-k="ALL" style="all:unset;cursor:pointer">${n(I.length)}</button>`, `${n(desc)} descargadas (${pct(desc, I.length)}) · ${n(est.O || 0)} observadas · ${n(est.A || 0)} anuladas`) +
     kpi('Instalaciones liquidadas', `<button type="button" class="clic" data-ch="liq" data-d="ALL" data-k="ALL" style="all:unset;cursor:pointer">${n(L.length)}</button>`, `promedio ${dec(promDia)} por día · ${conL.length} días`, 'acento') +
@@ -1364,9 +1374,9 @@ function pintarPanel() {
 
   // ingresos, instalaciones y pendientes por día
   const pi2 = cuenta(I, x => x.d), mxd = Math.max(1, ...DIAS.map(d => Math.max(pi2[d] || 0, porD[d] || 0)));
-  const filtrado = seg !== 'TODOS' || canal !== 'TODOS' || zona !== 'TODAS';
-  const nomCn = canal === 'TODOS' ? '' : CANALES.find(c => c[0] === canal)[1];
-  $('dia-sub-f').textContent = filtrado ? ' · ' + [seg !== 'TODOS' ? seg : '', nomCn, zona !== 'TODAS' ? 'zona ' + zona : ''].filter(Boolean).join(' · ') : '';
+  const filtrado = MS(seg).size || MS(canal).size || MS(zona).size;
+  const nomCn = [...MS(canal)].map(cnNom).join(', ');
+  $('dia-sub-f').textContent = filtrado ? ' · ' + [msTxt(seg), nomCn, MS(zona).size ? 'zona ' + msTxt(zona) : ''].filter(Boolean).join(' · ') : '';
   $('liq-sub-f').textContent = $('dia-sub-f').textContent;
   $('dia-graf').innerHTML = `<div class="g2">${DIAS.map(d => { const a = pi2[d] || 0, b = porD[d] || 0, di = diaInfo(d);
     return `<div><div class="par"><button type="button" class="bb clic" data-ch="ing" data-d="${d}" data-k="ALL" title="${fDia(d)} · ingresos ${a}" style="height:${Math.max(2, a / mxd * 190)}px;background:var(--gris)"><span>${a}</span></button><button type="button" class="bb clic" data-ch="liq" data-d="${d}" data-k="ALL" title="${fDia(d)} · instalaciones ${b}" style="height:${Math.max(2, b / mxd * 190)}px;background:var(--magenta)"><span>${b}</span></button></div><div class="dia${di.fin ? ' fin' : ''}"><b>${d}</b>${di.wd}</div></div>`; }).join('')}</div>`;
@@ -1411,18 +1421,17 @@ $('liq-vistas').addEventListener('click', (e) => { const b = e.target.closest('[
 
 /* ---------- segmentadores ---------- */
 function segmentos(contenedor, grupos) {
-  $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span>${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${filtro[g.k] === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</div>`).join('');
+  $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span>${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${msOn(filtro[g.k], o)}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</div>`).join('');
 }
 // Cada segmentador repinta solo su pestaña (antes repintaba todo el portal y se sentía lento).
 const REPINTA = { 'eecc-segs': () => pintarIngresos(), 'pen-segs': () => pintarPendientes(), 'pen-segs-ge': () => pintarPendientes(), 'co-segs': () => pintarCoord(), 'hoy-segs': () => pintarAgHoy() };
 Object.keys(REPINTA).forEach(id => $(id).addEventListener('click', (e) => {
   const b = e.target.closest('[data-v]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
-  if (filtro[g.dataset.k] === b.dataset.v) return;
-  filtro[g.dataset.k] = b.dataset.v; requestAnimationFrame(REPINTA[id]);
+  filtro[g.dataset.k] = msTog(filtro[g.dataset.k], b.dataset.v); requestAnimationFrame(REPINTA[id]);
 }));
 const ecsDe = (L) => [...new Set(L.map(p => p.ec))].sort((a, b) => a === 'POR ASIGNAR' ? -1 : b === 'POR ASIGNAR' ? 1 : a < b ? -1 : 1);
 const TP = { AGENDA: 'AG', COORDINADA: 'CO', 'SIN AGENDA': 'SA' };
-const tpOk = (p, f) => f === 'TODOS' || tipoProg(p) === TP[f];
+const tpOk = (p, f) => msAny(f, o => tipoProg(p) === TP[o]);
 
 /* ---------- INGRESOS ---------- */
 function calor(v, mx) { if (!v) return 'cero'; const r = v / mx; return r > .66 ? 'h3c' : r > .33 ? 'h2c' : 'h1c'; }
@@ -1430,7 +1439,7 @@ function pintarIngresos() {
   const I = D.ing.filter(ok), tot = cuenta(I, x => x.di);
   const cols = Object.keys(tot).sort((a, b) => tot[b] - tot[a] || (a < b ? -1 : 1));
   const cel = cuenta(I, x => x.d + '|' + x.di), mx = Math.max(1, ...Object.values(cel));
-  $('ing-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · ${n(I.length)} ingresos${seg === 'TODOS' ? '' : ' · ' + seg}`;
+  $('ing-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · ${n(I.length)} ingresos${!MS(seg).size ? '' : ' · ' + msTxt(seg)}`;
   const filas = DIAS.map(d => { const tf = cols.reduce((a, c) => a + (cel[d + '|' + c] || 0), 0);
     return `<tr><td data-v="${d}">${fDia(d)}</td>${cols.map(c => { const v = cel[d + '|' + c] || 0; return `<td class="${calor(v, mx)}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tf}</td></tr>`; }).join('');
   $('ing-mat').innerHTML = !I.length ? '<p class="nota">No hay ingresos con este filtro.</p>' : `<table class="mat ord" id="tb-ing"><thead><tr><th>Fecha</th>${cols.map(c => `<th class="vert" title="${esc(c)}"><span>${esc(corto(c))}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>${filas}</tbody>
@@ -1440,7 +1449,7 @@ function pintarIngresos() {
   segmentos('eecc-segs', [
     { k: 'ingEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
     { k: 'ingTp', t: 'Tipo', ops: ['AGENDA','COORDINADA'], cnt: (o) => P0.filter(p => tpOk(p, o)).length } ]);
-  const P = P0.filter(p => (filtro.ingEc === 'TODOS' || p.ec === filtro.ingEc) && tpOk(p, filtro.ingTp));
+  const P = P0.filter(p => (msOk(filtro.ingEc, p.ec)) && tpOk(p, filtro.ingTp));
   if (!P.length) { $('eecc-mat').innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const dt = cuenta(P, p => p.di), et = cuenta(P, p => p.ec), c2 = cuenta(P, p => p.ec + '|' + p.di);
   const dc = Object.keys(dt).sort((a, b) => dt[b] - dt[a]), er = Object.keys(et).sort((a, b) => et[b] - et[a]), mx2 = Math.max(1, ...Object.values(c2));
@@ -1469,7 +1478,7 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
   altasP[tbId] = P;
   const lima = (D.filial || 'LIMA') === 'LIMA', RESP = (AJ && AJ.responsables) || {};
   $('altas-resp').hidden = !lima;
-  $(subId).textContent = `${P.length} altas pendientes${seg === 'TODOS' ? '' : ' · ' + seg}${zona === 'TODAS' ? '' : ' · zona ' + zona}${SE.size ? ' · EECC: ' + [...SE].join(', ') : ''}${ST.size ? ' · Tipo: ' + [...ST].join(', ') : ''}`;
+  $(subId).textContent = `${P.length} altas pendientes${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}${SE.size ? ' · EECC: ' + [...SE].join(', ') : ''}${ST.size ? ' · Tipo: ' + [...ST].join(', ') : ''}`;
   if (!P.length) { $(matId).innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const f10 = (p) => p.rec.slice(0, 10), fechas = [...new Set(P.map(f10))].sort();
   const cls = (f) => { const e = edadDias(f); return e >= 8 ? 'e3' : e >= 4 ? 'e2' : e >= 3 ? 'e1' : ''; };
@@ -1544,7 +1553,7 @@ function abrirListaAg(clave) {
   const L = agDiaG.filter(x => (e === '*' || x.ec === e) && (k === 'ALL' || (k === 'AG' ? x.t === 'AG' : k === 'CO' ? x.t === 'CO' : colDe(x) === f)))
     .sort((a, b) => (a.t === b.t ? 0 : a.t === 'AG' ? -1 : 1) || String(a.fr).localeCompare(String(b.fr), 'es', { numeric: true }) || msIso(a.rec) - msIso(b.rec));
   const qu = k === 'AG' ? 'Agendas' : k === 'CO' ? 'Coordinadas' : k === 'FR' ? 'Franja ' + f : 'Agendas y coordinadas';
-  listaProg(L, `${e === '*' ? 'Todas las EECC' : e} · ${qu} · ${diaInfo(diaPenAg).wd} ${fDia(diaPenAg)}`, `${L.length} AB · agendas primero, por franja` + (filtro.penGe === 'TODOS' ? '' : ` · gestor ${filtro.penGe}`), () => abrirListaAg(clave));
+  listaProg(L, `${e === '*' ? 'Todas las EECC' : e} · ${qu} · ${diaInfo(diaPenAg).wd} ${fDia(diaPenAg)}`, `${L.length} AB · agendas primero, por franja` + (!MS(filtro.penGe).size ? '' : ` · gestor ${msTxt(filtro.penGe)}`), () => abrirListaAg(clave));
 }
 /* Tabla de agendas/coordinadas en el modal (la usan Agendas del día y el Evolutivo EECC) */
 function listaProg(L, tit, sub, reabrir) {
@@ -1584,7 +1593,7 @@ function abrirListaAltas(clave) {
     <td>${p.ges ? '<span class="b si">Gestionado</span>' : '<span class="b no">Sin gestión</span>'}</td></tr>`);
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-tit').textContent = `${nom} · ${f === 'ALL' ? 'todas las fechas' : fIso(f)}`;
-  $('modal-sub').textContent = `${L.length} AB pendiente${L.length === 1 ? '' : 's'} · Tipo: INSTALACION · más antiguos primero` + (seg === 'TODOS' ? '' : ` · ${seg}`);
+  $('modal-sub').textContent = `${L.length} AB pendiente${L.length === 1 ? '' : 's'} · Tipo: INSTALACION · más antiguos primero` + (!MS(seg).size ? '' : ` · ${msTxt(seg)}`);
   $('modal-aviso').textContent = ''; $('modal-aviso').style.color = ''; $('modal-copiar').hidden = false; $('modal-copiar').textContent = 'Copiar imagen'; $('modal-copiar-ab').hidden = false;
   $('modal-cuerpo').dataset.lista = clave;
   $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`;
@@ -1629,9 +1638,9 @@ function pendFiltrados(sin = '') {
 }
 function pendFiltrados0(sin = '') {
   const no = (k) => [].concat(sin).includes(k);
-  return penUni().filter(ok).filter(p => (no('penEc') || filtro.penEc === 'TODOS' || p.ec === filtro.penEc) && (no('penTp') || tpOk(p, filtro.penTp))
-    && (no('penPr') || filtro.penPr === 'TODOS' || progEstado(p) === filtro.penPr) && (no('penAnt') || filtro.penAnt === 'TODOS' || ANT[filtro.penAnt](horasP(p)))
-    && (no('penGes') || filtro.penGes === 'TODOS' || GES[filtro.penGes](p)) && (no('penGe') || filtro.penGe === 'TODOS' || gestorDe(p) === filtro.penGe) && fechaOk(p));
+  return penUni().filter(ok).filter(p => (no('penEc') || msOk(filtro.penEc, p.ec)) && (no('penTp') || tpOk(p, filtro.penTp))
+    && (no('penPr') || msOk(filtro.penPr, progEstado(p))) && (no('penAnt') || msAny(filtro.penAnt, o => ANT[o](horasP(p))))
+    && (no('penGes') || msAny(filtro.penGes, o => GES[o](p))) && (no('penGe') || msOk(filtro.penGe, gestorDe(p))) && fechaOk(p));
 }
 const diasHabiles = (n) => { const r = []; for (let d = D.dias; d >= 1 && r.length < n; d--) if (!diaInfo(d).fin && (d < D.dias || +D.corte.slice(11, 13) >= 20)) r.push(d); return r; };
 /* Indicadores de la cartera (los mismos en Pendientes y en el Panel):
@@ -1650,8 +1659,8 @@ const semDb = (v) => v == null ? '' : v <= CFG.meta_db ? 'ok' : v <= CFG.meta_db
 const semProd = (v) => v == null ? '' : v >= CFG.meta_prod ? 'ok' : v >= CFG.meta_prod * .8 ? 'mid' : 'mal';
 const semConv = (v) => v == null ? '' : v >= CFG.meta_conv ? 'ok' : v >= CFG.meta_conv - 10 ? 'mid' : 'mal';
 function pintarResumenPend(P) {
-  const geOk = (x) => filtro.penGe === 'TODOS' || gestorDe(x) === filtro.penGe;
-  const L = !esInst() ? [] : D.liq.filter(ok).filter(x => (filtro.penEc === 'TODOS' || x.ec === filtro.penEc) && geOk(x)), I = !esInst() ? [] : D.ing.filter(ok).filter(x => (filtro.penEc === 'TODOS' || x.ec === filtro.penEc) && geOk(x));
+  const geOk = (x) => msOk(filtro.penGe, gestorDe(x));
+  const L = !esInst() ? [] : D.liq.filter(ok).filter(x => (msOk(filtro.penEc, x.ec)) && geOk(x)), I = !esInst() ? [] : D.ing.filter(ok).filter(x => (msOk(filtro.penEc, x.ec)) && geOk(x));
   const ind = indicadoresPend;
   const T = ind(P, L, I), nEc = new Set(P.map(p => p.ec)).size;
   const cDisp = T.disp == null ? '' : T.disp <= CFG.meta_disp ? 'ok' : T.disp <= CFG.meta_disp * 1.5 ? 'mid' : 'mal';
@@ -1687,7 +1696,7 @@ function pintarResumenPend(P) {
 }
 /* Tarjeta del gestor elegido: aparece en lugar del cuadro de agendas */
 function pintarGestores() {
-  const enDer = hayGestores() && filtro.penGe !== 'TODOS';
+  const enDer = hayGestores() && MS(filtro.penGe).size === 1;   // con varios gestores elegidos no hay tarjeta individual
   // Con un gestor elegido: su tarjeta a la derecha y el cuadro de agendas del día (solo sus EECC) debajo de la tabla de indicadores.
   $('pen-gcard').hidden = !enDer; $('pen-agbox').hidden = false;
   const destino = enDer ? $('pen-ag-izq') : $('pen-der');
@@ -1695,7 +1704,7 @@ function pintarGestores() {
   if (!hayGestores()) return;
   const Pg = pendFiltrados('penGe');
   const gs = [...new Set(Pg.map(gestorDe))].sort((a, b) => a === 'SIN GESTOR' ? 1 : b === 'SIN GESTOR' ? -1 : Pg.filter(p => gestorDe(p) === b).length - Pg.filter(p => gestorDe(p) === a).length);
-  if (enDer) pintarTarjeta(filtro.penGe, Pg, gs);
+  if (enDer) pintarTarjeta(msUno(filtro.penGe), Pg, gs);
 }
 function pintarTarjeta(g, Pg, gs) {
   const P = Pg.filter(p => gestorDe(p) === g), N = P.length, pos = gs.indexOf(g) + 1;
@@ -1729,20 +1738,20 @@ function filasInd(ecs, Pall, Lall, Iall, ind, fila) {
   $('pen-acc-ind').hidden = !agrupaGestor();
   $('t-pcomp').textContent = agrupaGestor() ? 'Comparativa entre gestores' : 'Comparativa entre EECC';
   $('pen-ind-tit').textContent = agrupaGestor() ? 'Indicadores por gestor' : 'Indicadores por EECC';
-  const filaEc = (e, cls = '') => fila(`<button type="button" class="lnk num" data-pen-ec="${esc(e)}">${esc(e)}</button>`, ind(Pall.filter(p => p.ec === e), Lall.filter(x => x.ec === e), Iall.filter(x => x.ec === e)), '', (filtro.penEc === e ? 'sel ' : '') + cls);
+  const filaEc = (e, cls = '') => fila(`<button type="button" class="lnk num" data-pen-ec="${esc(e)}">${esc(e)}</button>`, ind(Pall.filter(p => p.ec === e), Lall.filter(x => x.ec === e), Iall.filter(x => x.ec === e)), '', (MS(filtro.penEc).has(e) ? 'sel ' : '') + cls);
   $('pen-ind-sub').textContent = agrupaGestor() ? 'Total AB / AB SG (sin gestión) / Dispersión / DB / Productividad / Convertibilidad, por gestor. Toca ▸ para ver sus EECC y el nombre del gestor para ver sus objetivos por semana. Convertibilidad = AB de instalación ingresados en el mes (F. Recep) ya DESCARGADA ÷ todos los ingresados del mes (registrada, descargada, observada y anulada), por EECC; en observadas y anuladas la EECC es la del técnico escrito entre %…% en el comentario. Al usar el segmentador de gestores, la tabla se mantiene completa y resalta la fila filtrada.' : 'Total AB / AB SG (sin gestión) / Dispersión / DB / Productividad / Convertibilidad, por EECC. Clic en una EECC para filtrar. Asigna gestores en «Metas, EECC y gestores».';
   if (!agrupaGestor()) return ecs.map(e => filaEc(e)).join('');
   const geDeEc = {}; Pall.forEach(p => { geDeEc[p.ec] = gestorDe(p); });
   const grupos = [...new Set(ecs.map(e => geDeEc[e]))].sort((a, b) => a === 'SIN GESTOR' ? 1 : b === 'SIN GESTOR' ? -1 : Pall.filter(p => gestorDe(p) === b).length - Pall.filter(p => gestorDe(p) === a).length);
   return grupos.map(g => { const E = ecs.filter(e => geDeEc[e] === g), est = (x) => E.includes(x.ec), cer = !geAbiertos.has(g);
-    return fila(`<button type="button" class="tg" data-tg="${esc(g)}" aria-expanded="${!cer}" aria-label="${cer ? 'Expandir' : 'Contraer'} ${esc(g)}">${cer ? '▸' : '▾'}</button><button type="button" class="lnk" data-ge-sem="${esc(g)}" title="Ver objetivos por semana de ${esc(g)}">${esc(g)}</button>`, ind(Pall.filter(est), Lall.filter(est), Iall.filter(est)), '', 'ge' + (filtro.penGe === g ? ' sel' : ''))
+    return fila(`<button type="button" class="tg" data-tg="${esc(g)}" aria-expanded="${!cer}" aria-label="${cer ? 'Expandir' : 'Contraer'} ${esc(g)}">${cer ? '▸' : '▾'}</button><button type="button" class="lnk" data-ge-sem="${esc(g)}" title="Ver objetivos por semana de ${esc(g)}">${esc(g)}</button>`, ind(Pall.filter(est), Lall.filter(est), Iall.filter(est)), '', 'ge' + (MS(filtro.penGe).has(g) ? ' sel' : ''))
       + E.map(e => filaEc(e, 'ec-h' + (cer ? ' oculta' : ''))).join(''); }).join('');
 }
 let agDiaG = [];
 function pintarAgDia(P) {
   if (!diaPenAg) diaPenAg = D.dias;
   if (!esInst()) { $('pen-ag-sub').innerHTML = ''; $('pen-ag').innerHTML = `<p class="nota">Las agendas y coordinadas del día se calculan solo para instalaciones. Elige «Instalaciones» en Tipo de trabajo para verlas.</p>`; return; }
-  const G = D.prog.filter(ok).filter(x => x.d === diaPenAg && (filtro.penEc === 'TODOS' || x.ec === filtro.penEc) && (filtro.penGe === 'TODOS' || gestorDe(x) === filtro.penGe) && tpOk(x, filtro.penTp));
+  const G = D.prog.filter(ok).filter(x => x.d === diaPenAg && (msOk(filtro.penEc, x.ec)) && (msOk(filtro.penGe, gestorDe(x))) && tpOk(x, filtro.penTp));
   const colDe = (x) => String(x.fr || '').replace(/\s+/g, ' ').trim();
   const ecs = [...new Set(G.map(x => x.ec))].sort((a, b) => G.filter(x => x.ec === b).length - G.filter(x => x.ec === a).length);
   const ag = G.filter(x => x.t === 'AG').length;
@@ -1777,7 +1786,7 @@ function pintarPendientes0() {
     const tos = ['INSTALACION SERVICIO', ...Object.keys(cntTo).filter(t => t !== 'INSTALACION SERVICIO').sort((a, b) => cntTo[b] - cntTo[a] || a.localeCompare(b))];
     const nMisc = TOS_MISC.reduce((a, t) => a + (cntTo[t] || 0), 0), tp = penTipo();
     $('pen-segs-ge').insertAdjacentHTML('beforeend', `<div class="g g-to"><span class="seg-t">Tipo</span><button type="button" class="chip" data-ptp="INST" aria-pressed="${tp === 'INST'}">INSTALACIONES (${n(cntTo['INSTALACION SERVICIO'] || 0)})</button><button type="button" class="chip" data-ptp="MISC" aria-pressed="${tp === 'MISC'}">MISCELÁNEOS (${n(nMisc)})</button></div><div class="g g-to"><span class="seg-t">Tipo de trabajo</span>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${filtro.penTos.has(t)}">${esc(t === 'INSTALACION SERVICIO' ? 'INSTALACIONES' : t)} (${n(cntTo[t] || 0)})</button>`).join('')}</div>`); }
-  const act = [['penEc', 'EECC'], ['penTp', 'Tipo'], ['penPr', 'Programación'], ['penAnt', 'Antigüedad'], ['penGes', 'Gestionado']].filter(([k]) => filtro[k] !== 'TODOS').map(([k, t]) => `${t}: ${filtro[k]}`);
+  const act = [['penEc', 'EECC'], ['penTp', 'Tipo'], ['penPr', 'Programación'], ['penAnt', 'Antigüedad'], ['penGes', 'Gestionado']].filter(([k]) => MS(filtro[k]).size).map(([k, t]) => `${t}: ${msTxt(filtro[k])}`);
   if (filtro.desde || filtro.hasta) act.push(`Fecha: ${filtro.desde ? fIso(filtro.desde) : '…'} – ${filtro.hasta ? fIso(filtro.hasta) : '…'}`);
   $('pen-activos').innerHTML = act.map(a => `<span>${esc(a)}</span>`).join('');
   const P0 = pendFiltrados();
@@ -1826,7 +1835,7 @@ function pintarTSegs(B) {
   const chip = (attr, txt, on, n) => `<button type="button" class="chip" ${attr} aria-pressed="${on}">${esc(txt)}${n == null ? '' : ` (${n})`}</button>`;
   const Pg = pendFiltrados('penGe');
   const gs = hayGestores() ? [...new Set(Pg.map(gestorDe))].sort((a, b) => a === 'SIN GESTOR' ? 1 : b === 'SIN GESTOR' ? -1 : a < b ? -1 : 1) : [];
-  const filaGe = hayGestores() ? `<div class="segs"><div class="g"><span class="seg-t">Gestor</span>${chip('data-tge="TODOS"', 'Todos', filtro.penGe === 'TODOS')}${gs.map(g => chip(`data-tge="${esc(g)}"`, g, filtro.penGe === g, Pg.filter(p => gestorDe(p) === g).length)).join('')}</div></div>` : '';
+  const filaGe = hayGestores() ? `<div class="segs"><div class="g"><span class="seg-t">Gestor</span>${chip('data-tge="TODOS"', 'Todos', !MS(filtro.penGe).size)}${gs.map(g => chip(`data-tge="${esc(g)}"`, g, MS(filtro.penGe).has(g), Pg.filter(p => gestorDe(p) === g).length)).join('')}</div></div>` : '';
   const txt = (k, v) => k === 'ag' ? EST_TXT[v].toUpperCase() : v;
   const act = T_SEGS.flatMap(([k, t]) => [...tSel[k]].map(v => `${t}: ${txt(k, v)}`));
   if (tFecha.desde || tFecha.hasta) act.push(`Fecha: ${tFecha.desde ? fIso(tFecha.desde) : '…'} – ${tFecha.hasta ? fIso(tFecha.hasta) : '…'}`);
@@ -1846,7 +1855,7 @@ function pintarTSegs(B) {
     </div>`;
 }
 $('pen-tsegs').addEventListener('click', (e) => {
-  const g = e.target.closest('[data-tge]'); if (g) { filtro.penGe = g.dataset.tge === 'TODOS' || filtro.penGe === g.dataset.tge ? 'TODOS' : g.dataset.tge; pintarPendientes(); return; }
+  const g = e.target.closest('[data-tge]'); if (g) { filtro.penGe = msTog(filtro.penGe, g.dataset.tge); pintarPendientes(); return; }
   const c = e.target.closest('[data-tk]'); if (c) { const S = tSel[c.dataset.tk], v = c.dataset.tv; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarPendientes(); return; }
   const fd = e.target.closest('[data-tfecha]'); if (fd) { tFecha.desde = tFecha.hasta = sumaDia(hoyIso(), +fd.dataset.tfecha); pintarPendientes(); return; }
   if (e.target.closest('#tseg-flimpiar')) { tFecha.desde = tFecha.hasta = ''; pintarPendientes(); }
@@ -1922,7 +1931,7 @@ $('pen-limpiar').addEventListener('click', () => { Object.keys(colFil).forEach(k
 $('pen-acc-ind').addEventListener('click', (e) => { const b = e.target.closest('[data-acc]'); if (!b) return;
   if (b.dataset.acc === 'cerrar') geAbiertos.clear(); else document.querySelectorAll('#pen-ind [data-tg]').forEach(x => geAbiertos.add(x.dataset.tg));
   pintarPendientes(); });
-const filtrarGestor = (g) => { filtro.penGe = filtro.penGe === g ? 'TODOS' : g; pintarPendientes(); };
+const filtrarGestor = (g) => { filtro.penGe = msTog(filtro.penGe, g); pintarPendientes(); };
 $('pen-ind').addEventListener('click', (e) => { const b = e.target.closest('[data-ge-sem]'); if (b) { e.stopPropagation(); abrirSemanasGestor(b.dataset.geSem); } }, true);
 /* Objetivos por semana de un gestor: semanas calendario del mes (1–7, 8–14, 15–21, 22–28, 29–fin), con los mismos cálculos del resumen
    Total AB / AB SG = pendientes al cierre de la semana (reconstruido: pendientes de hoy + las que se liquidaron después de esa semana)
@@ -1967,7 +1976,7 @@ function abrirSemanasGestor0(g) {
   document.querySelector('#modal .modal').classList.remove('ficha');
 }
 $('pen-gcard').addEventListener('click', (e) => { const g = e.target.closest('.volver[data-pen-ge]'); if (g) filtrarGestor(g.dataset.penGe); });
-$('pen-ind').addEventListener('click', (e) => { const t = e.target.closest('[data-tg]'); if (t) { const g = t.dataset.tg; geAbiertos.has(g) ? geAbiertos.delete(g) : geAbiertos.add(g); pintarPendientes(); return; } const g = e.target.closest('[data-pen-ge]'); if (g) { filtro.penGe = filtro.penGe === g.dataset.penGe ? 'TODOS' : g.dataset.penGe; pintarPendientes(); return; } const b = e.target.closest('[data-pen-ec]'); if (!b) return; filtro.penEc = filtro.penEc === b.dataset.penEc ? 'TODOS' : b.dataset.penEc; pintarPendientes(); });
+$('pen-ind').addEventListener('click', (e) => { const t = e.target.closest('[data-tg]'); if (t) { const g = t.dataset.tg; geAbiertos.has(g) ? geAbiertos.delete(g) : geAbiertos.add(g); pintarPendientes(); return; } const g = e.target.closest('[data-pen-ge]'); if (g) { filtro.penGe = msTog(filtro.penGe, g.dataset.penGe); pintarPendientes(); return; } const b = e.target.closest('[data-pen-ec]'); if (!b) return; filtro.penEc = msTog(filtro.penEc, b.dataset.penEc); pintarPendientes(); });
 $('pen-ag-dia').addEventListener('change', conDP((e) => { diaPenAg = +e.target.value; pintarAgDia(); }));
 /* Recalcula capacidad y carga sin redibujar la tabla (para no perder el foco al pasar de una casilla a otra) */
 function actualizarCapacidad() {
@@ -2040,7 +2049,7 @@ function pintarResumenCoord() {
   const TXT = { CO: ['Coordinadas', 'hasta 24 h'], AG: ['Agendas', 'más de 24 h'], SA: ['Sin fecha ni franja', 'sin agenda'], IN: ['Inconsistentes', 'la franja asignada no coincide con la hora de ingreso de la orden'] };
   const ap = (k) => coTipo !== 'TODOS' && k !== coTipo ? ' ap' : '';
   const ult = D.liq.length ? Math.max(...D.liq.map(x => x.d)) : D.dias;
-  $('cr-sub2').textContent = $('cr-sub').textContent = `${D.filial || 'LIMA'} · Instalaciones hasta el ${String(ult).padStart(2, '0')}/${String(D.mes).padStart(2, '0')}${seg === 'TODOS' ? '' : ' · ' + seg}${zona === 'TODAS' ? '' : ' · zona ' + zona}`;
+  $('cr-sub2').textContent = $('cr-sub').textContent = `${D.filial || 'LIMA'} · Instalaciones hasta el ${String(ult).padStart(2, '0')}/${String(D.mes).padStart(2, '0')}${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}`;
   $('cr-asig').innerHTML = `<div class="cr-tot"><button type="button" class="cr-clic" data-cr-lista="ALL" title="Ver las ${n(N)} altas"><b>${n(N)}</b></button><span>altas descargadas<br>en ${MESL}</span>${nIn ? `<small style="display:block;margin-top:6px;color:var(--fg-3);font-size:11.5px">${nIn} con franja inconsistente (incluidas en AG/CO)</small>` : ''}</div>
     <div class="cr-der"><div class="cr-bar">${['CO','AG','SA'].filter(k => T[k].length).map(k => `<div class="${ap(k)} cr-clic" data-cr-lista="${k}" role="button" tabindex="0" style="width:${T[k].length / N * 100}%;background:${COL[k]}" title="${TXT[k][0]}: ${T[k].length} · clic para ver el detalle">${T[k].length / N >= .06 ? pc(T[k].length) : ''}</div>`).join('')}</div>
       <div class="cr-ley">${['CO','AG','SA'].map(k => `<div class="${ap(k)}" style="border-color:${COL[k]}"><span class="l">${TXT[k][0]}</span><button type="button" class="cr-clic" data-cr-lista="${k}" title="Ver el detalle"><b>${n(T[k].length)}<small>${pc(T[k].length)}</small></b></button><span class="s">${TXT[k][1]}${T[k].length ? ` · <button type="button" class="lnk num" data-cr-lista="${k}">Ver detalle</button>` : ''}</span></div>`).join('')}</div></div>`;
@@ -2089,7 +2098,7 @@ function abrirListaCoord(clave) {
   const html = `<div class="scroll" style="max-height:60vh;overflow:auto"><table class="mat tabla-ajuste" id="tb-modal"><thead><tr><th>AB</th><th>Tipo</th><th>EECC</th><th>Técnico</th><th>Distrito</th><th>Recepción</th><th>F. AG</th><th>Franja</th><th>Instalada</th><th>Resultado</th></tr></thead><tbody>
     ${L.map(x => { const r = resultado(x); return `<tr><td>${x.ab}</td><td>${TIPO[tipoDe(x)]}</td><td>${esc(x.ec)}</td><td>${esc(tecCorto(x.tec))}</td><td>${esc(corto(x.di))}</td><td>${fechaHora(x.rec)}</td><td>${fIso(fAg(x))}</td><td>${esc(x.fr && /\d/.test(x.fr) ? x.fr : '—')}</td><td>${inst(x)}</td><td><span class="b ${cls(r)}">${r}</span></td></tr>`; }).join('') || '<tr><td colspan="10">Sin altas.</td></tr>'}</tbody></table></div>`;
   modalCab = ['AB', 'Tipo', 'EECC', 'Técnico', 'Distrito', 'Recepción', 'F. AG', 'Franja', 'Instalada', 'Resultado'];
-  abrirFichaModal(NOM[k] + (f ? SUF[f] : ''), `${n(L.length)} altas · ${MESL} ${D.anio}${seg === 'TODOS' ? '' : ' · ' + seg}${zona === 'TODAS' ? '' : ' · zona ' + zona}`, html);
+  abrirFichaModal(NOM[k] + (f ? SUF[f] : ''), `${n(L.length)} altas · ${MESL} ${D.anio}${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}`, html);
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-copiar').textContent = 'Copiar imagen';
 }
@@ -2103,9 +2112,9 @@ const hoEstado = (x) => x.e === 'D' ? 'DESCARGADA' : x.e === 'O' ? 'OBSERVADA' :
 const HO_ORD = { 'PENDIENTE': 0, 'EN ATENCIÓN': 1, 'OBSERVADA': 2, 'DESCARGADA': 3 };
 function hoyFiltrados(sin = '') {
   return D.prog.filter(ok).filter(x => x.d === D.dias && (x.t === 'AG' || x.t === 'CO') && x.e !== 'A'
-    && (sin === 'hoTp' || filtro.hoTp === 'TODOS' || x.t === HO_TP[filtro.hoTp])
-    && (sin === 'hoFr' || filtro.hoFr === 'TODOS' || frNorm(x) === filtro.hoFr)
-    && (sin === 'hoEc' || filtro.hoEc === 'TODOS' || x.ec === filtro.hoEc));
+    && (sin === 'hoTp' || msAny(filtro.hoTp, o => x.t === HO_TP[o]))
+    && (sin === 'hoFr' || msOk(filtro.hoFr, frNorm(x)))
+    && (sin === 'hoEc' || msOk(filtro.hoEc, x.ec)));
 }
 function pintarAgHoy() {
   if (!$('hoy-segs')) return;
@@ -2132,11 +2141,11 @@ const CU_TXT = { si: 'Sí', tarde: 'No', no: 'No', hoy: 'Pendiente', fut: 'Pendi
 const CU_OP = { 'CUMPLIÓ': (x) => kMed(x) === 'si', 'NO CUMPLIÓ': (x) => kMed(x) === 'no', 'PEND. DE EVALUAR': (x) => kMed(x) === 'pen' };
 const EST_OS = { D: 'DESCARGADA', R: 'REGISTRADA', O: 'OBSERVADA', A: 'ANULADA' };
 function coFiltrados(sin = '') {
-  return D.prog.filter(ok).filter(x => (coTipo === 'TODOS' || x.t === coTipo)
-    && (sin === 'coEc' || filtro.coEc === 'TODOS' || x.ec === filtro.coEc)
-    && (sin === 'coEs' || filtro.coEs === 'TODOS' || EST_OS[x.e] === filtro.coEs)
-    && (sin === 'coGe' || filtro.coGe === 'TODOS' || gestorDe(x) === filtro.coGe)
-    && (sin === 'coCu' || filtro.coCu === 'TODOS' || CU_OP[filtro.coCu](x))
+  return D.prog.filter(ok).filter(x => (msOk(coTipo, x.t))
+    && (sin === 'coEc' || msOk(filtro.coEc, x.ec))
+    && (sin === 'coEs' || msOk(filtro.coEs, EST_OS[x.e]))
+    && (sin === 'coGe' || msOk(filtro.coGe, gestorDe(x)))
+    && (sin === 'coCu' || msAny(filtro.coCu, o => CU_OP[o](x)))
     && (!filtro.coDesde || isoDia(x.d) >= filtro.coDesde) && (!filtro.coHasta || isoDia(x.d) <= filtro.coHasta));
 }
 function pintarCoDetalle() {
@@ -2195,11 +2204,11 @@ const evoCls = (p) => p == null ? '' : p >= (CFG.meta_cumpl ?? 95) ? 'ok' : p >=
 const evoCol = (p) => p == null ? 'var(--gris)' : p >= (CFG.meta_cumpl ?? 95) ? 'var(--ok)' : p >= (CFG.meta_cumpl ?? 95) - 10 ? 'var(--mid)' : 'var(--mal)';
 function pintarEvoEc() {
   if (!$('eec-mat')) return;
-  const G0 = D.prog.filter(ok).filter(x => x.e === 'D' && (coTipo === 'TODOS' || x.t === coTipo));   // solo Estado OS DESCARGADA
-  const Gg = G0.filter(x => evo.ge === 'TODOS' || gestorDe(x) === evo.ge);
+  const G0 = D.prog.filter(ok).filter(x => x.e === 'D' && (msOk(coTipo, x.t)));   // solo Estado OS DESCARGADA
+  const Gg = G0.filter(x => msOk(evo.ge, gestorDe(x)));
   const G = Gg.filter(x => evoOk(x));
   const T = evoCuenta(G), meta = CFG.meta_cumpl ?? 95, ultimo = Math.min(D.dias, Math.max(0, ...G.filter(x => x.k !== 'fut').map(x => x.d)));
-  $('eec-sub').innerHTML = `<span class="mes-anio">${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio}</span> · por día programado · ${coTipo === 'TODOS' ? 'agendas y coordinadas' : coTipo === 'AG' ? 'solo agendas' : 'solo coordinadas'}${evo.ge === 'TODOS' ? '' : ' · gestor ' + esc(evo.ge)} · meta de cumplimiento ${meta}%`;
+  $('eec-sub').innerHTML = `<span class="mes-anio">${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio}</span> · por día programado · ${coTipo === 'TODOS' ? 'agendas y coordinadas' : coTipo === 'AG' ? 'solo agendas' : 'solo coordinadas'}${!MS(evo.ge).size ? '' : ' · gestor ' + esc(msTxt(evo.ge))} · meta de cumplimiento ${meta}%`;
   $('eec-kpis').innerHTML = kpi('Descargadas', n(T.n), `${n(T.AG)} agendas · ${n(T.CO)} coordinadas`)
     + kpi('Agendas', n(T.AG), T.n ? dec(T.AG / T.n * 100) + '% del total' : '—') + kpi('Coordinadas', n(T.CO), T.n ? dec(T.CO / T.n * 100) + '% del total' : '—')
     + kpi('Cumplió', `<span style="color:var(--ok)">${n(T.si)}</span>`, 'inicio el día programado, dentro de la franja o antes')
@@ -2215,7 +2224,7 @@ function pintarEvoEc() {
     return `<div class="g"><span class="seg-t">${t}</span><button type="button" class="chip" data-evo-k="${k}" data-evo-v="" aria-pressed="${!evoSel[k].size}">Todos</button>${ops.map(v => `<button type="button" class="chip" data-evo-k="${k}" data-evo-v="${esc(v)}" aria-pressed="${evoSel[k].has(v)}">${esc(v)} (${cnt[v] || 0})</button>`).join('')}</div>`; });
   const opD = (sel) => Array.from({ length: D.dias }, (_, i) => i + 1).map(d => `<option value="${d}" ${d === sel ? 'selected' : ''}>${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
   $('eec-segs').innerHTML = `<div class="segs"><div class="g"><span class="seg-t">Ver en cada día</span>${EVO_M.map(([k, t]) => `<button type="button" class="chip" data-evo-m="${k}" aria-pressed="${evo.m === k}">${t}</button>`).join('')}</div>`
-    + (gs.length ? `<div class="g"><span class="seg-t">Gestor</span><button type="button" class="chip" data-evo-ge="TODOS" aria-pressed="${evo.ge === 'TODOS'}">Todos</button>${gs.map(g => `<button type="button" class="chip" data-evo-ge="${esc(g)}" aria-pressed="${evo.ge === g}">${esc(g)} (${G0.filter(x => gestorDe(x) === g).filter(x => evoOk(x)).length})</button>`).join('')}</div>` : '') + '</div>'
+    + (gs.length ? `<div class="g"><span class="seg-t">Gestor</span><button type="button" class="chip" data-evo-ge="TODOS" aria-pressed="${!MS(evo.ge).size}">Todos</button>${gs.map(g => `<button type="button" class="chip" data-evo-ge="${esc(g)}" aria-pressed="${MS(evo.ge).has(g)}">${esc(g)} (${G0.filter(x => gestorDe(x) === g).filter(x => evoOk(x)).length})</button>`).join('')}</div>` : '') + '</div>'
     + `<div class="f-mas" tabindex="0" aria-label="Más filtros del evolutivo: pasa el puntero para verlos">
       <div class="f-mas-cab"><span class="seg-t">Más filtros</span><span class="f-mas-que">EECC · Tipo · Resultado · Franja · Zona · Planta · Segmento · Origen · Días</span><span class="f-mas-act">${act.map(a => `<span>${esc(a)}</span>`).join('')}</span>${act.length ? '<button type="button" class="lnk" data-evo-limpiar style="font-size:12px">Limpiar</button>' : ''}<span class="f-mas-fl" aria-hidden="true">▾</span></div>
       <div class="f-mas-cuerpo"><div class="segs">${grupos.join('')}</div>
@@ -2268,7 +2277,7 @@ function pintarEvoEc() {
 }
 $('eec-segs').addEventListener('click', (e) => {
   const m = e.target.closest('[data-evo-m]'); if (m) { evo.m = m.dataset.evoM; pintarEvoEc(); return; }
-  const g = e.target.closest('[data-evo-ge]'); if (g) { evo.ge = g.dataset.evoGe; pintarEvoEc(); return; }
+  const g = e.target.closest('[data-evo-ge]'); if (g) { evo.ge = msTog(evo.ge, g.dataset.evoGe); pintarEvoEc(); return; }
   const c = e.target.closest('[data-evo-k]'); if (c) { const S = evoSel[c.dataset.evoK], v = c.dataset.evoV; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarEvoEc(); return; }
   const rg = e.target.closest('[data-evo-rango]'); if (rg) { const v = rg.dataset.evoRango, ult = D.dias;
     if (v === '0') evo.desde = evo.hasta = 0; else if (v === '7') { evo.desde = Math.max(1, ult - 6); evo.hasta = ult; }
@@ -2296,18 +2305,18 @@ function pintarAvt() {
   const R0 = A.r.filter(x => avt.per === 'mes' || x[0] === avt.dia).map(x => ({ d: x[0], to: A.t[x[1]], tr: avtTrabajo(A.t[x[1]], A.s[x[2]]), sv: A.s[x[2]], ec: provTodas() ? nomFil(A.fi ? A.fi[x[11]] : '') : nomEc(tecEc(A.k[x[4]]) || A.e[x[3]]), tec: A.k[x[4]], n: x[5], os: x[6], ab: x[7], hi: x[8] || '', hf: x[9] || '', di: A.di ? A.di[x[10]] || '' : '' }));
   const ecsAll = [...new Set(R0.map(x => x.ec))].sort(); avtR = null;
   // Trabajos (tipo de orden) que hacen los técnicos: varias opciones a la vez; cuentan con el periodo y la EECC elegidos.
-  const toCnt = {}; R0.filter(x => avt.ec === 'TODOS' || x.ec === avt.ec).forEach(x => toCnt[x.tr] = (toCnt[x.tr] || 0) + x.n);
+  const toCnt = {}; R0.filter(x => msOk(avt.ec, x.ec)).forEach(x => toCnt[x.tr] = (toCnt[x.tr] || 0) + x.n);
   const toOps = Object.keys(toCnt).sort((a, b) => { const ia = AVT_ORDEN.indexOf(a), ib = AVT_ORDEN.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
   [...avt.to].forEach(t => { if (!toCnt[t]) avt.to.delete(t); });
-  const R = R0.filter(x => (avt.ec === 'TODOS' || x.ec === avt.ec) && (!avt.to.size || avt.to.has(x.tr)));
+  const R = R0.filter(x => (msOk(avt.ec, x.ec)) && (!avt.to.size || avt.to.has(x.tr)));
   const sum = (L) => L.reduce((a, x) => a + x.n, 0);
   // segmentadores
   $('avt-segs').innerHTML = `<div class="g"><span class="seg-t">Periodo</span><button type="button" class="chip" data-avt-per="dia" aria-pressed="${avt.per === 'dia'}">Día</button><button type="button" class="chip" data-avt-per="mes" aria-pressed="${avt.per === 'mes'}">Mes acumulado</button>
       ${avt.per === 'dia' ? `<select class="sel-dia" id="avt-dia" aria-label="Día">${dias.map(d => `<option value="${d}" ${d === avt.dia ? 'selected' : ''}>${diaInfo(d).wd} ${fDia(d)}</option>`).join('')}</select>` : ''}</div>
-    <div class="g"><span class="seg-t">EECC</span><button type="button" class="chip" data-avt-ec="TODOS" aria-pressed="${avt.ec === 'TODOS'}">Todas</button>${ecsAll.map(e => `<button type="button" class="chip" data-avt-ec="${esc(e)}" aria-pressed="${avt.ec === e}">${esc(e)} (${n(sum(R0.filter(x => x.ec === e)))})</button>`).join('')}</div>
+    <div class="g"><span class="seg-t">EECC</span><button type="button" class="chip" data-avt-ec="TODOS" aria-pressed="${!MS(avt.ec).size}">Todas</button>${ecsAll.map(e => `<button type="button" class="chip" data-avt-ec="${esc(e)}" aria-pressed="${MS(avt.ec).has(e)}">${esc(e)} (${n(sum(R0.filter(x => x.ec === e)))})</button>`).join('')}</div>
     <div class="g"><span class="seg-t">Trabajo</span><button type="button" class="chip" data-avt-to="" aria-pressed="${!avt.to.size}">Todos</button>${toOps.map(t => `<button type="button" class="chip" data-avt-to="${esc(t)}" aria-pressed="${avt.to.has(t)}">${esc(avtEtq(t))} (${n(toCnt[t])})</button>`).join('')}</div>`;
   const per = avt.per === 'mes' ? `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · acumulado al ${fDia(dias[dias.length - 1])}` : `${diaInfo(avt.dia).wd} ${fDia(avt.dia)} ${D.anio}`;
-  $('avt-sub').textContent = `${per} · órdenes descargadas por técnicos de EECC${avt.ec === 'TODOS' ? '' : ' · ' + avt.ec}${avt.to.size ? ' · ' + [...avt.to].map(t => avtEtq(t).toLowerCase().replace(/\bott\b/, 'OTT')).join(', ') : ''}`;
+  $('avt-sub').textContent = `${per} · órdenes descargadas por técnicos de EECC${!MS(avt.ec).size ? '' : ' · ' + msTxt(avt.ec)}${avt.to.size ? ' · ' + [...avt.to].map(t => avtEtq(t).toLowerCase().replace(/\bott\b/, 'OTT')).join(', ') : ''}`;
   const T = sum(R), tecs = new Set(R.map(x => x.ec + '|' + x.tec)).size, gr = {}; R.forEach(x => { const g = AVT_GR(x.to); gr[g] = (gr[g] || 0) + x.n; });
   const pc = (v) => T ? dec(v / T * 100) + '%' : '—';
   $('avt-kpis').innerHTML = kpi('Órdenes descargadas', n(T), `${n(new Set(R.map(x => x.ec)).size)} EECC`, 'acento') + kpi('Técnicos', n(tecs), 'con al menos una orden')
@@ -2359,7 +2368,7 @@ $('avt-cuerpo').addEventListener('click', (e) => { const b = e.target.closest('[
 $('avt-cuerpo').addEventListener('keydown', (e) => { const b = e.target.closest('i[data-avtl]'); if (b && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrirListaAvt(b.dataset.avtl); } });
 $('avt-segs').addEventListener('click', (e) => {
   const p = e.target.closest('[data-avt-per]'); if (p) { avt.per = p.dataset.avtPer; pintarAvt(); return; }
-  const c = e.target.closest('[data-avt-ec]'); if (c) { avt.ec = c.dataset.avtEc; pintarAvt(); return; }
+  const c = e.target.closest('[data-avt-ec]'); if (c) { avt.ec = msTog(avt.ec, c.dataset.avtEc); pintarAvt(); return; }
   const t = e.target.closest('[data-avt-to]'); if (t) { const v = t.dataset.avtTo; if (!v) avt.to.clear(); else avt.to.has(v) ? avt.to.delete(v) : avt.to.add(v); pintarAvt(); }
 });
 $('avt-segs').addEventListener('change', (e) => { if (e.target.id === 'avt-dia') { avt.dia = +e.target.value; pintarAvt(); } });
@@ -2372,7 +2381,7 @@ function pintarCoord() {
   pintarCoDetalle();
   pintarEvoEc();
   // Solo AB con Estado OS DESCARGADA; resultado: Cumplió / No cumplió.
-  const G = D.prog.filter(ok).filter(x => x.e === 'D' && (coTipo === 'TODOS' || x.t === coTipo)), t = cuenta(G, kMed);
+  const G = D.prog.filter(ok).filter(x => x.e === 'D' && (msOk(coTipo, x.t))), t = cuenta(G, kMed);
   const ag = G.filter(x => x.t === 'AG').length, cu = G.length ? (t.si || 0) / G.length * 100 : null;
   $('co-kpis').innerHTML =
     kpi('Descargadas', `<button type="button" class="clic" data-ch="prog" data-d="ALL" data-k="D" style="all:unset;cursor:pointer">${n(G.length)}</button>`, `${n(ag)} agendas (AG) · ${n(G.length - ag)} coordinadas (CO)`, 'acento') +
@@ -2415,7 +2424,7 @@ function csRango(m) {
 function csBase(m, sin = '') {
   const c = CS[m], [a, b] = csRango(m);
   return (D.progT || []).filter(x => ok(x) && x.t !== 'SA' && x.d >= a && x.d <= b
-    && (coTipo === 'TODOS' || x.t === coTipo) && (sin === 'ec' || c.ec === 'TODOS' || x.ec === c.ec) && (sin === 'seg' || c.seg === 'TODOS' || x.seg === c.seg));
+    && (msOk(coTipo, x.t)) && (sin === 'ec' || msOk(c.ec, x.ec)) && (sin === 'seg' || msOk(c.seg, x.seg)));
 }
 const csCuenta = (L) => { const o = { n: L.length, AG: 0, CO: 0, D: 0, A: 0, O: 0, R: 0, si: 0, inc: 0 };
   L.forEach(x => { o[x.t]++; o[x.e] = (o[x.e] || 0) + 1; if (x.e === 'D') { if (x.k === 'si') o.si++; else o.inc++; } }); o.p = o.D ? o.si / o.D * 100 : null; return o; };
@@ -2424,20 +2433,20 @@ const csGrupo = (m, x) => CS[m].rank === 'GE' ? gestorDe(x) : x.ec;
 const csColor = (p) => p == null ? 'gris' : p >= (CFG.meta_cumpl ?? 95) ? 'ok' : p >= (CFG.meta_cumpl ?? 95) - 10 ? 'mid' : 'mal';
 function csChips(m, k, ops, cnt, lim = 0) {
   const c = CS[m], todos = ['TODOS', ...ops], ver = lim && !c.mas ? todos.slice(0, lim + 1) : todos;
-  return ver.map(o => `<button type="button" class="chip" data-cs-k="${k}" data-v="${esc(o)}" aria-pressed="${c[k] === o}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && cnt ? ` (${n(cnt(o))})` : ''}</button>`).join('')
+  return ver.map(o => `<button type="button" class="chip" data-cs-k="${k}" data-v="${esc(o)}" aria-pressed="${msOn(c[k], o)}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && cnt ? ` (${n(cnt(o))})` : ''}</button>`).join('')
     + (lim && todos.length > lim + 1 ? `<button type="button" class="chip chip-mas" data-cs-mas>${c.mas ? 'Ver menos' : `+${todos.length - lim - 1} más`}</button>` : '');
 }
 function pintarConsol(m) {
   const box = $('cs-' + m); if (!box || !D.progT) return;
   const c = CS[m], meta = CFG.meta_cumpl ?? 95, [a, b] = csRango(m);
   const L = csBase(m), T = csCuenta(L), mesTxt = `${MESL} ${D.anio}`;
-  const ing = D.ing.filter(x => ok(x) && x.d >= a && x.d <= b && (c.seg === 'TODOS' || x.seg === c.seg) && (c.ec === 'TODOS' || x.ec === c.ec)).length;
+  const ing = D.ing.filter(x => ok(x) && x.d >= a && x.d <= b && (msOk(c.seg, x.seg)) && (msOk(c.ec, x.ec))).length;
   const pc = (v, t) => t ? dec(v / t * 100) + '%' : '—';
   const num = (v, g, k, cls = '') => v ? `<button type="button" class="cs-n ${cls}" data-cs-l="${m}|${esc(g)}|${k}">${n(v)}</button>` : `<span class="cs-0">0</span>`;
   const rangoTxt = m === 'cd' ? `${diaInfo(a).wd} ${fDia(a)} ${D.anio}` : (a === 1 && !c.hasta ? `${mesTxt} · del 1 al ${fDia(b)} (último día con descargadas)` : `del ${fDia(a)} al ${fDia(b)}`);
   // ----- segmentadores -----
   const ecOps = ecsDe(csBase(m, 'ec')), segOps = [...new Set(csBase(m, 'seg').map(x => x.seg).filter(Boolean))].sort();
-  const Lg0 = L.filter(x => x.e === 'D'), Lg = Lg0.filter(x => (c.tg === 'TODOS' || x.t === c.tg)), egOps = [...new Set(Lg.map(x => csGrupo(m, x)))].sort();
+  const Lg0 = L.filter(x => x.e === 'D'), Lg = Lg0.filter(x => (msOk(c.tg, x.t))), egOps = [...new Set(Lg.map(x => csGrupo(m, x)))].sort();
   const fila = (t, html) => `<div class="cs-f"><span class="cs-ft">${t}</span><div class="cs-fc">${html}</div></div>`;
   const filtros = [
     fila('Mes', `<div class="cs-mes"><input type="range" min="0" max="0" value="0" disabled aria-label="Mes"><b>${mesTxt}</b><span class="nota">solo el mes en curso</span></div>`),
@@ -2450,7 +2459,7 @@ function pintarConsol(m) {
     fila('Tipo (gráfico)', [['TODOS', 'Todos', Lg0.length], ['AG', 'Agendas', Lg0.filter(x => x.t === 'AG').length], ['CO', 'Coordinadas', Lg0.filter(x => x.t === 'CO').length]].map(([v, t, k]) => `<button type="button" class="chip" data-cs-k="tg" data-v="${v}" aria-pressed="${c.tg === v}">${t} (${n(k)})</button>`).join('')),
     fila(c.rank === 'GE' ? 'Gestor (gráfico)' : 'EECC (gráfico)', csChips(m, 'eg', egOps, o => Lg.filter(x => csGrupo(m, x) === o).length)),
   ].join('');
-  const activos = [rangoTxt, c.ec !== 'TODOS' && c.ec, coTipo !== 'TODOS' && (coTipo === 'AG' ? 'Agendas' : 'Coordinadas'), c.seg !== 'TODOS' && c.seg, 'ranking por ' + (c.rank === 'GE' ? 'gestor' : 'EECC')].filter(Boolean).join(' · ');
+  const activos = [rangoTxt, MS(c.ec).size && msTxt(c.ec), coTipo !== 'TODOS' && (coTipo === 'AG' ? 'Agendas' : 'Coordinadas'), MS(c.seg).size && msTxt(c.seg), 'ranking por ' + (c.rank === 'GE' ? 'gestor' : 'EECC')].filter(Boolean).join(' · ');
   // ----- indicadores -----
   const otros = T.n - T.D, bar = (v, col) => `<div class="cs-bar"><i style="width:${Math.min(100, v || 0).toFixed(1)}%;background:var(--${col})"></i></div>`;
   const kpis = `<div class="cs-kpis">
@@ -2471,7 +2480,7 @@ function pintarConsol(m) {
   // ----- gráfico ranking -----
   const G = {}; Lg.forEach(x => { const g = csGrupo(m, x); (G[g] || (G[g] = [])).push(x); });
   let rk = Object.keys(G).map(g => ({ g, ...csCuenta(G[g]) })).sort((x, y) => (y.p ?? -1) - (x.p ?? -1) || y.D - x.D);
-  if (c.eg !== 'TODOS') rk = rk.filter(r => r.g === c.eg);
+  if (MS(c.eg).size) rk = rk.filter(r => MS(c.eg).has(r.g));
   const geDe = (e) => { const x = L.find(y => y.ec === e); return x ? gestorDe(x) : ''; };
   const ecsDeGe = (g) => [...new Set(L.filter(x => gestorDe(x) === g).map(x => x.ec))];
   const graf = rk.length ? `<div class="cs-objt"><span>Objetivo ${meta}%</span></div><div class="cs-graf" aria-label="Ranking de cumplimiento por ${c.rank === 'GE' ? 'gestor' : 'EECC'}"><div class="cs-in">
@@ -2532,7 +2541,7 @@ function csDetalleAB(m, L, rangoTxt) {
   const box = $(id), m = id.slice(3);
   box.addEventListener('click', (e) => {
     const c = CS[m], t = e.target;
-    const k = t.closest('[data-cs-k]'); if (k) { c[k.dataset.csK] = k.dataset.v; if (k.dataset.csK === 'rank') c.eg = 'TODOS'; pintarConsol(m); return; }
+    const k = t.closest('[data-cs-k]'); if (k) { { const kk = k.dataset.csK; c[kk] = ['ec', 'seg', 'eg'].includes(kk) ? msTog(c[kk], k.dataset.v) : k.dataset.v; } if (k.dataset.csK === 'rank') c.eg = 'TODOS'; pintarConsol(m); return; }
     if (t.closest('[data-cs-ver]')) { c.ver = !c.ver; pintarConsol(m); return; }
     if (t.closest('[data-cs-marcar]')) { c.marcar = c.marcar === false; pintarConsol(m); return; }
     const dk = t.closest('[data-csd-k]'); if (dk) { const S = c.dt[dk.dataset.csdK], v = dk.dataset.v; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarConsol(m); return; }
@@ -2652,15 +2661,15 @@ const coDiaFr = new Set();  // franjas elegidas (vacío = todas); varias a la ve
 function pintarCoDia() {
   const colDe = (x) => { const f = String(x.fr || '').replace(/\s+/g, ' ').trim(); return FRANJAS.includes(f) ? f : 'SF'; };
   const okFr = (x) => !coDiaFr.size || coDiaFr.has(colDe(x));
-  const G = D.prog.filter(x => ok(x) && x.e === 'D' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo) && okFr(x)), cols0 = [...FRANJAS, 'SF'].filter(f => !coDiaFr.size || coDiaFr.has(f));
+  const G = D.prog.filter(x => ok(x) && x.e === 'D' && x.d === diaCo && (msOk(coTipo, x.t)) && okFr(x)), cols0 = [...FRANJAS, 'SF'].filter(f => !coDiaFr.size || coDiaFr.has(f));
   // Segmentador EECC: todas las EECC con agendas o coordinadas ese día (cualquier estado menos anulada)
-  const P0 = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo) && (coDiaEc === 'TODAS' || x.ec === coDiaEc));
+  const P0 = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (msOk(coTipo, x.t)) && (msOk(coDiaEc, x.ec)));
   // Segmentador Franja: cuenta las agendas y coordinadas del día (de la EECC elegida) en cada franja
   const frOps = [...FRANJAS, 'SF'].filter(f => P0.some(x => colDe(x) === f));
   [...coDiaFr].forEach(f => { if (!frOps.includes(f)) coDiaFr.delete(f); });
   $('co-fr').innerHTML = `<button type="button" class="chip" data-co-fr="" aria-pressed="${!coDiaFr.size}">Todas (${n(P0.length)})</button>`
     + frOps.map(f => `<button type="button" class="chip" data-co-fr="${f}" aria-pressed="${coDiaFr.has(f)}">${f === 'SF' ? 'Sin franja' : f} (${n(P0.filter(x => colDe(x) === f).length)})</button>`).join('');
-  const P = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (coTipo === 'TODOS' || x.t === coTipo) && okFr(x));
+  const P = D.prog.filter(x => ok(x) && x.e !== 'A' && x.d === diaCo && (msOk(coTipo, x.t)) && okFr(x));
   const ecsP = [...new Set(P.map(x => x.ec))].sort((a, b) => P.filter(x => x.ec === b).length - P.filter(x => x.ec === a).length || a.localeCompare(b));
   if (coDiaEc !== 'TODAS' && !ecsP.includes(coDiaEc)) coDiaEc = 'TODAS';
   $('co-ec').innerHTML = [['TODAS', 'Todas', P.length], ...ecsP.map(e => [e, e, P.filter(x => x.ec === e).length])]
@@ -2873,7 +2882,7 @@ function abrirDetalle(ch, d, k) {
     tit = `${tit === 'Todas' ? 'Instalaciones' : tit} · liquidadas`; sub = `${L.length} instalaciones DESCARGADA por fecha de atención`;
   }
   $('modal-tit').textContent = ch === 'flu' ? tit : `${tit} · ${dia == null ? MESL : `${diaInfo(dia).wd} ${fDia(dia)}`}`;
-  $('modal-sub').textContent = sub + (seg === 'TODOS' ? '' : ` · ${seg}`) + (zona === 'TODAS' ? '' : ` · zona ${zona}`);
+  $('modal-sub').textContent = sub + (!MS(seg).size ? '' : ` · ${msTxt(seg)}`) + (!MS(zona).size ? '' : ` · zona ${msTxt(zona)}`);
   $('modal-aviso').textContent = '';
   $('modal-cuerpo').innerHTML = `<table class="det ord" id="tb-modal"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${filas.join('') || `<tr><td colspan="${cab.length}">Sin abonados.</td></tr>`}</tbody></table>`;
   orden['tb-modal'] = null; prepararOrden($('tb-modal')); modalCab = cab;
@@ -2968,7 +2977,7 @@ function abrirAjustes() {
   const ecs0 = [...new Set([D.pend, D.prog, D.liq, D.ing].flatMap(L => (L || []).map(x => x.ec0)).filter(Boolean))]
     .sort((a, b) => (cuenta0[b] || 0) - (cuenta0[a] || 0) || (a < b ? -1 : 1));
   const gest = [...new Set(Object.values(AJ.gestores))].sort();
-  ajMetas = { TODOS: { ...AJ.metas } }; ['IC', 'VI', 'OT'].forEach(k => ajMetas[k] = { ...((AJ.metasCn || {})[k] || {}) }); ajCn = canal;
+  ajMetas = { TODOS: { ...AJ.metas } }; ['IC', 'VI', 'OT'].forEach(k => ajMetas[k] = { ...((AJ.metasCn || {})[k] || {}) }); ajCn = msUno(canal) || 'TODOS';
   const html = secF('Metas · ' + esc(D.filial || 'LIMA') + ' · <span id="aj-cn-t"></span>', `<div class="aj-cn" role="group" aria-label="Canal de las metas" id="aj-cn">${CANALES.map(([k, t]) => `<button type="button" class="chip" data-aj-cn="${k}" aria-pressed="${k === ajCn}">${t}</button>`).join('')}</div>
       <div class="aj-grid" id="aj-metas"></div><p class="fi-nota" id="aj-metas-nota"></p>`)
     + secF('EECC: nombre a mostrar y gestor', `<datalist id="aj-gestores">${gest.map(g => `<option value="${esc(g)}">`).join('')}</datalist>
@@ -2992,7 +3001,7 @@ function pintarPvMetas() {
     <tr class="pv-tot"><td><b>Provincias</b><small>lo que se usa aquí</small></td>${METAS_AJ.map(([k]) => `<td><b>${T[k] != null ? f2(T[k], k) : `${f2(D.config?.[k], k)} <small>(robot)</small>`}</b></td>`).join('')}</tr></tbody></table></div>`;
 }
 function abrirAjustesProv() {
-  pvCn = canal;
+  pvCn = msUno(canal) || 'TODOS';
   const cnt = {}; ((DP || D).pend || []).forEach(p => { const k = p.fi + '|' + ecProv(p); cnt[k] = (cnt[k] || 0) + 1; });
   const filas = PROV7.flatMap(f => { const a = AJ.prov[f] || {}, ecs = new Set([...Object.keys(a.gestores || {}), ...Object.keys(cnt).filter(k => k.startsWith(f + '|')).map(k => k.slice(f.length + 1))]);
     return [...ecs].sort((x, y) => (cnt[f + '|' + y] || 0) - (cnt[f + '|' + x] || 0)).map(e => ({ f, e, nom: (a.nombres || {})[e] || e, ge: (a.gestores || {})[e] || '', n: cnt[f + '|' + e] || 0 })); });
@@ -3265,7 +3274,7 @@ function pintarPer() {
   const dm = new Date(D.anio, D.mes, 0).getDate(), hasta = D.dias;
   const sem = [[1, 7], [8, 14], [15, 21], [22, 28], [29, dm]].filter(([a]) => a <= hasta);
   $('per-sem').innerHTML = `<button type="button" class="chip" data-sem="MES" aria-pressed="${PER.sem === 'MES'}">Todo el mes</button>` + sem.map(([a, b], i) =>
-    `<button type="button" class="chip" data-sem="${i + 1}" data-a="${a}" data-b="${b}" aria-pressed="${PER.sem === String(i + 1)}" title="Del ${a} al ${Math.min(b, hasta)}">Sem ${i + 1} · ${a}–${Math.min(b, hasta)}</button>`).join('');
+    `<button type="button" class="chip" data-sem="${i + 1}" data-a="${a}" data-b="${b}" aria-pressed="${String(PER.sem).split(',').includes(String(i + 1))}" title="Del ${a} al ${Math.min(b, hasta)}">Sem ${i + 1} · ${a}–${Math.min(b, hasta)}</button>`).join('');
   const iso = (d) => `${D.anio}-${p2(D.mes)}-${p2(d)}`;
   ['per-desde', 'per-hasta'].forEach(id => { $(id).min = iso(1); $(id).max = iso(hasta); });
   $('per-desde').value = iso(PER.a); $('per-hasta').value = iso(Math.min(PER.b, hasta));
@@ -3278,7 +3287,13 @@ $('per-mes').addEventListener('change', async (e) => {
   finally { sel.disabled = false; }
 });
 $('per-sem').addEventListener('click', (e) => { const b = e.target.closest('[data-sem]'); if (!b) return;
-  PER.sem = b.dataset.sem; PER.a = b.dataset.a ? +b.dataset.a : 1; PER.b = b.dataset.b ? +b.dataset.b : 31; repintarPer(); });
+  // Varias semanas a la vez: el periodo va de la primera a la última elegida (las del medio quedan incluidas)
+  if (b.dataset.sem === 'MES') { PER.sem = 'MES'; PER.a = 1; PER.b = 31; repintarPer(); return; }
+  const btns = [...$('per-sem').querySelectorAll('[data-a]')], ya = /^[\d,]+$/.test(String(PER.sem)) ? String(PER.sem).split(',') : [];
+  const S = new Set(ya); S.has(b.dataset.sem) ? S.delete(b.dataset.sem) : S.add(b.dataset.sem);
+  if (!S.size) { PER.sem = 'MES'; PER.a = 1; PER.b = 31; repintarPer(); return; }
+  const ix = [...S].map(Number), lo = Math.min(...ix), hi = Math.max(...ix), el = btns.filter(x => +x.dataset.sem >= lo && +x.dataset.sem <= hi);
+  PER.sem = el.map(x => x.dataset.sem).join(','); PER.a = +el[0].dataset.a; PER.b = +el[el.length - 1].dataset.b; repintarPer(); });
 ['per-desde', 'per-hasta'].forEach(id => $(id).addEventListener('change', () => {
   const a = +($('per-desde').value || '').slice(8, 10) || 1, b = +($('per-hasta').value || '').slice(8, 10) || 31;
   PER.a = Math.min(a, b); PER.b = Math.max(a, b); PER.sem = 'RANGO'; repintarPer(); }));
