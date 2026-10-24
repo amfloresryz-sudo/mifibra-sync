@@ -169,7 +169,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 </style>
 </head>
 <body>
-<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: «Observaciones Tecnico» de cada alta de internet descargada · se actualiza con el robot cada 20 minutos</span></div></div>
+<div class="aviso"><div class="w"><span id="corte">Cargando…</span><button type="button" id="aviso-nuevo" hidden onclick="location.reload()" style="font:700 13px var(--f-disp);border:0;border-radius:16px;padding:4px 12px;background:var(--magenta);color:#fff;cursor:pointer">Hay datos nuevos · Actualizar</button><span>Fuente: «Observaciones Tecnico» de cada alta de internet descargada · se actualiza con el robot cada 20 minutos</span></div></div>
 
 <header class="cab"><div class="w">
   <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
@@ -257,12 +257,23 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
 
   // ----- Datos (tablero que arma el robot: tablas de nombres + una fila por alta) -----
-  let D;
-  try {
-    const r = await fetch('/api/speedtest', { headers: { 'x-portal-token': tokenPortal() } });
-    if (r.status === 401) { location.href = '/'; return; }
-    D = await r.json(); if (!r.ok) throw new Error(D.error || `Error ${r.status}`);
-  } catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar el tablero.'; return; }
+  // Carga rápida: se dibuja al instante con la última copia guardada en este navegador (si tiene menos de 30 min)
+  // y en segundo plano se piden los datos nuevos; si llegaron más nuevos, aparece «Actualizar».
+  const CACHE = (() => { let dbp; const db = () => dbp || (dbp = new Promise((ok, mal) => { const r = indexedDB.open('mifibra-portal', 1); r.onupgradeneeded = () => r.result.createObjectStore('t'); r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error); }));
+    return { get: async (k) => { try { const d = await db(); return await new Promise(ok => { const q = d.transaction('t').objectStore('t').get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); } catch { return null; } },
+      set: async (k, v) => { try { const d = await db(); d.transaction('t', 'readwrite').objectStore('t').put(v, k); } catch { /* sin almacenamiento */ } } }; })();
+  const kCache = 'speedtest:' + ((window.mfUsuario && window.mfUsuario.u) || 'general');
+  const traerST = async () => { const r = await fetch('/api/speedtest', { headers: { 'x-portal-token': tokenPortal() } });
+    if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || `Error ${r.status}`); CACHE.set(kCache, { ...j, guardado: Date.now() }); return j; };
+  let D, nuevoP = null;
+  const guardado = await CACHE.get(kCache);
+  if (guardado && Date.now() - (guardado.guardado || 0) < 30 * 60e3) {
+    D = guardado; nuevoP = traerST().then(j => { if (j.actualizado !== D.actualizado) { const a = $('aviso-nuevo'); if (a) a.hidden = false; } }).catch(() => {});
+  } else {
+    try { D = await traerST(); }
+    catch (e) { if (guardado) D = guardado; else { $('cargando').textContent = e.message || 'No se pudo cargar el tablero.'; return; } }
+  }
   // fila: [filial, día, eecc, técnico, plan, ab, os, cliente, técnico_n, sin_identificar, repetidos]
   // pn = plan contratado tal como viene en la tarifa («500 Mbps», «2000 Mbps»…); si el tablero aún no lo trae, se usa el rango
   const O = D.o.map((x, i) => ({ i, f: D.f[x[0]], d: x[1], e: D.e[x[2]], t: D.k[x[3]], p: x[4], ab: x[5], os: x[6], c: x[7], tn: x[8], s: x[9], r: x[10], pn: D.pn && x[11] != null ? D.pn[x[11]] : PLANES[x[4]] }));
