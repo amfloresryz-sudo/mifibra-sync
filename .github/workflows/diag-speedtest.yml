@@ -1,0 +1,16 @@
+name: Diagnóstico speedtest (temporal)
+on:
+  push:
+    branches: [diag-speedtest]
+    paths: [diag/st_test.py, .github/workflows/diag-speedtest.yml]
+permissions:
+  contents: write
+jobs:
+  prueba:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 diag/st_test.py
+      - run: |
+          git config user.name robot; git config user.email robot@users.noreply.github.com
+          git add diag/resultado.json && git commit -m "diag: resultado speedtest" && git push
