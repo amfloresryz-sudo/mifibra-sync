@@ -84,6 +84,9 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 th.ordenable { cursor: pointer; user-select: none; } th.ordenable:hover { color: var(--fg); }
 th[aria-sort="ascending"] .th-i::before { content: '▲'; font-size: 8px; color: var(--magenta-txt); margin-right: 3px; } th[aria-sort="descending"] .th-i::before { content: '▼'; font-size: 8px; color: var(--magenta-txt); margin-right: 3px; }
 .det.rep-t { min-width: 0; } .det.rep-t td, .det.rep-t th { padding: 9px 5px; font-size: 12.5px; } .det.rep-t th { font-size: 10.5px; letter-spacing: .3px; }
+.det.rep-t td.url-c { max-width: 250px; white-space: normal !important; word-break: break-all; overflow: visible; text-overflow: clip; font-size: 12px; }
+.det td.abs-c { white-space: normal; max-width: 420px; line-height: 1.9; } .det td.abs-c .nb { margin: 0 3px; } .det .nb.fuera { color: var(--fg-4); text-decoration-style: dotted; }
+.det .nb.vez { font-weight: 800; }
 .det td.donde-c { white-space: normal; max-width: 210px; min-width: 150px; font-size: 12.5px; line-height: 1.3; }
 .det td.url-c { max-width: 170px; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; word-break: normal; }
 .rep-en { margin: 4px 0 8px 14px; font-size: 13px; line-height: 1.7; } .rep-en small { color: var(--fg-3); } .rep-en span { color: var(--mal); font-weight: 700; }
@@ -473,22 +476,21 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const repEn = (o) => { const m = REP_EN.get(o.i); if (!m) return '—'; const L = [...m.otros].sort((a, b) => a - b); return [L.join(', '), m.os.size ? 'su OS ' + [...m.os].join(', ') : '', m.mismo ? 'el mismo AB (2 veces en la OS)' : ''].filter(Boolean).join(' · ') || '—'; };
   function pintarDetalle() {
     if (tab === 'sin') {
-      const S = L.filter(o => !o.pr).sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
-      cabDet = ['Filial', 'F. atención', 'AB', 'OS', 'EECC', 'Técnico', 'Plan', 'N.º enlaces repetidos', 'Repetido en'];
-      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, o.pn, o.r || 0, repEn(o)]); idxDet = S.map(o => o.i); posDet = S.map((o, k) => k);
-      $('det-sub').textContent = `${n(S.length)} instalaciones sin ninguna prueba válida (sin enlace, o solo con enlaces repetidos)${S.length > 500 ? ' · se muestran las 500 más recientes; el Excel trae todas' : ''}`;
+      // Solo los AB cuya descripción no tiene ningún enlace (los que solo tienen enlaces repetidos están en «Enlaces repetidos»)
+      const S = L.filter(o => !o.pr && !o.r).sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
+      cabDet = ['Filial', 'F. atención', 'AB', 'OS', 'EECC', 'Técnico', 'Plan'];
+      filasDet = S.map(o => [o.f, dmy(o.d), o.ab, o.os, o.e, o.t, o.pn]); idxDet = S.map(o => o.i); posDet = S.map((o, k) => k);
+      $('det-sub').textContent = `${n(S.length)} instalaciones sin ningún enlace de prueba en la descripción${S.length > 500 ? ' · se muestran las 500 más recientes; el Excel trae todas' : ''}`;
     } else {
-      const R = D.rep.map(([url, idx]) => [url, idx.filter(i => sel(O[i])), idx]).filter(([, idx]) => idx.length);
-      // Una fila por cada AB/OS donde aparece el enlace, con los datos de la orden (F. Recep y estado se traen de la base)
-      const faltan = [...new Set(R.flatMap(([, idx]) => idx))].map(i => O[i]).filter(o => !extraOs.has(o.f + '|' + o.os));
-      if (faltan.length && !repTrayendo) { repTrayendo = true; traerExtra(faltan).catch(() => {}).finally(() => { repTrayendo = false; if (tab === 'rep') pintarDetalle(); }); }
-      const xo = (o) => extraOs.get(o.f + '|' + o.os) || {}, cargando = repTrayendo ? 'cargando…' : '—';
-      cabDet = ['Enlace', 'Veces', 'AB', 'OS', 'Tipo de orden', 'F. Recep', 'F. atención', 'Estado OS', 'Filial', 'EECC', 'Técnico', 'Dónde se repite'];
-      const filasR = [], idxR = [], posR = [];
-      R.forEach(([url, idx, todo], pos) => { const veces = idx.length < todo.length ? `${idx.length} de ${todo.length}` : idx.length, donde = dondeRep(todo, idx);
-        [...new Set(idx)].forEach(i => { const o = O[i], x = xo(o); filasR.push([url, veces, o.ab, o.os, x.estado_os ? 'Instalación' : cargando, x.fecha_registro ? fh(x.fecha_registro) : cargando, dmy(o.d), x.estado_os || cargando, o.f, o.e, o.t, donde]); idxR.push(i); posR.push(pos); }); });
-      filasDet = filasR; idxDet = idxR; posDet = posR;
-      $('det-sub').textContent = `${n(R.length)} enlaces que aparecen más de una vez, en ${n(filasR.length)} AB/OS · no cuentan como prueba en ningún AB`;
+      // Una fila por enlace: cuántas veces se usó y qué AB lo tienen (en gris los que están fuera del filtro de arriba)
+      const R = D.rep.map(([url, idx]) => [url, idx.filter(i => sel(O[i])), idx]).filter(([, idx]) => idx.length).sort((a, b) => b[2].length - a[2].length);
+      cabDet = ['Enlace', 'Veces que se usa', 'N.º AB', 'AB que tienen este enlace', 'Técnico', 'EECC', 'Filial'];
+      const uni = (L0) => [...new Set(L0)];
+      filasDet = R.map(([url, idx, todo]) => { const filas = uni(todo), abs = uni(filas.map(i => O[i].ab));
+        return [url, todo.length, abs.length, abs.join(', '), uni(filas.map(i => O[i].t)).join(' / '), uni(filas.map(i => O[i].e)).join(', '), uni(filas.map(i => O[i].f)).join(', ')]; });
+      idxDet = R.map(([, idx, todo]) => [uni(todo), idx]); posDet = R.map((r, k) => k);
+      const tot = R.reduce((a, r) => a + r[2].length, 0);
+      $('det-sub').textContent = `${n(R.length)} enlaces usados más de una vez (${n(tot)} usos en total) · no cuentan como prueba en ningún AB · clic en las veces para ver el detalle de cada OS`;
     }
     // filtros de los encabezados
     filasDetAll = filasDet; const keep = filasDet.map((f, k) => k).filter(k => okFila(filasDet[k], 'det'));
@@ -496,10 +498,15 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     filasDet = keep.map(k => filasDetAll[k]); idxDet = keep.map(k => idxDet[k]); posDet = keep.map(k => posDet[k]);
     const nfd = Object.keys(FC.det).length; if (nfd) $('det-sub').innerHTML = esc($('det-sub').textContent) + ` · ${n(filasDet.length)} con ${nfd} filtro${nfd > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="det-fil-q">quitar</button>`;
     const V = filasDet.slice(0, 500);
-    const nSin = L.filter(o => !o.pr).length, nRepT = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
+    const nSin = L.filter(o => !o.pr && !o.r).length, nRepT = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
     document.querySelector('.tabs-st [data-tab="sin"]').innerHTML = `AB sin medición <span class="cnt">${n(nSin)}</span>`;
     document.querySelector('.tabs-st [data-tab="rep"]').innerHTML = `Enlaces repetidos <span class="cnt">${n(nRepT)}</span>`;
-    $('det').innerHTML = filasDetAll.length ? `<table class="det${tab === 'rep' ? ' rep-t' : ''}"><thead><tr>${cabDet.map((c, i) => thF(c, i, 'det')).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' && j === 1 ? `<td><button type="button" class="nb" data-lista="url|${posDet[r]}" title="Ver los AB">${esc(v)}</button></td>` : tab === 'sin' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : tab === 'sin' && j === 7 && v > 0 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver sus enlaces repetidos y dónde se repiten">${esc(v)}</button></td>` : tab === 'sin' && j === 8 ? `<td>${repEnHtml(O[idxDet[r]])}</td>` : tab === 'rep' && j === 0 ? `<td class="izq url-c"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener" title="${esc(v)}">${esc(v.replace(/^https?:\/\/(www\.)?speedtest\.net/, '…'))}</a></td>` : tab === 'rep' && j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB y dónde se repite su enlace">${esc(v)}</button></td>` : tab === 'rep' && j === 7 && v !== '—' && v !== 'cargando…' ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : tab === 'rep' && j === 11 ? `<td class="donde-c">${esc(v)}</td>` : `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+    const celRep = (v, j, r) => j === 0 ? `<td class="izq url-c"><a class="lnk" href="${esc(v)}" target="_blank" rel="noopener" title="${esc(v)}">${esc(v.replace(/^https?:\/\/(www\.)?/, ''))}</a></td>`
+      : j === 1 ? `<td><button type="button" class="nb vez" data-lista="url|${posDet[r]}" title="Ver el detalle de cada OS que usa este enlace">${n(v)} veces</button></td>`
+      : j === 3 ? `<td class="abs-c">${idxDet[r][0].filter((i, k, a) => a.findIndex(x => O[x].ab === O[i].ab) === k).map(i => `<button type="button" class="nb${idxDet[r][1].includes(i) ? '' : ' fuera'}" data-lista="ab|${i}" title="AB ${O[i].ab} · OS ${O[i].os} · ${dmy(O[i].d)} · ${esc(O[i].t)}${idxDet[r][1].includes(i) ? '' : ' · fuera del filtro de arriba'}">${O[i].ab}</button>`).join(' ')}</td>`
+      : j === 4 ? `<td class="donde-c">${esc(v)}</td>` : `<td>${esc(v)}</td>`;
+    const celSin = (v, j, r) => j === 2 ? `<td><button type="button" class="nb" data-lista="ab|${idxDet[r]}" title="Ver el AB">${esc(v)}</button></td>` : `<td>${esc(v)}</td>`;
+    $('det').innerHTML = filasDetAll.length ? `<table class="det${tab === 'rep' ? ' rep-t' : ''}"><thead><tr>${cabDet.map((c, i) => thF(c, i, 'det')).join('')}</tr></thead><tbody>${V.map((f, r) => `<tr>${f.map((v, j) => tab === 'rep' ? celRep(v, j, r) : celSin(v, j, r)).join('')}</tr>`).join('')}</tbody></table>`
       : '<p class="vacio">Sin registros con estos filtros.</p>';
   }
   document.querySelector('.tabs-st [data-tab]').parentElement.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; FC.det = {}; ORD.det = null;
@@ -546,8 +553,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const Q = { 'g-todo': ['Instalaciones', () => true], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Sin identificar', o => o.s > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
   function abrirLista(clave) {
     const [q, ...r] = clave.split('|'), v = r.join('|'), per = $('ctx').textContent;
-    if (q === 'url') { const [url, idx] = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i]))]).filter(([, ix]) => ix.length)[+v] || []; if (!url) return;
-      return listaAB('Enlace repetido', `${idx.length} veces · ${per}`, idx.map(i => O[i]), `<ul class="urls"><li><a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></li></ul>`); }
+    if (q === 'url') { const R = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i])), ix]).filter(([, ix]) => ix.length).sort((a, b) => b[2].length - a[2].length), [url, , todo] = R[+v] || []; if (!url) return;
+      const idx = [...new Set(todo)];
+      return listaAB('Enlace repetido', `usado ${todo.length} veces en ${new Set(idx.map(i => O[i].ab)).size} AB · todas las fechas y filiales`, idx.map(i => O[i]), `<ul class="urls"><li><a class="lnk" href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></li></ul>`); }
     if (q === 'ab') { const o = O[+v], urls = D.rep.filter(([, ix]) => ix.includes(o.i)).map(([u]) => u);
       return listaAB(`AB ${o.ab}`, `OS ${o.os} · ${o.e} · sin prueba válida`, [o], urls.length ? `<p class="nota" style="margin-bottom:4px">Enlaces repetidos de este AB (no cuentan como prueba) y dónde más aparecen:</p><ul class="urls">${urls.map(u => { const ix = D.rep.find(([x]) => x === u)[1], otros = [...new Set(ix)].filter(i => i !== o.i), mismo = ix.filter(i => i === o.i).length > 1;
         return `<li><a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a><div class="rep-en">${mismo ? '<span>2 veces en esta misma OS</span>' : ''}${otros.map(i => `<button type="button" class="nb" data-lista="ab|${i}" title="Ver el AB ${O[i].ab}">AB ${O[i].ab}</button> <small>OS ${O[i].os} · ${dmy(O[i].d)} · ${esc(O[i].f)} · ${esc(O[i].e)} · ${esc(O[i].t)}</small>`).join('<br>')}</div></li>`; }).join('')}</ul>` : '<p class="nota">Este AB no tiene ningún enlace de Speedtest en «Observaciones Tecnico».</p>'); }
