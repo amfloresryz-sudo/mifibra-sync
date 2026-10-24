@@ -527,7 +527,7 @@ def _st_norm(url: str) -> str:
     return re.split(r"[?#]", u)[0].rstrip("/.:")
 
 
-_ST_PRUEBA = r"(?:test|tes[dts]?|teste|twst|speed\s*test|speedtes[dt]?|speed|sp|st|link|enlace|id|prueba|resultado|celular|cel|m[oó]vil|laptop|lapto|pc|computadora|tel[eé]fono|ipad|tablet|dispositivo|equipo)"
+_ST_PRUEBA = r"(?:velocidad|test|tes[dts]?|teste|twst|speed\s*test|speedtes[dt]?|speed|sp|st|link|enlace|id|prueba|resultado|celular|cel|m[oó]vil|laptop|lapto|pc|computadora|tel[eé]fono|ipad|tablet|dispositivo|equipo)"
 _ST_CLI = r"(?:cliente|abonad[oa]|ab|cl)"
 _ST_TEC = r"(?:t[eé]cnico|t[eé]c|tc|tco)"
 _RE_ST_C1 = re.compile(r"\b" + _ST_PRUEBA + r"\b\W*(?:\w+\W+){0,4}?" + _ST_CLI + r"\b", re.I)   # «test del cliente», «celular cliente»

@@ -4,7 +4,8 @@ Reglas (acordadas con operaciones):
 - Solo altas de internet DESCARGADAS (INSTALACION SERVICIO, servicio INTERNET), por fecha de atención.
 - AB sin enlace → «Sin medición».
 - Cada enlace es del cliente o del técnico según la etiqueta que lo antecede; sin etiqueta → técnico.
-  Si el AB tiene 2 o más enlaces y ninguno tiene etiqueta → «Sin identificar» (se cuentan como del técnico).
+  Cliente = la etiqueta dice test/prueba cliente (o algo del cliente); técnico = test velocidad técnico, técnico…
+  Sin etiqueta (aunque sean 2 o más enlaces) → prueba del técnico.
 - Un enlace que aparece más de una vez (en varios AB o repetido en el mismo) NO cuenta; se lista en detalle.
 
 Se guarda compacto en la tabla `tableros`, clave "speedtest": tablas de nombres + una fila por alta.
@@ -71,7 +72,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         n_rep = len(ls) - len(validos)
         etiquetados = any(l[2] for l in validos)
         cli = sum(1 for l in validos if l[2] == "C")
-        sid = len(validos) if (len(validos) >= 2 and not etiquetados) else 0
+        sid = 0   # regla de operaciones: enlaces sin etiqueta (aunque sean 2 o más) cuentan como prueba del técnico
         tec_n = len(validos) - cli - sid
         fi, ei, ki = ix("f", _txt(r.filial) or "SIN FILIAL"), ix("e", ec), ix("k", tec)
         dia = r.fa.strftime("%Y-%m-%d")
