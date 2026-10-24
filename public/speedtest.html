@@ -63,6 +63,16 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .medidor { height: 8px; border-radius: 4px; background: var(--pista); overflow: hidden; }
 .medidor i { display: block; height: 100%; border-radius: 4px; background: var(--fg-2); }
 .medidor.mg i { background: var(--magenta); }
+.evo-ley { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--fg-3); }
+.evo-ley i { display: inline-block; vertical-align: -1px; margin-right: 6px; }
+.evo-ley .b { width: 12px; height: 12px; border-radius: 3px; background: var(--gris-bg); } .evo-ley .l { width: 16px; height: 3px; border-radius: 2px; background: var(--magenta); vertical-align: 3px; } .evo-ley .o { width: 16px; border-top: 2px dashed var(--fg); vertical-align: 3px; }
+#g-evo { position: relative; width: 100%; } #g-evo svg { display: block; width: 100%; height: auto; overflow: visible; }
+#g-evo text { font-family: var(--f-txt, inherit); fill: var(--fg-4); font-size: 11px; font-variant-numeric: tabular-nums; }
+#g-evo .bar { fill: var(--gris-bg); } #g-evo .bar.sel { fill: var(--borde-2); } #g-evo .bn { fill: var(--fg-3); font-weight: 600; font-size: 10.5px; }
+#g-evo .ln { fill: none; stroke: var(--magenta); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#g-evo .pt { fill: var(--sup); stroke: var(--magenta); stroke-width: 2; } #g-evo .pt.ok { fill: var(--magenta); }
+#g-evo .pv { fill: var(--magenta-txt); font-weight: 800; font-size: 11px; } #g-evo .obj { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 5 4; } #g-evo .objt { fill: var(--fg); font-weight: 700; }
+#g-evo .grid { stroke: var(--borde); stroke-width: 1; } #g-evo .hit { fill: transparent; cursor: pointer; } #g-evo .hit:hover, #g-evo .hit:focus-visible { fill: var(--rosa); fill-opacity: .35; outline: none; }
 .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; }
 @media (max-width: 520px) { .dos { grid-template-columns: 1fr; } }
 .sec h3 { margin: 0; font-size: 17px; font-weight: 700; }
@@ -199,6 +209,12 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="kpis" id="kpis"></div>
   </section>
 
+  <section class="sec" aria-labelledby="t-evo">
+    <div class="sec-cab"><div><h3 id="t-evo">Evolución diaria · pruebas en el dispositivo del cliente</h3><p class="sub" id="evo-sub"></p></div>
+      <div class="evo-ley"><span><i class="b"></i>Instalaciones liquidadas</span><span><i class="l"></i>% pruebas del cliente</span><span><i class="o"></i>Objetivo 60%</span></div></div>
+    <div id="g-evo"></div>
+  </section>
+
   <div class="dos">
     <section class="sec" aria-labelledby="t-mes">
       <div><h3 id="t-mes">Instalaciones y cobertura de medición por mes</h3><p class="sub">Barra completa = instalaciones del mes · tramo magenta = las que tienen prueba de velocidad registrada.</p></div>
@@ -302,7 +318,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const ponerRango = () => { F.desde = $('f-desde').value; F.hasta = $('f-hasta').value; if (F.desde && F.hasta && F.hasta < F.desde) [F.desde, F.hasta] = [F.hasta, F.desde]; if (F.desde || F.hasta) F.mes = ''; pintarChips(); pintar(); };
   $('f-desde').addEventListener('change', ponerRango); $('f-hasta').addEventListener('change', ponerRango);
   $('limpiar').addEventListener('click', () => { Object.assign(F, { filial: '', mes: '', desde: '', hasta: '', plan: '' }); pintarChips(); pintar(); });
-  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || o.f === F.filial) && (sin === 'mes' || !F.mes || o.d.startsWith(F.mes)) && (!F.desde || o.d >= F.desde) && (!F.hasta || o.d <= F.hasta) && (!F.plan || o.pn === F.plan);
+  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || o.f === F.filial) && (sin === 'mes' || sin === 'fecha' || !F.mes || o.d.startsWith(F.mes)) && (sin === 'fecha' || !F.desde || o.d >= F.desde) && (sin === 'fecha' || !F.hasta || o.d <= F.hasta) && (!F.plan || o.pn === F.plan);
 
   // ----- Ventana flotante de los gráficos -----
   const flot = document.createElement('div'); flot.className = 'flot'; flot.hidden = true; document.body.appendChild(flot);
@@ -321,6 +337,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const quien = F.filial ? `En ${F.filial}` : `En las ${filiales.length} filiales`;
     $('t-tit').innerHTML = a.pr ? `${quien}, <em>${pc(pCli)}</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.` : `${quien} no hay pruebas registradas con estos filtros.`;
     const per = F.desde || F.hasta ? (F.desde === F.hasta ? dmy(F.desde) : `${F.desde ? dmy(F.desde) : 'inicio'} al ${F.hasta ? dmy(F.hasta) : 'hoy'}`) : F.mes ? mesTxt(F.mes) : meses.length ? `${mesTxt(meses[0])} a ${mesTxt(meses[meses.length - 1]).toLowerCase()}` : '';
+    pintarEvo();
     $('ctx').textContent = `${per} · ${F.filial || 'Todas las filiales'} · ${!F.plan ? 'Todos los planes' : F.plan}`;
     const nRep = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
     $('kpis').innerHTML = `
@@ -366,6 +383,41 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       return h; }).join('') || '<tr><td colspan="8" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
     filtrarEc(); pintarRanking(); pintarDetalle();
   }
+  // ----- Evolución diaria: barras = instalaciones liquidadas del día · línea = % de pruebas hechas en el equipo del cliente -----
+  // Periodo: el rango de fechas elegido (si abarca 2 días o más); si no, el mes elegido, el mes del día elegido o el último mes con datos.
+  const diasEntre = (a, b) => { const r = [], d = new Date(a + 'T12:00:00Z'), f = new Date(b + 'T12:00:00Z'); while (d <= f) { r.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); } return r; };
+  const DSEM = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  let evoDias = [];
+  function pintarEvo() {
+    const rango = (F.desde || F.hasta) && (F.desde || '') !== (F.hasta || '') ;
+    let ini, fin, selD = null;
+    if (rango) { const LL = O.filter(o => sel(o)); ini = F.desde || (LL.length ? LL.reduce((a, o) => o.d < a ? o.d : a, LL[0].d) : ''); fin = F.hasta || (LL.length ? LL.reduce((a, o) => o.d > a ? o.d : a, LL[0].d) : ''); }
+    else { const m = F.mes || (F.desde || F.hasta || '').slice(0, 7) || meses[meses.length - 1] || ''; selD = F.desde || F.hasta || null;
+      const enMes = O.filter(o => o.d.startsWith(m)); ini = m + '-01'; fin = enMes.length ? enMes.reduce((a, o) => o.d > a ? o.d : a, enMes[0].d) : ini; }
+    const box = $('g-evo'); if (!ini || !fin) { box.innerHTML = '<p class="vacio">Sin instalaciones con estos filtros.</p>'; return; }
+    const base = O.filter(o => sel(o, 'fecha') && o.d >= ini && o.d <= fin), porD = {}; base.forEach(o => { (porD[o.d] = porD[o.d] || []).push(o); });
+    evoDias = diasEntre(ini, fin).map(d => [d, sum(porD[d] || [])]);
+    const tot = sum(base);
+    $('evo-sub').innerHTML = `${dmy(ini)} al ${dmy(fin)} · ${n(tot.ins)} instalaciones · ${n(tot.c)} de ${n(tot.pr)} pruebas en el equipo del cliente (${pc(tot.pr ? tot.c / tot.pr * 100 : 0)}) · clic en un día para ver sus AB.`;
+    const W = Math.max(320, box.clientWidth || 900), mob = W < 640, H = mob ? 240 : 290, ml = 34, mr = 40, mt = 26, mb = 34, cw = W - ml - mr, ch = H - mt - mb, nd = evoDias.length, paso = cw / Math.max(1, nd);
+    const maxI = Math.max(1, ...evoDias.map(([, s]) => s.ins)), tic = maxI <= 5 ? 1 : maxI <= 12 ? 2 : maxI <= 30 ? 5 : maxI <= 60 ? 10 : maxI <= 150 ? 25 : 50, topI = Math.ceil(maxI / tic) * tic;
+    const yI = v => mt + ch - v / topI * ch, yP = v => mt + ch - v / 100 * ch, xC = k => ml + paso * k + paso / 2, bw = Math.max(3, Math.min(34, paso * .62));
+    const cada = Math.ceil(nd / (mob ? 8 : 16)), etqPct = paso >= (mob ? 30 : 24);
+    let g = '';
+    for (let v = 0; v <= topI; v += tic) g += `<line class="grid" x1="${ml}" x2="${ml + cw}" y1="${yI(v)}" y2="${yI(v)}"/><text x="${ml - 6}" y="${yI(v) + 4}" text-anchor="end">${n(v)}</text>`;
+    [0, 50, 100].forEach(v => { g += `<text x="${ml + cw + 6}" y="${yP(v) + 4}">${v}%</text>`; });
+    g += evoDias.map(([d, s], k) => { const x = xC(k), y = yI(s.ins); return `<rect class="bar${selD === d ? ' sel' : ''}" x="${x - bw / 2}" y="${y}" width="${bw}" height="${mt + ch - y}" rx="3"/>${s.ins && paso >= 18 && !(s.pr && etqPct && Math.abs(yP(s.c / s.pr * 100) - 9 - (y - 5)) < 13) ? `<text class="bn" x="${x}" y="${y - 5}" text-anchor="middle">${n(s.ins)}</text>` : ''}`; }).join('');
+    g += `<line class="obj" x1="${ml}" x2="${ml + cw}" y1="${yP(OBJ_CLI)}" y2="${yP(OBJ_CLI)}"/><text class="objt" x="${ml + cw + 6}" y="${yP(OBJ_CLI) + 4}">${OBJ_CLI}%</text>`;
+    // la línea se corta en los días sin pruebas
+    let tramo = [], camino = ''; const cerrar = () => { if (tramo.length > 1) camino += 'M' + tramo.join('L'); tramo = []; };
+    evoDias.forEach(([, s], k) => { if (s.pr) tramo.push(`${xC(k).toFixed(1)},${yP(s.c / s.pr * 100).toFixed(1)}`); else cerrar(); }); cerrar();
+    g += `<path class="ln" d="${camino}"/>`;
+    g += evoDias.map(([, s], k) => { if (!s.pr) return ''; const v = s.c / s.pr * 100, x = xC(k), y = yP(v); return `<circle class="pt${v >= OBJ_CLI ? ' ok' : ''}" cx="${x}" cy="${y}" r="${mob ? 3.2 : 4}"/>${etqPct ? `<text class="pv" x="${x}" y="${y - 9}" text-anchor="middle">${Math.round(v)}%</text>` : ''}`; }).join('');
+    g += evoDias.map(([d], k) => k % cada ? '' : `<text x="${xC(k)}" y="${H - mb + 16}" text-anchor="middle">${d.slice(8, 10)}/${d.slice(5, 7)}</text>`).join('');
+    g += evoDias.map(([d, s], k) => `<rect class="hit" tabindex="0" role="button" aria-label="${dmy(d)}: ${s.ins} instalaciones" data-lista="dia|${d}" x="${ml + paso * k}" y="${mt - 18}" width="${paso}" height="${ch + 18}" rx="4" data-tip="<b>${DSEM[new Date(d + 'T12:00:00Z').getUTCDay()]} ${dmy(d)}</b><br>${n(s.ins)} instalaciones liquidadas<br>${n(s.med)} con medición · ${n(s.pr)} pruebas<br>${s.pr ? `<b>${n(s.c)}</b> del cliente (${pc(s.c / s.pr * 100)}) · ${n(s.tn + s.s)} del técnico` : 'sin pruebas registradas'}"/>`).join('');
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Evolución diaria de instalaciones y % de pruebas del cliente">${g}</svg>`;
+  }
+  let evoT; window.addEventListener('resize', () => { clearTimeout(evoT); evoT = setTimeout(pintarEvo, 150); });
   const tb = $('tb-ec').tBodies[0];
   const alternar = (tr) => { const ec = tr.dataset.ec; abiertos.has(ec) ? abiertos.delete(ec) : abiertos.add(ec); pintar(); const t = [...tb.querySelectorAll('tr.ec')].find(x => x.dataset.ec === ec); if (t) t.focus(); };
   tb.addEventListener('click', (e) => { if (e.target.closest('[data-lista]')) return; const tr = e.target.closest('tr.ec'); if (tr) alternar(tr); });
@@ -566,6 +618,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (q === 'mes') return listaAB(`Instalaciones de ${mesTxt(v)}`, `${F.filial || 'todas las filiales'}`, O.filter(o => sel(o, 'mes') && o.d.startsWith(v)));
     if (q === 'fil') return listaAB(`${v} · AB con medición`, per, O.filter(o => sel(o, 'filial') && o.f === v && o.pr > 0));
     if (q === 'ec') return listaAB(`${v} · AB con medición`, per, L.filter(o => o.e === v && o.pr > 0));
+    if (q === 'dia') return listaAB(`Instalaciones del ${dmy(v)}`, `${F.filial || 'todas las filiales'} · ${F.plan || 'todos los planes'}`, O.filter(o => sel(o, 'fecha') && o.d === v));
     if (q === 'todo') return listaAB('Instalaciones del periodo', per, L);
     if (q === 'sin') return listaAB('Instalaciones sin medición', per, L.filter(o => !o.pr));
     if (q === 'med') return listaAB('Instalaciones con medición', per, L.filter(o => o.pr > 0));
@@ -578,7 +631,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-lista]'); if (b) { e.stopPropagation(); abrirLista(b.dataset.lista); } }, true);
   document.addEventListener('click', (e) => { if (!e.target.closest('[data-ir-rep]')) return; const b = document.querySelector('.tabs-st [data-tab="rep"]'); b.click(); $('t-det').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista], .hb2[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
+  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista], .hb2[data-lista], .hit[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
 
   // ----- Excel -----
   const libs = {};
@@ -602,7 +655,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     try { await excel([...$('tb-ec').tHead.rows[0].cells].map(c => c.textContent.trim()), filas, `speedtest-eecc-${hoyTxt()}.xlsx`); } catch { /* sin conexión */ } finally { b.disabled = false; } });
 
   pintarChips(); pintar();
-  $('cargando').hidden = true; $('vista').hidden = false;
+  $('cargando').hidden = true; $('vista').hidden = false; pintarEvo();
 })();
 </script>
 </body>
