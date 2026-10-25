@@ -231,6 +231,7 @@
     observadas: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><path d="M12 16.5v.5"/>',
     anuladas: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/>',
     dashboard: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
+    zonificacion: '<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>',
     facilidades: '<circle cx="12" cy="9" r="2"/><path d="M8.5 5.5a5 5 0 0 0 0 7"/><path d="M15.5 5.5a5 5 0 0 1 0 7"/><path d="M5.6 2.6a9 9 0 0 0 0 12.8"/><path d="M18.4 2.6a9 9 0 0 1 0 12.8"/><path d="M12 11v10"/><path d="M9 21h6"/>',
     speedtest: '<path d="M3.5 17a9 9 0 1 1 17 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.5"/><path d="M7 20h10"/>',
   };
@@ -252,7 +253,7 @@
         <h2>${titulo}</h2><p>${texto}</p><span class="cifra">${cifra}</span>
         <span class="btn${destacada ? ' oscuro' : ''}">${destacada ? 'Ver resultados →' : externo ? 'Abrir ↗' : 'Ingresar →'}</span>
       </a>`;
-    const ver = (k) => !window.mfModulo || window.mfModulo(k === 'facilidades' ? 'fftt' : k);   // ventanas permitidas del usuario
+    const ver = (k) => !window.mfModulo || window.mfModulo(k === 'facilidades' ? 'fftt' : k) || (k === 'zonificacion' && window.mfModulo('fftt'));   // ventanas permitidas del usuario
     document.getElementById('tarjetas').innerHTML = [
       t('instalaciones', 'Instalaciones', 'Órdenes de instalación: registradas, descargadas, observadas y anuladas por técnico y distrito.', `${num(i.inst_registradas)} por atender · ${dec(i.inst_efectividad_pct)}% efectividad`),
       t('averias', 'Averías', 'Órdenes de servicio técnico: motivo, lugar de la avería, causa, solución y estado.', `${num(i.st_registradas)} por atender · mediana ${dec(i.st_horas_mediana)} h`),
@@ -260,8 +261,9 @@
       t('anuladas', 'Anuladas', 'Órdenes anuladas: motivo, usuario que la modificó y canal de atención.', `${num(i.anul_total)} anuladas en el periodo`),
       t('dashboard', 'Dashboard de resultados', 'Indicadores consolidados: efectividad, órdenes por día, estados y ranking de técnicos.', periodo(i), true),
       t('facilidades', 'Facilidades Técnicas', 'Errores de facilidades técnicas por planta (TAP, caja, borne, cintillo) y cintillos duplicados, con la base del portal.', 'Buscador FFTT', false, '/fftt.html', false),
+      t('zonificacion', 'Zonificación', 'Todos los planos de cada distrito: zona, planta y EECC asignada, con sus instalaciones, averías y pendientes.', 'Planos por distrito', false, '/zonificacion.html'),
       t('speedtest', 'Speed Test', 'Pruebas de velocidad de cada alta: cobertura de medición, pruebas del cliente o del técnico, AB sin medición y enlaces repetidos.', 'Cobertura de medición por EECC y técnico', false, '/speedtest.html'),
-    ].filter((h, i) => ver(['instalaciones', 'averias', 'observadas', 'anuladas', 'dashboard', 'facilidades', 'speedtest'][i])).join('') || '<p class="cargando">Tu usuario no tiene ventanas asignadas. Pide acceso al administrador.</p>';
+    ].filter((h, i) => ver(['instalaciones', 'averias', 'observadas', 'anuladas', 'dashboard', 'facilidades', 'zonificacion', 'speedtest'][i])).join('') || '<p class="cargando">Tu usuario no tiene ventanas asignadas. Pide acceso al administrador.</p>';
   }
 
   async function vistaModulo(clave) {

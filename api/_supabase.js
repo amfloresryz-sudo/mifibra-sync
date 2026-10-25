@@ -89,7 +89,7 @@ function permitidas(f) {
   return FILIALES.filter(x => S.has(x));
 }
 // Ventanas (módulos) que puede ver la sesión: "TODOS" o lista "instalaciones,fftt"
-const MODULOS_PORTAL = ['instalaciones', 'averias', 'observadas', 'anuladas', 'dashboard', 'fftt', 'speedtest'];
+const MODULOS_PORTAL = ['instalaciones', 'averias', 'observadas', 'anuladas', 'dashboard', 'fftt', 'speedtest', 'zonificacion'];
 const puedeModulo = (req, ...ms) => { const m = req.usuario && req.usuario.m; if (!m || m === 'TODOS') return true; const L = m.split(','); return ms.some(x => L.includes(x)); };
 const puedeVer = (req, filial) => { const u = req.usuario; return !u || !u.f || u.f === 'TODAS' || permitidas(u.f).includes(String(filial || '').toUpperCase()); };
 function filialDe(req) {

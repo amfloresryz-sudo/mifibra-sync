@@ -209,7 +209,7 @@ const n = (v) => Number(v || 0).toLocaleString('es-PE');
 const FILS = [['TODAS', 'Todas (ve todo)'], ['LIMA', 'Lima'], ['PROVINCIAS', 'Provincias (las 7)'], ['ANCASH', 'Ancash'], ['AREQUIPA', 'Arequipa'], ['CAJAMARCA', 'Cajamarca'], ['HUANUCO', 'Huanuco'], ['LA LIBERTAD', 'La Libertad'], ['LAMBAYEQUE', 'Lambayeque'], ['PIURA', 'Piura']];
 const nomF1 = (f) => (FILS.find(x => x[0] === f) || [f, f])[1];
 const nomF = (f) => String(f || '').split(',').map(x => f.includes(',') ? nomF1(x).replace(/ \(.*\)/, '') : nomF1(x)).join(', ');
-const MODS = [['instalaciones', 'Instalaciones'], ['averias', 'Averías'], ['observadas', 'Observadas'], ['anuladas', 'Anuladas'], ['dashboard', 'Dashboard'], ['fftt', 'FFTT'], ['speedtest', 'Speed Test']];
+const MODS = [['instalaciones', 'Instalaciones'], ['averias', 'Averías'], ['observadas', 'Observadas'], ['anuladas', 'Anuladas'], ['dashboard', 'Dashboard'], ['fftt', 'FFTT'], ['speedtest', 'Speed Test'], ['zonificacion', 'Zonificación']];
 const nomM = (m) => !m || m === 'TODOS' ? 'Todas' : m.split(',').map(k => (MODS.find(x => x[0] === k) || [k, k])[1]).join(', ');
 // Selector de varias opciones con chips: «Todas» o una o varias
 function picker(el, ops, todo, sel) {
