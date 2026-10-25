@@ -185,6 +185,14 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .buscar::placeholder { color: #B9BCCB; } .buscar:focus { outline: 2px solid #FF0091; outline-offset: 1px; }
 #tb-zon { min-width: 1240px; } #tb-zon th, #tb-zon td { padding-left: 8px; padding-right: 8px; }
 #tb-zon th.pm { background: #EEF4FF; color: #1A56A8; } #tb-zon td.pm { background: #F6F9FF; color: #1A56A8; font-weight: 600; } #tb-zon tr.dis td.pm { background: #E3ECFB; }
+/* Edición de EECC y planos nuevos */
+.ed-barra { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--rosa); color: var(--fg); font-size: 13.5px; }
+.ed-barra[hidden] { display: none; } .ed-barra input { font: inherit; padding: 7px 10px; border: 1px solid var(--borde-2); border-radius: 8px; margin-left: 6px; width: 150px; background: var(--sup); color: var(--fg); }
+.ed-n { font-weight: 700; color: var(--magenta-txt); } .ed-ok { background: var(--magenta) !important; border-color: var(--magenta) !important; color: #FFFFFF !important; }
+.in-ec { font: 600 12.5px var(--f-txt, inherit); width: 150px; padding: 6px 8px; border: 1px solid var(--borde-2); border-radius: 8px; text-transform: uppercase; background: var(--sup); color: var(--fg); text-align: center; }
+.in-ec.cambio { border-color: var(--magenta); background: var(--rosa); } .in-ec::placeholder { text-transform: none; color: var(--fg-4); }
+.b.nuevo { background: #FF0091; color: #FFFFFF; margin-left: 6px; } .b.edit { background: #E3EEFD; color: #1A56A8; margin-left: 4px; font-size: 10.5px; }
+#tb-zon tr.pla.es-nuevo td { background: #FFF7FB; }
 #tb-zon th small { display: block; font-size: 9.5px; font-weight: 600; letter-spacing: .3px; opacity: .8; }
 #tb-zon th, #tb-zon td { text-align: center; } #tb-zon th:first-child, #tb-zon td:first-child { text-align: left; }
 #tb-zon tr.dis td { background: var(--gris-bg); font-weight: 700; cursor: pointer; border-bottom: 1px solid var(--borde-2); }
@@ -219,6 +227,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div><span class="seg-t">Zona</span><div class="chips" id="f-zo" role="group" aria-label="Zona"></div></div>
     <div><span class="seg-t">Planta</span><div class="chips" id="f-pt" role="group" aria-label="Planta"></div></div>
     <div><span class="seg-t">EECC asignada</span><div class="chips" id="f-ec" role="group" aria-label="EECC asignada"></div></div>
+    <div><span class="seg-t">Estado del plano</span><div class="chips" id="f-es" role="group" aria-label="Estado del plano"></div></div>
     <div><span class="seg-t">Buscar</span><input type="search" id="q" class="buscar" placeholder="Distrito o plano (ej. ATE, LI.ATE.001)" aria-label="Buscar distrito o plano"></div>
     <button type="button" class="limpiar" id="limpiar">Limpiar filtros</button>
   </div>
@@ -233,10 +242,14 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   </section>
   <section class="sec" aria-labelledby="t-tb">
     <div class="sec-cab"><div><h3 id="t-tb">Planos por distrito</h3><p class="sub" id="tb-sub">Toca un distrito para ver o esconder sus planos.</p></div>
-      <div class="pen-acc"><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
+      <div class="pen-acc"><button type="button" class="btn-out" id="editar">✎ Editar EECC</button><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
+    <div class="ed-barra" id="ed-barra" hidden><span><b>Modo edición:</b> cambia la EECC de cada plano (o de todo un distrito en su fila) y guarda. Los cambios los ven todos.</span>
+      <label class="seg-t" style="color:var(--fg-3)">Clave master <input type="password" id="ed-clave" autocomplete="current-password"></label>
+      <span id="ed-n" class="ed-n"></span><button type="button" class="btn-out ed-ok" id="ed-guardar" disabled>Guardar cambios</button><button type="button" class="btn-out" id="ed-cancelar">Cancelar</button></div>
+    <datalist id="eecc-list"></datalist>
     <p class="aviso-dl" id="aviso" role="status"></p>
     <div class="scroll"><table id="tb-zon"><thead><tr><th>Distrito / plano</th><th>Filial</th><th>Zona</th><th>Planta</th><th>EECC asignada</th><th title="Instalaciones del periodo en ese plano">Instalaciones</th><th title="Averías (servicio técnico) del periodo en ese plano">Averías</th><th title="Instalaciones REGISTRADA hoy">Pendientes</th><th class="pm" title="Instalaciones ingresadas en el mes (F. Recep) ÷ días transcurridos">Prom. ingresos<small>por día</small></th><th class="pm" title="Instalaciones DESCARGADA en el mes (F. Atención) ÷ días transcurridos">Prom. liquidadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado OBSERVADA ÷ días transcurridos">Prom. observadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado ANULADA ÷ días transcurridos">Prom. anuladas<small>por día</small></th><th>Última orden</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-    <p class="nota">Catálogo = hoja ZONA de DATOS_TEC (distrito + plano → EECC asignada; solo Lima) · «fuera del catálogo» = plano que aparece en las órdenes pero no está en la hoja ZONA · Instalaciones y averías = órdenes del periodo del robot (desde el 1 del mes anterior) · Promedios por día = instalaciones del mes en curso ÷ días transcurridos <span id="dias-txt"></span>: ingresos por F. Recep, liquidadas (DESCARGADA) por F. Atención, observadas y anuladas por F. Recep · en provincias la zona es la filial.</p>
+    <p class="nota">Todos los distritos y planos quedan guardados: si aparece un plano nuevo en las órdenes se agrega solo (marcado «Nuevo» por 7 días) para asignarle su EECC con «✎ Editar EECC» (clave master) · Catálogo = hoja ZONA de DATOS_TEC (distrito + plano → EECC asignada; solo Lima) · «fuera del catálogo» = plano que aparece en las órdenes pero no está en la hoja ZONA · Instalaciones y averías = órdenes del periodo del robot (desde el 1 del mes anterior) · Promedios por día = instalaciones del mes en curso ÷ días transcurridos <span id="dias-txt"></span>: ingresos por F. Recep, liquidadas (DESCARGADA) por F. Atención, observadas y anuladas por F. Recep · en provincias la zona es la filial.</p>
   </section>
   </div>
 </div></main>
@@ -256,7 +269,14 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     D = await r.json(); if (!r.ok) throw new Error(D.error || `Error ${r.status}`); }
   catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar la zonificación.'; return; }
   // fila: [filial, zona, distrito, plano, planta, eecc, instalaciones, averías, pendientes, última, en catálogo]
-  const R = D.filas.map(f => ({ fi: f[0], zo: f[1], di: f[2], pl: f[3], pt: f[4], ec: f[5], ins: f[6], av: f[7], pen: f[8], ult: f[9], cat: !!f[10], ing: f[11] || 0, liq: f[12] || 0, obs: f[13] || 0, anu: f[14] || 0 }));
+  const R = D.filas.map(f => ({ fi: f[0], zo: f[1], di: f[2], pl: f[3], pt: f[4], ec: f[5], ins: f[6], av: f[7], pen: f[8], ult: f[9], cat: !!f[10], ing: f[11] || 0, liq: f[12] || 0, obs: f[13] || 0, anu: f[14] || 0, k: f[15] || `${f[0]}|${f[2]}|${f[3]}`, alta: f[16] || '', ed: !!f[17] }));
+  // EECC editadas en el portal (llegan al instante, sin esperar al robot) sobre la de la hoja ZONA
+  const EC0 = new Map(R.map(r => [r.k, r.ed ? '' : r.ec]));   // la de la hoja (o vacía) para volver atrás
+  const aplicarEd = (E) => R.forEach(r => { if (E[r.k]) { r.ec = E[r.k]; r.ed = true; } else if (r.ed) { r.ec = EC0.get(r.k) || ''; r.ed = false; } });
+  aplicarEd(D.eecc || {});
+  // Plano nuevo = apareció en los últimos 7 días y no está en la hoja ZONA
+  const hace7 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), esNuevo = (r) => !r.cat && /^\d{4}-\d{2}-\d{2}$/.test(r.alta) && r.alta >= hace7;
+  const ESTADOS = ['NUEVO', 'SIN EECC', 'EDITADA'], estDe = (r) => [esNuevo(r) && 'NUEVO', !r.ec && 'SIN EECC', r.ed && 'EDITADA'].filter(Boolean);
   // Promedios por día del mes en curso: lo del mes ÷ días transcurridos (D.dias)
   const DIAS = Math.max(1, D.dias || 1), MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
   const prom = (v) => v ? `<span title="${n(v)} en el mes ÷ ${DIAS} días">${(v / DIAS).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>` : '<span class="cero">·</span>';
@@ -266,12 +286,12 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 
   // ----- Filtros (todos admiten varias opciones a la vez; vacío = todos) -----
   const ZO = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'];
-  const F = { fi: new Set(), zo: new Set(), pt: new Set(), ec: new Set(), q: '' };
+  const F = { fi: new Set(), zo: new Set(), pt: new Set(), ec: new Set(), es: new Set(), q: '' };
   const filiales = [...new Set(R.map(r => r.fi))].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b));
   if (filiales.includes('LIMA')) F.fi.add('LIMA');
   const ok = (r, sin = '') => ['fi', 'zo', 'pt', 'ec'].every(k => k === sin || !F[k].size || F[k].has(k === 'ec' ? (r.ec || 'SIN EECC') : r[k]))
-    && (!F.q || (r.di + ' ' + r.pl).toUpperCase().includes(F.q));
-  const chips = (id, k, ops, txt = (v) => v) => { const B = R.filter(r => ok(r, k)), c = {}; B.forEach(r => { const v = k === 'ec' ? (r.ec || 'SIN EECC') : r[k]; c[v] = (c[v] || 0) + 1; });
+    && (sin === 'es' || !F.es.size || estDe(r).some(e => F.es.has(e))) && (!F.q || (r.di + ' ' + r.pl).toUpperCase().includes(F.q));
+  const chips = (id, k, ops, txt = (v) => v) => { const B = R.filter(r => ok(r, k)), c = {}; B.forEach(r => { (k === 'es' ? estDe(r) : [k === 'ec' ? (r.ec || 'SIN EECC') : r[k]]).forEach(v => { c[v] = (c[v] || 0) + 1; }); });
     [...F[k]].forEach(v => { if (!ops.includes(v)) ops.push(v); });
     $(id).innerHTML = `<button type="button" class="chip" data-k="${k}" data-v="" aria-pressed="${!F[k].size}">Todas</button>` + ops.filter(v => c[v] || F[k].has(v)).map(v => `<button type="button" class="chip" data-k="${k}" data-v="${esc(v)}" aria-pressed="${F[k].has(v)}">${esc(txt(v))} (${n(c[v] || 0)})</button>`).join(''); };
   const pintarChips = () => {
@@ -279,12 +299,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const zs = [...new Set(R.map(r => r.zo))].sort((a, b) => { const i = ZO.indexOf(a), j = ZO.indexOf(b); return (i < 0 ? 50 : i) - (j < 0 ? 50 : j) || a.localeCompare(b); });
     chips('f-zo', 'zo', zs, v => ZO.includes(v) || v === 'SIN ZONA' ? v : nom(v));
     chips('f-pt', 'pt', [...new Set(R.map(r => r.pt))].sort((a, b) => /^(Sin|Otros)/.test(a) - /^(Sin|Otros)/.test(b) || a.localeCompare(b)));
+    chips('f-es', 'es', ESTADOS.slice(), v => ({ NUEVO: 'Nuevos (7 días)', 'SIN EECC': 'Sin EECC', EDITADA: 'EECC editada' })[v]);
     chips('f-ec', 'ec', [...new Set(R.map(r => r.ec || 'SIN EECC'))].sort((a, b) => (a === 'SIN EECC') - (b === 'SIN EECC') || a.localeCompare(b)));
   };
   document.querySelector('.filtros').addEventListener('click', (e) => { const b = e.target.closest('.chip[data-k]'); if (!b) return; const S = F[b.dataset.k], v = b.dataset.v;
     if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarChips(); pintar(); });
   let tq; $('q').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { F.q = e.target.value.trim().toUpperCase(); abiertos.clear(); if (F.q) todo = true; pintarChips(); pintar(); }, 200); });
-  $('limpiar').addEventListener('click', () => { ['fi', 'zo', 'pt', 'ec'].forEach(k => F[k].clear()); F.q = ''; $('q').value = ''; pintarChips(); pintar(); });
+  $('limpiar').addEventListener('click', () => { ['fi', 'zo', 'pt', 'ec', 'es'].forEach(k => F[k].clear()); F.q = ''; $('q').value = ''; pintarChips(); pintar(); });
 
   // ----- Tabla agrupada por distrito -----
   const abiertos = new Set(); let todo = false, L = [];
@@ -295,20 +316,21 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     L = R.filter(r => ok(r));
     const G = new Map(); L.forEach(r => { const k = r.fi + '|' + r.di; if (!G.has(k)) G.set(k, []); G.get(k).push(r); });
     const dis = [...G.keys()].sort((a, b) => { const [fa, da] = a.split('|'), [fb, db] = b.split('|'); return (fb === 'LIMA') - (fa === 'LIMA') || fa.localeCompare(fb) || da.localeCompare(db); });
-    const sinEc = L.filter(r => !r.ec).length, fuera = L.filter(r => !r.cat && r.fi === 'LIMA').length, nDis = dis.length;
+    const sinEc = L.filter(r => !r.ec).length, nNue = L.filter(esNuevo).length, nNueSin = L.filter(r => esNuevo(r) && !r.ec).length, fuera = L.filter(r => !r.cat && r.fi === 'LIMA').length, nDis = dis.length;
     const fil = F.fi.size ? [...F.fi].map(nom).join(' + ') : 'Todas las filiales';
     $('t-tit').innerHTML = `${esc(fil)}: <em>${n(L.length)}</em> planos en ${n(nDis)} distritos`;
     $('ctx').textContent = [F.zo.size ? 'Zona: ' + [...F.zo].join(', ') : '', F.pt.size ? 'Planta: ' + [...F.pt].join(', ') : '', F.ec.size ? 'EECC: ' + [...F.ec].join(', ') : '', F.q ? `Buscar: «${F.q}»` : ''].filter(Boolean).join(' · ') || 'Sin filtros';
     const kpi = (l, v, s) => `<div class="kpi"><span class="l">${l}</span><span class="kv">${v}</span><span class="s">${s}</span></div>`;
     $('kpis').innerHTML = kpi('Distritos', n(nDis), `${n(new Set(L.map(r => r.zo)).size)} zonas`) + kpi('Planos', n(L.length), `${n(L.filter(r => r.cat).length)} del catálogo de Lima`)
       + kpi('Con EECC asignada', n(L.length - sinEc), `${L.length ? Math.round((L.length - sinEc) / L.length * 100) : 0}% de los planos`) + kpi('Sin EECC asignada', n(sinEc), `${n(fuera)} de Lima fuera del catálogo`)
+      + `<div class="kpi"><span class="l">Planos nuevos (7 días)</span><span class="kv" style="color:${nNueSin ? 'var(--magenta)' : 'inherit'}">${n(nNue)}</span><span class="s">${nNueSin ? `<button type="button" class="nb" id="ver-nuevos" style="all:unset;cursor:pointer;color:var(--magenta-txt);font-weight:700;text-decoration:underline">${n(nNueSin)} sin EECC · asignar</button>` : 'todos con EECC'}</span></div>`
       + kpi('Pendientes de instalación', n(L.reduce((a, r) => a + r.pen, 0)), 'instalaciones REGISTRADA en esos planos');
     const tb = $('tb-zon').tBodies[0];
     tb.innerHTML = dis.map(k => { const P = G.get(k).sort((a, b) => a.pl.localeCompare(b.pl, 'es', { numeric: true })), [fi, di] = k.split('|'), ab = todo || abiertos.has(k);
       const ecs = [...new Set(P.map(r => r.ec).filter(Boolean))], pts = [...new Set(P.map(r => r.pt))], su = (c) => P.reduce((a, r) => a + r[c], 0), ult = P.reduce((a, r) => r.ult > a ? r.ult : a, '');
       return `<tr class="dis" data-d="${esc(k)}" tabindex="0" aria-expanded="${ab}"><td><span class="fl">${ab ? '▾' : '▸'}</span>${esc(di)}<small>${n(P.length)} plano${P.length === 1 ? '' : 's'}</small></td><td>${esc(nom(fi))}</td><td>${zB(P[0].zo)}</td><td>${pts.length > 2 ? n(pts.length) + ' plantas' : pts.map(esc).join(' · ')}</td>
-        <td><span class="ecs">${ecs.length ? ecs.map(ecB).join('') : ecB('')}</span></td><td>${num(su('ins'))}</td><td>${num(su('av'))}</td><td>${num(su('pen'), 'pen-n')}</td><td class="pm">${prom(su('ing'))}</td><td class="pm">${prom(su('liq'))}</td><td class="pm">${prom(su('obs'))}</td><td class="pm">${prom(su('anu'))}</td><td>${dmy(ult)}</td></tr>`
-        + P.map(r => `<tr class="pla" data-de="${esc(k)}"${ab ? '' : ' hidden'}><td>${esc(r.pl)}${!r.cat && r.fi === 'LIMA' ? '<span class="b fuera" title="Aparece en las órdenes pero no está en la hoja ZONA">fuera del catálogo</span>' : ''}</td><td>${esc(nom(r.fi))}</td><td>${zB(r.zo)}</td><td><span class="b pt">${esc(r.pt)}</span></td><td>${ecB(r.ec)}</td><td>${num(r.ins)}</td><td>${num(r.av)}</td><td>${num(r.pen, 'pen-n')}</td><td class="pm">${prom(r.ing)}</td><td class="pm">${prom(r.liq)}</td><td class="pm">${prom(r.obs)}</td><td class="pm">${prom(r.anu)}</td><td>${dmy(r.ult)}</td></tr>`).join(''); }).join('')
+        <td>${ED ? `<input class="in-ec" list="eecc-list" data-ed-dis="${esc(k)}" placeholder="Todo el distrito…" aria-label="EECC para todos los planos de ${esc(di)}">` : `<span class="ecs">${ecs.length ? ecs.map(ecB).join('') : ecB('')}</span>`}</td><td>${num(su('ins'))}</td><td>${num(su('av'))}</td><td>${num(su('pen'), 'pen-n')}</td><td class="pm">${prom(su('ing'))}</td><td class="pm">${prom(su('liq'))}</td><td class="pm">${prom(su('obs'))}</td><td class="pm">${prom(su('anu'))}</td><td>${dmy(ult)}</td></tr>`
+        + P.map(r => `<tr class="pla${esNuevo(r) ? ' es-nuevo' : ''}" data-de="${esc(k)}"${ab ? '' : ' hidden'}><td>${esc(r.pl)}${esNuevo(r) ? `<span class="b nuevo" title="Apareció por primera vez el ${dmy(r.alta)}">Nuevo · ${r.alta.slice(8, 10)}/${r.alta.slice(5, 7)}</span>` : !r.cat && r.fi === 'LIMA' ? '<span class="b fuera" title="Aparece en las órdenes pero no está en la hoja ZONA">fuera del catálogo</span>' : ''}</td><td>${esc(nom(r.fi))}</td><td>${zB(r.zo)}</td><td><span class="b pt">${esc(r.pt)}</span></td><td>${ED ? `<input class="in-ec${CAM.has(r.k) ? ' cambio' : ''}" list="eecc-list" data-ed="${esc(r.k)}" value="${esc(CAM.has(r.k) ? CAM.get(r.k) : r.ec)}" placeholder="Sin EECC" aria-label="EECC del plano ${esc(r.pl)}">` : ecB(r.ec) + (r.ed ? '<span class="b edit" title="EECC cambiada en el portal">editada</span>' : '')}</td><td>${num(r.ins)}</td><td>${num(r.av)}</td><td>${num(r.pen, 'pen-n')}</td><td class="pm">${prom(r.ing)}</td><td class="pm">${prom(r.liq)}</td><td class="pm">${prom(r.obs)}</td><td class="pm">${prom(r.anu)}</td><td>${dmy(r.ult)}</td></tr>`).join(''); }).join('')
       || '<tr><td colspan="13" class="vacio">No hay planos con estos filtros.</td></tr>';
     $('tb-zon').tFoot.innerHTML = L.length ? `<tr><td><b>Total</b> <small style="color:var(--fg-3)">${n(L.length)} planos</small></td><td></td><td></td><td></td><td></td><td><b>${n(L.reduce((a, r) => a + r.ins, 0))}</b></td><td><b>${n(L.reduce((a, r) => a + r.av, 0))}</b></td><td><b class="pen-n">${n(L.reduce((a, r) => a + r.pen, 0))}</b></td>${['ing', 'liq', 'obs', 'anu'].map(c => `<td class="pm"><b>${prom(L.reduce((a, r) => a + r[c], 0))}</b></td>`).join('')}<td></td></tr>` : '';
     $('todo').textContent = todo ? 'Contraer todo' : 'Expandir todo';
@@ -320,13 +342,37 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('todo').addEventListener('click', () => { todo = !todo; abiertos.clear(); pintar(); });
   // Excel (CSV con separador «;» que Excel abre directo): una fila por plano con los filtros aplicados
   $('xls').addEventListener('click', () => {
-    const cab = ['Filial', 'Zona', 'Distrito', 'Plano', 'Planta', 'EECC asignada', 'Instalaciones', 'Averías', 'Pendientes', 'Prom. ingresos/día', 'Prom. liquidadas/día', 'Prom. observadas/día', 'Prom. anuladas/día', 'Última orden', 'En catálogo'];
+    const cab = ['Filial', 'Zona', 'Distrito', 'Plano', 'Planta', 'EECC asignada', 'EECC editada en el portal', 'Visto por primera vez', 'Instalaciones', 'Averías', 'Pendientes', 'Prom. ingresos/día', 'Prom. liquidadas/día', 'Prom. observadas/día', 'Prom. anuladas/día', 'Última orden', 'En catálogo'];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const txt = [cab, ...L.map(r => [nom(r.fi), r.zo, r.di, r.pl, r.pt, r.ec || 'SIN EECC', r.ins, r.av, r.pen, p1(r.ing), p1(r.liq), p1(r.obs), p1(r.anu), dmy(r.ult), r.cat ? 'Sí' : 'No'])].map(f => f.map(q).join(';')).join('\r\n');
+    const txt = [cab, ...L.map(r => [nom(r.fi), r.zo, r.di, r.pl, r.pt, r.ec || 'SIN EECC', r.ed ? 'Sí' : 'No', /^\d/.test(r.alta) ? dmy(r.alta) : r.alta, r.ins, r.av, r.pen, p1(r.ing), p1(r.liq), p1(r.obs), p1(r.anu), dmy(r.ult), r.cat ? 'Sí' : 'No'])].map(f => f.map(q).join(';')).join('\r\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' }));
     a.download = `zonificacion-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
     $('aviso').textContent = `Se descargaron ${n(L.length)} planos (ábrelo con Excel).`; });
 
+  // ----- Edición de la EECC (clave master) -----
+  let ED = false; const CAM = new Map();   // clave del plano → EECC escrita (aún sin guardar)
+  const claveM = () => { try { return sessionStorage.getItem('mf_master') || ''; } catch { return ''; } };
+  const ponerM = (v) => { try { v ? sessionStorage.setItem('mf_master', v) : sessionStorage.removeItem('mf_master'); } catch { /* sin almacenamiento */ } };
+  const opsEc = () => [...new Set(R.map(r => r.ec).filter(Boolean))].sort();
+  const contar = () => { $('ed-n').textContent = CAM.size ? `${n(CAM.size)} cambio${CAM.size === 1 ? '' : 's'} sin guardar` : ''; $('ed-guardar').disabled = !CAM.size; };
+  const modo = (si) => { ED = si; CAM.clear(); $('ed-barra').hidden = !si; $('editar').hidden = si; if (si) { $('ed-clave').value = claveM(); $('eecc-list').innerHTML = opsEc().map(e => `<option value="${esc(e)}">`).join(''); } contar(); pintar(); };
+  $('editar').addEventListener('click', () => modo(true));
+  $('ed-cancelar').addEventListener('click', () => modo(false));
+  const marcar = (k, v) => { const r = R.find(x => x.k === k); if (!r) return; v = v.trim().toUpperCase(); if (v === (r.ec || '')) CAM.delete(k); else CAM.set(k, v); };
+  $('tb-zon').addEventListener('change', (e) => { const i = e.target.closest('.in-ec'); if (!i) return;
+    if (i.dataset.ed) { marcar(i.dataset.ed, i.value); i.classList.toggle('cambio', CAM.has(i.dataset.ed)); }
+    else if (i.dataset.edDis && i.value.trim()) { L.filter(r => r.fi + '|' + r.di === i.dataset.edDis).forEach(r => marcar(r.k, i.value)); abiertos.add(i.dataset.edDis); pintar(); }
+    contar(); });
+  $('tb-zon').addEventListener('click', (e) => { if (e.target.closest('.in-ec')) e.stopPropagation(); }, true);
+  $('ed-guardar').addEventListener('click', async () => {
+    const k = $('ed-clave').value.trim(); if (!k) { $('aviso').style.color = 'var(--mal)'; $('aviso').textContent = 'Ingresa la clave master para guardar.'; $('ed-clave').focus(); return; }
+    const cambios = Object.fromEntries(CAM); $('ed-guardar').disabled = true; $('aviso').style.color = ''; $('aviso').textContent = 'Guardando…';
+    try { const r = await fetch('/api/zonificacion', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': k }, body: JSON.stringify({ cambios }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { if (r.status === 403) ponerM(''); throw new Error(j.error || `Error ${r.status}`); }
+      ponerM(k); aplicarEd(j.eecc || {}); const nG = CAM.size; modo(false); pintarChips(); pintar();
+      $('aviso').style.color = 'var(--ok)'; $('aviso').textContent = `Se guardaron ${n(nG)} cambio${nG === 1 ? '' : 's'} de EECC. Ya los ven todos.`; }
+    catch (err) { $('aviso').style.color = 'var(--mal)'; $('aviso').textContent = err.message || 'No se pudo guardar.'; $('ed-guardar').disabled = false; } });
+  document.addEventListener('click', (e) => { if (!e.target.closest('#ver-nuevos')) return; F.es.clear(); F.es.add('NUEVO'); todo = true; pintarChips(); pintar(); $('t-tb').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   $('dias-txt').textContent = D.mes ? `(${MESES[+D.mes.slice(5, 7) - 1]}: ${DIAS} días)` : '';
   pintarChips(); pintar();
   $('cargando').hidden = true; $('vista').hidden = false;
