@@ -183,7 +183,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 /* ---------- Zonificación ---------- */
 .buscar { font: inherit; font-size: 14px; padding: 10px 14px; border-radius: 25px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: #FFFFFF; min-width: 280px; }
 .buscar::placeholder { color: #B9BCCB; } .buscar:focus { outline: 2px solid #FF0091; outline-offset: 1px; }
-#tb-zon { min-width: 980px; }
+#tb-zon { min-width: 1240px; } #tb-zon th, #tb-zon td { padding-left: 8px; padding-right: 8px; }
+#tb-zon th.pm { background: #EEF4FF; color: #1A56A8; } #tb-zon td.pm { background: #F6F9FF; color: #1A56A8; font-weight: 600; } #tb-zon tr.dis td.pm { background: #E3ECFB; }
+#tb-zon th small { display: block; font-size: 9.5px; font-weight: 600; letter-spacing: .3px; opacity: .8; }
 #tb-zon th, #tb-zon td { text-align: center; } #tb-zon th:first-child, #tb-zon td:first-child { text-align: left; }
 #tb-zon tr.dis td { background: var(--gris-bg); font-weight: 700; cursor: pointer; border-bottom: 1px solid var(--borde-2); }
 #tb-zon tr.dis:hover td { background: var(--rosa); }
@@ -233,8 +235,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="sec-cab"><div><h3 id="t-tb">Planos por distrito</h3><p class="sub" id="tb-sub">Toca un distrito para ver o esconder sus planos.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
     <p class="aviso-dl" id="aviso" role="status"></p>
-    <div class="scroll"><table id="tb-zon"><thead><tr><th>Distrito / plano</th><th>Filial</th><th>Zona</th><th>Planta</th><th>EECC asignada</th><th title="Instalaciones del periodo en ese plano">Instalaciones</th><th title="Averías (servicio técnico) del periodo en ese plano">Averías</th><th title="Instalaciones REGISTRADA hoy">Pendientes</th><th>Última orden</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-    <p class="nota">Catálogo = hoja ZONA de DATOS_TEC (distrito + plano → EECC asignada; solo Lima) · «fuera del catálogo» = plano que aparece en las órdenes pero no está en la hoja ZONA · Instalaciones y averías = órdenes del periodo del robot (desde el 1 del mes anterior) · en provincias la zona es la filial.</p>
+    <div class="scroll"><table id="tb-zon"><thead><tr><th>Distrito / plano</th><th>Filial</th><th>Zona</th><th>Planta</th><th>EECC asignada</th><th title="Instalaciones del periodo en ese plano">Instalaciones</th><th title="Averías (servicio técnico) del periodo en ese plano">Averías</th><th title="Instalaciones REGISTRADA hoy">Pendientes</th><th class="pm" title="Instalaciones ingresadas en el mes (F. Recep) ÷ días transcurridos">Prom. ingresos<small>por día</small></th><th class="pm" title="Instalaciones DESCARGADA en el mes (F. Atención) ÷ días transcurridos">Prom. liquidadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado OBSERVADA ÷ días transcurridos">Prom. observadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado ANULADA ÷ días transcurridos">Prom. anuladas<small>por día</small></th><th>Última orden</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    <p class="nota">Catálogo = hoja ZONA de DATOS_TEC (distrito + plano → EECC asignada; solo Lima) · «fuera del catálogo» = plano que aparece en las órdenes pero no está en la hoja ZONA · Instalaciones y averías = órdenes del periodo del robot (desde el 1 del mes anterior) · Promedios por día = instalaciones del mes en curso ÷ días transcurridos <span id="dias-txt"></span>: ingresos por F. Recep, liquidadas (DESCARGADA) por F. Atención, observadas y anuladas por F. Recep · en provincias la zona es la filial.</p>
   </section>
   </div>
 </div></main>
@@ -254,7 +256,11 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     D = await r.json(); if (!r.ok) throw new Error(D.error || `Error ${r.status}`); }
   catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar la zonificación.'; return; }
   // fila: [filial, zona, distrito, plano, planta, eecc, instalaciones, averías, pendientes, última, en catálogo]
-  const R = D.filas.map(f => ({ fi: f[0], zo: f[1], di: f[2], pl: f[3], pt: f[4], ec: f[5], ins: f[6], av: f[7], pen: f[8], ult: f[9], cat: !!f[10] }));
+  const R = D.filas.map(f => ({ fi: f[0], zo: f[1], di: f[2], pl: f[3], pt: f[4], ec: f[5], ins: f[6], av: f[7], pen: f[8], ult: f[9], cat: !!f[10], ing: f[11] || 0, liq: f[12] || 0, obs: f[13] || 0, anu: f[14] || 0 }));
+  // Promedios por día del mes en curso: lo del mes ÷ días transcurridos (D.dias)
+  const DIAS = Math.max(1, D.dias || 1), MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'octubre', 'noviembre', 'diciembre'];
+  const prom = (v) => v ? `<span title="${n(v)} en el mes ÷ ${DIAS} días">${(v / DIAS).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>` : '<span class="cero">·</span>';
+  const p1 = (v) => (v / DIAS).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const act = D.actualizado ? new Date(D.actualizado) : null;
   $('corte').innerHTML = `Zonificación${act ? ` · actualizado <b>${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</b>` : ''}`;
 
@@ -301,10 +307,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     tb.innerHTML = dis.map(k => { const P = G.get(k).sort((a, b) => a.pl.localeCompare(b.pl, 'es', { numeric: true })), [fi, di] = k.split('|'), ab = todo || abiertos.has(k);
       const ecs = [...new Set(P.map(r => r.ec).filter(Boolean))], pts = [...new Set(P.map(r => r.pt))], su = (c) => P.reduce((a, r) => a + r[c], 0), ult = P.reduce((a, r) => r.ult > a ? r.ult : a, '');
       return `<tr class="dis" data-d="${esc(k)}" tabindex="0" aria-expanded="${ab}"><td><span class="fl">${ab ? '▾' : '▸'}</span>${esc(di)}<small>${n(P.length)} plano${P.length === 1 ? '' : 's'}</small></td><td>${esc(nom(fi))}</td><td>${zB(P[0].zo)}</td><td>${pts.length > 2 ? n(pts.length) + ' plantas' : pts.map(esc).join(' · ')}</td>
-        <td><span class="ecs">${ecs.length ? ecs.map(ecB).join('') : ecB('')}</span></td><td>${num(su('ins'))}</td><td>${num(su('av'))}</td><td>${num(su('pen'), 'pen-n')}</td><td>${dmy(ult)}</td></tr>`
-        + P.map(r => `<tr class="pla" data-de="${esc(k)}"${ab ? '' : ' hidden'}><td>${esc(r.pl)}${!r.cat && r.fi === 'LIMA' ? '<span class="b fuera" title="Aparece en las órdenes pero no está en la hoja ZONA">fuera del catálogo</span>' : ''}</td><td>${esc(nom(r.fi))}</td><td>${zB(r.zo)}</td><td><span class="b pt">${esc(r.pt)}</span></td><td>${ecB(r.ec)}</td><td>${num(r.ins)}</td><td>${num(r.av)}</td><td>${num(r.pen, 'pen-n')}</td><td>${dmy(r.ult)}</td></tr>`).join(''); }).join('')
-      || '<tr><td colspan="9" class="vacio">No hay planos con estos filtros.</td></tr>';
-    $('tb-zon').tFoot.innerHTML = L.length ? `<tr><td><b>Total</b> <small style="color:var(--fg-3)">${n(L.length)} planos</small></td><td></td><td></td><td></td><td></td><td><b>${n(L.reduce((a, r) => a + r.ins, 0))}</b></td><td><b>${n(L.reduce((a, r) => a + r.av, 0))}</b></td><td><b class="pen-n">${n(L.reduce((a, r) => a + r.pen, 0))}</b></td><td></td></tr>` : '';
+        <td><span class="ecs">${ecs.length ? ecs.map(ecB).join('') : ecB('')}</span></td><td>${num(su('ins'))}</td><td>${num(su('av'))}</td><td>${num(su('pen'), 'pen-n')}</td><td class="pm">${prom(su('ing'))}</td><td class="pm">${prom(su('liq'))}</td><td class="pm">${prom(su('obs'))}</td><td class="pm">${prom(su('anu'))}</td><td>${dmy(ult)}</td></tr>`
+        + P.map(r => `<tr class="pla" data-de="${esc(k)}"${ab ? '' : ' hidden'}><td>${esc(r.pl)}${!r.cat && r.fi === 'LIMA' ? '<span class="b fuera" title="Aparece en las órdenes pero no está en la hoja ZONA">fuera del catálogo</span>' : ''}</td><td>${esc(nom(r.fi))}</td><td>${zB(r.zo)}</td><td><span class="b pt">${esc(r.pt)}</span></td><td>${ecB(r.ec)}</td><td>${num(r.ins)}</td><td>${num(r.av)}</td><td>${num(r.pen, 'pen-n')}</td><td class="pm">${prom(r.ing)}</td><td class="pm">${prom(r.liq)}</td><td class="pm">${prom(r.obs)}</td><td class="pm">${prom(r.anu)}</td><td>${dmy(r.ult)}</td></tr>`).join(''); }).join('')
+      || '<tr><td colspan="13" class="vacio">No hay planos con estos filtros.</td></tr>';
+    $('tb-zon').tFoot.innerHTML = L.length ? `<tr><td><b>Total</b> <small style="color:var(--fg-3)">${n(L.length)} planos</small></td><td></td><td></td><td></td><td></td><td><b>${n(L.reduce((a, r) => a + r.ins, 0))}</b></td><td><b>${n(L.reduce((a, r) => a + r.av, 0))}</b></td><td><b class="pen-n">${n(L.reduce((a, r) => a + r.pen, 0))}</b></td>${['ing', 'liq', 'obs', 'anu'].map(c => `<td class="pm"><b>${prom(L.reduce((a, r) => a + r[c], 0))}</b></td>`).join('')}<td></td></tr>` : '';
     $('todo').textContent = todo ? 'Contraer todo' : 'Expandir todo';
   }
   const alternar = (tr) => { const k = tr.dataset.d; if (todo) { todo = false; dis0().forEach(x => abiertos.add(x)); } abiertos.has(k) ? abiertos.delete(k) : abiertos.add(k); pintar(); };
@@ -314,13 +320,14 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('todo').addEventListener('click', () => { todo = !todo; abiertos.clear(); pintar(); });
   // Excel (CSV con separador «;» que Excel abre directo): una fila por plano con los filtros aplicados
   $('xls').addEventListener('click', () => {
-    const cab = ['Filial', 'Zona', 'Distrito', 'Plano', 'Planta', 'EECC asignada', 'Instalaciones', 'Averías', 'Pendientes', 'Última orden', 'En catálogo'];
+    const cab = ['Filial', 'Zona', 'Distrito', 'Plano', 'Planta', 'EECC asignada', 'Instalaciones', 'Averías', 'Pendientes', 'Prom. ingresos/día', 'Prom. liquidadas/día', 'Prom. observadas/día', 'Prom. anuladas/día', 'Última orden', 'En catálogo'];
     const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const txt = [cab, ...L.map(r => [nom(r.fi), r.zo, r.di, r.pl, r.pt, r.ec || 'SIN EECC', r.ins, r.av, r.pen, dmy(r.ult), r.cat ? 'Sí' : 'No'])].map(f => f.map(q).join(';')).join('\r\n');
+    const txt = [cab, ...L.map(r => [nom(r.fi), r.zo, r.di, r.pl, r.pt, r.ec || 'SIN EECC', r.ins, r.av, r.pen, p1(r.ing), p1(r.liq), p1(r.obs), p1(r.anu), dmy(r.ult), r.cat ? 'Sí' : 'No'])].map(f => f.map(q).join(';')).join('\r\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' }));
     a.download = `zonificacion-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
     $('aviso').textContent = `Se descargaron ${n(L.length)} planos (ábrelo con Excel).`; });
 
+  $('dias-txt').textContent = D.mes ? `(${MESES[+D.mes.slice(5, 7) - 1]}: ${DIAS} días)` : '';
   pintarChips(); pintar();
   $('cargando').hidden = true; $('vista').hidden = false;
 })();
