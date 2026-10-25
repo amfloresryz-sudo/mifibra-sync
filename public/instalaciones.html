@@ -2820,11 +2820,11 @@ function pintarAvance() {
   P.forEach(p => { const e = e0(gk(p)); e.bolsa++; e[grupoB(p)]++; });
   const rk = Object.keys(ecs).filter(k => ecs[k].liq || ecs[k].prog || ecs[k].bolsa || RD[k] != null).sort((a, b) => ecs[b].liq - ecs[a].liq || ecs[b].bolsa - ecs[a].bolsa);
   const tecs = new Set(Ld.map(x => x.tec).filter(Boolean));
-  // Objetivo del día = OBJ_PCT % de la bolsa de pendientes de cada EECC (entero); el total suma los de cada fila.
-  const objDe = (bolsa) => Math.round(bolsa * OBJ_PCT / 100), objT = rk.reduce((a, k) => a + objDe(ecs[k].bolsa), 0);
-  $('av-obj').textContent = `% Objetivo (${dec(OBJ_PCT, 0)}%)`;
+  // Objetivo del día (dinámico) = bolsa de pendientes − AG futuras de cada EECC (lo que se puede atender hoy); el total suma los de cada fila.
+  const objDe = (e) => Math.max(0, e.bolsa - e.fut), objT = rk.reduce((a, k) => a + objDe(ecs[k]), 0);
+  $('av-obj').hidden = true; $('av-obj').style.display = 'none';   // el % fijo ya no se usa: el objetivo sale de la bolsa menos las AG futuras
   // % avance: cada fila llega como máximo al 100 %; el total suma lo liquidado de cada fila hasta su objetivo (lo que pasa no compensa a otras)
-  const liqTope = rk.reduce((a, k) => a + Math.min(ecs[k].liq, objDe(ecs[k].bolsa)), 0), avT = objT ? Math.min(100, liqTope / objT * 100) : null;
+  const liqTope = rk.reduce((a, k) => a + Math.min(ecs[k].liq, objDe(ecs[k])), 0), avT = objT ? Math.min(100, liqTope / objT * 100) : null;
   // Rutas declaradas (Pendientes › Agendas del día, o aquí) y faltas = rutas declaradas que no salieron a campo
   const falta = (r, t) => r == null ? null : Math.max(0, r - t);
   // Rutas fijas por distrito (botón «Rutas por distrito», clave master): en Provincias › Todas dan las rutas de cada filial;
@@ -2839,11 +2839,11 @@ function pintarAvance() {
   const faltasT = rk.reduce((a, k) => a + (falta(rutaDe(k), ecs[k].tec.size) || 0), 0);
   const di = diaInfo(diaAv);
   $('t-av').textContent = porFil ? 'Avance de producción diaria por filial' : 'Avance de producción diaria por EECC';
-  $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus E\u200BECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa de pendientes`;
+  $('av-sub').textContent = `${di.wd} ${fDia(diaAv)}${porFil ? ' · Provincias: elige una filial arriba para ver sus E\u200BECC' : ''} · técnicos en campo = técnicos que liquidaron ese día · objetivo = bolsa de pendientes − AG futuras`;
   $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', fijoT != null ? 'rutas fijas por EECC' : conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
     kpi('Técnicos en campo', n(tecs.size), 'liquidaron al menos una') +
     kpi('Faltas', conR ? n(faltasT) : '—', conR ? `${pct(faltasT, rutasT)} de las rutas declaradas` : 'declara las rutas para calcularlas', !conR ? '' : faltasT === 0 ? 'ok' : faltasT / Math.max(1, rutasT) <= .1 ? 'mid' : 'mal') +
-    kpi('Objetivo del día', n(objT), `${dec(OBJ_PCT, 0)}% de la bolsa de pendientes (${n(P.length)})`) +
+    kpi('Objetivo del día', n(objT), `${P.length ? Math.round(objT / P.length * 100) : 0}% de la bolsa de pendientes (${n(P.length)}) · bolsa − AG futuras`) +
     kpi('Liquidadas', `<button type="button" class="clic" data-ch="liq" data-d="${diaAv}" data-k="ALL" style="all:unset;cursor:pointer">${n(Ld.length)}</button>`, 'instalaciones DESCARGADA', 'acento') +
     kpi('Falta', n(Math.max(0, objT - Ld.length)), 'para el objetivo') + kpi('Productividad', dec(tecs.size ? Ld.length / tecs.size : null), 'por técnico', semaf(tecs.size ? Ld.length / tecs.size : null, obj)) +
     kpi('% avance', avT == null ? '—' : dec(avT, 0) + '%', 'liquidadas ÷ objetivo · máximo 100 % por EECC', semaf(avT, 100));
@@ -2853,7 +2853,7 @@ function pintarAvance() {
     return q >= 90 ? `<span class="ic-av ok" title="${t}">✔</span>` : q >= 50 ? `<span class="ic-av mid" title="${t}">!</span>` : `<span class="ic-av mal" title="${t}">✖</span>`; };
   // Productividad con ícono: rojo ▼ menos de 1,5 · amarillo ▬ de 1,5 a menos de 2,3 · verde ▲ 2,3 o más
   const prodC = (v0) => { if (v0 == null) return '—'; const v = Math.round(v0 * 10) / 10; return `<span class="pr-av ${v < 1.5 ? 'r' : v < 2.3 ? 'a' : 'v'}"><i aria-hidden="true">${v < 1.5 ? '▼' : v < 2.3 ? '▬' : '▲'}</i>${dec(v)}</span>`; };   // se compara el valor que se ve (1 decimal)
-  const filaAv = (k, e) => { const o = k ? objDe(e.bolsa) : objT, av = !k ? avT : o ? Math.min(100, e.liq / o * 100) : null;
+  const filaAv = (k, e) => { const o = k ? objDe(e) : objT, av = !k ? avT : o ? Math.min(100, e.liq / o * 100) : null;
     const r = k ? rutaDe(k) : (conR ? rutasT : null), fa = k ? falta(r, e.tec.size) : (conR ? faltasT : null);
     const celR = k && !porFil && !hayFijas ? `<td class="sep"><input type="number" class="in-ruta" min="0" max="999" inputmode="numeric" data-av-ruta="${esc(k)}" value="${RD[k] ?? ''}" aria-label="Rutas declaradas de ${esc(k)}" placeholder="${fijaDe(k) ?? '—'}" title="${fijaDe(k) != null ? 'Ruta fija: ' + fijaDe(k) + ' (escribe un número solo si hoy es distinto)' : ''}"></td>` : `<td class="sep">${r ?? '—'}</td>`;
     const celF = `<td class="${fa == null ? '' : fa ? 'malo' : 'bien'}">${fa == null ? '—' : fa}</td>`;
@@ -2864,7 +2864,7 @@ function pintarAvance() {
       // Fila %: técnicos y faltas sobre las rutas declaradas; cada parte de la bolsa sobre la bolsa; liquidadas y falta sobre el objetivo
       return `<tr class="av-pct"><td>%</td><td class="sep">${conR ? '100%' : '—'}</td><td class="pc-mal">${conR ? pc(faltasT, rutasT) : '—'}</td><td class="pc-ok">${conR ? pc(tecs.size, rutasT) : '—'}</td><td>${T.bolsa ? '100%' : '—'}</td><td class="bf">${pc(T.fut, T.bolsa)}</td><td class="bm">${pc(T.m24, T.bolsa)}</td><td class="bh">${pc(T.hoy, T.bolsa)}</td><td class="av-prog">${pc(T.prog, T.bolsa)}</td><td>${objT ? '100%' : '—'}</td><td class="av-liq">${pc(Ld.length, objT)}</td><td class="av-falta">${pc(fT, objT)}</td><td></td><td></td></tr>`; })()}</tfoot></table>`;
   prepararOrden($('tb-av'));
-  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa de pendientes de la EECC, redondeado (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
+  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Objetivo = bolsa de pendientes − AG futuras de la EECC (lo que se puede atender ese día) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
   pintarConsolidado(L);
 }
 function pintarConsolidado(L) {
