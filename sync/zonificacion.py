@@ -78,6 +78,12 @@ def construir(df: pd.DataFrame, corte: str, vistos: dict | None = None, editadas
         x["fr"] = _dia_lima(df.loc[x.index, "fecha_registro"])
         x["fa"] = tx("fecha_atencion").loc[x.index].str[:10]
         x["tp"] = x["tp"].replace({**TIPO_TXT, "": "SIN TIPO"})
+        # Instalaciones = solo servicio INTERNET (igual que el tablero de Instalaciones); las de otros servicios (p. ej. SERVICIO OTT)
+        # van como su propio tipo de trabajo, que se puede sumar desde el segmentador «Tipo de trabajo»
+        if "servicio" in df:
+            sv = df.loc[x.index, "servicio"].fillna("INTERNET").astype(str).str.strip().str.upper().replace("", "INTERNET")
+            otro = (x["tp"] == "INSTALACIONES") & (sv != "INTERNET")
+            x.loc[otro, "tp"] = "INSTALACIONES " + sv[otro].str.replace(r"^SERVICIO\s+", "", regex=True)
         nd = {v: norm(v) for v in x["di"].unique()}
         npl = {v: norm(v) for v in x["pl"].unique()}
         x["k"] = x["fi"].str.upper() + "|" + x["di"].map(nd) + "|" + x["pl"].map(npl)

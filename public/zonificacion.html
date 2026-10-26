@@ -246,6 +246,25 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .mov { border: 1px solid var(--borde); border-left: 5px solid var(--magenta); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--sup); }
 .mov .t { font: 800 15px var(--f-disp); } .mov .t b { color: var(--magenta-txt); } .mov .s { font-size: 12.5px; color: var(--fg-3); line-height: 1.45; }
 .mov.ok { border-left-color: var(--ok); }
+/* Encabezados con orden y filtro */
+#tb-zon th .th-in { display: inline-flex; align-items: flex-end; gap: 2px; }
+#tb-zon th:not(:first-child) .th-in { justify-content: center; }
+.th-ord { all: unset; cursor: pointer; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; border-radius: 6px; padding: 2px 3px; }
+.th-ord i { font-style: normal; font-size: 9px; margin-left: 3px; opacity: .45; } .th-ord.on i { opacity: 1; color: var(--magenta-txt); }
+.th-ord:hover, .th-fil:hover { background: var(--rosa); } .th-ord:focus-visible, .th-fil:focus-visible { outline: 2px solid var(--magenta); }
+.th-fil { all: unset; cursor: pointer; font-size: 10px; line-height: 1; padding: 3px 4px; border-radius: 6px; color: var(--fg-3); }
+.th-fil.on { color: #fff; background: var(--magenta); }
+.hf-pop { position: absolute; z-index: 60; width: 280px; max-width: calc(100vw - 16px); background: var(--sup); color: var(--fg); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+.hf-t { font: 800 12px var(--f-disp); text-transform: uppercase; letter-spacing: .5px; color: var(--fg-3); }
+.hf-q, .hf-rng input { font: inherit; padding: 6px 9px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); width: 100%; box-sizing: border-box; }
+.hf-lis { max-height: 240px; overflow: auto; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--borde); padding-top: 6px; }
+.hf-op { display: flex; align-items: center; gap: 7px; padding: 3px 4px; border-radius: 6px; cursor: pointer; } .hf-op:hover { background: var(--gris-bg); }
+.hf-op[hidden] { display: none; } .hf-op input { accent-color: var(--magenta); width: 15px; height: 15px; } .hf-op small { margin-left: auto; color: var(--fg-3); }
+.hf-rng { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .hf-rng label { display: flex; flex-direction: column; gap: 3px; font-weight: 600; color: var(--fg-3); }
+.hf-rap { display: flex; gap: 6px; flex-wrap: wrap; } .hf-rap .chip { min-height: 28px; padding: 3px 10px; font-size: 12px; color: var(--fg); border-color: var(--borde-2); background: var(--sup); }
+.hf-acc { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--borde); padding-top: 8px; }
+.hf-acc button { min-height: 32px; padding: 5px 14px; font-size: 12.5px; }
+.btn-pri { font: 700 12.5px var(--f-disp); border: 1px solid var(--magenta); background: var(--magenta); color: #fff; border-radius: 20px; cursor: pointer; }
 /* Reasignación de AB del día */
 .ra-vivo { font-size: 12px; color: var(--fg-3); align-self: center; } .ra-vivo b { color: var(--fg); }
 .ra-alerta { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--mal); background: var(--mal-bg); color: var(--mal); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; font-size: 13px; }
@@ -325,7 +344,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 
   <section class="sec" aria-labelledby="t-tb">
     <div class="sec-cab"><div><h3 id="t-tb">Planos por zona</h3><p class="sub" id="tb-sub">Se ven las zonas; abre una zona para ver sus distritos y un distrito para ver sus planos.</p></div>
-      <div class="pen-acc"><button type="button" class="btn-out" id="editar">✎ Editar EECC</button><button type="button" class="btn-out" id="subir">⬆ Subir Excel</button><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
+      <div class="pen-acc"><button type="button" class="btn-out" id="editar">✎ Editar EECC</button><button type="button" class="btn-out" id="subir">⬆ Subir Excel</button><button type="button" class="btn-out" id="hf-limpiar" hidden>Quitar filtros de columna</button><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
     <div class="segs-tb">
       <div style="flex-basis:100%"><span class="seg-t">Tipo de trabajo <span style="text-transform:none;letter-spacing:0;font-weight:500">· Instalaciones siempre incluidas; suma los que elijas</span></span><div class="chips" id="f-tp" role="group" aria-label="Tipo de trabajo"></div></div>
       <div><span class="seg-t">Zona</span><div class="chips" id="f-zo" role="group" aria-label="Zona"></div></div>
@@ -373,7 +392,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   aplicarEd(D.eecc || {});
   // Tipos de trabajo: «tt» trae por tipo [órdenes, pendientes, ingresadas, liquidadas, observadas y anuladas del mes, última orden]
   const TIPOS = D.tipos || ['INSTALACIONES'], TI = TIPOS.indexOf('INSTALACIONES');
-  const TP = new Set(['INSTALACIONES']), tpTxt = (t) => t === 'INSTALACIONES' ? 'Instalaciones' : t === 'AVERÍAS' ? 'Averías' : t.charAt(0) + t.slice(1).toLowerCase();
+  const TP = new Set(['INSTALACIONES']), tpTxt = (t) => t === 'INSTALACIONES' ? 'Instalaciones' : t.startsWith('INSTALACIONES ') ? 'Instalaciones ' + t.slice(14) : t === 'AVERÍAS' ? 'Averías' : t.charAt(0) + t.slice(1).toLowerCase();
   R.forEach(r => { r.tt = r.tt || {}; const i = r.tt[TI] || [r.ins, r.pen, r.ing, r.liq, r.obs, r.anu, r.ult]; r.I = { ins: i[0] || 0, pen: i[1] || 0, ing: i[2] || 0, liq: i[3] || 0, obs: i[4] || 0, anu: i[5] || 0 }; });
   const aplicarTipos = () => R.forEach(r => { const o = { ins: 0, pen: 0, ing: 0, liq: 0, obs: 0, anu: 0, ult: '' };
     TIPOS.forEach((t, i) => { if (!TP.has(t)) return; const v = r.tt[i]; if (!v) return; o.ins += v[0]; o.pen += v[1]; o.ing += v[2]; o.liq += v[3]; o.obs += v[4]; o.anu += v[5]; if ((v[6] || '') > o.ult) o.ult = v[6]; });
@@ -410,7 +429,6 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const zs = [...new Set(R.map(r => r.zo))].sort((a, b) => { const i = ZO.indexOf(a), j = ZO.indexOf(b); return (i < 0 ? 50 : i) - (j < 0 ? 50 : j) || a.localeCompare(b); });
     const cT = {}; R.filter(r => ok(r)).forEach(r => TIPOS.forEach((t, i) => { if (r.tt[i]) cT[t] = (cT[t] || 0) + r.tt[i][0]; }));
     $('f-tp').innerHTML = TIPOS.filter(t => cT[t] || TP.has(t)).map(t => `<button type="button" class="chip" data-tp="${esc(t)}" aria-pressed="${TP.has(t)}"${t === 'INSTALACIONES' ? ' title="Siempre incluido"' : ''}>${esc(tpTxt(t))} (${n(cT[t] || 0)})</button>`).join('');
-    $('th-ord').textContent = TP.size === 1 ? 'Instalaciones' : 'Órdenes';
     chips('f-zo', 'zo', zs, v => ZO.includes(v) || v === 'SIN ZONA' ? v : nom(v));
     chips('f-pt', 'pt', [...new Set(R.map(r => r.pt))].sort((a, b) => /^(Sin|Otros)/.test(a) - /^(Sin|Otros)/.test(b) || a.localeCompare(b)));
     chips('f-es', 'es', ESTADOS.slice(), v => ({ NUEVO: 'Nuevos (7 días)', 'SIN EECC': 'Sin EECC', EDITADA: 'EECC editada' })[v]);
@@ -438,13 +456,102 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     return `<td>${num(su('ins'))}</td><td>${num(su('av'))}</td><td>${num(su('pen'), 'pen-n')}</td><td class="pm">${prom(su('ing'))}</td><td class="pm">${prom(su('liq'))}</td><td class="pm">${prom(su('obs'))}</td><td class="pm">${prom(su('anu'))}</td><td>${dmy(ult)}</td>`; };
   const ecsDe = (P) => { const c = {}; P.forEach(r => { if (r.ec) c[r.ec] = (c[r.ec] || 0) + 1; }); const e = Object.keys(c).sort((a, b) => c[b] - c[a]); return e.length ? (e.length > 3 ? e.slice(0, 3).map(ecB).join('') + `<small>+${e.length - 3}</small>` : e.map(ecB).join('')) : ecB(''); };
   const pts = (P) => { const p = [...new Set(P.map(r => r.pt))]; return p.length > 2 ? n(p.length) + ' plantas' : p.map(esc).join(' · '); };
+  // ----- Encabezados de «Planos por zona»: clic para ordenar (↑ ↓ y vuelve al orden normal) y ▾ para filtrar cada columna -----
+  // Los filtros de columna se aplican a cada plano (como los segmentadores) y los totales de zona y distrito se recalculan.
+  const pmV = (v) => Math.round(v / DIAS * 100) / 100;   // promedio por día tal como se ve en la tabla
+  const COLT = [
+    { k: 'di', t: 'Zona / distrito / plano', tipo: 'txt', v: (r) => r.di, ft: 'Distrito' },
+    { k: 'fi', t: 'Filial', tipo: 'txt', v: (r) => nom(r.fi) },
+    { k: 'zo', t: 'Zona', tipo: 'txt', v: (r) => r.zo },
+    { k: 'pt', t: 'Planta', tipo: 'txt', v: (r) => r.pt },
+    { k: 'ec', t: 'EECC asignada', tipo: 'txt', v: (r) => r.ec || 'SIN EECC' },
+    { k: 'ins', t: 'Instalaciones', tipo: 'num', v: (r) => r.ins, id: 'th-ord', tit: 'Órdenes del periodo en ese plano de los tipos de trabajo elegidos' },
+    { k: 'av', t: 'Averías', tipo: 'num', v: (r) => r.av, tit: 'Averías (servicio técnico) del periodo en ese plano' },
+    { k: 'pen', t: 'Pendientes', tipo: 'num', v: (r) => r.pen, tit: 'Instalaciones (servicio Internet) en estado REGISTRADA' },
+    { k: 'ing', t: 'Prom. ingresos', s: 'por día', tipo: 'num', pm: 1, v: (r) => pmV(r.ing), tit: 'Instalaciones ingresadas en el mes (F. Recep) ÷ días transcurridos' },
+    { k: 'liq', t: 'Prom. liquidadas', s: 'por día', tipo: 'num', pm: 1, v: (r) => pmV(r.liq), tit: 'Instalaciones DESCARGADA en el mes (F. Atención) ÷ días transcurridos' },
+    { k: 'obs', t: 'Prom. observadas', s: 'por día', tipo: 'num', pm: 1, v: (r) => pmV(r.obs), tit: 'Instalaciones del mes en estado OBSERVADA ÷ días transcurridos' },
+    { k: 'anu', t: 'Prom. anuladas', s: 'por día', tipo: 'num', pm: 1, v: (r) => pmV(r.anu), tit: 'Instalaciones del mes en estado ANULADA ÷ días transcurridos' },
+    { k: 'ult', t: 'Última orden', tipo: 'fec', v: (r) => r.ult || '' },
+  ];
+  const CK = Object.fromEntries(COLT.map(c => [c.k, c]));
+  const ORD = { k: '', dir: 1 }, HF = {};   // HF[k] = { set: Set de valores } (texto/fecha) o { min, max } (números)
+  const hfOn = (k) => !!HF[k];
+  const hfOk = (r, sin = '') => Object.entries(HF).every(([k, f]) => { if (k === sin) return true; const v = CK[k].v(r);
+    if (f.set) return f.set.has(CK[k].tipo === 'fec' ? (v ? v.slice(0, 7) : '') : v);
+    return (f.min == null || v >= f.min) && (f.max == null || v <= f.max); });
+  // Valor de un grupo (zona o distrito) para ordenar: suma en números, la más reciente en fechas, el texto más frecuente en textos
+  const valG = (P, k) => { const c = CK[k]; if (c.tipo === 'num') return P.reduce((a, r) => a + c.v(r), 0); if (c.tipo === 'fec') return P.reduce((a, r) => c.v(r) > a ? c.v(r) : a, '');
+    const m = {}; P.forEach(r => { const v = c.v(r); m[v] = (m[v] || 0) + 1; }); return Object.keys(m).sort((a, b) => m[b] - m[a])[0] || ''; };
+  const cmpV = (a, b) => typeof a === 'number' ? a - b : String(a).localeCompare(String(b), 'es', { numeric: true });
+  const ordenar = (arr, val, base) => ORD.k ? arr.sort((a, b) => ORD.dir * cmpV(val(a), val(b)) || base(a, b)) : arr.sort(base);
+  function pintarCab() {
+    const thr = $('tb-zon').tHead.rows[0];
+    thr.innerHTML = COLT.map(c => { const o = ORD.k === c.k, f = hfOn(c.k);
+      return `<th${c.pm ? ' class="pm"' : ''}${c.id ? ` id="${c.id}"` : ''}${c.tit ? ` title="${esc(c.tit)}"` : ''} aria-sort="${o ? (ORD.dir > 0 ? 'ascending' : 'descending') : 'none'}"><span class="th-in">`
+        + `<button type="button" class="th-ord${o ? ' on' : ''}" data-ord="${c.k}">${esc(c.k === 'ins' && TP.size > 1 ? 'Órdenes' : c.t)}${c.s ? `<small>${c.s}</small>` : ''}<i aria-hidden="true">${o ? (ORD.dir > 0 ? '▲' : '▼') : '↕'}</i></button>`
+        + `<button type="button" class="th-fil${f ? ' on' : ''}" data-fil="${c.k}" aria-label="Filtrar ${esc(c.ft || c.t)}" title="Filtrar ${esc(c.ft || c.t)}">${f ? '●' : '▾'}</button></span></th>`; }).join('');
+    const nAct = Object.keys(HF).length; $('hf-limpiar').hidden = !nAct && !ORD.k;
+    $('hf-limpiar').textContent = nAct ? `Quitar ${nAct} filtro${nAct === 1 ? '' : 's'} de columna${ORD.k ? ' y el orden' : ''}` : 'Quitar el orden';
+  }
+  $('tb-zon').tHead.addEventListener('click', (e) => {
+    const bo = e.target.closest('[data-ord]'), bf = e.target.closest('[data-fil]');
+    if (bo) { const k = bo.dataset.ord; if (ORD.k !== k) { ORD.k = k; ORD.dir = CK[k].tipo === 'txt' ? 1 : -1; } else if (ORD.dir === (CK[k].tipo === 'txt' ? 1 : -1)) ORD.dir = -ORD.dir; else ORD.k = '';
+      pintarCab(); pintarTabla(); const nb = $('tb-zon').tHead.querySelector(`[data-ord="${k}"]`); if (nb) nb.focus(); return; }
+    if (bf) abrirFil(bf.dataset.fil, bf);
+  });
+  $('hf-limpiar').addEventListener('click', () => { Object.keys(HF).forEach(k => delete HF[k]); ORD.k = ''; cerrarFil(); pintar(); });
+  // Ventana de filtro de una columna
+  let POP = null;
+  const cerrarFil = () => { if (POP) { POP.remove(); POP = null; } };
+  function abrirFil(k, btn) {
+    const ya = POP && POP.dataset.k === k; cerrarFil(); if (ya) return;
+    const c = CK[k], B = R.filter(r => ok(r) && hfOk(r, k)), f = HF[k];
+    const p = document.createElement('div'); p.className = 'hf-pop'; p.dataset.k = k; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Filtro de ' + (c.ft || c.t));
+    if (c.tipo === 'num') {
+      const vs = B.map(c.v), mx = vs.length ? Math.max(...vs) : 0, con = vs.filter(v => v > 0).length;
+      p.innerHTML = `<b class="hf-t">${esc(c.ft || c.t)}${c.s ? ' ' + c.s : ''}</b>
+        <div class="hf-rap"><button type="button" class="chip" data-rap="pos">Con valor (${n(con)})</button><button type="button" class="chip" data-rap="cero">En cero (${n(vs.length - con)})</button></div>
+        <div class="hf-rng"><label>Desde<input type="number" step="any" id="hf-min" value="${f && f.min != null ? f.min : ''}" placeholder="0"></label><label>Hasta<input type="number" step="any" id="hf-max" value="${f && f.max != null ? f.max : ''}" placeholder="${mx}"></label></div>
+        <div class="hf-acc"><button type="button" class="btn-out" data-hf="limpiar">Limpiar</button><button type="button" class="btn-pri" data-hf="aplicar">Aplicar</button></div>`;
+    } else {
+      const cnt = {}; B.forEach(r => { const v = c.tipo === 'fec' ? (c.v(r) ? c.v(r).slice(0, 7) : '') : c.v(r); cnt[v] = (cnt[v] || 0) + 1; });
+      const txtV = (v) => c.tipo === 'fec' ? (v ? `${MESES[+v.slice(5, 7) - 1]} ${v.slice(0, 4)}` : 'Sin órdenes') : v || '(vacío)';
+      const ops = Object.keys(cnt).sort((a, b) => c.tipo === 'fec' ? b.localeCompare(a) : k === 'zo' ? zOrd(a, b) : a.localeCompare(b, 'es'));
+      p.innerHTML = `<b class="hf-t">${esc(c.ft || c.t)}</b>${ops.length > 8 ? '<input type="search" class="hf-q" placeholder="Buscar…" autocomplete="off">' : ''}
+        <label class="hf-op hf-todo"><input type="checkbox" data-todo ${!f ? 'checked' : ''}> <b>Seleccionar todo</b></label>
+        <div class="hf-lis">${ops.map(v => `<label class="hf-op" data-t="${esc(txtV(v).toUpperCase())}"><input type="checkbox" value="${esc(v)}" ${!f || f.set.has(v) ? 'checked' : ''}> ${esc(txtV(v))} <small>${n(cnt[v])}</small></label>`).join('')}</div>
+        <div class="hf-acc"><button type="button" class="btn-out" data-hf="limpiar">Limpiar</button><button type="button" class="btn-pri" data-hf="aplicar">Aplicar</button></div>`;
+    }
+    document.body.appendChild(p); POP = p;
+    const r = btn.getBoundingClientRect(), w = p.offsetWidth;
+    p.style.top = (r.bottom + scrollY + 6) + 'px'; p.style.left = Math.max(8, Math.min(r.right + scrollX - w, scrollX + document.documentElement.clientWidth - w - 8)) + 'px';
+    const q = p.querySelector('.hf-q, input'); if (q) q.focus();
+  }
+  document.addEventListener('input', (e) => { if (!POP) return;
+    if (e.target.matches('.hf-q')) { const t = e.target.value.trim().toUpperCase(); POP.querySelectorAll('.hf-lis .hf-op').forEach(l => { l.hidden = !!t && !l.dataset.t.includes(t); }); }
+    if (e.target.matches('[data-todo]')) POP.querySelectorAll('.hf-lis .hf-op:not([hidden]) input').forEach(i => { i.checked = e.target.checked; });
+    if (e.target.matches('.hf-lis input')) { const all = [...POP.querySelectorAll('.hf-lis input')]; POP.querySelector('[data-todo]').checked = all.every(i => i.checked); } });
+  document.addEventListener('click', (e) => {
+    if (POP && !e.target.closest('.hf-pop') && !e.target.closest('[data-fil]')) { cerrarFil(); return; }
+    if (!POP) return; const k = POP.dataset.k, b = e.target.closest('[data-hf], [data-rap]'); if (!b) return;
+    if (b.dataset.rap) { HF[k] = b.dataset.rap === 'pos' ? { min: 0.001, max: null } : { min: null, max: 0 }; }
+    else if (b.dataset.hf === 'limpiar') delete HF[k];
+    else if (CK[k].tipo === 'num') { const a = POP.querySelector('#hf-min').value, z = POP.querySelector('#hf-max').value;
+      if (a === '' && z === '') delete HF[k]; else HF[k] = { min: a === '' ? null : +a, max: z === '' ? null : +z }; }
+    else { const all = [...POP.querySelectorAll('.hf-lis input')], si = all.filter(i => i.checked).map(i => i.value);
+      if (si.length === all.length) delete HF[k]; else HF[k] = { set: new Set(si) }; }
+    cerrarFil(); pintar(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && POP) { const k = POP.dataset.k; cerrarFil(); const b = $('tb-zon').tHead.querySelector(`[data-fil="${k}"]`); if (b) b.focus(); } });
   function pintarTabla() {
     const Z = new Map(); L.forEach(r => { const kz = r.fi + '|' + r.zo, kd = r.fi + '|' + r.di; if (!Z.has(kz)) Z.set(kz, new Map()); const M = Z.get(kz); if (!M.has(kd)) M.set(kd, []); M.get(kd).push(r); });
-    const zonas = [...Z.keys()].sort((a, b) => { const [fa, za] = a.split('|'), [fb, zb] = b.split('|'); return (fb === 'LIMA') - (fa === 'LIMA') || fa.localeCompare(fb) || zOrd(za, zb); });
+    const baseZ = (a, b) => { const [fa, za] = a.split('|'), [fb, zb] = b.split('|'); return (fb === 'LIMA') - (fa === 'LIMA') || fa.localeCompare(fb) || zOrd(za, zb); };
+    const PZd = (kz) => [...Z.get(kz).values()].flat();
+    const zonas = ordenar([...Z.keys()], (kz) => ORD.k === 'di' ? kz.split('|')[1] : valG(PZd(kz), ORD.k), baseZ);
     $('tb-zon').tBodies[0].innerHTML = zonas.map(kz => { const M = Z.get(kz), [fi, zo] = kz.split('|'), PZ = [...M.values()].flat(), oz = todo || abZ.has(kz);
-      const dis = [...M.keys()].sort((a, b) => a.localeCompare(b));
+      const dis = ordenar([...M.keys()], (kd) => ORD.k === 'di' ? kd.split('|')[1] : valG(M.get(kd), ORD.k), (a, b) => a.localeCompare(b));
       return `<tr class="zon"><td>${zB(zo)}<button type="button" class="exp" data-expz="${esc(kz)}" aria-expanded="${oz}">${oz ? '− Ocultar' : '+ Ver'} ${n(dis.length)} distrito${dis.length === 1 ? '' : 's'}</button><small style="margin-left:8px;opacity:.75">${n(PZ.length)} planos</small></td><td>${esc(nom(fi))}</td><td>${zB(zo)}</td><td>${pts(PZ)}</td><td><span class="ecs">${ecsDe(PZ)}</span></td>${celdas(PZ)}</tr>`
-        + dis.map(kd => { const P = M.get(kd).sort((a, b) => a.pl.localeCompare(b.pl, 'es', { numeric: true })), di = kd.split('|')[1], ab = todo || abiertos.has(kd);
+        + dis.map(kd => { const P = ordenar(M.get(kd), (r) => ORD.k === 'di' ? r.pl : CK[ORD.k].v(r), (a, b) => a.pl.localeCompare(b.pl, 'es', { numeric: true })), di = kd.split('|')[1], ab = todo || abiertos.has(kd);
           return `<tr class="dis" data-d="${esc(kd)}"${oz ? '' : ' hidden'}><td>${esc(di)}<button type="button" class="exp" data-exp="${esc(kd)}" aria-expanded="${ab}" title="${ab ? 'Ocultar' : 'Ver'} los ${n(P.length)} planos de ${esc(di)}">${ab ? '− Ocultar' : '+ Ver'} ${n(P.length)} plano${P.length === 1 ? '' : 's'}</button></td><td>${esc(nom(fi))}</td><td>${zB(P[0].zo)}</td><td>${pts(P)}</td>
             <td>${ED ? `<input class="in-ec" list="eecc-list" data-ed-dis="${esc(kd)}" placeholder="Todo el distrito…" aria-label="EECC para todos los planos de ${esc(di)}">` : `<span class="ecs">${ecsDe(P)}</span>`}</td>${celdas(P)}</tr>`
             + P.map(r => `<tr class="pla${esNuevo(r) ? ' es-nuevo' : ''}" data-de="${esc(kd)}"${oz && ab ? '' : ' hidden'}><td>${esc(r.pl)}${esNuevo(r) ? `<span class="b nuevo" title="Apareció por primera vez el ${dmy(r.alta)}">Nuevo · ${r.alta.slice(8, 10)}/${r.alta.slice(5, 7)}</span>` : !r.cat && r.fi === 'LIMA' ? '<span class="b fuera" title="Aparece en las órdenes pero no está en la hoja ZONA">fuera del catálogo</span>' : ''}</td><td>${esc(nom(r.fi))}</td><td>${zB(r.zo)}</td><td><span class="b pt">${esc(r.pt)}</span></td><td>${ED ? `<input class="in-ec${CAM.has(r.k) ? ' cambio' : ''}" list="eecc-list" data-ed="${esc(r.k)}" value="${esc(CAM.has(r.k) ? CAM.get(r.k) : r.ec)}" placeholder="Sin EECC" aria-label="EECC del plano ${esc(r.pl)}">` : ecB(r.ec) + (r.ed ? '<span class="b edit" title="EECC cambiada en el portal">editada</span>' : '')}</td>${celdas([r])}</tr>`).join(''); }).join(''); }).join('')
@@ -647,7 +754,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     setTimeout(() => { $('ra-cop').textContent = 'Copiar lista'; }, 2500); });
   pintarNot(); traerRA(); setInterval(traerRA, 5 * 60 * 1000);
   function pintar() {
-    L = R.filter(r => ok(r));
+    L = R.filter(r => ok(r) && hfOk(r)); pintarCab();
     const nDis = new Set(L.map(r => r.fi + '|' + r.di)).size;
     const sinEc = L.filter(r => !r.ec).length, nNue = L.filter(esNuevo).length, nNueSin = L.filter(r => esNuevo(r) && !r.ec).length, fuera = L.filter(r => !r.cat && r.fi === 'LIMA').length;
     const fil = F.fi.size ? [...F.fi].map(nom).join(' + ') : 'Todas las filiales';
