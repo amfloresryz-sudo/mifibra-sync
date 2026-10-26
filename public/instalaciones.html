@@ -2540,13 +2540,14 @@ function pintarConsol(m) {
   const tabla = `<table class="mat ord tabla-ajuste cs-tab${c.marcar !== false ? ' marcar' : ''}" id="${tid}"><thead><tr><th>#</th>${c.rank === 'GE' ? '<th>Gestor</th><th>EECC</th>' : '<th>Gestor</th><th>EECC</th>'}<th>Programadas</th><th>Agendas</th><th>Coordinadas</th><th>Descargadas</th><th>Cumplió</th><th class="nc">No cumplió</th><th>% Cumplimiento</th><th>Anuladas</th><th>Observadas</th><th>Registradas</th></tr></thead><tbody>
     ${fl.map((r, i) => `<tr${r.inc ? ' class="fila-nc"' : ''}><td>${i + 1}</td>${c.rank === 'GE' ? `<td><span class="ec-nc">${esc(r.g)}</span></td><td>${esc(ecsDeGe(r.g).join(', '))}</td>` : `<td>${esc(geDe(r.g) === 'SIN GESTOR' ? 'S/ASIGNAR' : geDe(r.g))}</td><td><span class="ec-nc">${esc(r.g)}</span></td>`}${celda(r, r.g)}</tr>`).join('') || '<tr><td colspan="14">Sin programadas con estos filtros.</td></tr>'}</tbody>
     <tfoot><tr><td></td><td>Total</td><td></td>${celda(T, '*')}</tr></tfoot></table>`;
-  box.innerHTML = `<div class="cs-cab"><h2 id="t-cs-${m}">Consolidado de Agendas &amp; Coordinadas ${m === 'cd' ? 'del día' : 'del mes'}</h2><div class="cs-acc"><button type="button" class="btn-out" data-img="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda</button>
+  box.innerHTML = `<div class="cs-res" id="cs-res-${m}"><div class="cs-cab"><h2 id="t-cs-${m}">Consolidado de Agendas &amp; Coordinadas ${m === 'cd' ? 'del día' : 'del mes'}</h2><div class="cs-acc no-img"><button type="button" class="btn-out" data-img="cs-res-${m}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="consolidado-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button><button type="button" class="btn-out" data-ag-buscar>✎ Editar agenda</button>
 </div></div>
     <div class="f-mas cs-fmas" tabindex="0" aria-label="Segmentadores del consolidado: pasa el puntero para verlos">
-      <div class="f-mas-cab"><span class="seg-t">Segmentadores</span><span class="f-mas-que">${esc(activos)}</span><span class="f-mas-fl" aria-hidden="true">▾</span></div>
+      <div class="f-mas-cab"><span class="seg-t">Segmentadores</span><span class="f-mas-que">${esc(activos)}</span><span class="f-mas-fl no-img" aria-hidden="true">▾</span></div>
       <div class="f-mas-cuerpo"><div class="cs-filtros">${filtros}</div></div></div>
+    <p class="pen-aviso" id="aviso-cs-res-${m}" role="status" aria-live="polite"></p>
     ${kpis}
-    ${graf}
+    ${graf}</div>
     ${csDetalleAB(m, L, rangoTxt)}
     <div class="cs-det"><div class="sec-cab"><div><h3 class="cs-h3">Detalle por ${c.rank === 'GE' ? 'gestor' : 'EECC'}</h3><p class="sub">${esc(rangoTxt)} · programadas por fecha de agenda (F. AG), incluye anuladas · % cumplimiento = cumplidas ÷ descargadas · clic en un número para ver los AB y editar su agenda</p></div>
         <div class="pen-acc"><button type="button" class="btn-out" data-cs-marcar="${m}" aria-pressed="${c.marcar !== false}">${c.marcar !== false ? '✓ Marcar incumplidos' : 'Marcar incumplidos'}</button><button type="button" class="btn-out" data-img="${tid}" data-nom="detalle-${c.rank === 'GE' ? 'gestor' : 'eecc'}-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button></div></div>
