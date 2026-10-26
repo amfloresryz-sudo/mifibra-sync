@@ -1234,7 +1234,7 @@ const cfgDe = (c0 = canal) => {
    o un buen comentario (explica la gestión: cliente no contesta, visita directa, reprograma, solicita…; al menos 5 palabras
    con un motivo, o 10 palabras o más). Lo demás («TÉCNICO EN CAMINO» o sin comentario) = Sin gestión.
    1er contacto = el comentario trae la marca #dd/mm/aaaa hh:mm#. */
-const RE_PC = /#\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2})\s*:\s*(\d{2})\s*#/g;
+const RE_PC = /#(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2})#/g;   // formato exacto #dd/mm/aaaa hh:mm# (con un espacio entre fecha y hora)
 const RE_FEC = /\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b|\b(?:LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|DOMINGO|HOY|MA[NÑ]ANA)\b|\b\d{1,2}\s+DE\s+(?:ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SE?TIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\b/;
 const RE_FRA = /\b\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\s*(?:A|-|AL|HASTA)\s*\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\b|\bA\s+LAS\s+\d{1,2}|\b\d{1,2}\s*(?::\s*\d{2})?\s*(?:AM|PM)\b|\b(?:RANGO|FRANJA)\s+(?:DE\s+)?\d/;
 const RE_TEC = /\b(?:CL(?:IENTE)?\s+EN\s+SITIO|T[EÉ]C(?:NICO)?\.?\s+(?:EN\s+(?:CAMINO|SITIO|RUTA|DOMICILIO|CASA(?:\s+DEL?\s+CLIENTE)?)|LLEG[OÓ]))\b/g;   // solo dice dónde está el técnico: no es gestión
