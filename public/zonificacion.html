@@ -246,6 +246,29 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .mov { border: 1px solid var(--borde); border-left: 5px solid var(--magenta); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--sup); }
 .mov .t { font: 800 15px var(--f-disp); } .mov .t b { color: var(--magenta-txt); } .mov .s { font-size: 12.5px; color: var(--fg-3); line-height: 1.45; }
 .mov.ok { border-left-color: var(--ok); }
+/* Reasignación de AB del día */
+.ra-vivo { font-size: 12px; color: var(--fg-3); align-self: center; } .ra-vivo b { color: var(--fg); }
+.ra-alerta { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--mal); background: var(--mal-bg); color: var(--mal); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; font-size: 13px; }
+.ra-alerta b.t { font: 800 14.5px var(--f-disp); } .ra-alerta span { color: var(--fg); }
+.ra-ctl { display: flex; padding: 0 2px; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin-bottom: 10px; font-size: 12.5px; color: var(--fg-3); }
+.ra-ctl label { display: flex; gap: 8px; align-items: center; font-weight: 600; } .ra-chk input { width: 16px; height: 16px; accent-color: var(--magenta); }
+.ra-segs { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 14px; align-items: center; margin-bottom: 12px; padding: 12px 16px; border: 1px solid var(--borde); border-radius: 12px; }
+.ra-segs .chip:not([aria-pressed="true"]) { color: var(--fg); border-color: var(--borde-2); background: var(--sup); } .ra-segs .seg-t { font: 800 10.5px var(--f-disp); letter-spacing: .8px; text-transform: uppercase; color: var(--fg-3); }
+.ra-segs .chip { min-height: 30px; padding: 4px 11px; font-size: 12px; }
+.ra-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.ra-k { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 14px; background: var(--sup); display: flex; flex-direction: column; gap: 2px; }
+.ra-k .l { font: 800 10px var(--f-disp); letter-spacing: .7px; text-transform: uppercase; color: var(--fg-3); } .ra-k .v { font: 800 26px var(--f-disp); } .ra-k .s { font-size: 11.5px; color: var(--fg-3); }
+.ra-k.u .v { color: var(--mal); } .ra-k.a .v { color: #B45309; } .ra-k.o .v { color: var(--ok); }
+.ra-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+.ra-mapa { min-height: 420px; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; background: var(--gris-bg); }
+.ra-lado h4 { margin: 0 0 6px; font: 800 13px var(--f-disp); }
+.niv { display: inline-block; font: 800 10.5px var(--f-disp); letter-spacing: .4px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
+.niv.U { background: var(--mal); color: #fff; } .niv.A { background: #FDE7C8; color: #8A4B00; } .niv.M { background: var(--gris-bg); color: var(--fg-2); }
+.niv.X { background: #2A2B3A; color: #fff; margin-left: 4px; }
+.ra-tb td { font-size: 12px; } .ra-tb td.mot { text-align: left; max-width: 260px; color: var(--fg-2); } .ra-tb td.dst b { color: var(--ok); }
+.ra-tb tr.sel td { background: var(--rosa); } .ra-tb tbody tr { cursor: pointer; } .ra-tb .tec { display: block; font-size: 11px; color: var(--fg-3); }
+.ra-tb .sin-op { color: var(--mal); font-weight: 700; }
+@media (max-width: 1000px) { .ra-grid { grid-template-columns: 1fr; } .ra-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sel-h { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); }
 #aviso:empty { display: none; } #tb-zon tr.zon .pen-n { color: #FF9C94; }
 .pie-tb { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
@@ -282,12 +305,21 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <p class="nota">Territorio de cada EECC = los planos que tiene asignados (hoja ZONA o editados aquí) · Rutas fijas = «Rutas por EECC» de Instalaciones › Avance · Técnicos en campo por día = técnicos distintos que liquidaron cada día del mes, en promedio · Asistencia = técnicos en campo ÷ rutas fijas · Productividad = instalaciones liquidadas ÷ técnico por día.</p>
   </section>
 
-  <section class="sec" aria-labelledby="t-mov">
-    <div class="sec-cab"><div><h3 id="t-mov">Proyección de movimiento de rutas</h3><p class="sub" id="mov-sub"></p></div>
-      <div class="pen-acc"><label class="seg-t" style="color:var(--fg-3);display:flex;gap:8px;align-items:center">Cerrar la bolsa en <select id="mov-h" class="sel-h"><option value="3">3 días</option><option value="5" selected>5 días</option><option value="7">7 días</option></select></label></div></div>
-    <div id="mov-cards" class="mov-cards"></div>
-    <div class="scroll"><table id="tb-mov" class="tb-c"></table></div>
-    <p class="nota" id="mov-nota"></p>
+  <section class="sec" aria-labelledby="t-ra" id="sec-ra">
+    <div class="sec-cab"><div><h3 id="t-ra">Reasignación de AB del día</h3><p class="sub" id="ra-sub">Cargando los AB del día…</p></div>
+      <div class="pen-acc"><span class="ra-vivo" id="ra-vivo"></span><button type="button" class="btn-out" id="ra-not">🔔 Activar alertas</button><button type="button" class="btn-out" id="ra-act">↻ Actualizar</button><button type="button" class="btn-out" id="ra-cop">Copiar lista</button></div></div>
+    <div id="ra-alerta" class="ra-alerta" role="alert" hidden></div>
+    <div class="ra-ctl">
+      <label>Capacidad por técnico <select id="ra-cap" class="sel-h"><option value="2">2 AB</option><option value="3" selected>3 AB</option><option value="4">4 AB</option><option value="5">5 AB</option></select></label>
+      <label>Buscar técnico hasta <select id="ra-km" class="sel-h"><option value="3">3 km</option><option value="5" selected>5 km</option><option value="8">8 km</option><option value="12">12 km</option></select></label>
+      <label class="ra-chk"><input type="checkbox" id="ra-atr"> Incluir AB atrasados (de días anteriores)</label>
+    </div>
+    <div class="ra-segs"><span class="seg-t">Nivel</span><span id="ra-niv" class="chips"></span><span class="seg-t">EECC actual</span><span id="ra-ec" class="chips"></span></div>
+    <div id="ra-kpis" class="ra-kpis"></div>
+    <div class="ra-grid"><div id="ra-mapa" class="ra-mapa" aria-label="Mapa de los AB en riesgo y los técnicos con espacio"></div>
+      <div class="ra-lado"><h4>Capacidad de hoy por EECC</h4><div class="scroll"><table id="tb-raec" class="tb-c"></table></div></div></div>
+    <div class="scroll"><table id="tb-ra" class="tb-c ra-tb"></table></div>
+    <p class="nota" id="ra-nota"></p>
   </section>
 
   <section class="sec" aria-labelledby="t-tb">
@@ -446,36 +478,170 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       + X.E.map(e => `<tr><td><b>${esc(e.ec)}</b></td><td><span class="zbs">${zonasB(e)}</span></td><td>${num(e.dis.size)}</td><td>${num(e.pl)}</td><td>${num(e.pen, 'pen-n')}</td><td class="pm">${prom(e.ing)}</td><td class="pm">${prom(e.liq)}</td><td>${e.rut ?? '—'}</td><td>${e.tec ? f1(e.tec) : '—'}</td><td class="${e.asis == null ? '' : e.asis >= .9 ? 'equi' : e.asis >= .75 ? '' : 'falta'}">${pc(e.asis)}</td><td>${f1(e.prod)}</td></tr>`).join('')
       + `</tbody><tfoot><tr><td>Total</td><td></td><td></td><td>${n(T.pl)}</td><td>${n(T.pen)}</td><td class="pm">${prom(T.ing)}</td><td class="pm">${prom(T.liq)}</td><td>${n(T.rut)}</td><td>${f1(T.tec)}</td><td>${pc(X.asisM)}</td><td>${f1(X.prodM)}</td></tr></tfoot>`;
   }
-  function pintarMov(X) {
-    const lima = !F.fi.size || F.fi.has('LIMA'), H = +$('mov-h').value || 5;
-    if (!lima) { $('mov-sub').textContent = 'Elige Lima en Filial: la proyección usa las rutas fijas y la asistencia de Lima.'; $('mov-cards').innerHTML = ''; $('tb-mov').innerHTML = ''; $('mov-nota').textContent = ''; return; }
-    // Demanda por día del territorio = ingresos por día + bolsa de pendientes ÷ días para cerrarla.
-    // Rutas que pide la demanda = demanda ÷ (productividad × asistencia). Como las rutas son las que hay, se reparten las rutas fijas
-    // de Lima en proporción a lo que pide cada territorio: Saldo = rutas fijas − rutas según demanda (+ le sobra trabajo / − le falta gente).
-    const base = X.E.filter(e => e.ec !== 'SIN EECC' && (e.rut != null || e.pl)).map(e => {
-      const prod = e.prod || X.prodM || 1.5, asis = Math.min(1, e.asis || X.asisM || .8), dem = e.ing / X.dias + e.pen / H;
-      return { ...e, prodU: prod, asisU: asis, dem, pide: dem / (prod * asis) };
-    });
-    const rutT = base.reduce((a, f) => a + (f.rut || 0), 0), pideT = base.reduce((a, f) => a + (f.rut != null ? f.pide : 0), 0);
-    const filas = base.map(f => { const nec = f.rut != null && pideT ? rutT * f.pide / pideT : null, saldo = nec != null ? f.rut - nec : null;
-      return { ...f, nec, saldo, sobra: saldo != null ? Math.max(0, Math.floor(saldo)) : 0, falta: saldo != null ? Math.max(0, Math.round(-saldo)) : 0 }; });
-    // Movimientos: las que sobran van a las que faltan; primero entre EECC que comparten zona, luego al resto
-    const don = filas.filter(f => f.sobra > 0).map(f => ({ f, q: f.sobra })), rec = filas.filter(f => f.falta > 0 && f.rut != null).sort((a, b) => b.falta - a.falta).map(f => ({ f, q: f.falta }));
-    const comp = (a, b) => Object.keys(a.zon).filter(z => b.zon[z]).length, mov = [];
-    rec.forEach(r => { don.sort((a, b) => comp(b.f, r.f) - comp(a.f, r.f) || b.q - a.q).forEach(d => { if (!r.q || !d.q) return; const k = Math.min(r.q, d.q); r.q -= k; d.q -= k; mov.push({ de: d.f, a: r.f, k }); }); });
-    const topDis = (e) => { const c = {}; e.P.forEach(r => { c[r.di] = (c[r.di] || 0) + r.I.pen + r.I.ing / X.dias; }); return Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, 3); };
-    const zTxt = (e) => Object.keys(e.zon).sort(zOrd).join(' · ') || 'sin planos asignados';
-    $('mov-sub').innerHTML = `Reparto de las <b>${n(rutT)}</b> rutas fijas de Lima según lo que pide el territorio de cada EECC (ingresos del día + bolsa de pendientes en ${H} días), con su asistencia y productividad del mes · para cubrir toda la demanda harían falta <b>${n(Math.ceil(pideT))}</b> rutas.`;
-    $('mov-cards').innerHTML = mov.length ? mov.map(m => `<div class="mov"><span class="t">Mover <b>${m.k} ruta${m.k === 1 ? '' : 's'}</b> de ${esc(m.de.ec)} → ${esc(m.a.ec)}</span>
-        <span class="s">${esc(m.de.ec)}: le sobran ${f1(m.de.saldo)} rutas para su trabajo (${esc(zTxt(m.de))}) · ${esc(m.a.ec)}: le faltan ${f1(-m.a.saldo)} (${esc(zTxt(m.a))})</span>
-        <span class="s">Dónde: ${topDis(m.a).map(esc).join(', ') || '—'} · ${n(m.a.pen)} pendientes y ${f1(m.a.ing / X.dias)} ingresos por día en su territorio</span></div>`).join('')
-      : `<div class="mov ok"><span class="t">Sin movimientos sugeridos</span><span class="s">Con estos filtros ninguna EECC tiene rutas de más para cubrir a otra.</span></div>`;
-    $('tb-mov').innerHTML = `<thead><tr><th>EECC</th><th>Zonas</th><th>Pendientes</th><th class="pm">Ingresos<small>por día</small></th><th>Demanda<small>inst. por día</small></th><th>Productividad</th><th>Asistencia</th><th>Rutas que pide<small>la demanda</small></th><th>Rutas fijas</th><th>Rutas según demanda<small>reparto de las ${n(rutT)}</small></th><th>Saldo</th><th>Lectura</th></tr></thead><tbody>`
-      + filas.sort((a, b) => (a.saldo ?? 0) - (b.saldo ?? 0)).map(f => `<tr><td><b>${esc(f.ec)}</b></td><td>${esc(zTxt(f))}</td><td>${num(f.pen, 'pen-n')}</td><td class="pm">${f1(f.ing / X.dias, 2)}</td><td>${f1(f.dem)}</td><td>${f1(f.prodU)}${f.prod ? '' : '<small title="Sin liquidaciones propias: se usa el promedio de Lima"> *</small>'}</td><td>${pc(f.asisU)}${f.asis ? '' : '<small title="Sin rutas o técnicos: se usa el promedio de Lima"> *</small>'}</td><td>${f1(f.pide)}</td><td>${f.rut ?? '—'}</td><td>${f1(f.nec)}</td>
-        <td class="${f.saldo == null ? '' : f.saldo >= 1 ? 'sobra' : f.saldo <= -1 ? 'falta' : 'equi'}">${f.saldo == null ? '—' : (f.saldo > 0 ? '+' : '') + f1(f.saldo)}</td><td>${f.saldo == null ? 'Sin rutas fijas' : f.saldo >= 1 ? (f.pl ? 'Puede ceder rutas' : 'Apoyo (sin planos)') : f.saldo <= -1 ? 'Le faltan rutas' : 'Equilibrada'}</td></tr>`).join('') + '</tbody>';
-    $('mov-nota').textContent = `Demanda = ingresos por día del territorio + pendientes ÷ ${H} días · Rutas que pide = demanda ÷ (productividad × asistencia) · Rutas según demanda = las ${n(rutT)} rutas fijas repartidas en proporción a lo que pide cada EECC · Saldo = rutas fijas − rutas según demanda (azul = le falta trabajo y puede ceder, rojo = le faltan rutas) · * = sin datos propios, se usa el promedio de Lima (productividad ${f1(X.prodM)}, asistencia ${pc(X.asisM)}) · Es una proyección para decidir; las rutas se cambian en Instalaciones › Avance › «Rutas por EECC».`;
+  // ----- Reasignación de AB del día (Lima, instalaciones): datos del tablero de Instalaciones que el robot actualiza cada 20 min -----
+  // AB en riesgo: sin técnico, técnico con más AB de los que alcanza a hacer hoy (capacidad por técnico) o franja vencida sin inicio.
+  // A cada uno se le busca el técnico más cercano de OTRA EECC que todavía tenga espacio hoy (por las coordenadas de sus AB del día
+  // y de lo que ya liquidó), dentro del radio elegido. Si no hay nadie cerca con espacio, queda como «sin opción cercana».
+  const RA = { D: null, err: '', niv: new Set(), ec: new Set(), sel: null, vistos: null, mapa: null, capa: null, linea: null, sug: [] };
+  const coord = (s) => { const m = String(s || '').split(/[,;\s]+/).map(Number).filter(v => isFinite(v) && v !== 0); if (m.length < 2) return null;
+    let [la, lo] = m; if (Math.abs(la) > Math.abs(lo)) [la, lo] = [lo, la]; return la > -19 && la < -0.5 && lo > -82 && lo < -68 ? [la, lo] : null; };
+  const km = (a, b) => { const R0 = 6371, r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r;
+    const h = Math.sin(dl / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dn / 2) ** 2; return 2 * R0 * Math.asin(Math.sqrt(h)); };
+  const franja = (fr) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(fr || ''); return m ? [+m[1], +m[2]] : null; };
+  const ahoraLima = () => { const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+    const g = (t) => p.find(x => x.type === t).value; return { dia: `${g('year')}-${g('month')}-${g('day')}`, min: (+g('hour') % 24) * 60 + +g('minute') }; };
+  const tnom = (t) => { const [a, b] = String(t || '').split(','); return nom(`${(b || '').trim().split(' ')[0]} ${(a || '').trim().split(' ')[0]}`.trim()); };
+  const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const NIV = { U: 'Urgente', A: 'Alta', M: 'Media' };
+  async function traerRA() {
+    try { const r = await fetch('/api/instalaciones?filial=LIMA', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(r.status === 403 ? 'Para ver la reasignación necesitas acceso al módulo de Instalaciones.' : j.error || `Error ${r.status}`);
+      RA.D = j; RA.err = ''; }
+    catch (e) { RA.err = e.message || 'No se pudieron traer los AB del día.'; }
+    pintarRA();
   }
-  $('mov-h').addEventListener('change', () => pintar());
+  function calcRA() {
+    const T = RA.D, hoy = (T.corte || '').slice(0, 10), now = ahoraLima(), min = now.dia === hoy ? now.min : now.dia > hoy ? 24 * 60 : 0;
+    const cap = +$('ra-cap').value || 3, radio = +$('ra-km').value || 5, atr = $('ra-atr').checked;
+    const ecDe = (x) => { const e = nmE(x.ec); return !e || e === 'POR ASIGNAR' || e === 'SIN EECC' ? '' : e; };
+    // Dueño del plano según la zonificación (para preferir a la EECC que tiene ese plano)
+    const dueno = new Map(R.filter(r => r.fi === 'LIMA' && r.ec).map(r => [r.pl.toUpperCase().trim(), nmE(r.ec)]));
+    const P = (T.pend || []).filter(x => x.fp && (x.fp === hoy || (atr && x.fp < hoy)));
+    const Lq = (T.liq || []).filter(x => x.d === T.dias);
+    // Técnicos del día: sus AB pendientes, lo que ya liquidaron y dónde están (coordenadas de sus AB y de su última liquidación)
+    const TEC = new Map(), t0 = (ec, tec) => { const k = ec + '|' + tec; return TEC.get(k) || (TEC.set(k, { k, ec, tec, pen: [], liq: 0, pos: [], ult: null }), TEC.get(k)); };
+    P.filter(x => x.fp === hoy).forEach(x => { const ec = ecDe(x); if (!ec || !x.tec) return; const t = t0(ec, x.tec), c = coord(x.co); t.pen.push(x); if (c) t.pos.push({ c, ab: x.ab, q: 'AB ' + x.ab + (x.fr && x.fr !== 'NO DEFINE' ? ' · ' + x.fr : '') }); });
+    Lq.forEach(x => { const ec = ecDe(x); if (!ec || !x.tec) return; const t = t0(ec, x.tec), c = coord(x.co); t.liq++; if (c) { const p = { c, ab: x.ab, q: `liquidó AB ${x.ab}${x.hf ? ' a las ' + x.hf : ''}` }; t.pos.push(p); if (!t.ult || (x.hf || '') > (t.ult.hf || '')) t.ult = { ...p, hf: x.hf }; } });
+    TEC.forEach(t => { t.carga = t.pen.length + t.liq; t.libre = cap - t.carga; });
+    // AB en riesgo
+    const riesgo = [];
+    const ini = (x) => (x.ini || '').slice(0, 10) === hoy;
+    const nivel = (x) => { const f = franja(x.fr); if (x.fp < hoy) return 'U'; if (!f) return 'M'; if (f[1] * 60 <= min) return 'U'; return f[0] * 60 - min <= 90 ? 'U' : 'A'; };
+    P.forEach(x => { const ec = ecDe(x), f = franja(x.fr);
+      if (ini(x)) return;   // ya está en atención
+      if (x.fp < hoy) return riesgo.push({ x, ec, mot: `Atrasado: programado el ${dmy(x.fp)} y sigue pendiente` });
+      if (!ec) return riesgo.push({ x, ec, mot: 'Sin EECC asignada' });
+      if (!x.tec) return riesgo.push({ x, ec, mot: 'Sin técnico asignado' });
+      if (f && f[1] * 60 <= min) return riesgo.push({ x, ec, mot: `Franja ${x.fr} vencida sin inicio de atención` }); });
+    // Técnicos sobrecargados: los AB que pasan su capacidad (los de franja más tarde y las coordinadas) no se alcanzan a hacer
+    TEC.forEach(t => { const sobra = t.carga - cap; if (sobra <= 0) return;
+      const ord = t.pen.filter(x => !ini(x) && !riesgo.some(r => r.x === x)).sort((a, b) => ((franja(b.fr) || [99])[0]) - ((franja(a.fr) || [99])[0]));
+      ord.slice(0, sobra).forEach(x => riesgo.push({ x, ec: t.ec, mot: `${tnom(t.tec)} tiene ${t.carga} AB hoy (${t.liq} ya liquidados) y su capacidad es ${cap}` })); });
+    riesgo.forEach(r => { r.niv = nivel(r.x); r.c = coord(r.x.co); r.pl = (r.x.plano || '').toUpperCase().trim(); r.due = dueno.get(r.pl) || nmE(r.x.ecp) || ''; });
+    // Sugerencia: técnico de otra EECC con espacio, el más cercano (si es la EECC dueña del plano, se le da 1 km de ventaja)
+    const libres = [...TEC.values()].filter(t => t.libre > 0 && t.pos.length);
+    const orden = { U: 0, A: 1, M: 2 };
+    riesgo.sort((a, b) => orden[a.niv] - orden[b.niv] || ((franja(a.x.fr) || [99])[0]) - ((franja(b.x.fr) || [99])[0]));
+    riesgo.forEach(r => { if (!r.c) { r.sinCo = true; return; }
+      let mej = null; libres.forEach(t => { if (t.libre <= 0 || t.ec === r.ec) return;
+        let pm = null; t.pos.forEach(p => { const d = km(r.c, p.c); if (!pm || d < pm.d) pm = { d, p }; });
+        const sc = pm.d - (t.ec === r.due ? 1 : 0); if (pm.d <= radio && (!mej || sc < mej.sc)) mej = { t, d: pm.d, p: pm.p, sc }; });
+      if (mej) { mej.t.libre--; r.a = mej; } });
+    // Resumen por EECC
+    const E = {}; const e0 = (k) => E[k] || (E[k] = { ec: k, rut: RF[k] ?? null, tec: new Set(), ab: 0, liq: 0, pen: 0, cap: 0, riesgo: 0, recibe: 0 });
+    TEC.forEach(t => { const e = e0(t.ec); e.tec.add(t.tec); e.liq += t.liq; e.pen += t.pen.length; e.cap += Math.max(0, cap - t.liq); });
+    P.filter(x => x.fp === hoy).forEach(x => { const ec = ecDe(x) || 'SIN EECC'; e0(ec).ab++; });
+    Object.values(E).forEach(e => e.ab += e.liq);
+    riesgo.forEach(r => { e0(r.ec || 'SIN EECC').riesgo++; if (r.a) e0(r.a.t.ec).recibe++; });
+    Object.keys(RF).forEach(k => e0(nmE(k)));
+    return { hoy, min, cap, radio, P, Lq, TEC, riesgo, E: Object.values(E), now };
+  }
+  function pintarRA() {
+    if (RA.err || !RA.D) { $('ra-sub').textContent = RA.err || 'Cargando los AB del día…'; return; }
+    const X = calcRA(); RA.X = X;
+    const act = RA.D.actualizado ? new Date(RA.D.actualizado) : null;
+    $('ra-vivo').innerHTML = `Datos de las <b>${(RA.D.corte || '').slice(11, 16)}</b> · se actualiza solo cada 5 min`;
+    $('ra-sub').innerHTML = `Lima · ${dmy(X.hoy)} · <b>${n(X.P.filter(x => x.fp === X.hoy).length)}</b> AB programados hoy aún pendientes y <b>${n(X.Lq.length)}</b> ya liquidados · técnicos con ruta: <b>${n(new Set([...X.TEC.values()].map(t => t.k)).size)}</b> · se sugiere pasar cada AB en riesgo al técnico más cercano de otra EECC que tenga espacio hoy`;
+    // Segmentadores
+    const cN = {}, cE = {}; X.riesgo.forEach(r => { cN[r.niv] = (cN[r.niv] || 0) + 1; if (!r.a) cN.X = (cN.X || 0) + 1; const e = r.ec || 'SIN EECC'; cE[e] = (cE[e] || 0) + 1; });
+    const ch = (k, v, t, c) => `<button type="button" class="chip" data-ra="${k}" data-v="${esc(v)}" aria-pressed="${v ? RA[k].has(v) : !RA[k].size}">${esc(t)}${c != null ? ` (${n(c)})` : ''}</button>`;
+    $('ra-niv').innerHTML = ch('niv', '', 'Todos') + ['U', 'A', 'M'].filter(v => cN[v]).map(v => ch('niv', v, NIV[v], cN[v])).join('') + (cN.X ? ch('niv', 'X', 'Sin opción cercana', cN.X) : '');
+    $('ra-ec').innerHTML = ch('ec', '', 'Todas') + Object.keys(cE).sort().map(v => ch('ec', v, v, cE[v])).join('');
+    const L2 = X.riesgo.filter(r => (!RA.niv.size || RA.niv.has(r.niv) || (RA.niv.has('X') && !r.a)) && (!RA.ec.size || RA.ec.has(r.ec || 'SIN EECC')));
+    RA.sug = L2;
+    // Alertas
+    const urg = X.riesgo.filter(r => r.niv === 'U'), urgSin = urg.filter(r => !r.a);
+    const al = $('ra-alerta');
+    if (urg.length) { al.hidden = false;
+      const porE = {}; urg.forEach(r => { const k = r.ec || 'SIN EECC'; porE[k] = (porE[k] || 0) + 1; });
+      al.innerHTML = `<b class="t">⚠ ${n(urg.length)} AB urgente${urg.length === 1 ? '' : 's'} por reasignar ahora</b>
+        <span>${Object.entries(porE).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${esc(k)}: <b>${v}</b>`).join(' · ')}</span>
+        ${urgSin.length ? `<span><b>${n(urgSin.length)}</b> no tienen técnico de otra EECC con espacio a menos de ${X.radio} km: hay que coordinar apoyo o reprogramar.</span>` : ''}`; }
+    else al.hidden = true;
+    const conA = X.riesgo.filter(r => r.a).length, libresT = [...X.TEC.values()].filter(t => cap0(t, X) > 0).length;
+    const k = (c, l, v, s) => `<div class="ra-k ${c}"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
+    $('ra-kpis').innerHTML = k('', 'AB del día', n(X.P.filter(x => x.fp === X.hoy).length + X.Lq.length), `${n(X.Lq.length)} liquidados · ${n(X.P.filter(x => x.fp === X.hoy).length)} pendientes`)
+      + k('a', 'En riesgo', n(X.riesgo.length), 'no se alcanzan a hacer hoy')
+      + k('u', 'Urgentes', n(urg.length), 'franja vencida o en menos de 1 h 30')
+      + k('o', 'Con reasignación', n(conA), `técnico de otra EECC a ≤ ${X.radio} km`)
+      + k('', 'Técnicos con espacio', n(libresT), `con menos de ${X.cap} AB hoy`);
+    // Capacidad por EECC
+    const E = X.E.filter(e => e.ab || e.rut != null || e.riesgo).sort((a, b) => b.riesgo - a.riesgo || b.ab - a.ab);
+    $('tb-raec').innerHTML = `<thead><tr><th>EECC</th><th>Rutas fijas</th><th>Técnicos<small>con ruta hoy</small></th><th>AB hoy</th><th>Liquidados</th><th>En riesgo</th><th>Recibe</th><th>Lectura</th></tr></thead><tbody>`
+      + E.map(e => { const ft = e.rut != null ? e.rut - e.tec.size : null;
+        const lec = e.riesgo && !e.tec.size ? '<span class="falta">Sin técnicos</span>' : e.riesgo ? '<span class="falta">No llega</span>' : e.recibe ? '<span class="sobra">Puede apoyar</span>' : e.tec.size ? '<span class="equi">Al día</span>' : '—';
+        return `<tr><td><b>${esc(e.ec)}</b></td><td>${e.rut ?? '—'}</td><td>${n(e.tec.size)}${ft > 0 ? ` <small class="falta" title="Rutas fijas sin técnico hoy">−${ft}</small>` : ''}</td><td>${n(e.ab)}</td><td>${n(e.liq)}</td><td class="${e.riesgo ? 'falta' : ''}">${e.riesgo ? n(e.riesgo) : '·'}</td><td class="${e.recibe ? 'sobra' : ''}">${e.recibe ? '+' + n(e.recibe) : '·'}</td><td>${lec}</td></tr>`; }).join('') + '</tbody>';
+    // Sugerencias
+    $('tb-ra').innerHTML = `<thead><tr><th>Nivel</th><th>AB · OS</th><th>Franja</th><th>Distrito · plano</th><th>EECC actual</th><th>Por qué</th><th>Pasar a</th><th>Técnico sugerido</th><th>Distancia</th><th>Mapa</th></tr></thead><tbody>`
+      + (L2.map((r, i) => { const x = r.x, a = r.a;
+        return `<tr data-ra-i="${i}"${RA.sel === x.ab ? ' class="sel"' : ''}><td><span class="niv ${r.niv}">${NIV[r.niv]}</span>${!a ? '<span class="niv X">Sin opción</span>' : ''}</td><td><b>${x.ab}</b><span class="tec">OS ${x.os}</span></td><td>${esc(x.fr === 'NO DEFINE' ? 'Coordinada' : x.fr || '—')}${x.fp < X.hoy ? `<span class="tec">${dmy(x.fp)}</span>` : ''}</td>
+          <td>${esc(x.di)}<span class="tec">${esc(x.plano || '—')}${r.due ? ' · plano de ' + esc(r.due) : ''}</span></td><td><b>${esc(r.ec || 'Sin EECC')}</b><span class="tec">${esc(x.tec ? tnom(x.tec) : 'sin técnico')}</span></td><td class="mot">${esc(r.mot)}</td>
+          <td>${a ? `<b>${esc(a.t.ec)}</b>` : `<span class="sin-op">${r.sinCo ? 'AB sin coordenadas' : 'Nadie con espacio cerca'}</span>`}</td><td>${a ? `${esc(tnom(a.t.tec))}<span class="tec">${a.t.carga} AB hoy · ${esc(a.p.q)}</span>` : '—'}</td>
+          <td class="dst">${a ? `<b>${a.d.toLocaleString('es-PE', { maximumFractionDigits: 1 })} km</b>` : '—'}</td><td>${x.co ? `<a href="https://www.google.com/maps?q=${encodeURIComponent(x.co.replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver</a>` : '—'}</td></tr>`; }).join('')
+        || `<tr><td colspan="10">${X.riesgo.length ? 'Ningún AB con estos filtros.' : '✓ Todos los AB del día se alcanzan a hacer con los técnicos que tienen ruta: no hay nada que reasignar.'}</td></tr>`) + '</tbody>';
+    $('ra-nota').textContent = `En riesgo = AB programado hoy sin EECC o sin técnico, con la franja ya vencida sin inicio de atención, o que pasa la capacidad de su técnico (${X.cap} AB por técnico al día, contando lo que ya liquidó; salen los de franja más tarde) · Urgente = franja vencida o que empieza en menos de 1 h 30 · Media = coordinadas sin franja · Técnico sugerido = el más cercano de otra EECC que aún tiene espacio, medido a sus AB del día o a su última liquidación (si es la EECC dueña del plano en la zonificación tiene 1 km de ventaja) · La reasignación se hace en ScordSoft; aquí solo se sugiere.`;
+    pintarMapa(X, L2);
+    avisarNuevos(urg);
+  }
+  const cap0 = (t, X) => X.cap - t.carga;
+  // Mapa (Leaflet + OpenStreetMap): AB en riesgo por nivel y técnicos con espacio; al elegir una fila se traza la línea al técnico sugerido
+  const cargarJs = (src) => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+  async function pintarMapa(X, L2) {
+    if (!window.L) { if (RA.cargando) return; RA.cargando = true;
+      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(l);
+      try { await cargarJs('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'); } catch { $('ra-mapa').textContent = 'No se pudo cargar el mapa.'; return; }
+      RA.cargando = false; }
+    const Lf = window.L;
+    if (!RA.mapa) { RA.mapa = Lf.map('ra-mapa', { zoomControl: true }).setView([-12.06, -77.03], 11);
+      Lf.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(RA.mapa); }
+    if (RA.capa) RA.capa.remove(); RA.capa = Lf.layerGroup().addTo(RA.mapa); RA.linea = null;
+    const col = { U: '#B42318', A: '#D97706', M: '#6B7280' }, pts = [];
+    [...X.TEC.values()].filter(t => cap0(t, X) > 0 && t.pos.length).forEach(t => { const p = t.ult || t.pos[t.pos.length - 1];
+      Lf.circleMarker(p.c, { radius: 5, color: '#157A4A', weight: 2, fillColor: '#5FD08F', fillOpacity: .9 }).bindTooltip(`${t.ec} · ${tnom(t.tec)}<br>${t.carga} AB hoy · espacio para ${cap0(t, X)}`).addTo(RA.capa); });
+    L2.forEach(r => { if (!r.c) return; pts.push(r.c);
+      Lf.circleMarker(r.c, { radius: r.niv === 'U' ? 8 : 6, color: '#fff', weight: 1.5, fillColor: col[r.niv], fillOpacity: .95 })
+        .bindTooltip(`AB ${r.x.ab} · ${r.ec || 'Sin EECC'} · ${r.x.fr}<br>${r.a ? '→ ' + r.a.t.ec + ' (' + r.a.d.toFixed(1) + ' km)' : 'sin opción cercana'}`).on('click', () => elegirRA(r)).addTo(RA.capa); });
+    if (pts.length && !RA.ajustado) { RA.mapa.fitBounds(pts, { padding: [30, 30], maxZoom: 13 }); RA.ajustado = true; }
+    setTimeout(() => RA.mapa.invalidateSize(), 50);
+  }
+  function elegirRA(r) {
+    RA.sel = r.x.ab; $('tb-ra').querySelectorAll('tr.sel').forEach(t => t.classList.remove('sel'));
+    const i = RA.sug.indexOf(r), tr = $('tb-ra').querySelector(`tr[data-ra-i="${i}"]`); if (tr) tr.classList.add('sel');
+    if (!RA.mapa || !r.c) return; if (RA.linea) RA.linea.remove();
+    if (r.a) { RA.linea = window.L.polyline([r.c, r.a.p.c], { color: '#E6007E', weight: 3, dashArray: '6 6' }).addTo(RA.mapa); RA.mapa.fitBounds([r.c, r.a.p.c], { padding: [60, 60], maxZoom: 15 }); }
+    else RA.mapa.setView(r.c, 14);
+  }
+  $('tb-ra').addEventListener('click', (e) => { if (e.target.closest('a')) return; const tr = e.target.closest('tr[data-ra-i]'); if (tr) elegirRA(RA.sug[+tr.dataset.raI]); });
+  document.addEventListener('click', (e) => { const b = e.target.closest('.chip[data-ra]'); if (!b) return; const S = RA[b.dataset.ra], v = b.dataset.v;
+    if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarRA(); });
+  ['ra-cap', 'ra-km', 'ra-atr'].forEach(id => $(id).addEventListener('change', () => pintarRA()));
+  $('ra-act').addEventListener('click', async () => { const b = $('ra-act'); b.disabled = true; await traerRA(); b.disabled = false; });
+  // Alertas del navegador: avisan cuando aparece un AB urgente nuevo (la página se actualiza sola cada 5 minutos)
+  const notOn = () => window.Notification && Notification.permission === 'granted';
+  const pintarNot = () => { const b = $('ra-not'); if (!window.Notification) { b.hidden = true; return; } b.textContent = notOn() ? '🔔 Alertas activas' : '🔔 Activar alertas'; b.setAttribute('aria-pressed', notOn()); };
+  $('ra-not').addEventListener('click', async () => { if (window.Notification && Notification.permission !== 'granted') await Notification.requestPermission(); pintarNot(); });
+  function avisarNuevos(urg) {
+    const ks = new Set(urg.map(r => r.x.ab)); if (!RA.vistos) { RA.vistos = ks; return; }
+    const nuevos = urg.filter(r => !RA.vistos.has(r.x.ab)); ks.forEach(k => RA.vistos.add(k)); if (!nuevos.length) return;
+    document.title = `(${urg.length}) Zonificación · AB urgentes`;
+    if (notOn()) new Notification(`${nuevos.length} AB urgente${nuevos.length === 1 ? '' : 's'} por reasignar`, { body: nuevos.slice(0, 4).map(r => `AB ${r.x.ab} · ${r.ec || 'Sin EECC'} · ${r.x.fr}${r.a ? ' → ' + r.a.t.ec : ' · sin opción cercana'}`).join('\n'), tag: 'ra-urg' });
+  }
+  $('ra-cop').addEventListener('click', async () => {
+    const X = RA.X; if (!X) return;
+    const t = [`*Reasignación de AB · ${dmy(X.hoy)} · datos de las ${(RA.D.corte || '').slice(11, 16)}*`, ...RA.sug.map(r => `${NIV[r.niv].toUpperCase()} · AB ${r.x.ab} · ${r.x.fr === 'NO DEFINE' ? 'Coordinada' : r.x.fr} · ${r.x.di} · ${r.ec || 'Sin EECC'} → ${r.a ? `${r.a.t.ec} (${tnom(r.a.t.tec)}, ${r.a.d.toFixed(1)} km)` : 'SIN OPCIÓN CERCANA'}`)].join('\n');
+    try { await navigator.clipboard.writeText(t); $('ra-cop').textContent = '✓ Copiada'; } catch { $('ra-cop').textContent = 'No se pudo copiar'; }
+    setTimeout(() => { $('ra-cop').textContent = 'Copiar lista'; }, 2500); });
+  pintarNot(); traerRA(); setInterval(traerRA, 5 * 60 * 1000);
   function pintar() {
     L = R.filter(r => ok(r));
     const nDis = new Set(L.map(r => r.fi + '|' + r.di)).size;
@@ -488,7 +654,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       + kpi('Con EECC asignada', n(L.length - sinEc), `${L.length ? Math.round((L.length - sinEc) / L.length * 100) : 0}% de los planos`) + kpi('Sin EECC asignada', n(sinEc), `${n(fuera)} de Lima fuera del catálogo`)
       + `<div class="kpi"><span class="l">Planos nuevos (7 días)</span><span class="kv" style="color:${nNueSin ? 'var(--magenta)' : 'inherit'}">${n(nNue)}</span><span class="s">${nNueSin ? `<button type="button" class="nb" id="ver-nuevos" style="all:unset;cursor:pointer;color:var(--magenta-txt);font-weight:700;text-decoration:underline">${n(nNueSin)} sin EECC · asignar</button>` : 'todos con EECC'}</span></div>`
       + kpi(TP.size === 1 ? 'Pendientes de instalación' : 'Pendientes', n(L.reduce((a, r) => a + r.pen, 0)), TP.size === 1 ? 'instalaciones REGISTRADA en esos planos' : `REGISTRADA de: ${[...TP].map(tpTxt).join(', ')}`);
-    const X = porEecc(); pintarEecc(X); pintarMov(X);
+    const X = porEecc(); pintarEecc(X);
     pintarTabla();
   }
   // Botones de abrir: zona (sus distritos) y distrito (sus planos)

@@ -207,6 +207,8 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
         "fr": _txt(r["horario_atencion"]), "t": r["tp"], "fo": r["org"],
         "fp": r["fp"].strftime("%Y-%m-%d") if pd.notna(r["fp"]) else None, "cn": _canal(r.get("canal_atencion")),
         "fpo": r["fpo"].strftime("%Y-%m-%d") if pd.notna(r["fpo"]) else None, "fro": r["fro"], 
+        # coordenadas solo de hoy y ayer: dónde quedó cada técnico (Zonificación › Reasignación de AB del día)
+        **({"co": _txt(r.get("coordenadas"))} if r["fa"].day >= corte.day - 1 and _txt(r.get("coordenadas")) else {}),
     } for _, r in L.iterrows()]
 
     despach = [d.upper() for d in config.get("despachadores", [])]
