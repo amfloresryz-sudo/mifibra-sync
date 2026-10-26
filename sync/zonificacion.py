@@ -104,7 +104,30 @@ def construir(df: pd.DataFrame, corte: str, vistos: dict | None = None, editadas
     return {"cols": COLS, "filas": out, "corte": corte, "mes": mes, "dias": dias}, vistos
 
 
-def actualizar(df: pd.DataFrame, corte: str) -> dict:
+def asistencia(tableros: dict | None) -> dict:
+    """Asistencia de rutas del mes en curso por filial y EECC, de las liquidaciones del tablero de Instalaciones:
+    {filial: {"dias": días con liquidaciones, "ec": {EECC: [liquidadas, técnico-días]}}}. técnico-días = suma, día por día,
+    de los técnicos distintos que liquidaron (un técnico que liquida 3 el mismo día cuenta 1)."""
+    out = {}
+    for clave_t, t in (tableros or {}).items():
+        if not clave_t.startswith("instalaciones:") or clave_t.count(":") != 1 or clave_t.endswith(":PROVINCIAS"):
+            continue
+        fi, liq = clave_t.split(":", 1)[1], t.get("liq") or []
+        dias, por = set(), {}
+        for x in liq:
+            d, ec, tec = x.get("d"), _t(x.get("ec")) or "SIN EECC", _t(x.get("tec"))
+            if d is None:
+                continue
+            dias.add(d)
+            e = por.setdefault(ec, [0, set()])
+            e[0] += 1
+            if tec:
+                e[1].add((d, tec))
+        out[fi] = {"dias": len(dias), "ec": {ec: [v[0], len(v[1])] for ec, v in por.items()}}
+    return out
+
+
+def actualizar(df: pd.DataFrame, corte: str, tableros: dict | None = None) -> dict:
     """Lee lo guardado (planos vistos y EECC editadas), arma el tablero y guarda los planos nuevos.
     Si no se pudo leer lo guardado, no se escribe nada (para no borrar el catálogo)."""
     from . import subir
@@ -128,4 +151,8 @@ def actualizar(df: pd.DataFrame, corte: str) -> dict:
                      json={"clave": CLAVE_VISTOS, "datos": {"p": vistos}, "actualizado": corte},
                      headers=subir._cabeceras({"Prefer": "resolution=merge-duplicates,return=minimal"}))
         print(f"  Zonificación: {len(vistos) - len(antes)} planos nuevos guardados ({len(vistos)} en total).", flush=True)
+    try:
+        tablero["asis"] = asistencia(tableros)
+    except Exception as e:  # noqa: BLE001
+        print(f"Aviso: no se calculó la asistencia de rutas: {e}", flush=True)
     return tablero

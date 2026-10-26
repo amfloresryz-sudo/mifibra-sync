@@ -149,7 +149,7 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
         print(f"Aviso: no se calculó el tablero de Speed Test: {e}", flush=True)
     try:  # Zonificación: todos los planos de cada distrito (catálogo de Lima + planos vistos en las órdenes)
         from . import zonificacion
-        tableros["zonificacion"] = zonificacion.actualizar(df, actualizado)
+        tableros["zonificacion"] = zonificacion.actualizar(df, actualizado, tableros)
     except Exception as e:  # noqa: BLE001
         print(f"Aviso: no se calculó el tablero de Zonificación: {e}", flush=True)
     return tableros
