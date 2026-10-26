@@ -194,6 +194,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .exp:hover, .exp:focus-visible { background: var(--magenta); color: #FFFFFF; } .exp[aria-expanded="true"] { background: var(--magenta); color: #FFFFFF; }
 #tb-zon th.pm { background: #EEF4FF; color: #1A56A8; } #tb-zon td.pm { background: #F6F9FF; color: #1A56A8; font-weight: 600; } #tb-zon tr.dis td.pm { background: #E3ECFB; }
 /* Edición de EECC y planos nuevos */
+.sube { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; border: 2px dashed var(--magenta); border-radius: 14px; background: var(--rosa); font-size: 13.5px; }
+.sube[hidden] { display: none; } .sube-cab { display: flex; flex-direction: column; gap: 4px; } .sube-acc { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.sube-acc[hidden] { display: none; } .in-clave { font: inherit; padding: 7px 10px; border: 1px solid var(--borde-2); border-radius: 8px; margin-left: 6px; width: 150px; background: var(--sup); color: var(--fg); }
+.sube-kpis { display: flex; flex-wrap: wrap; gap: 8px; } .sube-kpis span { background: var(--sup); border: 1px solid var(--borde); border-radius: 10px; padding: 6px 12px; font-weight: 600; }
+.sube-kpis b { font-size: 16px; margin-right: 4px; } .sube-tb { max-height: 300px; overflow: auto; background: var(--sup); border-radius: 10px; border: 1px solid var(--borde); }
+.sube-tb table { min-width: 0 !important; width: 100%; font-size: 12.5px; } .sube-tb th, .sube-tb td { text-align: left; padding: 6px 10px; } .sube-tb thead th { position: sticky; top: 0; background: var(--sup); }
+.sube-tb .ant { color: var(--fg-3); text-decoration: line-through; } .sube-tb .nvo { color: var(--magenta-txt); font-weight: 800; }
 .ed-barra { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--rosa); color: var(--fg); font-size: 13.5px; }
 .ed-barra[hidden] { display: none; } .ed-barra input { font: inherit; padding: 7px 10px; border: 1px solid var(--borde-2); border-radius: 8px; margin-left: 6px; width: 150px; background: var(--sup); color: var(--fg); }
 .ed-n { font-weight: 700; color: var(--magenta-txt); } .ed-ok { background: var(--magenta) !important; border-color: var(--magenta) !important; color: #FFFFFF !important; }
@@ -285,13 +292,20 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 
   <section class="sec" aria-labelledby="t-tb">
     <div class="sec-cab"><div><h3 id="t-tb">Planos por zona</h3><p class="sub" id="tb-sub">Se ven las zonas; abre una zona para ver sus distritos y un distrito para ver sus planos.</p></div>
-      <div class="pen-acc"><button type="button" class="btn-out" id="editar">✎ Editar EECC</button><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
+      <div class="pen-acc"><button type="button" class="btn-out" id="editar">✎ Editar EECC</button><button type="button" class="btn-out" id="subir">⬆ Subir Excel</button><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
     <div class="segs-tb">
       <div style="flex-basis:100%"><span class="seg-t">Tipo de trabajo <span style="text-transform:none;letter-spacing:0;font-weight:500">· Instalaciones siempre incluidas; suma los que elijas</span></span><div class="chips" id="f-tp" role="group" aria-label="Tipo de trabajo"></div></div>
       <div><span class="seg-t">Zona</span><div class="chips" id="f-zo" role="group" aria-label="Zona"></div></div>
       <div><span class="seg-t">Planta</span><div class="chips" id="f-pt" role="group" aria-label="Planta"></div></div>
       <div><span class="seg-t">EECC asignada</span><div class="chips" id="f-ec" role="group" aria-label="EECC asignada"></div></div>
       <div><span class="seg-t">Estado del plano</span><div class="chips" id="f-es" role="group" aria-label="Estado del plano"></div></div>
+    </div>
+    <div class="sube" id="sube" hidden>
+      <div class="sube-cab"><b>Cambiar la asignación de planos con un Excel</b><span>El archivo necesita las columnas <b>Distrito</b>, <b>Plano</b> y <b>EECC</b> (y <b>Filial</b> si no es Lima). Sirve el mismo Excel que baja «Descargar Excel»: cambia la columna «EECC asignada» y súbelo. EECC vacía = vuelve a la de la hoja ZONA.</span></div>
+      <div class="sube-acc"><label class="btn-out" style="cursor:pointer">Elegir archivo (.xlsx, .xls o .csv)<input type="file" id="sube-arch" accept=".xlsx,.xls,.csv" hidden></label><button type="button" class="btn-out" id="sube-plantilla">Descargar plantilla</button><span id="sube-nom" class="nota"></span></div>
+      <div id="sube-res"></div>
+      <div class="sube-acc" id="sube-guardar-fila" hidden><form autocomplete="off" onsubmit="return false" style="display:contents"><input type="text" name="username" autocomplete="username" value="master" hidden><label class="seg-t" style="color:var(--fg-3)">Clave master <input type="password" id="sube-clave" class="in-clave" autocomplete="current-password"></label></form>
+        <button type="button" class="btn-out ed-ok" id="sube-guardar">Guardar asignación</button><button type="button" class="btn-out" id="sube-cancelar">Cancelar</button></div>
     </div>
     <div class="ed-barra" id="ed-barra" hidden><span><b>Modo edición:</b> cambia la EECC de cada plano (o de todo un distrito en su fila) y guarda. Los cambios los ven todos.</span>
       <form id="f-clave" autocomplete="off" onsubmit="return false" style="display:contents"><input type="text" name="username" autocomplete="username" value="master" hidden><label class="seg-t" style="color:var(--fg-3)">Clave master <input type="password" id="ed-clave" name="clave-master" autocomplete="current-password"></label></form>
@@ -520,6 +534,53 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       $('aviso').style.color = 'var(--ok)'; $('aviso').textContent = `Se guardaron ${n(nG)} cambio${nG === 1 ? '' : 's'} de EECC. Ya los ven todos.`; }
     catch (err) { $('aviso').style.color = 'var(--mal)'; $('aviso').textContent = err.message || 'No se pudo guardar.'; $('ed-guardar').disabled = false; } });
   document.addEventListener('click', (e) => { if (!e.target.closest('#ver-nuevos')) return; F.es.clear(); F.es.add('NUEVO'); todo = true; pintarChips(); pintar(); $('t-tb').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  // ----- Subir Excel con la asignación de planos (clave master) -----
+  // Misma normalización que el robot: sin tildes, mayúsculas (BREÑA = BRENA), clave FILIAL|DISTRITO|PLANO
+  const normZ = (v) => String(v ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^\x00-\x7F]/g, '').toUpperCase().trim();
+  const claveZ = (fi, di, pl) => `${String(fi || 'LIMA').toUpperCase().trim()}|${normZ(di)}|${normZ(pl)}`;
+  let SUBE = null;   // { cambios: {clave: EECC}, filas: [...] }
+  const cargarXlsx = () => window.XLSX ? Promise.resolve() : new Promise((ok, mal) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = ok; s.onerror = () => mal(new Error('No se pudo cargar el lector de Excel.')); document.head.appendChild(s); });
+  $('subir').addEventListener('click', () => { $('sube').hidden = !$('sube').hidden; if (!$('sube').hidden) $('sube').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+  $('sube-cancelar').addEventListener('click', () => { SUBE = null; $('sube').hidden = true; $('sube-res').innerHTML = ''; $('sube-nom').textContent = ''; $('sube-arch').value = ''; $('sube-guardar-fila').hidden = true; });
+  $('sube-plantilla').addEventListener('click', () => {
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`, F0 = R.filter(r => ok(r));
+    const txt = [['Filial', 'Zona', 'Distrito', 'Plano', 'EECC'], ...F0.map(r => [r.fi, r.zo, r.di, r.pl, r.ec || ''])].map(f => f.map(q).join(';')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' })); a.download = `plantilla-asignacion-planos-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove(); });
+  $('sube-arch').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return; $('sube-nom').textContent = f.name; $('sube-res').innerHTML = '<p class="nota">Leyendo el archivo…</p>'; $('sube-guardar-fila').hidden = true; SUBE = null;
+    try {
+      let filas;
+      if (/\.csv$/i.test(f.name)) { const t = (await f.text()).replace(/^﻿/, ''), sep = (t.split(/\r?\n/)[0].match(/;/g) || []).length >= (t.split(/\r?\n/)[0].match(/,/g) || []).length ? ';' : ',';
+        filas = t.split(/\r?\n/).filter(l => l.trim()).map(l => { const o = []; let c = '', q = false; for (let i = 0; i < l.length; i++) { const ch = l[i]; if (ch === '"') { if (q && l[i + 1] === '"') { c += '"'; i++; } else q = !q; } else if (ch === sep && !q) { o.push(c); c = ''; } else c += ch; } o.push(c); return o; }); }
+      else { await cargarXlsx(); const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }); filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }); }
+      // Encabezados: busca la fila que tenga Distrito y Plano (puede haber títulos arriba)
+      const hi = filas.findIndex(r => r.some(c => /distrito/i.test(c)) && r.some(c => /^\s*plano/i.test(c)));
+      if (hi < 0) throw new Error('No encontré las columnas «Distrito» y «Plano» en el archivo.');
+      const H = filas[hi].map(c => normZ(c)), col = (re, no) => H.findIndex(h => re.test(h) && !(no && no.test(h)));
+      const cDi = col(/DISTRITO/), cPl = col(/^PLANO/), cFi = col(/FILIAL/), cEc = H.findIndex(h => h === 'EECC' || h === 'EECC ASIGNADA') >= 0 ? H.findIndex(h => h === 'EECC' || h === 'EECC ASIGNADA') : col(/EECC/, /EDITADA/);
+      if (cEc < 0) throw new Error('No encontré la columna «EECC».');
+      const porK = new Map(R.map(r => [r.k, r])), cambios = {}, det = []; let iguales = 0, noVistos = 0, invalidas = 0;
+      filas.slice(hi + 1).forEach(r => { const di = String(r[cDi] ?? '').trim(), pl = String(r[cPl] ?? '').trim(); if (!di || !pl) { if (di || pl) invalidas++; return; }
+        const fi = cFi >= 0 && String(r[cFi] ?? '').trim() ? String(r[cFi]).trim().toUpperCase() : 'LIMA', k = claveZ(fi, di, pl), ec = normZ(r[cEc]).replace(/^SIN EECC$/, ''), x = porK.get(k);
+        if (x && (x.ec || '') === ec) { iguales++; return; }
+        if (!x) noVistos++;
+        cambios[k] = ec; det.push({ fi, di: x ? x.di : di, pl: x ? x.pl : pl, antes: x ? (x.ec || '') : '', ec, nuevo: !x }); });
+      SUBE = { cambios, det };
+      const nC = det.length;
+      $('sube-res').innerHTML = `<div class="sube-kpis"><span><b>${n(nC)}</b>planos cambian de EECC</span><span><b>${n(iguales)}</b>ya tienen esa EECC</span>${noVistos ? `<span title="Se guardan y se aplican cuando el plano aparezca en las órdenes"><b>${n(noVistos)}</b>planos aún no vistos</span>` : ''}${invalidas ? `<span><b>${n(invalidas)}</b>filas sin distrito o plano (se omiten)</span>` : ''}</div>`
+        + (nC ? `<div class="sube-tb"><table><thead><tr><th>Filial</th><th>Distrito</th><th>Plano</th><th>EECC actual</th><th>EECC nueva</th></tr></thead><tbody>${det.slice(0, 400).map(d => `<tr><td>${esc(nom(d.fi))}</td><td>${esc(d.di)}</td><td>${esc(d.pl)}${d.nuevo ? ' <span class="b fuera">aún no visto</span>' : ''}</td><td class="ant">${esc(d.antes || 'Sin EECC')}</td><td class="nvo">${esc(d.ec || '(vuelve a la hoja ZONA)')}</td></tr>`).join('')}</tbody></table></div>${nC > 400 ? `<p class="nota">Se muestran 400 de ${n(nC)}; se guardan todos.</p>` : ''}` : '<p class="nota">No hay cambios: todos los planos del archivo ya tienen esa EECC.</p>');
+      $('sube-guardar-fila').hidden = !nC; $('sube-clave').value = claveM();
+    } catch (err) { $('sube-res').innerHTML = `<p class="nota" style="color:var(--mal)">${esc(err.message || 'No se pudo leer el archivo.')}</p>`; }
+  });
+  $('sube-guardar').addEventListener('click', async () => {
+    if (!SUBE || !SUBE.det.length) return; const k = $('sube-clave').value.trim(); if (!k) { $('sube-clave').focus(); return; }
+    $('sube-guardar').disabled = true; $('sube-guardar').textContent = 'Guardando…';
+    try { const r = await fetch('/api/zonificacion', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': k }, body: JSON.stringify({ cambios: SUBE.cambios }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) { if (r.status === 403) ponerM(''); throw new Error(j.error || `Error ${r.status}`); }
+      ponerM(k); aplicarEd(j.eecc || {}); const nG = SUBE.det.length; $('sube-cancelar').click(); pintarChips(); pintar();
+      $('aviso').style.color = 'var(--ok)'; $('aviso').textContent = `Se cambió la EECC de ${n(nG)} plano${nG === 1 ? '' : 's'} desde el Excel. Ya lo ven todos.`; }
+    catch (err) { $('sube-res').insertAdjacentHTML('afterbegin', `<p class="nota" style="color:var(--mal)">${esc(err.message || 'No se pudo guardar.')}</p>`); }
+    finally { $('sube-guardar').disabled = false; $('sube-guardar').textContent = 'Guardar asignación'; } });
   $('dias-txt').textContent = D.mes ? `(${MESES[+D.mes.slice(5, 7) - 1]}: ${DIAS} días)` : '';
   pintarChips(); pintar();
   $('cargando').hidden = true; $('vista').hidden = false;
