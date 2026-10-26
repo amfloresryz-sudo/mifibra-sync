@@ -1139,7 +1139,7 @@ const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#F
 const FRANJAS = ['8 - 10','10 - 12','12 - 14','14 - 16','16 - 18','18 - 20'];
 let DIAS = [], MC = '', MESL = '', CFG = {};
 let coTipo = 'TODOS', seg = 'TODOS', canal = 'TODOS', zona = 'TODAS', vista = 'eecc', tab = 'panel', diaCo = 0, diaAv = 0, diaPenAg = 0;
-const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTos: new Set(['INSTALACION SERVICIO']), penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
+const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', hoIn: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTos: new Set(['INSTALACION SERVICIO']), penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
 const abiertos = new Set();
 const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: WD[f.getDay()], fin: f.getDay() === 0 }; };
 const fDia = (d) => `${String(d).padStart(2, '0')}-${MC}.`;
@@ -2148,11 +2148,13 @@ const HO_TP = { 'AG HOY': 'AG', 'COORDINADAS': 'CO' };
 const frNorm = (x) => String(x.fr || '').replace(/\s+/g, ' ').trim();
 const hoEstado = (x) => x.e === 'D' ? 'DESCARGADA' : x.e === 'O' ? 'OBSERVADA' : (x.ini && x.ini.slice(0, 10) === hoyIso()) ? 'EN ATENCIÓN' : 'PENDIENTE';
 const HO_ORD = { 'PENDIENTE': 0, 'EN ATENCIÓN': 1, 'OBSERVADA': 2, 'DESCARGADA': 3 };
+// Inicio de atención hoy: CON INICIO = el técnico ya inició (BI con fecha de hoy) · SIN INICIO = aún no
+const inicioHoy = (x) => x.ini && x.ini.slice(0, 10) === hoyIso() ? 'CON INICIO' : 'SIN INICIO';
 function hoyFiltrados(sin = '') {
   return D.prog.filter(ok).filter(x => x.d === D.dias && (x.t === 'AG' || x.t === 'CO') && x.e !== 'A'
     && (sin === 'hoTp' || msAny(filtro.hoTp, o => x.t === HO_TP[o]))
     && (sin === 'hoFr' || msOk(filtro.hoFr, frNorm(x)))
-    && (sin === 'hoEc' || msOk(filtro.hoEc, x.ec)));
+    && (sin === 'hoEc' || msOk(filtro.hoEc, x.ec)) && (sin === 'hoIn' || msOk(filtro.hoIn, inicioHoy(x))));
 }
 function pintarAgHoy() {
   if (!$('hoy-segs')) return;
@@ -2161,7 +2163,8 @@ function pintarAgHoy() {
   segmentos('hoy-segs', [
     { k: 'hoTp', t: 'Tipo', ops: Object.keys(HO_TP), cnt: cnt('hoTp', (x, o) => x.t === HO_TP[o]) },
     { k: 'hoFr', t: 'Franja', ops: frs, cnt: cnt('hoFr', (x, o) => frNorm(x) === o) },
-    { k: 'hoEc', t: 'EECC_F', ops: ecsDe(hoyFiltrados('hoEc')), cnt: cnt('hoEc', (x, o) => x.ec === o) } ]);
+    { k: 'hoEc', t: 'EECC_F', ops: ecsDe(hoyFiltrados('hoEc')), cnt: cnt('hoEc', (x, o) => x.ec === o) },
+    { k: 'hoIn', t: 'Inicio', ops: ['CON INICIO', 'SIN INICIO'], cnt: cnt('hoIn', (x, o) => inicioHoy(x) === o) } ]);
   const L = hoyFiltrados().map(x => ({ x, es: hoEstado(x) })).sort((a, b) => HO_ORD[a.es] - HO_ORD[b.es] || msIso(a.x.rec) - msIso(b.x.rec)).map(o => o.x);
   const T = D.prog.filter(ok).filter(x => x.d === D.dias && x.e !== 'A'), ag = T.filter(x => x.t === 'AG').length, co = T.filter(x => x.t === 'CO').length;
   const pen = L.filter(x => hoEstado(x) === 'PENDIENTE').length;
