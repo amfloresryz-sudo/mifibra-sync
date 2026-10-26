@@ -192,6 +192,20 @@ body.con-modal { overflow: hidden; }
 .segs { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
 .segs .g { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .segs .chip { padding: 6px 12px; min-height: 32px; font-size: 12px; }
+.segs .gc { display: contents; }
+/* Detalle de agendas de hoy: panel de segmentadores ordenado (Tipo · Franja · Inicio · Estado OS arriba, EECC_F abajo) */
+#hoy-segs { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 16px 30px; align-items: start; padding: 14px 18px 16px; border: 1px solid var(--borde); border-radius: 14px; background: var(--bg, #F6F7F9); }
+#hoy-segs .g { flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+#hoy-segs .g .gc { display: flex; flex-wrap: wrap; gap: 6px; }
+#hoy-segs .g .seg-t { font: 800 10.5px var(--f-disp); letter-spacing: .9px; text-transform: uppercase; color: var(--fg-3); padding-bottom: 6px; border-bottom: 2px solid var(--magenta); }
+#hoy-segs .g[data-k="hoEc"] { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--borde); }
+#hoy-segs .chip:not([aria-pressed="true"]) { background: var(--sup); }
+#hoy-segs .hs-cab { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding-bottom: 12px; border-bottom: 1px solid var(--borde); }
+.hs-tit { font: 800 13px var(--f-disp); } .hs-acts { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.hs-act { font-size: 12px; background: var(--rosa); color: var(--magenta-txt); border-radius: 12px; padding: 3px 10px; } .hs-act b { font-weight: 800; }
+.hs-nada { font-size: 12.5px; color: var(--fg-4); }
+.hs-limpiar { all: unset; cursor: pointer; font: 700 12.5px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; }
+@media (max-width: 900px) { #hoy-segs { grid-template-columns: 1fr; } }
 /* Más filtros: se despliegan al pasar el puntero (o con el teclado) y se ocultan al salir */
 .f-mas { position: relative; margin-top: 12px; outline: none; }
 .f-mas-cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 14px; border: 1px dashed var(--borde-2); border-radius: 12px; cursor: default; color: var(--fg-3); font-size: 12.5px; }
@@ -1454,7 +1468,7 @@ $('liq-vistas').addEventListener('click', (e) => { const b = e.target.closest('[
 
 /* ---------- segmentadores ---------- */
 function segmentos(contenedor, grupos) {
-  $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span>${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${msOn(filtro[g.k], o)}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</div>`).join('');
+  $(contenedor).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span><span class="gc">${['TODOS', ...g.ops].map(o => `<button type="button" class="chip" data-v="${esc(o)}" aria-pressed="${msOn(filtro[g.k], o)}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && g.cnt ? ` (${g.cnt(o)})` : ''}</button>`).join('')}</span></div>`).join('');
 }
 // Cada segmentador repinta solo su pestaña (antes repintaba todo el portal y se sentía lento).
 const REPINTA = { 'eecc-segs': () => pintarIngresos(), 'pen-segs': () => pintarPendientes(), 'pen-segs-ge': () => pintarPendientes(), 'co-segs': () => pintarCoord(), 'hoy-segs': () => pintarAgHoy() };
@@ -2156,6 +2170,7 @@ function hoyFiltrados(sin = '') {
     && (sin === 'hoFr' || msOk(filtro.hoFr, frNorm(x)))
     && (sin === 'hoEc' || msOk(filtro.hoEc, x.ec)) && (sin === 'hoIn' || msOk(filtro.hoIn, inicioHoy(x))) && (sin === 'hoEs' || msOk(filtro.hoEs, EST_OS[x.e] || '—')));
 }
+document.addEventListener('click', (e) => { if (!e.target.closest('#hs-limpiar')) return; ['hoTp', 'hoFr', 'hoIn', 'hoEs', 'hoEc'].forEach(k => filtro[k] = 'TODOS'); pintarAgHoy(); });
 function pintarAgHoy() {
   if (!$('hoy-segs')) return;
   const cnt = (k, f) => (o) => hoyFiltrados(k).filter(x => f(x, o)).length;
@@ -2163,9 +2178,11 @@ function pintarAgHoy() {
   segmentos('hoy-segs', [
     { k: 'hoTp', t: 'Tipo', ops: Object.keys(HO_TP), cnt: cnt('hoTp', (x, o) => x.t === HO_TP[o]) },
     { k: 'hoFr', t: 'Franja', ops: frs, cnt: cnt('hoFr', (x, o) => frNorm(x) === o) },
-    { k: 'hoEc', t: 'EECC_F', ops: ecsDe(hoyFiltrados('hoEc')), cnt: cnt('hoEc', (x, o) => x.ec === o) },
-    { k: 'hoIn', t: 'Inicio', ops: ['CON INICIO', 'SIN INICIO'], cnt: cnt('hoIn', (x, o) => inicioHoy(x) === o) },
-    { k: 'hoEs', t: 'Estado OS', ops: ['REGISTRADA', 'DESCARGADA', 'OBSERVADA'], cnt: cnt('hoEs', (x, o) => EST_OS[x.e] === o) } ]);
+    { k: 'hoIn', t: 'Inicio de atención', ops: ['CON INICIO', 'SIN INICIO'], cnt: cnt('hoIn', (x, o) => inicioHoy(x) === o) },
+    { k: 'hoEs', t: 'Estado OS', ops: ['REGISTRADA', 'DESCARGADA', 'OBSERVADA'], cnt: cnt('hoEs', (x, o) => EST_OS[x.e] === o) },
+    { k: 'hoEc', t: 'EECC_F', ops: ecsDe(hoyFiltrados('hoEc')), cnt: cnt('hoEc', (x, o) => x.ec === o) } ]);
+  { const HS = [['hoTp', 'Tipo'], ['hoFr', 'Franja'], ['hoIn', 'Inicio'], ['hoEs', 'Estado OS'], ['hoEc', 'EECC_F']], act = HS.filter(([k]) => MS(filtro[k]).size).map(([k, t]) => `<span class="hs-act"><b>${t}:</b> ${esc(msTxt(filtro[k]).toLowerCase())}</span>`);
+    $('hoy-segs').insertAdjacentHTML('afterbegin', `<div class="hs-cab"><span class="hs-tit">Segmentadores</span><span class="hs-acts">${act.join('') || '<span class="hs-nada">Sin filtros: se ven todas las agendas y coordinadas de hoy</span>'}</span>${act.length ? '<button type="button" class="hs-limpiar" id="hs-limpiar">Limpiar filtros</button>' : ''}</div>`); }
   const L = hoyFiltrados().map(x => ({ x, es: hoEstado(x) })).sort((a, b) => HO_ORD[a.es] - HO_ORD[b.es] || msIso(a.x.rec) - msIso(b.x.rec)).map(o => o.x);
   const T = D.prog.filter(ok).filter(x => x.d === D.dias && x.e !== 'A'), ag = T.filter(x => x.t === 'AG').length, co = T.filter(x => x.t === 'CO').length;
   const pen = L.filter(x => hoEstado(x) === 'PENDIENTE').length;
