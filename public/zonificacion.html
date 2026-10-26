@@ -261,6 +261,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .ra-k.u .v { color: var(--mal); } .ra-k.a .v { color: #B45309; } .ra-k.o .v { color: var(--ok); }
 .ra-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
 .ra-mapa { min-height: 420px; border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; background: var(--gris-bg); }
+.ra-ley { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; color: var(--fg-2); margin: 6px 2px 0; } .ra-ley i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; margin-left: 8px; } .ra-ley i:first-child { margin-left: 0; } .ra-ley span { color: var(--fg-3); }
 .ra-lado h4 { margin: 0 0 6px; font: 800 13px var(--f-disp); }
 .niv { display: inline-block; font: 800 10.5px var(--f-disp); letter-spacing: .4px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
 .niv.U { background: var(--mal); color: #fff; } .niv.A { background: #FDE7C8; color: #8A4B00; } .niv.M { background: var(--gris-bg); color: var(--fg-2); }
@@ -316,7 +317,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     </div>
     <div class="ra-segs"><span class="seg-t">Nivel</span><span id="ra-niv" class="chips"></span><span class="seg-t">EECC actual</span><span id="ra-ec" class="chips"></span></div>
     <div id="ra-kpis" class="ra-kpis"></div>
-    <div class="ra-grid"><div id="ra-mapa" class="ra-mapa" aria-label="Mapa de los AB en riesgo y los técnicos con espacio"></div>
+    <div class="ra-grid"><div><div id="ra-mapa" class="ra-mapa" aria-label="Mapa de los AB en riesgo y los técnicos con espacio"></div><p class="ra-ley"><i style="background:#B42318"></i>Urgente <i style="background:#D97706"></i>Alta <i style="background:#6B7280"></i>Media <i style="background:#5FD08F;border:2px solid #157A4A"></i>Técnico con espacio <span>· clic en una fila o punto para ver a quién pasarlo</span></p></div>
       <div class="ra-lado"><h4>Capacidad de hoy por EECC</h4><div class="scroll"><table id="tb-raec" class="tb-c"></table></div></div></div>
     <div class="scroll"><table id="tb-ra" class="tb-c ra-tb"></table></div>
     <p class="nota" id="ra-nota"></p>
@@ -618,7 +619,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     RA.sel = r.x.ab; $('tb-ra').querySelectorAll('tr.sel').forEach(t => t.classList.remove('sel'));
     const i = RA.sug.indexOf(r), tr = $('tb-ra').querySelector(`tr[data-ra-i="${i}"]`); if (tr) tr.classList.add('sel');
     if (!RA.mapa || !r.c) return; if (RA.linea) RA.linea.remove();
-    if (r.a) { RA.linea = window.L.polyline([r.c, r.a.p.c], { color: '#E6007E', weight: 3, dashArray: '6 6' }).addTo(RA.mapa); RA.mapa.fitBounds([r.c, r.a.p.c], { padding: [60, 60], maxZoom: 15 }); }
+    if (r.a) { const Lf = window.L; RA.linea = Lf.layerGroup().addTo(RA.mapa);
+      Lf.polyline([r.c, r.a.p.c], { color: '#E6007E', weight: 3, dashArray: '6 6' }).addTo(RA.linea);
+      Lf.circleMarker(r.a.p.c, { radius: 9, color: '#157A4A', weight: 3, fillColor: '#5FD08F', fillOpacity: 1 }).bindTooltip(`${r.a.t.ec} · ${tnom(r.a.t.tec)} · ${r.a.p.q}`).addTo(RA.linea);
+      RA.mapa.fitBounds([r.c, r.a.p.c], { padding: [60, 60], maxZoom: 15 }); }
     else RA.mapa.setView(r.c, 14);
   }
   $('tb-ra').addEventListener('click', (e) => { if (e.target.closest('a')) return; const tr = e.target.closest('tr[data-ra-i]'); if (tr) elegirRA(RA.sug[+tr.dataset.raI]); });
