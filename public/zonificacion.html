@@ -287,6 +287,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="sec-cab"><div><h3 id="t-tb">Planos por zona</h3><p class="sub" id="tb-sub">Se ven las zonas; abre una zona para ver sus distritos y un distrito para ver sus planos.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" id="editar">✎ Editar EECC</button><button type="button" class="btn-out" id="todo">Expandir todo</button><button type="button" class="btn-out" id="xls">Descargar Excel</button></div></div>
     <div class="segs-tb">
+      <div style="flex-basis:100%"><span class="seg-t">Tipo de trabajo <span style="text-transform:none;letter-spacing:0;font-weight:500">· Instalaciones siempre incluidas; suma los que elijas</span></span><div class="chips" id="f-tp" role="group" aria-label="Tipo de trabajo"></div></div>
       <div><span class="seg-t">Zona</span><div class="chips" id="f-zo" role="group" aria-label="Zona"></div></div>
       <div><span class="seg-t">Planta</span><div class="chips" id="f-pt" role="group" aria-label="Planta"></div></div>
       <div><span class="seg-t">EECC asignada</span><div class="chips" id="f-ec" role="group" aria-label="EECC asignada"></div></div>
@@ -297,8 +298,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <span id="ed-n" class="ed-n"></span><button type="button" class="btn-out ed-ok" id="ed-guardar" disabled>Guardar cambios</button><button type="button" class="btn-out" id="ed-cancelar">Cancelar</button></div>
     <datalist id="eecc-list"></datalist>
     <p class="aviso-dl" id="aviso" role="status"></p>
-    <div class="scroll"><table id="tb-zon"><thead><tr><th>Zona / distrito / plano</th><th>Filial</th><th>Zona</th><th>Planta</th><th>EECC asignada</th><th title="Instalaciones del periodo en ese plano">Instalaciones</th><th title="Averías (servicio técnico) del periodo en ese plano">Averías</th><th title="Instalaciones REGISTRADA hoy">Pendientes</th><th class="pm" title="Instalaciones ingresadas en el mes (F. Recep) ÷ días transcurridos">Prom. ingresos<small>por día</small></th><th class="pm" title="Instalaciones DESCARGADA en el mes (F. Atención) ÷ días transcurridos">Prom. liquidadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado OBSERVADA ÷ días transcurridos">Prom. observadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado ANULADA ÷ días transcurridos">Prom. anuladas<small>por día</small></th><th>Última orden</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-    <p class="nota">Planos por zona: cada zona se abre en sus distritos y cada distrito en sus planos (o «Expandir todo») · Todos los distritos y planos quedan guardados: si aparece un plano nuevo en las órdenes se agrega solo (marcado «Nuevo» por 7 días) para asignarle su EECC con «✎ Editar EECC» (clave master) · Catálogo = hoja ZONA de DATOS_TEC (distrito + plano → EECC asignada; solo Lima) · «fuera del catálogo» = plano que aparece en las órdenes pero no está en la hoja ZONA · Instalaciones y averías = órdenes del periodo del robot (desde el 1 del mes anterior) · Promedios por día = instalaciones del mes en curso ÷ días transcurridos <span id="dias-txt"></span>: ingresos por F. Recep, liquidadas (DESCARGADA) por F. Atención, observadas y anuladas por F. Recep · en provincias la zona es la filial.</p>
+    <div class="scroll"><table id="tb-zon"><thead><tr><th>Zona / distrito / plano</th><th>Filial</th><th>Zona</th><th>Planta</th><th>EECC asignada</th><th id="th-ord" title="Órdenes del periodo en ese plano de los tipos de trabajo elegidos">Instalaciones</th><th title="Averías (servicio técnico) del periodo en ese plano">Averías</th><th title="Instalaciones REGISTRADA hoy">Pendientes</th><th class="pm" title="Instalaciones ingresadas en el mes (F. Recep) ÷ días transcurridos">Prom. ingresos<small>por día</small></th><th class="pm" title="Instalaciones DESCARGADA en el mes (F. Atención) ÷ días transcurridos">Prom. liquidadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado OBSERVADA ÷ días transcurridos">Prom. observadas<small>por día</small></th><th class="pm" title="Instalaciones del mes en estado ANULADA ÷ días transcurridos">Prom. anuladas<small>por día</small></th><th>Última orden</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    <p class="nota">Planos por zona: cada zona se abre en sus distritos y cada distrito en sus planos (o «Expandir todo») · Todos los distritos y planos quedan guardados: si aparece un plano nuevo en las órdenes se agrega solo (marcado «Nuevo» por 7 días) para asignarle su EECC con «✎ Editar EECC» (clave master) · Catálogo = hoja ZONA de DATOS_TEC (distrito + plano → EECC asignada; solo Lima) · «fuera del catálogo» = plano que aparece en las órdenes pero no está en la hoja ZONA · Tipo de trabajo: Instalaciones siempre; los demás tipos que elijas se suman en Órdenes, Pendientes y promedios (la columna Averías es siempre servicio técnico; Zonificación por EECC y la proyección usan solo instalaciones) · Órdenes y averías = periodo del robot (desde el 1 del mes anterior) · Promedios por día = órdenes del mes en curso ÷ días transcurridos <span id="dias-txt"></span>: ingresos por F. Recep, liquidadas (DESCARGADA) por F. Atención, observadas y anuladas por F. Recep · en provincias la zona es la filial.</p>
   </section>
   </div>
 </div></main>
@@ -318,11 +319,20 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     D = await r.json(); if (!r.ok) throw new Error(D.error || `Error ${r.status}`); }
   catch (e) { $('cargando').textContent = e.message || 'No se pudo cargar la zonificación.'; return; }
   // fila: [filial, zona, distrito, plano, planta, eecc, instalaciones, averías, pendientes, última, en catálogo]
-  const R = D.filas.map(f => ({ fi: f[0], zo: f[1], di: f[2], pl: f[3], pt: f[4], ec: f[5], ins: f[6], av: f[7], pen: f[8], ult: f[9], cat: !!f[10], ing: f[11] || 0, liq: f[12] || 0, obs: f[13] || 0, anu: f[14] || 0, k: f[15] || `${f[0]}|${f[2]}|${f[3]}`, alta: f[16] || '', ed: !!f[17] }));
+  const R = D.filas.map(f => ({ fi: f[0], zo: f[1], di: f[2], pl: f[3], pt: f[4], ec: f[5], ins: f[6], av: f[7], pen: f[8], ult: f[9], cat: !!f[10], ing: f[11] || 0, liq: f[12] || 0, obs: f[13] || 0, anu: f[14] || 0, k: f[15] || `${f[0]}|${f[2]}|${f[3]}`, alta: f[16] || '', ed: !!f[17], tt: f[18] || {} }));
   // EECC editadas en el portal (llegan al instante, sin esperar al robot) sobre la de la hoja ZONA
   const EC0 = new Map(R.map(r => [r.k, r.ed ? '' : r.ec]));   // la de la hoja (o vacía) para volver atrás
   const aplicarEd = (E) => R.forEach(r => { if (E[r.k]) { r.ec = E[r.k]; r.ed = true; } else if (r.ed) { r.ec = EC0.get(r.k) || ''; r.ed = false; } });
   aplicarEd(D.eecc || {});
+  // Tipos de trabajo: «tt» trae por tipo [órdenes, pendientes, ingresadas, liquidadas, observadas y anuladas del mes, última orden]
+  const TIPOS = D.tipos || ['INSTALACIONES'], TI = TIPOS.indexOf('INSTALACIONES');
+  const TP = new Set(['INSTALACIONES']), tpTxt = (t) => t === 'INSTALACIONES' ? 'Instalaciones' : t === 'AVERÍAS' ? 'Averías' : t.charAt(0) + t.slice(1).toLowerCase();
+  R.forEach(r => { r.tt = r.tt || {}; const i = r.tt[TI] || [r.ins, r.pen, r.ing, r.liq, r.obs, r.anu, r.ult]; r.I = { ins: i[0] || 0, pen: i[1] || 0, ing: i[2] || 0, liq: i[3] || 0, obs: i[4] || 0, anu: i[5] || 0 }; });
+  const aplicarTipos = () => R.forEach(r => { const o = { ins: 0, pen: 0, ing: 0, liq: 0, obs: 0, anu: 0, ult: '' };
+    TIPOS.forEach((t, i) => { if (!TP.has(t)) return; const v = r.tt[i]; if (!v) return; o.ins += v[0]; o.pen += v[1]; o.ing += v[2]; o.liq += v[3]; o.obs += v[4]; o.anu += v[5]; if ((v[6] || '') > o.ult) o.ult = v[6]; });
+    if (!r.tt[TI] && TP.size === 1) Object.assign(o, r.I, { ult: r.ult });
+    Object.assign(r, o); });
+  aplicarTipos();
   // Plano nuevo = apareció en los últimos 7 días y no está en la hoja ZONA
   const hace7 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10), esNuevo = (r) => !r.cat && /^\d{4}-\d{2}-\d{2}$/.test(r.alta) && r.alta >= hace7;
   const ESTADOS = ['NUEVO', 'SIN EECC', 'EDITADA'], estDe = (r) => [esNuevo(r) && 'NUEVO', !r.ec && 'SIN EECC', r.ed && 'EDITADA'].filter(Boolean);
@@ -351,11 +361,17 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const pintarChips = () => {
     chips('f-fi', 'fi', filiales.slice(), nom);
     const zs = [...new Set(R.map(r => r.zo))].sort((a, b) => { const i = ZO.indexOf(a), j = ZO.indexOf(b); return (i < 0 ? 50 : i) - (j < 0 ? 50 : j) || a.localeCompare(b); });
+    const cT = {}; R.filter(r => ok(r)).forEach(r => TIPOS.forEach((t, i) => { if (r.tt[i]) cT[t] = (cT[t] || 0) + r.tt[i][0]; }));
+    $('f-tp').innerHTML = TIPOS.filter(t => cT[t] || TP.has(t)).map(t => `<button type="button" class="chip" data-tp="${esc(t)}" aria-pressed="${TP.has(t)}"${t === 'INSTALACIONES' ? ' title="Siempre incluido"' : ''}>${esc(tpTxt(t))} (${n(cT[t] || 0)})</button>`).join('');
+    $('th-ord').textContent = TP.size === 1 ? 'Instalaciones' : 'Órdenes';
     chips('f-zo', 'zo', zs, v => ZO.includes(v) || v === 'SIN ZONA' ? v : nom(v));
     chips('f-pt', 'pt', [...new Set(R.map(r => r.pt))].sort((a, b) => /^(Sin|Otros)/.test(a) - /^(Sin|Otros)/.test(b) || a.localeCompare(b)));
     chips('f-es', 'es', ESTADOS.slice(), v => ({ NUEVO: 'Nuevos (7 días)', 'SIN EECC': 'Sin EECC', EDITADA: 'EECC editada' })[v]);
     chips('f-ec', 'ec', [...new Set(R.map(r => r.ec || 'SIN EECC'))].sort((a, b) => (a === 'SIN EECC') - (b === 'SIN EECC') || a.localeCompare(b)));
   };
+  // Tipo de trabajo: Instalaciones siempre; los demás se suman o se quitan
+  document.addEventListener('click', (e) => { const b = e.target.closest('.chip[data-tp]'); if (!b) return; const t = b.dataset.tp; if (t === 'INSTALACIONES') return;
+    TP.has(t) ? TP.delete(t) : TP.add(t); aplicarTipos(); pintarChips(); pintar(); });
   // Segmentadores: Filial arriba y el resto encima de la tabla (todos filtran toda la página)
   document.addEventListener('click', (e) => { const b = e.target.closest('.chip[data-k]'); if (!b) return; const S = F[b.dataset.k], v = b.dataset.v;
     if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarChips(); pintar(); });
@@ -363,7 +379,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('q').value = ''; $('q').addEventListener('focus', () => $('q').removeAttribute('readonly'), { once: true });
   setTimeout(() => { if (document.activeElement !== $('q') && $('q').value && !F.q) $('q').value = ''; }, 800);
   let tq; $('q').addEventListener('input', (e) => { clearTimeout(tq); tq = setTimeout(() => { F.q = e.target.value.trim().toUpperCase(); abiertos.clear(); pintarChips(); pintar(); }, 200); });
-  $('limpiar').addEventListener('click', () => { ['fi', 'zo', 'pt', 'ec', 'es'].forEach(k => F[k].clear()); F.q = ''; $('q').value = ''; pintarChips(); pintar(); });
+  $('limpiar').addEventListener('click', () => { ['fi', 'zo', 'pt', 'ec', 'es'].forEach(k => F[k].clear()); F.q = ''; TP.clear(); TP.add('INSTALACIONES'); aplicarTipos(); $('q').value = ''; pintarChips(); pintar(); });
 
   // ----- Tabla por zona › distrito › plano (se abre por niveles) -----
   const abZ = new Set(), abiertos = new Set(); let todo = false, L = [];
@@ -396,7 +412,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   function porEecc() {
     const LL = L.filter(r => r.fi === 'LIMA'), E = {};
     const e0 = (k) => E[k] || (E[k] = { ec: k, zon: {}, dis: new Set(), pl: 0, pen: 0, ing: 0, liq: 0, ins: 0, P: [] });
-    LL.forEach(r => { const e = e0(r.ec ? nmE(r.ec) : 'SIN EECC'); e.pl++; e.pen += r.pen; e.ing += r.ing; e.liq += r.liq; e.ins += r.ins; e.dis.add(r.di); e.P.push(r); (e.zon[r.zo] || (e.zon[r.zo] = new Set())).add(r.di); });
+    LL.forEach(r => { const e = e0(r.ec ? nmE(r.ec) : 'SIN EECC'); e.pl++; e.pen += r.I.pen; e.ing += r.I.ing; e.liq += r.I.liq; e.ins += r.I.ins; e.dis.add(r.di); e.P.push(r); (e.zon[r.zo] || (e.zon[r.zo] = new Set())).add(r.di); });
     // EECC con rutas o liquidaciones pero sin planos asignados (apoyo)
     const asis = {}; Object.entries(ASIS.ec || {}).forEach(([k, v]) => { const kk = nmE(k), a = asis[kk] || (asis[kk] = [0, 0]); a[0] += v[0]; a[1] += v[1]; });
     if (!F.zo.size && !F.pt.size && !F.ec.size && !F.es.size && !F.q) [...Object.keys(RF), ...Object.keys(asis)].forEach(k => { if (!/^(SIN EECC|POR ASIGNAR)$/.test(k)) e0(nmE(k)); });
@@ -433,7 +449,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const don = filas.filter(f => f.sobra > 0).map(f => ({ f, q: f.sobra })), rec = filas.filter(f => f.falta > 0 && f.rut != null).sort((a, b) => b.falta - a.falta).map(f => ({ f, q: f.falta }));
     const comp = (a, b) => Object.keys(a.zon).filter(z => b.zon[z]).length, mov = [];
     rec.forEach(r => { don.sort((a, b) => comp(b.f, r.f) - comp(a.f, r.f) || b.q - a.q).forEach(d => { if (!r.q || !d.q) return; const k = Math.min(r.q, d.q); r.q -= k; d.q -= k; mov.push({ de: d.f, a: r.f, k }); }); });
-    const topDis = (e) => { const c = {}; e.P.forEach(r => { c[r.di] = (c[r.di] || 0) + r.pen + r.ing / X.dias; }); return Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, 3); };
+    const topDis = (e) => { const c = {}; e.P.forEach(r => { c[r.di] = (c[r.di] || 0) + r.I.pen + r.I.ing / X.dias; }); return Object.keys(c).sort((a, b) => c[b] - c[a]).slice(0, 3); };
     const zTxt = (e) => Object.keys(e.zon).sort(zOrd).join(' · ') || 'sin planos asignados';
     $('mov-sub').innerHTML = `Reparto de las <b>${n(rutT)}</b> rutas fijas de Lima según lo que pide el territorio de cada EECC (ingresos del día + bolsa de pendientes en ${H} días), con su asistencia y productividad del mes · para cubrir toda la demanda harían falta <b>${n(Math.ceil(pideT))}</b> rutas.`;
     $('mov-cards').innerHTML = mov.length ? mov.map(m => `<div class="mov"><span class="t">Mover <b>${m.k} ruta${m.k === 1 ? '' : 's'}</b> de ${esc(m.de.ec)} → ${esc(m.a.ec)}</span>
@@ -457,7 +473,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('kpis').innerHTML = kpi('Distritos', n(nDis), `${n(new Set(L.map(r => r.zo)).size)} zonas`) + kpi('Planos', n(L.length), `${n(L.filter(r => r.cat).length)} del catálogo de Lima`)
       + kpi('Con EECC asignada', n(L.length - sinEc), `${L.length ? Math.round((L.length - sinEc) / L.length * 100) : 0}% de los planos`) + kpi('Sin EECC asignada', n(sinEc), `${n(fuera)} de Lima fuera del catálogo`)
       + `<div class="kpi"><span class="l">Planos nuevos (7 días)</span><span class="kv" style="color:${nNueSin ? 'var(--magenta)' : 'inherit'}">${n(nNue)}</span><span class="s">${nNueSin ? `<button type="button" class="nb" id="ver-nuevos" style="all:unset;cursor:pointer;color:var(--magenta-txt);font-weight:700;text-decoration:underline">${n(nNueSin)} sin EECC · asignar</button>` : 'todos con EECC'}</span></div>`
-      + kpi('Pendientes de instalación', n(L.reduce((a, r) => a + r.pen, 0)), 'instalaciones REGISTRADA en esos planos');
+      + kpi(TP.size === 1 ? 'Pendientes de instalación' : 'Pendientes', n(L.reduce((a, r) => a + r.pen, 0)), TP.size === 1 ? 'instalaciones REGISTRADA en esos planos' : `REGISTRADA de: ${[...TP].map(tpTxt).join(', ')}`);
     const X = porEecc(); pintarEecc(X); pintarMov(X);
     pintarTabla();
   }

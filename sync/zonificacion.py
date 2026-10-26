@@ -4,12 +4,15 @@
 - EECC asignada: la que se editó en el portal (ajustes «zonificacion:GLOBAL», clave master) o, si no, la de la hoja ZONA de
   DATOS_TEC (solo Lima). Un plano nuevo sin EECC queda marcado para asignarle una.
 - Actividad: instalaciones y averías del periodo, pendientes de hoy, última orden y lo del mes en curso para los promedios."""
+import numpy as np
 import pandas as pd
 
 from . import instalaciones
 from .zonas import ZONAS
 
-COLS = ["fi", "zo", "di", "pl", "pt", "ec", "ins", "av", "pen", "ult", "cat", "ing_m", "liq_m", "obs_m", "anu_m", "k", "alta", "ed"]
+COLS = ["fi", "zo", "di", "pl", "pt", "ec", "ins", "av", "pen", "ult", "cat", "ing_m", "liq_m", "obs_m", "anu_m", "k", "alta", "ed", "tt"]
+# tt = por tipo de trabajo (índice en «tipos»): [órdenes del periodo, pendientes, ingresadas del mes, liquidadas del mes, observadas del mes, anuladas del mes, última orden]
+TIPO_TXT = {"INSTALACION SERVICIO": "INSTALACIONES", "SERVICIO TECNICO": "AVERÍAS"}
 # ing_m · liq_m · obs_m · anu_m = instalaciones del mes en curso: ingresadas (F. Recep), liquidadas (DESCARGADA por F. Atención),
 # observadas y anuladas (por F. Recep). La página las divide entre los días transcurridos del mes para el promedio por día.
 # k = clave del plano (FILIAL|DISTRITO|PLANO normalizados) · alta = día en que se vio por primera vez · ed = 1 si la EECC se editó en el portal
@@ -24,8 +27,9 @@ def _t(v) -> str:
 
 def _dia_lima(s: pd.Series) -> pd.Series:
     """F. Recep (UTC en la base) → día en hora de Lima, «AAAA-MM-DD» ('' si no hay)."""
-    t = pd.to_datetime(s, utc=True, errors="coerce").dt.tz_convert("America/Lima")
-    return t.dt.strftime("%Y-%m-%d").fillna("")
+    t = pd.to_datetime(s, utc=True, errors="coerce").dt.tz_convert("America/Lima").dt.tz_localize(None)
+    d = np.datetime_as_string(t.values.astype("datetime64[D]"))   # mucho más rápido que strftime con cientos de miles de filas
+    return pd.Series(np.where(t.isna().values, "", d), index=s.index)
 
 
 def clave(fi, di, pl) -> str:
@@ -65,32 +69,46 @@ def construir(df: pd.DataFrame, corte: str, vistos: dict | None = None, editadas
         f = fila("LIMA", di, pl, primera="hoja ZONA")
         f["cat"], f["ec"] = 1, ec
 
-    # 3) Planos vistos en las órdenes del periodo
+    # 3) Planos vistos en las órdenes del periodo (agrupado con pandas: el periodo trae cientos de miles de órdenes)
     if df is not None and not df.empty and "plano" in df:
-        x = df[df["plano"].map(_t) != ""]
-        tipo, est = x["tipo_orden"].map(_t), x["estado_os"].map(_t)
-        es_i = tipo == "INSTALACION SERVICIO"
-        es_a = tipo == "SERVICIO TECNICO"
-        fecha = _dia_lima(x["fecha_registro"])
-        fat = x["fecha_atencion"].map(_t).str[:10] if "fecha_atencion" in x else pd.Series("", index=x.index)
-        for fi, di, pl, i, a, e, fr, fa in zip(x["filial"].map(_t), x["distrito"].map(_t), x["plano"].map(_t), es_i, es_a, est, fecha, fat):
-            if not fi or fi == "SIN FILIAL":
-                continue
-            f = fila(fi, di or "SIN DISTRITO", pl, primera=fr)
-            if di and norm(di) == norm(f["di"]):
-                f["di"] = di          # nombre del distrito tal como viene en ScordSoft (con Ñ)
-            f["ins"] += int(i)
-            f["av"] += int(a)
-            f["pen"] += int(i and e == "REGISTRADA")
-            if fr > f["ult"]:
-                f["ult"] = fr
-            if i:
-                rm, am = fr[:7] == mes, fa[:7] == mes
-                f["ing_m"] += int(rm)
-                f["liq_m"] += int(am and e == "DESCARGADA")
-                f["obs_m"] += int(rm and e == "OBSERVADA")
-                f["anu_m"] += int(rm and e == "ANULADA")
+        tx = lambda c: df[c].fillna("").astype(str).str.strip() if c in df else pd.Series("", index=df.index)  # noqa: E731
+        x = pd.DataFrame({"fi": tx("filial"), "di": tx("distrito"), "pl": tx("plano"), "tp": tx("tipo_orden"), "e": tx("estado_os")})
+        x = x[(x["pl"] != "") & (x["fi"] != "") & (x["fi"] != "SIN FILIAL")]
+        x["di"] = x["di"].replace("", "SIN DISTRITO")
+        x["fr"] = _dia_lima(df.loc[x.index, "fecha_registro"])
+        x["fa"] = tx("fecha_atencion").loc[x.index].str[:10]
+        x["tp"] = x["tp"].replace({**TIPO_TXT, "": "SIN TIPO"})
+        nd = {v: norm(v) for v in x["di"].unique()}
+        npl = {v: norm(v) for v in x["pl"].unique()}
+        x["k"] = x["fi"].str.upper() + "|" + x["di"].map(nd) + "|" + x["pl"].map(npl)
+        rm, am = x["fr"].str[:7] == mes, x["fa"].str[:7] == mes
+        x = x.assign(n=1, pen=(x["e"] == "REGISTRADA").astype(int), ing=rm.astype(int), liq=(am & (x["e"] == "DESCARGADA")).astype(int),
+                     obs=(rm & (x["e"] == "OBSERVADA")).astype(int), anu=(rm & (x["e"] == "ANULADA")).astype(int))
+        g = x.groupby(["k", "tp"]).agg(n=("n", "sum"), pen=("pen", "sum"), ing=("ing", "sum"), liq=("liq", "sum"),
+                                       obs=("obs", "sum"), anu=("anu", "sum"), ult=("fr", "max"))
+        cab = x.groupby("k").agg(fi=("fi", "first"), di=("di", "first"), pl=("pl", "first"), primera=("fr", "min"))
+        for k, c in cab.iterrows():
+            f = fila(c["fi"], c["di"], c["pl"], primera=c["primera"])
+            if norm(c["di"]) == norm(f["di"]):
+                f["di"] = c["di"]          # nombre del distrito tal como viene en ScordSoft (con Ñ)
+        for (k, tp), v in g.iterrows():
+            f = filas[k]
+            t = [int(v["n"]), int(v["pen"]), int(v["ing"]), int(v["liq"]), int(v["obs"]), int(v["anu"]), v["ult"] or ""]
+            f.setdefault("tt", {})[tp] = t
+            if t[6] > f["ult"]:
+                f["ult"] = t[6]
+            if tp == "INSTALACIONES":
+                f["ins"], f["pen"], f["ing_m"], f["liq_m"], f["obs_m"], f["anu_m"] = t[0], t[1], t[2], t[3], t[4], t[5]
+            elif tp == "AVERÍAS":
+                f["av"] = t[0]
 
+    # Tipos de trabajo: instalaciones primero, luego averías y el resto por cantidad
+    cnt: dict[str, int] = {}
+    for f in filas.values():
+        for t, v in (f.get("tt") or {}).items():
+            cnt[t] = cnt.get(t, 0) + v[0]
+    tipos = sorted(cnt, key=lambda t: (t != "INSTALACIONES", t != "AVERÍAS", -cnt[t], t))
+    ti = {t: i for i, t in enumerate(tipos)}
     out = []
     for k, f in filas.items():
         vistos[k] = [f["fi"], f["di"], f["pl"], vistos[k][3]]     # nombre más reciente, misma fecha de alta
@@ -99,9 +117,9 @@ def construir(df: pd.DataFrame, corte: str, vistos: dict | None = None, editadas
         ed = k in editadas
         out.append([f["fi"], zona, f["di"], f["pl"], instalaciones._planta(f["pl"], plantas), editadas[k] if ed else hoja,
                      f["ins"], f["av"], f["pen"], f["ult"], f["cat"], f["ing_m"], f["liq_m"], f["obs_m"], f["anu_m"],
-                     k, vistos[k][3], int(ed)])
+                     k, vistos[k][3], int(ed), {ti[t]: v for t, v in (f.get("tt") or {}).items()}])
     out.sort(key=lambda r: (r[0] != "LIMA", r[0], r[2], r[3]))
-    return {"cols": COLS, "filas": out, "corte": corte, "mes": mes, "dias": dias}, vistos
+    return {"cols": COLS, "filas": out, "corte": corte, "mes": mes, "dias": dias, "tipos": tipos}, vistos
 
 
 def asistencia(tableros: dict | None) -> dict:
