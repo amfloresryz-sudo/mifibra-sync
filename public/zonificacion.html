@@ -232,7 +232,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .tb-c th { font-size: 10px; letter-spacing: .3px; line-height: 1.25; vertical-align: bottom; } .tb-c tfoot td { font-weight: 800; background: var(--gris-bg); }
 .zbs { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: center; } .zbs .b small { font-weight: 600; opacity: .8; margin-left: 3px; }
 .sobra { color: #1A56A8; font-weight: 800; } .falta { color: var(--mal); font-weight: 800; } .equi { color: var(--ok); font-weight: 800; }
-.mov-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.mov-cards { display: flex; flex-wrap: nowrap; gap: 10px; }   /* las tarjetas de movimiento van en una sola fila */
+.mov-cards .mov { flex: 1 1 0; min-width: 0; padding: 10px 12px; gap: 4px; } .mov-cards .mov .t { font-size: 13.5px; } .mov-cards .mov .s { font-size: 11.5px; }
+#tb-mov td { white-space: nowrap; } #tb-mov td:nth-child(2) { white-space: normal; }
+.tb-c th small { display: block; font-size: 9px; font-weight: 600; opacity: .8; }
 .mov { border: 1px solid var(--borde); border-left: 5px solid var(--magenta); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--sup); }
 .mov .t { font: 800 15px var(--f-disp); } .mov .t b { color: var(--magenta-txt); } .mov .s { font-size: 12.5px; color: var(--fg-3); line-height: 1.45; }
 .mov.ok { border-left-color: var(--ok); }
@@ -439,7 +442,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       : `<div class="mov ok"><span class="t">Sin movimientos sugeridos</span><span class="s">Con estos filtros ninguna EECC tiene rutas de más para cubrir a otra.</span></div>`;
     $('tb-mov').innerHTML = `<thead><tr><th>EECC</th><th>Zonas</th><th>Pendientes</th><th class="pm">Ingresos<small>por día</small></th><th>Demanda<small>inst. por día</small></th><th>Productividad</th><th>Asistencia</th><th>Rutas que pide<small>la demanda</small></th><th>Rutas fijas</th><th>Rutas según demanda<small>reparto de las ${n(rutT)}</small></th><th>Saldo</th><th>Lectura</th></tr></thead><tbody>`
       + filas.sort((a, b) => (a.saldo ?? 0) - (b.saldo ?? 0)).map(f => `<tr><td><b>${esc(f.ec)}</b></td><td>${esc(zTxt(f))}</td><td>${num(f.pen, 'pen-n')}</td><td class="pm">${f1(f.ing / X.dias, 2)}</td><td>${f1(f.dem)}</td><td>${f1(f.prodU)}${f.prod ? '' : '<small title="Sin liquidaciones propias: se usa el promedio de Lima"> *</small>'}</td><td>${pc(f.asisU)}${f.asis ? '' : '<small title="Sin rutas o técnicos: se usa el promedio de Lima"> *</small>'}</td><td>${f1(f.pide)}</td><td>${f.rut ?? '—'}</td><td>${f1(f.nec)}</td>
-        <td class="${f.saldo == null ? '' : f.saldo >= 1 ? 'sobra' : f.saldo <= -1 ? 'falta' : 'equi'}">${f.saldo == null ? '—' : (f.saldo > 0 ? '+' : '') + f1(f.saldo)}</td><td>${f.saldo == null ? 'Sin rutas fijas' : f.saldo >= 1 ? (f.pl ? 'Le falta trabajo: puede ceder rutas' : 'Sin planos asignados: apoya a otras') : f.saldo <= -1 ? 'Le faltan rutas' : 'Equilibrada'}</td></tr>`).join('') + '</tbody>';
+        <td class="${f.saldo == null ? '' : f.saldo >= 1 ? 'sobra' : f.saldo <= -1 ? 'falta' : 'equi'}">${f.saldo == null ? '—' : (f.saldo > 0 ? '+' : '') + f1(f.saldo)}</td><td>${f.saldo == null ? 'Sin rutas fijas' : f.saldo >= 1 ? (f.pl ? 'Puede ceder rutas' : 'Apoyo (sin planos)') : f.saldo <= -1 ? 'Le faltan rutas' : 'Equilibrada'}</td></tr>`).join('') + '</tbody>';
     $('mov-nota').textContent = `Demanda = ingresos por día del territorio + pendientes ÷ ${H} días · Rutas que pide = demanda ÷ (productividad × asistencia) · Rutas según demanda = las ${n(rutT)} rutas fijas repartidas en proporción a lo que pide cada EECC · Saldo = rutas fijas − rutas según demanda (azul = le falta trabajo y puede ceder, rojo = le faltan rutas) · * = sin datos propios, se usa el promedio de Lima (productividad ${f1(X.prodM)}, asistencia ${pc(X.asisM)}) · Es una proyección para decidir; las rutas se cambian en Instalaciones › Avance › «Rutas por EECC».`;
   }
   $('mov-h').addEventListener('change', () => pintar());
