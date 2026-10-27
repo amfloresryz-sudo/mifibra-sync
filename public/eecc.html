@@ -49,7 +49,10 @@ h1 { font: 800 22px var(--f-disp); margin: 0 0 2px; } .sub { color: var(--fg-4);
 table { border-collapse: collapse; width: 100%; font-size: 12px; }
 /* Todo en una línea y sin desplazamiento lateral: columnas de ancho fijo; lo que no entra se corta con «…» (el texto completo al pasar el puntero) */
 #tb { table-layout: fixed; }
-#tb th, #tb td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tb td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Encabezado: título y embudo de filtro siempre visibles (el título puede pasar a 2 líneas si no entra) */
+#tb th { white-space: normal; overflow: hidden; line-height: 1.15; }
+#tb th .t { word-break: break-word; } #tb th .fcol { display: inline-grid; margin-left: 2px; }
 #tb td { padding: 7px 3px; } #tb th { padding: 9px 2px; vertical-align: middle; }
 #tb .b { padding: 2px 6px; font-size: 10.5px; }
 #tb th .ord { display: none; } #tb th.on-ord .ord { display: inline; }
@@ -59,7 +62,7 @@ table { border-collapse: collapse; width: 100%; font-size: 12px; }
 .hv button.on[data-v=H] { background: #2A4BA8; color: #fff; } .hv button.on[data-v=V] { background: #5B2DB8; color: #fff; }
 .hv button:hover:not(.on) { background: var(--rosa); color: var(--magenta-txt); }
 .adj { border: 0; background: var(--magenta); color: #fff; border-radius: 8px; width: 28px; height: 24px; cursor: pointer; font-size: 13px; padding: 0; }
-@media (max-width: 1500px) { #tb th .fcol { display: none; } #tb th:hover .fcol, #tb th .fcol.on, #tb th:focus-within .fcol { display: inline-grid; } #tb .b.dias { display: none; } #tb { font-size: 10.5px; } #tb th { font-size: 9.5px; letter-spacing: 0; } #tb .b { font-size: 9.5px; padding: 1px 4px; } .lnk { font-size: 10.5px; } }
+@media (max-width: 1500px) { #tb .b.dias { display: none; } #tb { font-size: 10.5px; } #tb th { font-size: 9.5px; letter-spacing: 0; } #tb .b { font-size: 9.5px; padding: 1px 4px; } .lnk { font-size: 10.5px; } }
 @media (max-width: 1150px) { #tb { font-size: 9.5px; } #tb th { font-size: 8.5px; } #tb .b { font-size: 8.5px; padding: 1px 3px; } #tb .b.dias { display: none; } .hv button { width: 18px; } main { padding-inline: 8px; } }
 /* Mismo formato que la tabla de Pendientes de Instalaciones */
 th { position: sticky; top: 0; z-index: 2; background: var(--rosa); color: var(--magenta-txt); font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .3px; text-align: center; padding: 9px 4px; vertical-align: bottom; line-height: 1.2; cursor: pointer; user-select: none; }
