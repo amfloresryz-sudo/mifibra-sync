@@ -29,12 +29,14 @@ function modulosOk(v) {
 // Usuario sin distinguir mayúsculas, espacios ni tildes (RDiaz, rdiaz y « rdíaz » son el mismo)
 const limpioU = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '').toLowerCase();
 const nombreOk = (v) => String(v || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+// EECC (contratista) del usuario: su nombre tal como viene en ScordSoft (SEGANET, MYM…). Con EECC solo ve «Mis pendientes».
+const eeccOk = (v) => { const t = String(v || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 80); return t || null; };
 const usuarioValido = (u) => /^[a-z0-9._-]{3,30}$/.test(u);
 const ALFA = 'abcdefghjkmnpqrstuvwxyz23456789';
 const claveInicial = () => { const b = crypto.randomBytes(8); let s = ''; for (const x of b) s += ALFA[x % ALFA.length]; return s; };
 function hash(clave) { const sal = crypto.randomBytes(16).toString('hex'); return `s1$${sal}$${crypto.scryptSync(String(clave), sal, 32).toString('hex')}`; }
 function verificar(clave, h) { const [v, sal, hx] = String(h || '').split('$'); if (v !== 's1' || !sal || !hx) return false; return iguales(crypto.scryptSync(String(clave), sal, 32).toString('hex'), hx); }
-const publico = (u) => ({ usuario: u.usuario, nombre: u.nombre, filial: u.filial, modulos: u.modulos || 'TODOS', activo: u.activo, cambiar_clave: u.cambiar_clave, creado_en: u.creado_en, clave_en: u.clave_en, ultimo_ingreso: u.ultimo_ingreso });
+const publico = (u) => ({ usuario: u.usuario, nombre: u.nombre, filial: u.filial, modulos: u.modulos || 'TODOS', eecc: u.eecc || null, activo: u.activo, cambiar_clave: u.cambiar_clave, creado_en: u.creado_en, clave_en: u.clave_en, ultimo_ingreso: u.ultimo_ingreso });
 
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -78,7 +80,7 @@ module.exports = async (req, res) => {
       if (!u || !okClave) return responder(res, 401, { error: 'Usuario o contraseña incorrectos.' });
       if (!u.activo) return responder(res, 403, { error: 'Tu usuario está desactivado. Pide al administrador que lo active.' });
       await Promise.all([pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', { ultimo_ingreso: new Date().toISOString() }), registrarIngreso(req, u.usuario, u.filial)]);
-      return responder(res, 200, { token: firmarSesion(u), nombre: u.nombre, filial: u.filial, modulos: u.modulos || 'TODOS', cambiar: u.cambiar_clave, usuario: u.usuario });
+      return responder(res, 200, { token: firmarSesion(u), nombre: u.nombre, filial: u.filial, modulos: u.modulos || 'TODOS', eecc: u.eecc || null, cambiar: u.cambiar_clave, usuario: u.usuario });
     }
     if (req.method === 'POST' && accion === 'cambiar') {
       const p = await sesionDe(req, true);
@@ -91,7 +93,7 @@ module.exports = async (req, res) => {
       if (verificar(nueva, u.clave_hash)) return responder(res, 400, { error: 'Elige una contraseña distinta a la inicial.' });
       const cambios = { clave_hash: hash(nueva), cambiar_clave: false, clave_en: new Date().toISOString() };
       await pedir(`usuarios?usuario=eq.${encodeURIComponent(p.u)}`, 'PATCH', cambios);
-      return responder(res, 200, { token: firmarSesion({ ...u, ...cambios }), nombre: u.nombre, filial: u.filial, modulos: u.modulos || 'TODOS', usuario: u.usuario });
+      return responder(res, 200, { token: firmarSesion({ ...u, ...cambios }), nombre: u.nombre, filial: u.filial, modulos: u.modulos || 'TODOS', eecc: u.eecc || null, usuario: u.usuario });
     }
 
     // ---------- Administración (clave master) ----------
@@ -106,6 +108,9 @@ module.exports = async (req, res) => {
       ing.forEach(x => { if (!ult[x.usuario]) ult[x.usuario] = x; if (x.fuera && new Date(x.en) >= hace7) fuera7[x.usuario] = (fuera7[x.usuario] || 0) + 1; });
       return responder(res, 200, { usuarios: datos.map(u => ({ ...publico(u), lugar: ult[u.usuario] || null, fuera7: fuera7[u.usuario] || 0 })), general: a.general !== false, hayGeneral: !!process.env.PORTAL_TOKEN,
         generalLugar: ult.general || null });
+    }
+    if (req.method === 'GET' && accion === 'lista_eecc') {   // EECC que tienen pendientes (para el selector de usuarios de EECC)
+      return responder(res, 200, { eecc: await require('./eecc').listaEecc() });
     }
     if (req.method === 'GET' && accion === 'ingresos') {   // historial de un usuario (últimos 100)
       const usuario = limpioU(new URL(req.url, 'http://x').searchParams.get('usuario'));
@@ -133,19 +138,19 @@ module.exports = async (req, res) => {
       const filas = Array.isArray(b.filas) ? b.filas.slice(0, 300) : [], { datos } = await consultar('usuarios?select=usuario');
       const existe = new Set(datos.map(x => x.usuario)), creados = [], omitidos = [], nuevos = [];
       for (const f of filas) {
-        const usuario = limpioU(f.usuario), nombre = nombreOk(f.nombre), filial = filialesOk(f.filial), modulos = modulosOk(f.modulos);
+        const usuario = limpioU(f.usuario), nombre = nombreOk(f.nombre), filial = filialesOk(f.filial), eecc = eeccOk(f.eecc), modulos = eecc ? 'eecc' : modulosOk(f.modulos);
         if (!usuarioValido(usuario)) { omitidos.push({ usuario: f.usuario, motivo: 'usuario no válido (3 a 30 letras, números, punto o guion)' }); continue; }
         if (!filial) { omitidos.push({ usuario, motivo: `filial «${f.filial}» no existe` }); continue; }
         if (!modulos) { omitidos.push({ usuario, motivo: 'elige al menos una ventana' }); continue; }
         if (existe.has(usuario)) { omitidos.push({ usuario, motivo: 'ya existe' }); continue; }
         existe.add(usuario); const clave = claveInicial();
-        nuevos.push({ usuario, nombre: nombre || usuario, filial, modulos, clave_hash: hash(clave), cambiar_clave: true, activo: true }); creados.push({ usuario, nombre: nombre || usuario, filial, modulos, clave });
+        nuevos.push({ usuario, nombre: nombre || usuario, filial, modulos, ...(eecc ? { eecc } : {}), clave_hash: hash(clave), cambiar_clave: true, activo: true }); creados.push({ usuario, nombre: nombre || usuario, filial, modulos, eecc, clave });
       }
       if (nuevos.length) await pedir('usuarios', 'POST', nuevos);
       return responder(res, 200, { creados, omitidos });
     }
     if (accion === 'guardar') {
-      const usuario = limpioU(b.usuario), filial = filialesOk(b.filial), nombre = nombreOk(b.nombre), modulos = modulosOk(b.modulos);
+      const usuario = limpioU(b.usuario), filial = filialesOk(b.filial), nombre = nombreOk(b.nombre), eecc = eeccOk(b.eecc), modulos = eecc ? 'eecc' : modulosOk(b.modulos);
       if (!usuarioValido(usuario)) return responder(res, 400, { error: 'Usuario no válido: de 3 a 30 letras, números, punto o guion (sin espacios ni tildes).' });
       if (!filial) return responder(res, 400, { error: 'Elige al menos una filial válida.' });
       if (!modulos) return responder(res, 400, { error: 'Elige al menos una ventana.' });
@@ -153,15 +158,16 @@ module.exports = async (req, res) => {
       if (b.nuevo) {
         if (previo) return responder(res, 400, { error: 'Ese usuario ya existe.' });
         const clave = claveInicial();
-        await pedir('usuarios', 'POST', [{ usuario, nombre: nombre || usuario, filial, modulos, clave_hash: hash(clave), cambiar_clave: true, activo: true }]);
-        return responder(res, 200, { creado: { usuario, nombre: nombre || usuario, filial, modulos, clave } });
+        await pedir('usuarios', 'POST', [{ usuario, nombre: nombre || usuario, filial, modulos, ...(eecc ? { eecc } : {}), clave_hash: hash(clave), cambiar_clave: true, activo: true }]);
+        return responder(res, 200, { creado: { usuario, nombre: nombre || usuario, filial, modulos, eecc, clave } });
       }
       if (!previo) return responder(res, 404, { error: 'No existe ese usuario.' });
       const cambios = { nombre: nombre || previo.nombre, filial, modulos, activo: b.activo !== false };
+      if (eecc || previo.eecc) cambios.eecc = eecc;
       let clave;
       if (b.reset) { clave = claveInicial(); Object.assign(cambios, { clave_hash: hash(clave), cambiar_clave: true, clave_en: new Date().toISOString() }); }
       await pedir(`usuarios?usuario=eq.${encodeURIComponent(usuario)}`, 'PATCH', cambios);
-      if (b.reset || filial !== previo.filial || modulos !== (previo.modulos || 'TODOS') || cambios.activo !== previo.activo || cambios.nombre !== previo.nombre) await revocar([usuario]);
+      if (b.reset || filial !== previo.filial || modulos !== (previo.modulos || 'TODOS') || (eecc || null) !== (previo.eecc || null) || cambios.activo !== previo.activo || cambios.nombre !== previo.nombre) await revocar([usuario]);
       return responder(res, 200, clave ? { clave } : { ok: true });
     }
     responder(res, 400, { error: 'Acción no válida' });

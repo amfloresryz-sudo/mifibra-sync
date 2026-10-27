@@ -37,7 +37,7 @@ const secreto = () => process.env.SESION_SECRET || process.env.MASTER_TOKEN || p
 const firma = (c) => crypto.createHmac('sha256', 'mf-sesion|' + secreto()).update(c).digest('base64url');
 function iguales(a, b) { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 function firmarSesion(u) {
-  const ahora = Date.now(), c = Buffer.from(JSON.stringify({ u: u.usuario, n: u.nombre, f: u.filial, m: u.modulos || 'TODOS', cc: !!u.cambiar_clave, iat: ahora, exp: ahora + DURACION_SESION })).toString('base64url');
+  const ahora = Date.now(), c = Buffer.from(JSON.stringify({ u: u.usuario, n: u.nombre, f: u.filial, m: u.modulos || 'TODOS', e: u.eecc || undefined, cc: !!u.cambiar_clave, iat: ahora, exp: ahora + DURACION_SESION })).toString('base64url');
   return `u1.${c}.${firma(c)}`;
 }
 function leerSesion(t) {
@@ -61,7 +61,9 @@ async function sesionDe(req, permitirCambio = false) {
   if (!t || !iguales(t, esperado)) return null;
   const a = await accesoConfig(); return a.general === false ? null : { u: 'general', n: 'Clave general', f: 'TODAS' };
 }
-async function autorizado(req) { const p = await sesionDe(req); if (p) req.usuario = p; return !!p; }
+// Usuario de EECC (contratista): solo puede usar /api/eecc (sus pendientes y evidencias) y /api/usuarios (ingresar / cambiar clave).
+const SOLO_EECC = /^\/api\/(eecc|usuarios)(\b|\/|\?|$)/;
+async function autorizado(req) { const p = await sesionDe(req); if (p && p.e && !SOLO_EECC.test(String(req.url || ''))) return false; if (p) req.usuario = p; return !!p; }
 
 function esMaster(req) {
   const esperado = process.env.MASTER_TOKEN || '', dado = String(req.headers['x-master-token'] || '');
