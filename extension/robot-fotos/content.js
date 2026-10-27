@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.1
+// @version      1.2
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -300,7 +300,7 @@ Responde solo con el JSON pedido.`;
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(key)}`);
       const j = await r.json();
-      const malos = ["image", "tts", "audio", "live", "embedding", "thinking", "exp"];
+      const malos = ["image", "tts", "audio", "live", "embedding", "thinking", "exp", "omni", "preview", "lite"];
       return (j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
         .map((m) => m.name.split("/")[1]).filter((n) => n.includes("flash") && !malos.some((x) => n.includes(x)))
         .sort((a, b) => (a.includes("lite") - b.includes("lite")) || b.localeCompare(a));
@@ -313,26 +313,28 @@ Responde solo con el JSON pedido.`;
     fotos.forEach((b64, i) => partes.push({ text: `Foto ${i + 1}:` }, { inline_data: { mime_type: "image/jpeg", data: b64 } }));
     const cuerpo = JSON.stringify({ contents: [{ role: "user", parts: partes }],
       generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: ESQUEMA } });
-    const cola = ["gemini-flash-latest"], probados = new Set();
-    let ultimo = "";
-    while (cola.length) {
+    // Primero el que funcionó en las pruebas; luego el "latest" y después los flash disponibles en la clave.
+    const cola = ["gemini-3.6-flash", "gemini-flash-latest"], probados = new Set();
+    const limite = Date.now() + 4 * 60 * 1000; // máx. 4 min con Gemini; después se pasa al respaldo
+    let ultimo = "", listados = false;
+    while (cola.length && Date.now() < limite) {
       const modelo = cola.shift();
       if (probados.has(modelo)) continue;
       probados.add(modelo);
       log(`Revisando con la IA (${modelo})…`);
       let r = null;
       for (let i = 0; i < 2; i++) {
-        const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 180000);
+        const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 100000); // 100 s por modelo
         try {
           r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${encodeURIComponent(key)}`,
             { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpo, signal: ctl.signal });
         } catch { r = null; } finally { clearTimeout(to); }
-        if (r && [429, 500, 503].includes(r.status) && i === 0) { await espera(15000); continue; }
+        if (r && [429, 500, 503].includes(r.status) && i === 0) { await espera(8000); continue; }
         break;
       }
       if (!r || [400, 404, 429, 500, 503].includes(r.status) && (r.status !== 400 || /not found|not supported/i.test(await r.clone().text()))) {
         ultimo = `${modelo}: ${r ? r.status : "tiempo agotado"}`;
-        if (!cola.length) (await modelosDisponibles(key)).filter((m) => !probados.has(m)).slice(0, 5).forEach((m) => cola.push(m));
+        if (!cola.length && !listados) { listados = true; (await modelosDisponibles(key)).filter((m) => !probados.has(m)).slice(0, 4).forEach((m) => cola.push(m)); }
         continue;
       }
       if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
@@ -400,7 +402,7 @@ Responde SOLO con un objeto JSON (sin texto antes ni después) con esta forma:
     let ultimo = "";
     for (const modelo of modelos) {
       log(`Revisando con el respaldo gratis (${modelo})…`);
-      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 180000);
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 120000);
       try {
         const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST", signal: ctl.signal,
