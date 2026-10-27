@@ -66,10 +66,18 @@ def _campo_por_etiqueta(page: Page, etiqueta: str) -> str:
 
 def buscar_instalaciones(page: Page, base: str, abonado: str) -> list[dict]:
     """Filas de INSTALACION SERVICIO INTERNET en estado DESCARGADA (ejecutadas) del AB, de la más reciente a la más antigua."""
-    page.goto(f"{base}{PANTALLA_OS}", wait_until="domcontentloaded")
-    page.select_option("#MainContent_cboFilial", FILIAL_LIMA)
-    page.wait_for_load_state("domcontentloaded")
+    page.goto(f"{base}{PANTALLA_OS}", wait_until="networkidle")
+    if page.input_value("#MainContent_cboFilial") != FILIAL_LIMA:
+        # Cambiar la filial recarga la página (postback): hay que esperar a que termine antes de escribir el AB.
+        try:
+            with page.expect_navigation(wait_until="networkidle", timeout=20_000):
+                page.select_option("#MainContent_cboFilial", FILIAL_LIMA)
+        except Exception:  # noqa: BLE001 - si no hubo recarga, se sigue
+            page.wait_for_load_state("networkidle")
     page.fill("#MainContent_txtNroAbonado", str(int(abonado)))
+    page.wait_for_timeout(500)
+    if page.input_value("#MainContent_txtNroAbonado").strip() != str(int(abonado)):
+        page.fill("#MainContent_txtNroAbonado", str(int(abonado)))
     # Rango amplio: últimos 90 días hasta hoy (la pantalla trae por defecto solo ~4 semanas).
     from datetime import date, timedelta
     for sel, f in (("#MainContent_txtFechaInicio", date.today() - timedelta(days=90)), ("#MainContent_txtFechaTermino", date.today())):
@@ -87,6 +95,8 @@ def buscar_instalaciones(page: Page, base: str, abonado: str) -> list[dict]:
     for f in filas:
         texto = " ".join(f["celdas"])
         if TIPO_BUSCADO not in texto.upper():
+            continue
+        if not re.search(rf"\b0*{int(abonado)}\b", texto):  # solo filas de ese abonado
             continue
         f["texto"] = texto
         f["os"] = (re.search(r"\b(\d{8})\b", texto) or re.search(r"\b(\d{5,})\b", texto) or [None, ""])[1]
