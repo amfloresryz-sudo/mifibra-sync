@@ -9,10 +9,7 @@ name: Sincronizar ScordSoft
 # Cada actualización descarga UN reporte: Filial SELECCIONE, por Registro, del 1 del mes anterior al fin del mes en curso.
 on:
   schedule:
-    - cron: "0 12 * * *"    # turno 1 · 7:00 Lima: queda despierto y hace la primera actualización a las 8:00 en punto
-    - cron: "30 16 * * *"   # turno 2 · 11:30 Lima (espera en cola al turno 1)
-    - cron: "0 21 * * *"    # turno 3 · 16:00 Lima (espera en cola al turno 2)
-    - cron: "30 1 * * *"    # turno 4 · 20:30 Lima (espera en cola al turno 3; termina con la de las 0:00)
+    - cron: "17 0-4,12-23 * * *"   # cada hora a los :17, de 7:17 a. m. a 11:17 p. m. (Lima). Si hay un turno corriendo, este espera en cola y lo releva; si un turno no arrancó o se cortó, el siguiente lo reemplaza
   workflow_dispatch:
     inputs:
       modo:
