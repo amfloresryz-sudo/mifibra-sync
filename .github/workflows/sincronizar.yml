@@ -84,7 +84,7 @@ jobs:
             if python -u -m sync.main --solo-descargar "$COLA/$1.tmp.xlsx" 2>&1 | sed -u "s/^/[descarga $3] /"; then
               mv "$COLA/$1.tmp.xlsx" "$COLA/$1.xlsx"; echo "$2" > "$COLA/$1.corte"; echo 0 > "$COLA/ult_descarga"
             else
-              rm -f "$COLA/$1.tmp.xlsx"; echo 1 > "$COLA/ult_descarga"
+              rm -f "$COLA/$1.tmp.xlsx" "$COLA/partes/$1"_*.xlsx; echo 1 > "$COLA/ult_descarga"
             fi
             rm -f "$COLA/descargando"
           }
@@ -92,17 +92,20 @@ jobs:
             set -o pipefail
             local fallas=0
             while :; do
-              ultimo=$(ls "$COLA"/*.xlsx 2>/dev/null | grep -v '\.tmp\.xlsx$' | sort | tail -1 || true)
+              # Solo reportes completos «AAAAMMDDhhmmss.xlsx» (nunca los que aún se descargan)
+              ultimo=$(ls "$COLA"/*.xlsx 2>/dev/null | grep -E '/[0-9]{14}\.xlsx$' | sort | tail -1 || true)
               if [ -n "$ultimo" ]; then
-                for viejo in $(ls "$COLA"/*.xlsx 2>/dev/null | grep -v '\.tmp\.xlsx$' | sort | head -n -1); do
-                  echo "Se salta el reporte $(basename "$viejo") (ya hay uno más nuevo)."; rm -f "$viejo" "${viejo%.xlsx}.corte"
+                for viejo in $(ls "$COLA"/*.xlsx 2>/dev/null | grep -E '/[0-9]{14}\.xlsx$' | sort | head -n -1); do
+                  echo "Se salta el reporte $(basename "$viejo") (ya hay uno más nuevo)."; rm -f "$viejo" "${viejo%.xlsx}.corte" "$COLA/partes/$(basename "${viejo%.xlsx}")"_*.xlsx
                 done
                 corte=$(cat "${ultimo%.xlsx}.corte"); h=$(TZ=America/Lima date -d "$corte" +%H:%M)
                 echo "::group::Actualización $(TZ=America/Lima date -d "$corte" '+%d/%m %H:%M') (hora de Lima) · procesando"
-                if python -u -m sync.main --excel "$ultimo" --corte "$corte" 2>&1 | sed -u "s/^/[proceso $h] /"; then fallas=0
+                partes=$(ls "$COLA/partes/$(basename "${ultimo%.xlsx}")"_*.xlsx 2>/dev/null || true)
+                [ -n "$partes" ] && echo "El reporte llegó en partes (ScordSoft entregó las filiales por separado): se juntan $(echo $partes | wc -w) archivos más."
+                if python -u -m sync.main --excel "$ultimo" $partes --corte "$corte" 2>&1 | sed -u "s/^/[proceso $h] /"; then fallas=0
                 else fallas=$((fallas+1)); echo "El procesamiento falló ($fallas seguidas)."; fi
                 echo "::endgroup::"
-                rm -f "$ultimo" "${ultimo%.xlsx}.corte"
+                rm -f "$ultimo" "${ultimo%.xlsx}.corte" $partes
                 [ "$fallas" -ge 3 ] && { echo "3 fallas seguidas al procesar: se corta el turno."; touch "$COLA/ABORTAR"; break; }
               elif [ -e "$COLA/FIN" ]; then break
               else sleep 10; fi
