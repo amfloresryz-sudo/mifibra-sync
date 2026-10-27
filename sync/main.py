@@ -5,6 +5,8 @@
   python -m sync.main --excel a.xlsx --sin-subir   # solo procesa y calcula, no escribe en Supabase
   python -m sync.main --solo-descargar r.xlsx      # solo descarga el reporte (el turno descarga y procesa en paralelo)
   python -m sync.main --excel r.xlsx --corte ISO   # procesa un reporte ya descargado, con la hora en que se pidió
+  python -m sync.main --solo-descargar r.xlsx --solo-mes-actual   # descarga RÁPIDA: solo el mes en curso
+  python -m sync.main --excel rapido.xlsx --base completo.xlsx    # junta la base completa con la descarga rápida
 
 Cada corrida descarga UN reporte, igual que a mano en ScordSoft:
   Cronograma de Trabajo (Órdenes de Servicio) · Filial SELECCIONE (todas) · por Registro
@@ -58,6 +60,23 @@ def _cols(df: pd.DataFrame, columnas: str, extra: tuple[str, ...] = ()) -> pd.Da
     nombres = [*extra, *columnas.split(",")]
     x = df.reindex(columns=nombres)
     return x
+
+
+def _leer_con_cache(archivo: Path) -> pd.DataFrame:
+    """Lee un reporte de la base guardando una copia ya leída al lado: la base se reutiliza en varias
+    actualizaciones rápidas y así el Excel grande se lee una sola vez."""
+    cache = archivo.with_name(archivo.name + ".pkl")
+    if cache.exists():
+        try:
+            return pd.read_pickle(cache)
+        except Exception:  # noqa: BLE001 - copia dañada: se vuelve a leer el Excel
+            pass
+    df0 = procesar.leer_excel(archivo)
+    try:
+        df0.to_pickle(cache)
+    except Exception:  # noqa: BLE001
+        pass
+    return df0
 
 
 def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links_st: dict | None = None) -> dict[str, dict]:
@@ -165,6 +184,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--reescribir-todo", action="store_true", help="reescribir todas las órdenes (ignora las huellas)")
     ap.add_argument("--solo-descargar", type=Path, help="solo descargar el reporte del periodo a esta ruta y terminar")
     ap.add_argument("--corte", help="hora (ISO, UTC) en que se pidió el reporte: se usa como corte y como «actualizado»")
+    ap.add_argument("--solo-mes-actual", action="store_true",
+                    help="con --solo-descargar: pide solo el mes en curso (descarga rápida, ~la mitad del tiempo)")
+    ap.add_argument("--base", type=Path, nargs="*", default=[],
+                    help="reporte(s) completo(s) anteriores: se leen primero y las órdenes de --excel los reemplazan")
     args = ap.parse_args(argv)
 
     if args.solo_descargar:
@@ -173,6 +196,9 @@ def main(argv: list[str] | None = None) -> int:
 
         hoy = datetime.now(LIMA).date()
         d0, d1 = periodo(hoy)
+        if args.solo_mes_actual:
+            d0 = hoy.replace(day=1)  # rápida: el mes anterior se toma de la última descarga completa
+            print(f"Descarga RÁPIDA (solo mes en curso): {d0:%d/%m/%Y}–{d1:%d/%m/%Y}", flush=True)
         t0 = time.time()
         try:
             # Se descarga en una carpeta aparte: así el procesador nunca ve archivos a medio bajar.
@@ -200,7 +226,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # ---------------- 1. Descarga (un solo reporte)
         if args.excel:
-            archivos = list(args.excel)
+            # Primero la base completa (mes anterior + mes en curso de hace un rato) y después el reporte nuevo:
+            # cada orden queda con su versión más reciente.
+            archivos = [*args.base, *args.excel]
         else:
             from .descargar import descargar_reportes
 
@@ -221,8 +249,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Aviso: no se cargaron los mapas de cajas: {e}", flush=True)
         filas_por_id: dict[int, dict] = {}
         links_st: dict[int, list] = {}
+        base = set(args.base)
         for archivo in archivos:
-            df0 = procesar.leer_excel(archivo)
+            df0 = _leer_con_cache(archivo) if archivo in base else procesar.leer_excel(archivo)
             try:
                 links_st.update(procesar.speedtest_por_os(df0))
             except Exception as e:  # noqa: BLE001 - Speed Test nunca detiene la corrida

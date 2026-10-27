@@ -20,8 +20,14 @@ Todo funciona en planes gratuitos: GitHub Actions (repositorio público = minuto
 |---|---|
 | 8:00, 8:20, 8:40 … 23:40 y 0:00 | Descarga el reporte del periodo y actualiza el portal (49 veces al día) |
 
-Cuatro turnos encadenados de hasta ~5 h 30 min (arrancan 7:00, 11:30, 16:00 y 20:30) cubren el día aunque GitHub
-retrase un cron: el primero espera despierto hasta las 8:00.
+Turnos de hasta ~5 h 30 min **encadenados**: al terminar, cada turno lanza el siguiente, que arranca apenas el anterior
+termina. Fuera de horario el turno espera dormido, así el de las 8:00 ya está despierto. El cron de GitHub (que se atrasa
+o se salta corridas) queda solo de respaldo.
+
+| Tipo de actualización | Qué pide a ScordSoft | Cuándo |
+|---|---|---|
+| Completa | Mes anterior + mes en curso (~14 min) | La primera de cada turno y luego una por hora |
+| Rápida | Solo el mes en curso (~la mitad) | Las demás marcas; se junta con la última completa |
 
 ## Qué descarga
 
