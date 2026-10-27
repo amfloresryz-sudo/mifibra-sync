@@ -231,8 +231,27 @@ def _modelos_disponibles(clave: str) -> list[str]:
     return sorted(flash, key=lambda n: ("lite" in n, [-ord(c) for c in n]))
 
 
+def _achicar(mime: str, cuerpo: bytes, lado: int = 1600) -> tuple[str, bytes]:
+    """Reduce la foto a máx. 1600 px por lado (se sigue leyendo el sello y los dBm) para que la IA responda rápido."""
+    try:
+        import io
+
+        from PIL import Image
+
+        im = Image.open(io.BytesIO(cuerpo))
+        im = im.convert("RGB")
+        im.thumbnail((lado, lado))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=85)
+        return "image/jpeg", buf.getvalue()
+    except Exception:  # noqa: BLE001 - si no se puede, se envía tal cual
+        return mime, cuerpo
+
+
 def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
     clave = _env("GEMINI_API_KEY")
+    fotos = [_achicar(m, c) for m, c in fotos]
+    print(f"   fotos para la IA: {sum(len(c) for _, c in fotos) // 1024} KB", flush=True)
     partes = [{"text": _prompt(datos, len(fotos))}]
     for i, (mime, cuerpo) in enumerate(fotos, 1):
         partes.append({"text": f"Foto {i}:"})
@@ -251,12 +270,23 @@ def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
             continue
         probados.add(modelo)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
+        r = None
         for intento in range(3):
-            r = requests.post(url, params={"key": clave}, json=cuerpo, timeout=240)
+            try:
+                r = requests.post(url, params={"key": clave}, json=cuerpo, timeout=180)
+            except requests.exceptions.Timeout:
+                r = None
+                break  # tardó demasiado: se prueba otro modelo
             if r.status_code in (429, 500, 503) and intento < 2:  # límite gratuito por minuto / saturación
                 time.sleep(20 * (intento + 1))
                 continue
             break
+        if r is None:
+            ultimo_error = f"{modelo}: tiempo agotado"
+            print(f"   IA: {modelo} tardó demasiado; se prueba otro modelo", flush=True)
+            if not cola:
+                cola += [m for m in _modelos_disponibles(clave) if m not in probados][:5]
+            continue
         no_existe = r.status_code in (400, 404) and ("not found" in r.text.lower() or "not supported" in r.text.lower())
         if no_existe or r.status_code in (429, 500, 503):
             # El modelo no existe o está saturado: se prueba con otro modelo disponible en la clave.
