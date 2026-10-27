@@ -225,9 +225,10 @@ def _modelos_disponibles(clave: str) -> list[str]:
                    if "generateContent" in m.get("supportedGenerationMethods", [])]
     except Exception:  # noqa: BLE001
         return []
-    flash = [n for n in nombres if "flash" in n and "lite" not in n and "image" not in n and "tts" not in n
-             and "audio" not in n and "live" not in n]
-    return sorted(flash, reverse=True)
+    malos = ("image", "tts", "audio", "live", "embedding", "thinking", "exp")
+    flash = [n for n in nombres if "flash" in n and not any(m in n for m in malos)]
+    # Primero los flash normales (más nuevos primero) y al final los "lite".
+    return sorted(flash, key=lambda n: ("lite" in n, [-ord(c) for c in n]))
 
 
 def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
@@ -250,16 +251,19 @@ def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
             continue
         probados.add(modelo)
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-        for intento in range(4):
+        for intento in range(3):
             r = requests.post(url, params={"key": clave}, json=cuerpo, timeout=240)
-            if r.status_code in (429, 500, 503) and intento < 3:  # límite gratuito por minuto / saturación
-                time.sleep(30 * (intento + 1))
+            if r.status_code in (429, 500, 503) and intento < 2:  # límite gratuito por minuto / saturación
+                time.sleep(20 * (intento + 1))
                 continue
             break
-        if r.status_code in (400, 404) and ("not found" in r.text.lower() or "not supported" in r.text.lower()):
+        no_existe = r.status_code in (400, 404) and ("not found" in r.text.lower() or "not supported" in r.text.lower())
+        if no_existe or r.status_code in (429, 500, 503):
+            # El modelo no existe o está saturado: se prueba con otro modelo disponible en la clave.
             ultimo_error = f"{modelo}: {r.status_code}"
-            if not cola:  # el modelo ya no existe: se busca uno disponible en la clave
-                cola += [m for m in _modelos_disponibles(clave) if m not in probados][:4]
+            print(f"   IA: {modelo} no disponible ({r.status_code}); se prueba otro modelo", flush=True)
+            if not cola:
+                cola += [m for m in _modelos_disponibles(clave) if m not in probados][:5]
             continue
         if not r.ok:
             raise ErrorRobot(f"Gemini ({modelo}) respondió {r.status_code}: {r.text[:300]}")
