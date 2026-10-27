@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.0
+// @version      1.1
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -35,10 +35,11 @@
   ];
 
   // ------------------------------------------------------------------ estado (sobrevive a las recargas de SCORD)
-  const K = "mfv-estado", KR = "mfv-resultado", KKEY = "mfv-gemini-key";
+  const K = "mfv-estado", KR = "mfv-resultado", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key";
   const leer = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch { return null; } };
   const guardar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const clave = () => { try { return localStorage.getItem(KKEY) || ""; } catch { return ""; } };
+  const claveOR = () => { try { return localStorage.getItem(KOR) || ""; } catch { return ""; } };
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   const $ = (s) => document.querySelector(s);
 
@@ -69,7 +70,11 @@
     <div class="cuerpo">
       <div id="mfv-clave" style="display:none;margin-bottom:10px">
         Clave de Gemini (se guarda solo en este Chrome):<br>
-        <input id="mfv-key" type="password" style="width:70%" placeholder="AIza…"> <button class="acc" id="mfv-keyok">Guardar</button>
+        <input id="mfv-key" type="password" style="width:70%" placeholder="AIza…"><br>
+        <span style="display:block;margin-top:6px">Respaldo gratis OpenRouter (opcional, se usa si Gemini está saturado):</span>
+        <input id="mfv-keyor" type="password" style="width:70%" placeholder="sk-or-…">
+        <button class="acc" id="mfv-keyok">Guardar</button>
+        <div id="mfv-estado-claves" style="color:#64748b;margin-top:4px"></div>
       </div>
       <div>Nº de abonado: <input id="mfv-ab" style="width:120px" inputmode="numeric">
         <button class="acc" id="mfv-go">Validar</button></div>
@@ -78,15 +83,17 @@
     </div>`;
   document.body.append(btn, panel);
   const log = (t) => { $("#mfv-log").textContent = t; };
-  const abrir = () => { panel.style.display = "block"; if (!clave()) $("#mfv-clave").style.display = "block"; };
+  const abrir = () => { panel.style.display = "block"; if (!clave()) { $("#mfv-clave").style.display = "block"; estadoClaves(); } };
   btn.onclick = () => (panel.style.display === "block" ? (panel.style.display = "none") : abrir());
   $("#mfv-x").onclick = () => (panel.style.display = "none");
-  $("#mfv-cfg").onclick = () => { const d = $("#mfv-clave"); d.style.display = d.style.display === "none" ? "block" : "none"; };
+  const estadoClaves = () => { $("#mfv-estado-claves").textContent =
+    `Gemini: ${clave() ? "guardada ✓" : "falta"} · OpenRouter: ${claveOR() ? "guardada ✓" : "no configurada"}`; };
+  $("#mfv-cfg").onclick = () => { const d = $("#mfv-clave"); d.style.display = d.style.display === "none" ? "block" : "none"; estadoClaves(); };
   $("#mfv-keyok").onclick = () => {
-    const v = $("#mfv-key").value.trim();
-    if (!v) return;
-    try { localStorage.setItem(KKEY, v); } catch {}
-    $("#mfv-key").value = ""; $("#mfv-clave").style.display = "none"; log("Clave guardada.");
+    const v = $("#mfv-key").value.trim(), o = $("#mfv-keyor").value.trim();
+    if (!v && !o) return;
+    try { if (v) localStorage.setItem(KKEY, v); if (o) localStorage.setItem(KOR, o); } catch {}
+    $("#mfv-key").value = ""; $("#mfv-keyor").value = ""; estadoClaves(); $("#mfv-clave").style.display = "none"; log("Claves guardadas.");
   };
   $("#mfv-go").onclick = () => {
     const ab = ($("#mfv-ab").value || "").replace(/\D/g, "");
@@ -330,21 +337,88 @@ Responde solo con el JSON pedido.`;
       }
       if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
       const j = await r.json();
-      const v = JSON.parse(j.candidates[0].content.parts[0].text);
-      // Regla de pérdida de la foto 2: se calcula aquí, no se deja a la IA.
-      if (v.potencia_nap_dbm != null && v.potencia_cliente_dbm != null) {
-        const p = Math.round(Math.abs(v.potencia_nap_dbm - v.potencia_cliente_dbm) * 100) / 100;
-        v.perdida_db = p;
-        if (p > PERDIDA_MAX_DB) {
-          const m = (v.manual || []).find((x) => x.item === 2);
-          if (m) { const t = `Pérdida caja–cliente de ${p} dB (NAP ${v.potencia_nap_dbm}, cliente ${v.potencia_cliente_dbm}); máximo ${PERDIDA_MAX_DB} dB.`;
-            m.estado = "ERROR"; m.error = m.error ? `${t} ${m.error}` : t; }
-          v.resultado = "OBSERVADA";
-        }
-      }
+      const v = aplicarPerdida(JSON.parse(j.candidates[0].content.parts[0].text));
       return { v, modelo };
     }
-    throw new Error(`ningún modelo de Gemini respondió (${ultimo}). Intenta en unos minutos.`);
+    if (claveOR()) {
+      log("Gemini saturado: probando el respaldo gratis (OpenRouter)…");
+      return revisarOpenRouter(d, fotos, ultimo);
+    }
+    throw new Error(`ningún modelo de Gemini respondió (${ultimo}). Intenta en unos minutos o configura el respaldo OpenRouter en ⚙.`);
+  }
+
+  // Regla de pérdida de la foto 2: se calcula aquí, no se deja a la IA.
+  function aplicarPerdida(v) {
+    if (v.potencia_nap_dbm != null && v.potencia_cliente_dbm != null) {
+      const p = Math.round(Math.abs(v.potencia_nap_dbm - v.potencia_cliente_dbm) * 100) / 100;
+      v.perdida_db = p;
+      if (p > PERDIDA_MAX_DB) {
+        const m = (v.manual || []).find((x) => x.item === 2);
+        if (m) { const t = `Pérdida caja–cliente de ${p} dB (NAP ${v.potencia_nap_dbm}, cliente ${v.potencia_cliente_dbm}); máximo ${PERDIDA_MAX_DB} dB.`;
+          m.estado = "ERROR"; m.error = m.error ? `${t} ${m.error}` : t; }
+        v.resultado = "OBSERVADA";
+      }
+    }
+    return v;
+  }
+
+  // ------------------------------------------------------------------ respaldo gratis: OpenRouter (modelos ":free" con visión)
+  const FORMATO_JSON = `
+Responde SOLO con un objeto JSON (sin texto antes ni después) con esta forma:
+{"manual":[{"item":1,"nombre":"Fachada del cliente","estado":"OK|ERROR|FALTA|NO APLICA","fotos":[1],"error":""}, … un objeto por cada ítem del manual],
+ "potencia_nap_dbm": número o null, "potencia_cliente_dbm": número o null,
+ "resultado":"OK|OBSERVADA", "resumen":"…"}`;
+
+  // Primero los modelos que mejor leen fotos (Gemma de Google, Nemotron VL, Qwen VL, Llama 4); luego el resto.
+  const prioridad = (id) => { const orden = [/gemma-4-31b/, /gemma/, /nemotron.*vl/, /qwen.*vl/, /llama-4/, /mistral|pixtral/];
+    const i = orden.findIndex((r) => r.test(id)); return i < 0 ? 99 : i; };
+
+  async function modelosGratisVision() {
+    try {
+      const j = await (await fetch("https://openrouter.ai/api/v1/models")).json();
+      return (j.data || []).filter((m) => m.id.endsWith(":free") &&
+          ((m.architecture && (m.architecture.input_modalities || []).includes("image")) || /image/.test((m.architecture || {}).modality || "")))
+        .filter((m) => !/safety|guard|moderat/i.test(m.id))
+        .map((m) => m.id)
+        .sort((a, b) => prioridad(a) - prioridad(b));
+    } catch { return []; }
+  }
+
+  function extraerJSON(t) {
+    const i = t.indexOf("{"), f = t.lastIndexOf("}");
+    if (i < 0 || f < i) throw new Error("la IA no devolvió JSON");
+    return JSON.parse(t.slice(i, f + 1));
+  }
+
+  async function revisarOpenRouter(d, fotos, previo) {
+    const key = claveOR();
+    const modelos = (await modelosGratisVision()).slice(0, 4);
+    if (!modelos.length) throw new Error(`Gemini saturado (${previo}) y no hay modelos gratis con visión en OpenRouter ahora.`);
+    const contenido = [{ type: "text", text: prompt(d, fotos.length) + FORMATO_JSON }];
+    fotos.forEach((b64, i) => contenido.push({ type: "text", text: `Foto ${i + 1}:` },
+      { type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } }));
+    let ultimo = "";
+    for (const modelo of modelos) {
+      log(`Revisando con el respaldo gratis (${modelo})…`);
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 180000);
+      try {
+        const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST", signal: ctl.signal,
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Title": "Robot validacion fotos" },
+          body: JSON.stringify({ model: modelo, temperature: 0, messages: [{ role: "user", content: contenido }] }),
+        });
+        if (r.status === 401) throw new Error("la clave de OpenRouter no es válida (revísala en ⚙).");
+        if (!r.ok) { ultimo = `${modelo}: ${r.status}`; continue; }
+        const j = await r.json();
+        const v = aplicarPerdida(extraerJSON(j.choices[0].message.content || ""));
+        if (!Array.isArray(v.manual)) { ultimo = `${modelo}: respuesta incompleta`; continue; }
+        return { v, modelo };
+      } catch (e) {
+        if (/no es válida/.test(e.message)) throw e;
+        ultimo = `${modelo}: ${e.name === "AbortError" ? "tiempo agotado" : e.message}`;
+      } finally { clearTimeout(to); }
+    }
+    throw new Error(`Gemini y el respaldo están saturados (${ultimo}). Intenta en unos minutos.`);
   }
 
   continuar();
