@@ -64,35 +64,49 @@ def _campo_por_etiqueta(page: Page, etiqueta: str) -> str:
     ) or ""
 
 
-def abrir_instalacion(page: Page, base: str, abonado: str) -> dict:
+def buscar_instalaciones(page: Page, base: str, abonado: str) -> list[dict]:
+    """Filas de INSTALACION SERVICIO INTERNET en estado DESCARGADA (ejecutadas) del AB, de la más reciente a la más antigua."""
     page.goto(f"{base}{PANTALLA_OS}", wait_until="domcontentloaded")
     page.select_option("#MainContent_cboFilial", FILIAL_LIMA)
     page.wait_for_load_state("domcontentloaded")
     page.fill("#MainContent_txtNroAbonado", str(int(abonado)))
+    # Rango amplio: últimos 90 días hasta hoy (la pantalla trae por defecto solo ~4 semanas).
+    from datetime import date, timedelta
+    for sel, f in (("#MainContent_txtFechaInicio", date.today() - timedelta(days=90)), ("#MainContent_txtFechaTermino", date.today())):
+        page.eval_on_selector(sel, "(el, v) => { el.value = v; el.dispatchEvent(new Event('change', {bubbles: true})); }",
+                              f.strftime("%d/%m/%Y"))
     page.click("#MainContent_btnBuscar")
     page.wait_for_selector("input[id^=RowSelector]", timeout=60_000)
-
     filas = page.evaluate(
         """() => [...document.querySelectorAll('input[id^=RowSelector]')].map(r => {
             const tr = r.closest('tr');
             return {radio: r.id, celdas: [...tr.querySelectorAll('td')].map(td => td.innerText.trim())};
         })"""
     )
-    candidatas = [f for f in filas if TIPO_BUSCADO in " ".join(f["celdas"]).upper()
-                  and "ANULADA" not in " ".join(f["celdas"]).upper()]
-    if not candidatas:
-        raise ErrorRobot(f"AB {abonado}: no tiene OS de {TIPO_BUSCADO} en el rango de fechas")
-    fila = candidatas[0]  # la grilla viene de la más reciente a la más antigua
-    texto = " ".join(fila["celdas"])
-    os_num = (re.search(r"\b(\d{6,})\b", texto) or [None, ""])[1]
+    salida = []
+    for f in filas:
+        texto = " ".join(f["celdas"])
+        if TIPO_BUSCADO not in texto.upper():
+            continue
+        f["texto"] = texto
+        f["os"] = (re.search(r"\b(\d{8})\b", texto) or re.search(r"\b(\d{5,})\b", texto) or [None, ""])[1]
+        f["descargada"] = "DESCARGADA" in texto.upper()
+        print(f"   fila: {texto[:140]}", flush=True)
+        salida.append(f)
+    # Primero las ejecutadas (DESCARGADA); las registradas/observadas aún no tienen fotos finales.
+    salida.sort(key=lambda f: not f["descargada"])
+    return salida
 
+
+def abrir_instalacion(page: Page, base: str, abonado: str, fila: dict) -> dict:
+    """Desde la grilla ya cargada, selecciona la fila y pulsa Consultar."""
     page.click(f"#{fila['radio']}")
     with page.expect_navigation(wait_until="domcontentloaded", timeout=60_000):
         page.locator("input[type=submit][value='Consultar'], input[type=button][value='Consultar']").first.click()
-
+    texto = fila["texto"]
     datos = {
         "abonado": abonado,
-        "os": os_num,
+        "os": fila["os"],
         "fila": texto,
         "fecha_ejecucion": _campo_por_etiqueta(page, "FECHA DE EJECUCION"),
         "tecnico": _campo_por_etiqueta(page, "TECNICO EJECUTOR"),
@@ -102,7 +116,6 @@ def abrir_instalacion(page: Page, base: str, abonado: str) -> dict:
         "latitud": _campo_por_etiqueta(page, "LATITUD"),
         "longitud": _campo_por_etiqueta(page, "LONGITUD"),
     }
-    # Dirección del abonado: se toma de la grilla (columna DIRECCION).
     datos["direccion"] = fila["celdas"][-2] if len(fila["celdas"]) >= 2 else ""
     return datos
 
@@ -280,11 +293,24 @@ def main(argv: list[str] | None = None) -> int:
             ab = re.sub(r"\D", "", ab)
             res: dict = {"orden": {"abonado": ab}}
             try:
-                res["orden"] = abrir_instalacion(page, base, ab)
-                fotos = descargar_fotos(page)
+                filas = buscar_instalaciones(page, base, ab)
+                if not filas:
+                    raise ErrorRobot(f"no tiene OS de {TIPO_BUSCADO} en el rango de fechas")
+                fotos = []
+                for k, fila in enumerate(filas):
+                    if k:  # volver a cargar la grilla para la siguiente OS
+                        buscar_instalaciones(page, base, ab)
+                    res["orden"] = abrir_instalacion(page, base, ab, fila)
+                    if page.locator("#btnverimagen_tecnico").count() == 0:
+                        print(f"   OS {fila['os']}: sin botón de capturas del técnico", flush=True)
+                        continue
+                    fotos = descargar_fotos(page)
+                    print(f"   OS {fila['os']}: {len(fotos)} fotos", flush=True)
+                    if fotos:
+                        break
                 res["n_fotos"] = len(fotos)
                 if not fotos:
-                    raise ErrorRobot("la OS no tiene capturas del técnico")
+                    raise ErrorRobot("ninguna OS de instalación tiene capturas del técnico")
                 res["validacion"] = validar_con_ia(res["orden"], fotos)
             except Exception as e:  # noqa: BLE001 - se reporta y sigue con el siguiente AB
                 res["error"] = str(e)
