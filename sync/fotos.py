@@ -14,7 +14,7 @@ Uso:
 
 Variables de entorno: las mismas de descargar.py (SCORDSOFT_*) más
   GEMINI_API_KEY   clave gratuita de https://aistudio.google.com/apikey
-  GEMINI_MODELO    (opcional) por defecto gemini-2.5-flash
+  GEMINI_MODELO    (opcional) por defecto gemini-flash-latest (si no existe, se usa el flash disponible)
 
 Salida: resultados_fotos/<AB>.json y resultados_fotos/reporte.html (en GitHub Actions se suben como artefacto).
 """
@@ -216,9 +216,22 @@ Reglas:
 Responde solo con el JSON pedido."""
 
 
+def _modelos_disponibles(clave: str) -> list[str]:
+    """Modelos 'flash' de la clave que aceptan generateContent (del más nuevo al más antiguo)."""
+    try:
+        r = requests.get("https://generativelanguage.googleapis.com/v1beta/models", params={"key": clave, "pageSize": 200}, timeout=60)
+        r.raise_for_status()
+        nombres = [m["name"].split("/", 1)[1] for m in r.json().get("models", [])
+                   if "generateContent" in m.get("supportedGenerationMethods", [])]
+    except Exception:  # noqa: BLE001
+        return []
+    flash = [n for n in nombres if "flash" in n and "lite" not in n and "image" not in n and "tts" not in n
+             and "audio" not in n and "live" not in n]
+    return sorted(flash, reverse=True)
+
+
 def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
     clave = _env("GEMINI_API_KEY")
-    modelo = os.environ.get("GEMINI_MODELO") or "gemini-2.5-flash"
     partes = [{"text": _prompt(datos, len(fotos))}]
     for i, (mime, cuerpo) in enumerate(fotos, 1):
         partes.append({"text": f"Foto {i}:"})
@@ -227,16 +240,33 @@ def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
         "contents": [{"role": "user", "parts": partes}],
         "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": ESQUEMA},
     }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-    for intento in range(4):
-        r = requests.post(url, params={"key": clave}, json=cuerpo, timeout=180)
-        if r.status_code in (429, 500, 503) and intento < 3:  # límite gratuito por minuto / saturación
-            time.sleep(30 * (intento + 1))
+    preferidos = [m for m in (os.environ.get("GEMINI_MODELO"), "gemini-flash-latest") if m]
+    probados: set[str] = set()
+    cola = list(preferidos)
+    ultimo_error = ""
+    while cola:
+        modelo = cola.pop(0)
+        if modelo in probados:
             continue
-        r.raise_for_status()
+        probados.add(modelo)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
+        for intento in range(4):
+            r = requests.post(url, params={"key": clave}, json=cuerpo, timeout=240)
+            if r.status_code in (429, 500, 503) and intento < 3:  # límite gratuito por minuto / saturación
+                time.sleep(30 * (intento + 1))
+                continue
+            break
+        if r.status_code in (400, 404) and ("not found" in r.text.lower() or "not supported" in r.text.lower()):
+            ultimo_error = f"{modelo}: {r.status_code}"
+            if not cola:  # el modelo ya no existe: se busca uno disponible en la clave
+                cola += [m for m in _modelos_disponibles(clave) if m not in probados][:4]
+            continue
+        if not r.ok:
+            raise ErrorRobot(f"Gemini ({modelo}) respondió {r.status_code}: {r.text[:300]}")
+        print(f"   IA: {modelo}", flush=True)
         texto = r.json()["candidates"][0]["content"]["parts"][0]["text"]
         return revisar_perdida(json.loads(texto))
-    raise ErrorRobot("Gemini no respondió")
+    raise ErrorRobot(f"No hay un modelo Gemini disponible para la clave ({ultimo_error})")
 
 
 def revisar_perdida(v: dict) -> dict:
