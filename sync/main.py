@@ -79,6 +79,42 @@ def _leer_con_cache(archivo: Path) -> pd.DataFrame:
     return df0
 
 
+DIAS_BOLSA = 7   # días de fotos de la bolsa inicial que se guardan (los anteriores se estiman en el portal)
+
+
+def _bolsa_inicial(tableros: dict[str, dict], estado: dict, ahora: datetime) -> None:
+    """Foto de la bolsa de pendientes (altas REGISTRADA) al iniciar el día, una por filial y por día.
+
+    Se toma en la actualización de las 0:00 (o, si esa falló, en la primera antes de las 9:00) y ya no cambia en el
+    día: el portal saca de ella el objetivo del día (80 % de la bolsa inicial). Queda en el tablero de Instalaciones
+    («bini»: {fecha: {c: hora de la foto, f: filas [os, eecc, técnico, segmento, canal, zona, filial]}}) y en el
+    estado del robot, para no perderla en las siguientes corridas."""
+    hoy = ahora.date().isoformat()
+    B = estado.setdefault("bini", {})
+    if not B:   # estado nuevo (caché de GitHub vacía): se recuperan las fotos ya guardadas en Supabase
+        from . import subir
+
+        r = subir._pedir("GET", subir._url("tableros") + "?select=clave,bini:datos->bini&clave=like.instalaciones:*",
+                         "Bolsa inicial", headers=subir._cabeceras())
+        for x in r.json():
+            partes = x["clave"].split(":")
+            if len(partes) == 2 and isinstance(x.get("bini"), dict):
+                B[partes[1]] = x["bini"]
+    for clave, datos in tableros.items():
+        partes = clave.split(":")
+        if partes[0] != "instalaciones" or len(partes) != 2:
+            continue
+        dias = B.setdefault(partes[1], {})
+        if hoy not in dias and ahora.hour < 9:
+            dias[hoy] = {"c": ahora.strftime("%H:%M"),
+                         "f": [[x.get("os"), x.get("ec"), x.get("tec"), x.get("seg"), x.get("cn"), x.get("z"), x.get("fi")]
+                               for x in datos.get("pend", [])]}
+            print(f"  Bolsa inicial del {hoy} de {partes[1]}: {len(dias[hoy]['f'])} pendientes (foto de las {dias[hoy]['c']}).", flush=True)
+        for viejo in sorted(dias)[:-DIAS_BOLSA]:
+            del dias[viejo]
+        datos["bini"] = dias
+
+
 def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links_st: dict | None = None) -> dict[str, dict]:
     """Todos los tableros del portal a partir de las órdenes del periodo (sin leer Supabase)."""
     from . import averias, instalaciones, resumen
@@ -288,6 +324,10 @@ def main(argv: list[str] | None = None) -> int:
                 estado["arranque"] = False
                 for v in estado["o"].values():
                     v[0] = "forzar"
+        try:   # foto de la bolsa de pendientes al iniciar el día (objetivo fijo del Avance de producción)
+            _bolsa_inicial(tableros, estado, ahora)
+        except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
+            print(f"Aviso: no se guardó la bolsa inicial del día: {e}", flush=True)
         total = subir.upsert_ordenes(filas, estado, cajas_ok=indice_cajas is not None)
         print(f"{total} órdenes escritas en Supabase.", flush=True)
         completo = all(por_filial.get(f, 0) > 0 for f in FILIALES)

@@ -30,6 +30,11 @@ window.MFF = (function () {
         } else if (k === 'zonas' && v && typeof v === 'object') { const Z = o.zonas || (o.zonas = {}); Object.keys(v).forEach(di => { if (!(di in Z)) Z[di] = f; }); }
         else if (k === 'pdia' && v && typeof v === 'object') { const P = o.pdia || (o.pdia = {}); Object.keys(v).forEach(di => { P[di] = (P[di] || 0) + (+v[di] || 0); }); }
         else if (k === 'avt' && v && typeof v === 'object') unirAvt(o, f, v);
+        else if (k === 'bini' && v && typeof v === 'object') {   // fotos de la bolsa inicial: se juntan por día (zona y filial = la filial)
+          const B = o.bini || (o.bini = {});
+          Object.keys(v).forEach(d => { const x = v[d] || {}, y = B[d] || (B[d] = { c: x.c, f: [] });
+            if (x.c && (!y.c || x.c > y.c)) y.c = x.c;
+            (x.f || []).forEach(r => { const q = r.slice(); q[5] = f; q[6] = f; y.f.push(q); }); }); }
         else if (k === 'config' && v && typeof v === 'object') { const c = o.config || (o.config = { ...v, meta_mes: 0 }); c.meta_mes = (+c.meta_mes || 0) + (+v.meta_mes || 0); }
         else if (k === 'corte' || k === 'actualizado') { if (v && (!o[k] || v > o[k])) o[k] = v; }
         else if (k === 'dias') o.dias = Math.max(o.dias || 0, +v || 0);

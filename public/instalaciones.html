@@ -2847,11 +2847,16 @@ function pintarAvance() {
   const porFil = provTodas(), gk = (x) => porFil ? nomFil(x.fi) : x.ec;
   Ld.forEach(x => { const e = e0(gk(x)); e.liq++; if (x.tec) e.tec.add(x.tec); });
   P.forEach(p => { const e = e0(gk(p)); e.bolsa++; e[grupoB(p)]++; });
-  // Bolsa INICIAL del día (fija): altas que ya estaban pendientes al empezar el día elegido = recibidas antes de ese día
-  // que siguen pendientes + las que se liquidaron ese día o después. No cambia con lo que se liquida o ingresa en el día.
-  const antes = (x) => !!x.rec && x.rec.slice(0, 10) < dSel;
-  P.forEach(p => { if (antes(p)) e0(gk(p)).ini++; });
-  L.forEach(x => { if (x.d >= diaAv && antes(x)) e0(gk(x)).ini++; });
+  // Bolsa INICIAL del día (fija): foto de los pendientes que el robot toma al iniciar el día (0:00). No cambia con lo que
+  // se liquida o ingresa en el día. Si ese día no tiene foto, se estima: recibidas antes de ese día que siguen pendientes
+  // + las que se liquidaron ese día o después.
+  const foto = D.bini && D.bini[dSel];
+  if (foto && foto.f) foto.f.forEach(r => { const x = { os: r[0], ec: r[1] || 'POR ASIGNAR', tec: r[2], seg: r[3], cn: r[4], z: r[5], fi: r[6] ?? undefined };
+    fijarEc(x); if (ok(x)) e0(gk(x)).ini++; });
+  else { const antes = (x) => !!x.rec && x.rec.slice(0, 10) < dSel;
+    P.forEach(p => { if (antes(p)) e0(gk(p)).ini++; });
+    L.forEach(x => { if (x.d >= diaAv && antes(x)) e0(gk(x)).ini++; }); }
+  const iniTxt = foto && foto.f ? `foto de las ${foto.c || '0:00'}` : 'estimada';
   const rk = Object.keys(ecs).filter(k => ecs[k].liq || ecs[k].prog || ecs[k].bolsa || ecs[k].ini || RD[k] != null).sort((a, b) => ecs[b].liq - ecs[a].liq || ecs[b].bolsa - ecs[a].bolsa);
   const tecs = new Set(Ld.map(x => x.tec).filter(Boolean));
   // Objetivo del día = OBJ_PCT % de la bolsa INICIAL de cada EECC (entero, fijo todo el día); el total suma los de cada fila.
@@ -2877,7 +2882,7 @@ function pintarAvance() {
   $('av-kpis').innerHTML = kpi('Rutas declaradas', conR ? n(rutasT) : '—', fijoT != null ? 'rutas fijas por EECC' : conR ? 'técnicos que debían salir' : 'sin declarar para este día') +
     kpi('Técnicos en campo', n(tecs.size), 'liquidaron al menos una') +
     kpi('Faltas', conR ? n(faltasT) : '—', conR ? `${pct(faltasT, rutasT)} de las rutas declaradas` : 'declara las rutas para calcularlas', !conR ? '' : faltasT === 0 ? 'ok' : faltasT / Math.max(1, rutasT) <= .1 ? 'mid' : 'mal') +
-    kpi('Objetivo del día', n(objT), `${dec(OBJ_PCT, 0)}% de la bolsa inicial del día (${n(iniT)})`) +
+    kpi('Objetivo del día', n(objT), `${dec(OBJ_PCT, 0)}% de la bolsa al iniciar el día (${n(iniT)} · ${iniTxt})`) +
     kpi('Liquidadas', `<button type="button" class="clic" data-ch="liq" data-d="${diaAv}" data-k="ALL" style="all:unset;cursor:pointer">${n(Ld.length)}</button>`, 'instalaciones DESCARGADA', 'acento') +
     kpi('Falta', n(Math.max(0, objT - Ld.length)), 'para el objetivo') + kpi('Productividad', dec(tecs.size ? Ld.length / tecs.size : null), 'por técnico', semaf(tecs.size ? Ld.length / tecs.size : null, obj)) +
     kpi('% avance', avT == null ? '—' : dec(avT, 0) + '%', 'liquidadas ÷ objetivo · máximo 100 % por EECC', semaf(avT, 100));
@@ -2898,7 +2903,7 @@ function pintarAvance() {
       // Fila %: técnicos y faltas sobre las rutas declaradas; cada parte de la bolsa sobre la bolsa; liquidadas y falta sobre el objetivo
       return `<tr class="av-pct"><td>%</td><td class="sep">${conR ? '100%' : '—'}</td><td class="pc-mal">${conR ? pc(faltasT, rutasT) : '—'}</td><td class="pc-ok">${conR ? pc(tecs.size, rutasT) : '—'}</td><td>${T.bolsa ? '100%' : '—'}</td><td class="bf">${pc(T.fut, T.bolsa)}</td><td class="bm">${pc(T.m24, T.bolsa)}</td><td class="bh">${pc(T.hoy, T.bolsa)}</td><td class="av-prog">${pc(T.prog, T.bolsa)}</td><td>${objT ? '100%' : '—'}</td><td class="av-liq">${pc(Ld.length, objT)}</td><td class="av-falta">${pc(fT, objT)}</td><td></td><td></td></tr>`; })()}</tfoot></table>`;
   prepararOrden($('tb-av'));
-  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa INICIAL del día de la EECC (pendientes al empezar el día: recibidas antes de ese día que seguían pendientes), redondeado y fijo todo el día (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
+  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa INICIAL del día de la EECC (foto de los pendientes que el robot toma a las 0:00; si ese día no tiene foto, se estima), redondeado y fijo todo el día (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
   pintarConsolidado(L);
 }
 function pintarConsolidado(L) {
