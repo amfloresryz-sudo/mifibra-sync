@@ -1,0 +1,151 @@
+name: Sincronizar ScordSoft
+
+# Horario (hora de Lima): primera actualización a las 8:00 a. m. y luego cada 20 minutos exactos hasta las 12:00 a. m.
+# Turno en paralelo: el reporte siguiente se pide a ScordSoft mientras se procesa el anterior (ver el paso de abajo).
+#   8:00, 8:20, 8:40 … 23:20, 23:40 y 0:00.
+# El horario de GitHub (cron) se retrasa o se salta corridas, así que cada turno se queda despierto ~5 h 30 min y
+# actualiza en cada :00, :20 y :40. Hay 4 turnos al día (GitHub llega a atrasar el arranque 40 min o más); cada uno
+# se programa antes de que termine el anterior y espera
+# en cola (concurrency) hasta que el otro termina, así no quedan huecos aunque GitHub se atrase.
+# Cada actualización descarga UN reporte: Filial SELECCIONE, por Registro, del 1 del mes anterior al fin del mes en curso.
+on:
+  schedule:
+    - cron: "17 0-4,12-23 * * *"   # cada hora a los :17, de 7:17 a. m. a 11:17 p. m. (Lima). Si hay un turno corriendo, este espera en cola y lo releva; si un turno no arrancó o se cortó, el siguiente lo reemplaza
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "una (una actualización ahora), turno (cada 20 min durante ~5 h 30 min) o reescribir (reescribe todas las órdenes)"
+        default: "una"
+        type: choice
+        options: [una, turno, reescribir]
+
+concurrency:
+  group: sincronizar-scordsoft
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350   # un turno dura como máximo ~5 h 30 min (límite de GitHub: 6 h)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      # Huellas de las órdenes ya guardadas: así cada corrida escribe en Supabase solo lo que cambió.
+      - name: Recuperar estado del robot
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado
+          key: robot-estado-${{ github.run_id }}
+          restore-keys: robot-estado-
+
+      - name: Descargar, procesar y guardar
+        env:
+          SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
+          SCORDSOFT_USUARIO: ${{ secrets.SCORDSOFT_USUARIO }}
+          SCORDSOFT_CLAVE: ${{ secrets.SCORDSOFT_CLAVE }}
+          SCORDSOFT_TOTP_SECRETO: ${{ secrets.SCORDSOFT_TOTP_SECRETO }}
+          SCORDSOFT_SEL_USUARIO: ${{ vars.SCORDSOFT_SEL_USUARIO }}
+          SCORDSOFT_SEL_CLAVE: ${{ vars.SCORDSOFT_SEL_CLAVE }}
+          SCORDSOFT_SEL_INGRESAR: ${{ vars.SCORDSOFT_SEL_INGRESAR }}
+          SCORDSOFT_SEL_CODIGO: ${{ vars.SCORDSOFT_SEL_CODIGO }}
+          SCORDSOFT_SEL_VERIFICAR: ${{ vars.SCORDSOFT_SEL_VERIFICAR }}
+          CAJAS_MAPAS: ${{ vars.CAJAS_MAPAS }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          MODO: ${{ github.event_name == 'workflow_dispatch' && inputs.modo || 'turno' }}
+        run: |
+          case "$MODO" in
+            una)        python -m sync.main; exit $? ;;
+            reescribir) python -m sync.main --reescribir-todo; exit $? ;;
+          esac
+          # Turno EN PARALELO: en cada :00, :20 y :40 de Lima se PIDE el reporte a ScordSoft (lo más lento, ~14 min)
+          # mientras se procesa el anterior. Así arranca una actualización cada 20 min exactos y cada una llega al
+          # portal ~21 min después de pedirla. Nunca hay dos descargas a la vez (si una tarda más de 20 min, esa marca
+          # se salta). Los reportes se procesan de a uno y en orden; si se juntan dos, solo se procesa el más nuevo.
+          set -u
+          COLA=cola; mkdir -p "$COLA"; rm -f "$COLA"/*
+          ini_turno=$(date +%s); fin=$(( ini_turno + 320*60 ))   # ya no se piden reportes después de ~5 h 20 min
+          en_horario() {   # 8:00–23:59 y la de las 0:00 (hasta 0:15 si GitHub se atrasó)
+            local h m; h=$((10#$(TZ=America/Lima date +%H))); m=$((10#$(TZ=America/Lima date +%M)))
+            [ "$h" -ge 8 ] || { [ "$h" -eq 0 ] && [ "$m" -lt 15 ]; }
+          }
+          descargar() {   # $1 = nombre del reporte (marca), $2 = hora ISO del pedido
+            set -o pipefail
+            if python -u -m sync.main --solo-descargar "$COLA/$1.tmp.xlsx" 2>&1 | sed -u "s/^/[descarga $3] /"; then
+              mv "$COLA/$1.tmp.xlsx" "$COLA/$1.xlsx"; echo "$2" > "$COLA/$1.corte"; echo 0 > "$COLA/ult_descarga"
+            else
+              rm -f "$COLA/$1.tmp.xlsx"; echo 1 > "$COLA/ult_descarga"
+            fi
+            rm -f "$COLA/descargando"
+          }
+          procesador() {   # procesa los reportes descargados, de a uno; termina cuando ve la marca FIN y no queda nada
+            set -o pipefail
+            local fallas=0
+            while :; do
+              ultimo=$(ls "$COLA"/*.xlsx 2>/dev/null | grep -v '\.tmp\.xlsx$' | sort | tail -1 || true)
+              if [ -n "$ultimo" ]; then
+                for viejo in $(ls "$COLA"/*.xlsx 2>/dev/null | grep -v '\.tmp\.xlsx$' | sort | head -n -1); do
+                  echo "Se salta el reporte $(basename "$viejo") (ya hay uno más nuevo)."; rm -f "$viejo" "${viejo%.xlsx}.corte"
+                done
+                corte=$(cat "${ultimo%.xlsx}.corte"); h=$(TZ=America/Lima date -d "$corte" +%H:%M)
+                echo "::group::Actualización $(TZ=America/Lima date -d "$corte" '+%d/%m %H:%M') (hora de Lima) · procesando"
+                if python -u -m sync.main --excel "$ultimo" --corte "$corte" 2>&1 | sed -u "s/^/[proceso $h] /"; then fallas=0
+                else fallas=$((fallas+1)); echo "El procesamiento falló ($fallas seguidas)."; fi
+                echo "::endgroup::"
+                rm -f "$ultimo" "${ultimo%.xlsx}.corte"
+                [ "$fallas" -ge 3 ] && { echo "3 fallas seguidas al procesar: se corta el turno."; touch "$COLA/ABORTAR"; break; }
+              elif [ -e "$COLA/FIN" ]; then break
+              else sleep 10; fi
+            done
+          }
+          procesador & pid_proc=$!
+          pid_desc=""; errores=0
+          while :; do
+            [ -e "$COLA/ABORTAR" ] && break
+            ahora=$(date +%s); [ "$ahora" -ge "$fin" ] && break
+            h=$((10#$(TZ=America/Lima date +%H)))
+            if en_horario; then
+              if [ -e "$COLA/descargando" ]; then
+                echo "$(TZ=America/Lima date +%H:%M): la descarga anterior sigue en curso; esta marca se salta."
+              else
+                if [ -n "$pid_desc" ]; then
+                  wait "$pid_desc" || true
+                  if [ "$(cat "$COLA/ult_descarga" 2>/dev/null || echo 1)" = "0" ]; then errores=0; else errores=$((errores+1)); echo "La descarga falló ($errores seguidas)."; fi
+                  [ "$errores" -ge 3 ] && { echo "3 descargas fallidas seguidas: se corta el turno."; break; }
+                fi
+                marca=$(date +%Y%m%d%H%M%S); corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00); hm=$(TZ=America/Lima date +%H:%M)
+                echo "$hm: se pide el reporte a ScordSoft."
+                touch "$COLA/descargando"; descargar "$marca" "$corte" "$hm" & pid_desc=$!
+              fi
+              [ "$h" -eq 0 ] && { echo "Última actualización del día (0:00) pedida."; break; }
+            elif [ "$h" -ge 1 ] && [ "$h" -lt 7 ]; then
+              echo "Fuera de horario (1:00–7:00): el turno termina."; break
+            fi
+            # Siguiente marca :00, :20 o :40 (exacta: se mide desde el reloj, no desde que terminó la anterior)
+            ahora=$(date +%s); prox=$(( (ahora/1200 + 1) * 1200 ))
+            [ "$prox" -ge "$fin" ] && break
+            sleep $(( prox - ahora ))
+          done
+          # Cierre: se espera la descarga en curso, se procesa lo que quede y termina el procesador.
+          [ -n "$pid_desc" ] && { wait "$pid_desc" || true; }
+          touch "$COLA/FIN"; wait "$pid_proc" || true
+          [ -e "$COLA/ABORTAR" ] && exit 1
+          [ "$errores" -ge 3 ] && exit 1
+          exit 0
+
+      - name: Guardar estado del robot
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .estado
+          key: robot-estado-${{ github.run_id }}-${{ github.run_attempt }}
