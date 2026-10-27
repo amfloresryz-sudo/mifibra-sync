@@ -175,9 +175,17 @@ def main(argv: list[str] | None = None) -> int:
         d0, d1 = periodo(hoy)
         t0 = time.time()
         try:
-            r = descargar_reportes([(args.solo_descargar, d0, d1, "TODAS", "registro")])
-            if r and Path(r[0]).resolve() != args.solo_descargar.resolve():
-                shutil.move(str(r[0]), str(args.solo_descargar))
+            # Se descarga en una carpeta aparte: así el procesador nunca ve archivos a medio bajar.
+            # Si ScordSoft entrega solo LIMA, las demás filiales llegan en archivos extra: van a «partes/<marca>_N.xlsx»
+            # y el procesador los junta con el principal.
+            carpeta = Path(tempfile.mkdtemp(prefix="scordsoft_"))
+            r = descargar_reportes([(carpeta / "reporte.xlsx", d0, d1, "TODAS", "registro")])
+            partes = args.solo_descargar.parent / "partes"
+            marca = args.solo_descargar.name.split(".")[0]
+            for i, extra in enumerate(r[1:]):
+                partes.mkdir(exist_ok=True)
+                shutil.move(str(extra), str(partes / f"{marca}_{i}.xlsx"))
+            shutil.move(str(r[0]), str(args.solo_descargar))
         except Exception as e:  # noqa: BLE001
             print(f"ERROR en la descarga: {e}", file=sys.stderr, flush=True)
             return 1
