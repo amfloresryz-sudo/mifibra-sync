@@ -46,10 +46,10 @@ async function storage(ruta, method, cuerpo) {
 async function pendientesPortal(filiales) {
   const cl = filiales.map(f => encodeURIComponent('instalaciones:' + f)).join(',');
   const [{ datos: T }, { datos: A }] = await Promise.all([
-    consultar(`tableros?select=clave,datos->pend,datos->pendx,actualizado&clave=in.(${cl})`),
+    consultar(`tableros?select=clave,datos->pend,datos->pendx,datos->avt,datos->corte,actualizado&clave=in.(${cl})`),
     consultar(`ajustes?select=clave,datos&clave=in.(${cl})`)]);
   const aj = {}; A.forEach(x => { aj[x.clave] = x.datos || {}; });
-  const L = []; let actualizado = null;
+  const L = [], H = []; let actualizado = null;   // H = órdenes descargadas HOY por técnicos de EECC (avance del día)
   for (const t of T) {
     const filial = t.clave.split(':')[1], a = aj[t.clave] || {};
     const tecs = a.tecnicos || {}, noms = a.nombres || {}, ges = a.gestores || {}, ags = a.agendas || {};
@@ -60,15 +60,23 @@ async function pendientesPortal(filiales) {
       delete x.cj; return x; };
     (t.pend || []).forEach(p => L.push(fijar(p, 'INSTALACION')));
     (t.pendx || []).forEach(p => L.push(fijar(p, 'MISCELANEO')));
+    // Avance del día: misma EECC que ve el portal (técnico reasignado a mano y nombre corregido).
+    const A = t.avt, dia = t.corte ? parseInt(String(t.corte).slice(8, 10), 10) : 0;
+    if (A && A.o && dia) A.o.forEach(x => { if (x[0] !== dia) return;
+      const tec = A.k[x[4]], ec0 = (tec && tecs[tec]) || A.e[x[3]];
+      H.push({ to: A.t[x[1]], tec, ec0, ec: noms[ec0] || ec0 }); });
   }
-  return { L, actualizado };
+  return { L, H, actualizado };
 }
 const CACHE = new Map();   // 60 s por instancia (el robot actualiza cada 20 min)
 async function pendientesDe(eecc, filiales) {
   const k = eecc + '|' + filiales.join(','), c = CACHE.get(k);
   if (c && Date.now() - c.en < 60e3) return c.d;
-  const { L, actualizado } = await pendientesPortal(filiales);
-  const d = { pend: L.filter(p => p.ec === eecc || p.ec0 === eecc).map(limpiar), actualizado };
+  const { L, H, actualizado } = await pendientesPortal(filiales);
+  const mia = (x) => x.ec === eecc || x.ec0 === eecc, h = H.filter(mia);
+  // Hoy: instalaciones liquidadas (descargadas) y rutas en campo = técnicos con al menos 1 orden liquidada hoy.
+  const hoy = { liq: h.filter(x => x.to === 'INSTALACION SERVICIO').length, rutas: new Set(h.map(x => x.tec).filter(Boolean)).size };
+  const d = { pend: L.filter(mia).map(limpiar), hoy, actualizado };
   CACHE.set(k, { en: Date.now(), d });
   return d;
 }
@@ -117,7 +125,7 @@ module.exports = async (req, res) => {
         datos.forEach(x => { ev[x.os] = (ev[x.os] || 0) + 1; });
         V.forEach(x => { vm[x.os] = x.valor; });
       }
-      return responder(res, 200, { eecc, filiales, actualizado: d.actualizado, pend: d.pend, evidencias: ev, vivienda: vm });
+      return responder(res, 200, { eecc, filiales, actualizado: d.actualizado, pend: d.pend, hoy: d.hoy, evidencias: ev, vivienda: vm });
     }
     if (req.method === 'GET' && accion === 'con_evidencia') {
       if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });

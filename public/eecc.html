@@ -33,7 +33,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .salir:hover { background: #ffffff1a; }
 main { max-width: 1760px; margin: 0 auto; padding: 18px 16px 60px; }
 h1 { font: 800 22px var(--f-disp); margin: 0 0 2px; } .sub { color: var(--fg-4); font-size: 13.5px; margin: 0 0 16px; }
-.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 1280px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.kpi small { display: block; font-size: 11.5px; color: var(--fg-4); margin-top: 2px; }
+.kpi.dia { border-color: var(--rosa-2); } .kpi.dia span { color: var(--magenta-txt); }
 .kpi { background: var(--sup); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; }
 .kpi span { display: block; font-size: 12px; color: var(--fg-4); font-weight: 700; } .kpi b { font: 800 24px var(--f-disp); }
 .kpi.alerta b { color: var(--mal); } .kpi.bien b { color: var(--ok); }
@@ -313,9 +316,14 @@ function pintar() {
   chips($('f-gr'), [['TODOS', 'Todos', B.length], ['INSTALACION', 'Instalaciones', ins], ['MISCELANEO', 'Misceláneos', B.length - ins]], 'gr');
   chips($('f-ev'), [['TODOS', 'Con y sin evidencia'], ['SIN', 'Sin evidencia', B.length - conEv], ['CON', 'Con evidencia', conEv]], 'ev');
   const viejos = D.pend.filter(p => dias(p.rec) >= 7).length, insT = D.pend.filter(p => p.grupo === 'INSTALACION').length;
-  const k = (t, v, c = '') => `<div class="kpi ${c}"><span>${t}</span><b>${n(v)}</b></div>`;
+  const k = (t, v, c = '', s = '') => `<div class="kpi ${c}"><span>${t}</span><b>${n(v)}</b>${s ? `<small>${s}</small>` : ''}</div>`;
+  // Hoy: la bolsa del día = instalaciones pendientes + las que ya se liquidaron hoy; el objetivo es el 70 % de esa bolsa.
+  const H = D.hoy || { liq: 0, rutas: 0 }, bolsa = insT + H.liq, obj = Math.ceil(bolsa * 0.7), pct = obj ? Math.round(H.liq / obj * 100) : 0;
   $('kpis').innerHTML = k('Pendientes', D.pend.length) + k('Instalaciones', insT) + k('Misceláneos', D.pend.length - insT)
-    + k('Con evidencia', D.pend.filter(p => nEv(p)).length, 'bien') + k('Con 7 días o más', viejos, viejos ? 'alerta' : '');
+    + k('Con evidencia', D.pend.filter(p => nEv(p)).length, 'bien') + k('Con 7 días o más', viejos, viejos ? 'alerta' : '')
+    + k('Rutas en campo', H.rutas, 'dia', 'técnicos con 1 o más liquidaciones hoy')
+    + k('Instalaciones liquidadas hoy', H.liq, 'dia ' + (obj && H.liq >= obj ? 'bien' : ''), obj ? `${pct} % del objetivo` : '')
+    + k('Objetivo de instalaciones', obj, 'dia', `70 % de la bolsa (${n(bolsa)})`);
   const orden = ordenados(L);
   const nCol = Object.keys(colFil).length;
   $('n-filas').textContent = `${n(L.length)} de ${n(D.pend.length)} pendientes${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna` : ''}`;
