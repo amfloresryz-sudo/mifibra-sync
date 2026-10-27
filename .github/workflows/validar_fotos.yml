@@ -1,0 +1,46 @@
+name: Validar fotos de instalación
+
+# Prueba manual: Actions → "Validar fotos de instalación" → Run workflow → escribe el/los AB.
+on:
+  workflow_dispatch:
+    inputs:
+      abonados:
+        description: "Nº de abonado (varios separados por espacio)"
+        default: "28770"
+        required: true
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Validar fotos
+        env:
+          SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
+          SCORDSOFT_USUARIO: ${{ secrets.SCORDSOFT_USUARIO }}
+          SCORDSOFT_CLAVE: ${{ secrets.SCORDSOFT_CLAVE }}
+          SCORDSOFT_TOTP_SECRETO: ${{ secrets.SCORDSOFT_TOTP_SECRETO }}
+          SCORDSOFT_SEL_USUARIO: ${{ vars.SCORDSOFT_SEL_USUARIO }}
+          SCORDSOFT_SEL_CLAVE: ${{ vars.SCORDSOFT_SEL_CLAVE }}
+          SCORDSOFT_SEL_INGRESAR: ${{ vars.SCORDSOFT_SEL_INGRESAR }}
+          SCORDSOFT_SEL_CODIGO: ${{ vars.SCORDSOFT_SEL_CODIGO }}
+          SCORDSOFT_SEL_VERIFICAR: ${{ vars.SCORDSOFT_SEL_VERIFICAR }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python -m sync.fotos ${{ inputs.abonados }}
+      # El reporte queda privado (solo tú lo descargas desde la corrida); las fotos nunca se guardan.
+      - name: Subir reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validacion-fotos
+          path: resultados_fotos/
+          retention-days: 7
