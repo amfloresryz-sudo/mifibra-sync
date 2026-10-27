@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Robot validación de fotos (MiFibra)",
+  "version": "1.0",
+  "description": "Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.",
+  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://mifibra.scordsoft.net/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
