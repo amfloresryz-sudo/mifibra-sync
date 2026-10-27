@@ -7,6 +7,7 @@ Reglas generales acordadas con Operaciones:
 """
 
 DIAS_TOLERANCIA = 1  # fotos del día anterior a la ejecución son válidas
+PERDIDA_MAX_DB = 1.0  # foto 2: pérdida máxima permitida entre la potencia en caja (NAP) y en el cliente
 
 MANUAL = [
     {"n": 1, "nombre": "Fachada del cliente", "debe": [
@@ -16,6 +17,8 @@ MANUAL = [
         "Medición de potencia en la NAP dentro de rangos aceptables (aprox. -15 a -25 dBm)",
         "Se ve que la medición se hizo en ambos lugares (NAP y domicilio del cliente)",
         "Valores del power meter legibles",
+        f"Pérdida entre caja y cliente de máximo {PERDIDA_MAX_DB} dB: |potencia NAP − potencia cliente| ≤ {PERDIDA_MAX_DB}"
+        " (si es mayor = ERROR, indicando ambos valores y la diferencia)",
         "Sello con localización, fecha y hora"]},
     {"n": 3, "nombre": "NAP cerrada y DROP conectado al borne", "debe": [
         "Serie/código de la CTO visible",

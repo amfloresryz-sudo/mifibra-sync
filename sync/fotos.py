@@ -35,7 +35,7 @@ import requests
 from playwright.sync_api import Page, sync_playwright
 
 from .descargar import ErrorRobot, _captura, _env, iniciar_sesion
-from .manual_fotos import DIAS_TOLERANCIA, texto_manual
+from .manual_fotos import DIAS_TOLERANCIA, PERDIDA_MAX_DB, texto_manual
 
 PANTALLA_OS = "/CTecnico/TECMantOrdenServicio.aspx"
 SALIDA = Path(os.environ.get("SALIDA_FOTOS", "resultados_fotos"))
@@ -153,6 +153,8 @@ ESQUEMA = {
             "fotos": {"type": "ARRAY", "items": {"type": "INTEGER"}},
             "error": {"type": "STRING"},
         }, "required": ["item", "nombre", "estado", "fotos", "error"]}},
+        "potencia_nap_dbm": {"type": "NUMBER", "nullable": True},
+        "potencia_cliente_dbm": {"type": "NUMBER", "nullable": True},
         "resultado": {"type": "STRING", "enum": ["OK", "OBSERVADA"]},
         "resumen": {"type": "STRING"},
     },
@@ -178,6 +180,9 @@ MANUAL (cada ítem es una foto obligatoria; una foto subida puede ser un collage
 
 Reglas:
 - Fecha del sello: válida si es el día de ejecución o hasta {DIAS_TOLERANCIA} día antes. Más antigua o posterior = ERROR.
+- Foto 2: lee la potencia (dBm, valor negativo) medida en la NAP y la medida en el cliente y devuélvelas en
+  potencia_nap_dbm y potencia_cliente_dbm (null si no se puede leer). La pérdida entre caja y cliente
+  (|NAP − cliente|) debe ser como máximo {PERDIDA_MAX_DB} dB.
 - Mapa de CTO y envío de parámetros son capturas del gestor: no requieren sello.
 - Si un ítem no aparece en ninguna foto: estado FALTA.
 - Si aparece pero no cumple algún punto: ERROR, y en "error" explica exactamente qué falta o está mal (breve, en español).
@@ -207,8 +212,26 @@ def validar_con_ia(datos: dict, fotos: list[tuple[str, bytes]]) -> dict:
             continue
         r.raise_for_status()
         texto = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-        return json.loads(texto)
+        return revisar_perdida(json.loads(texto))
     raise ErrorRobot("Gemini no respondió")
+
+
+def revisar_perdida(v: dict) -> dict:
+    """La regla de pérdida de la foto 2 se calcula aquí (no se deja al criterio de la IA)."""
+    nap, cli = v.get("potencia_nap_dbm"), v.get("potencia_cliente_dbm")
+    if nap is None or cli is None:
+        return v
+    perdida = round(abs(float(nap) - float(cli)), 2)
+    v["perdida_db"] = perdida
+    if perdida > PERDIDA_MAX_DB:
+        for m in v.get("manual", []):
+            if m.get("item") == 2:
+                txt = (f"Pérdida caja–cliente de {perdida} dB (NAP {nap} dBm, cliente {cli} dBm); "
+                       f"máximo permitido {PERDIDA_MAX_DB} dB.")
+                m["estado"] = "ERROR"
+                m["error"] = txt if not m.get("error") else f"{txt} {m['error']}"
+        v["resultado"] = "OBSERVADA"
+    return v
 
 
 # ----------------------------------------------------------------------------------------------- reporte
