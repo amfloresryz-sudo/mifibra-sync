@@ -34,6 +34,9 @@
       if (this === ss) { if (k === TOKEN) set0.call(ls, PERSIST, JSON.stringify({ t: String(v), vence: Date.now() + DURACION })); else if (k === FILIAL) set0.call(ls, FILIAL, String(v)); } };
     Storage.prototype.removeItem = function (k) { rem0.call(this, k); if (this === ss && k === TOKEN) { rem0.call(ls, PERSIST); rem0.call(ls, USR); } };
   } catch { /* sin almacenamiento: la sesión queda solo en la pestaña */ }
+  // Usuario de EECC (contratista): solo tiene «Mis pendientes»; cualquier otra página lo lleva ahí.
+  // (sin sesión vigente el usuario guardado se borra arriba, así que el inicio sigue mostrando el ingreso)
+  if (window.mfUsuario && window.mfUsuario.e && location.pathname.split('/').pop() !== 'eecc.html') { location.replace('/eecc.html'); return; }
   window.mfPuede = (k) => !P || P.includes(String(k || '').toUpperCase());
   window.mfModulo = (k) => !M || M.includes(k);
   // Ventana no permitida: se vuelve al inicio (y se ocultan sus accesos del menú)

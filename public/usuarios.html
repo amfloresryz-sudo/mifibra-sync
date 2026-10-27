@@ -136,6 +136,7 @@ tr.inact td { color: var(--fg-4); }
 .pick { display: flex; flex-wrap: wrap; gap: 6px; } .pick .chip { color: var(--fg); border-color: var(--borde-2); font-size: 12px; padding: 6px 11px; min-height: 32px; } .pick .chip[aria-pressed="true"] { color: #fff; }
 .pick-t { font-size: 13px; font-weight: 700; color: var(--fg-2); margin: 4px 0 6px; } .perm-txt { font-size: 12.5px; max-width: 220px; white-space: normal; line-height: 1.35; }
 .lugar { display: block; font-size: 12px; color: var(--fg-3); margin-top: 2px; } .lugar a { color: var(--magenta-txt); font-weight: 700; }
+.b.eecc { background: #E3EEFB; color: #1F5FAD; }
 .b.fuera { background: var(--aviso-bg); color: var(--aviso-fg); } tr.fuera td, .hist tr.fuera td { background: var(--aviso-bg); }
 .lnk2 { all: unset; cursor: pointer; color: var(--magenta-txt); font-size: 12px; font-weight: 700; text-decoration: underline; }
 .modal-fondo { position: fixed; inset: 0; background: rgba(14,14,26,.55); z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; }
@@ -174,7 +175,10 @@ td { font-size: 13px; }
         <label>Nombre y apellido<input id="u-nom" required maxlength="60" placeholder="Ej. Juan Pérez"></label>
         <label>Usuario<input id="u-usu" required maxlength="30" autocapitalize="none" spellcheck="false" placeholder="se llena solo: jperez"></label>
         <div><div class="pick-t">Filiales que puede ver</div><div class="pick" id="u-fil" role="group" aria-label="Filiales"></div></div>
-        <div><div class="pick-t">Ventanas que puede ver</div><div class="pick" id="u-mod" role="group" aria-label="Ventanas"></div></div>
+        <div><div class="pick-t">Tipo de usuario</div><div class="pick" id="u-tipo" role="group" aria-label="Tipo de usuario"></div></div>
+        <div id="u-mod-w"><div class="pick-t">Ventanas que puede ver</div><div class="pick" id="u-mod" role="group" aria-label="Ventanas"></div></div>
+        <label id="u-eecc-w" hidden>EECC (contratista)<input id="u-eecc" list="l-eecc" maxlength="80" placeholder="Elige o escribe la EECC tal como sale en Pendientes"><span class="nota" style="font-weight:400">Solo verá «Mis pendientes» de esa EECC (instalaciones + misceláneos, sin teléfonos) y podrá adjuntar evidencias.</span></label>
+        <datalist id="l-eecc"></datalist>
         <button class="btn-pri" type="submit">Crear usuario</button><span class="err" id="u-err" role="alert"></span>
       </form>
       <div class="tarjeta">
@@ -210,7 +214,7 @@ const FILS = [['TODAS', 'Todas (ve todo)'], ['LIMA', 'Lima'], ['PROVINCIAS', 'Pr
 const nomF1 = (f) => (FILS.find(x => x[0] === f) || [f, f])[1];
 const nomF = (f) => String(f || '').split(',').map(x => f.includes(',') ? nomF1(x).replace(/ \(.*\)/, '') : nomF1(x)).join(', ');
 const MODS = [['instalaciones', 'Instalaciones'], ['averias', 'Averías'], ['observadas', 'Observadas'], ['anuladas', 'Anuladas'], ['dashboard', 'Dashboard'], ['fftt', 'FFTT'], ['speedtest', 'Speed Test'], ['zonificacion', 'Zonificación']];
-const nomM = (m) => !m || m === 'TODOS' ? 'Todas' : m.split(',').map(k => (MODS.find(x => x[0] === k) || [k, k])[1]).join(', ');
+const nomM = (m, e) => e ? `Mis pendientes de ${e}` : !m || m === 'TODOS' ? 'Todas' : m.split(',').map(k => (MODS.find(x => x[0] === k) || [k, k])[1]).join(', ');
 // Selector de varias opciones con chips: «Todas» o una o varias
 function picker(el, ops, todo, sel) {
   let S = new Set(String(sel || todo).split(','));
@@ -236,7 +240,7 @@ async function api(accion, cuerpo) {
 async function cargar() {
   try { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; genLugar = d.generalLugar;
     try { sessionStorage.setItem('mf_master', master); } catch { /* nada */ }
-    $('sec-master').hidden = true; $('panel').hidden = false; pintar(); }
+    $('sec-master').hidden = true; $('panel').hidden = false; pintar(); cargarEecc(); }
   catch (e) { $('panel').hidden = true; $('sec-master').hidden = false; $('m-err').textContent = master ? e.message : ''; if (e.estado === 403) { master = ''; try { sessionStorage.removeItem('mf_master'); } catch { /* nada */ } } $('master').focus(); }
 }
 $('f-master').addEventListener('submit', (e) => { e.preventDefault(); master = $('master').value.trim(); cargar(); });
@@ -272,7 +276,7 @@ function pintar() {
   $('filas').innerHTML = L.map(u => editando === u.usuario ? `<tr class="edit" data-u="${esc(u.usuario)}"><td class="izq"><input class="in-ed" id="ed-nom" value="${esc(u.nombre)}" maxlength="60" aria-label="Nombre"></td><td><input class="in-ed" id="ed-usu" value="${esc(u.usuario)}" maxlength="30" autocapitalize="none" spellcheck="false" aria-label="Usuario"></td>
     <td colspan="5" class="izq"><span class="nota">La contraseña no cambia. Si cambias el usuario, avísale a la persona: deberá ingresar con el nuevo.</span> <span class="err" id="ed-err"></span></td>
     <td><div class="acc"><button type="button" class="mini pri" data-acc="ed-ok">Guardar</button><button type="button" class="mini" data-acc="ed-no">Cancelar</button></div></td></tr>`
-    : `<tr class="${u.activo ? '' : 'inact'}${u.fuera7 ? ' fuera' : ''}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td class="perm-txt">${esc(u.filial === 'TODAS' ? 'Todas' : nomF(u.filial))}</td><td class="perm-txt">${esc(nomM(u.modulos))}</td>
+    : `<tr class="${u.activo ? '' : 'inact'}${u.fuera7 ? ' fuera' : ''}" data-u="${esc(u.usuario)}"><td class="izq"><b>${esc(u.nombre)}</b></td><td>${esc(u.usuario)}</td><td class="perm-txt">${esc(u.filial === 'TODAS' ? 'Todas' : nomF(u.filial))}</td><td class="perm-txt">${u.eecc ? '<span class="b eecc">EECC</span> ' : ''}${esc(nomM(u.modulos, u.eecc))}</td>
     <td>${u.activo ? '<span class="b ok">Activo</span>' : '<span class="b na">Desactivado</span>'}</td>
     <td>${u.cambiar_clave ? '<span class="b pend">Pendiente de cambio</span>' : `<span class="b ok" title="Cambiada el ${fecha(u.clave_en)}">Cambiada</span>`}</td>
     <td>${fecha(u.ultimo_ingreso)}${lugarHtml(u.lugar)}${u.fuera7 ? `<span class="b fuera" title="Ingresos desde una región distinta a su filial en los últimos 7 días">⚠ ${n(u.fuera7)} fuera de su filial</span> ` : ''}${u.ultimo_ingreso ? `<button type="button" class="lnk2" data-hist="${esc(u.usuario)}">historial</button>` : ''}</td>
@@ -317,8 +321,8 @@ let usuEditado = false;
 $('u-nom').addEventListener('input', () => { if (!usuEditado) $('u-usu').value = $('u-nom').value.trim() ? sugerir($('u-nom').value, usados()) : ''; });
 $('u-usu').addEventListener('input', () => { usuEditado = !!$('u-usu').value; });
 $('f-uno').addEventListener('submit', async (e) => { e.preventDefault(); $('u-err').textContent = '';
-  try { const d = await api('guardar', { nuevo: true, nombre: $('u-nom').value, usuario: $('u-usu').value, filial: pkFil.valor(), modulos: pkMod.valor() });
-    mostrarCreados([d.creado]); $('f-uno').reset(); pkFil.poner('LIMA'); pkMod.poner('TODOS'); usuEditado = false; await cargarLista(); }
+  try { const d = await api('guardar', { nuevo: true, nombre: $('u-nom').value, usuario: $('u-usu').value, filial: pkFil.valor(), modulos: pkMod.valor(), eecc: tipoU === 'EECC' ? $('u-eecc').value : null });
+    mostrarCreados([d.creado]); $('f-uno').reset(); pkFil.poner('LIMA'); pkMod.poner('TODOS'); $('u-tipo').querySelector('[data-v="INTERNO"]').click(); usuEditado = false; await cargarLista(); }
   catch (er) { $('u-err').textContent = er.message; } });
 
 // Masivo: pegar desde Excel
@@ -351,7 +355,17 @@ $('m-crear').addEventListener('click', async () => { leerMasivo(); const ok = M.
 async function cargarLista() { const d = await api('lista'); U = d.usuarios; general = d.general; hayGeneral = d.hayGeneral; genLugar = d.generalLugar; pintar(); }
 
 // Acciones de la tabla
-async function guardarU(u, cambios) { return api('guardar', { usuario: u.usuario, nombre: u.nombre, filial: u.filial, modulos: u.modulos, activo: u.activo, ...cambios }); }
+async function guardarU(u, cambios) { return api('guardar', { usuario: u.usuario, nombre: u.nombre, filial: u.filial, modulos: u.modulos, eecc: u.eecc || null, activo: u.activo, ...cambios }); }
+// Lista de EECC (las que hoy tienen pendientes) para elegir al crear un usuario de EECC
+let EECC = [];
+async function cargarEecc() { try { EECC = (await api('lista_eecc')).eecc || []; $('l-eecc').innerHTML = EECC.map(x => `<option value="${esc(x.eecc)}">${n(x.pendientes)} pendientes</option>`).join(''); } catch { /* el campo igual se puede escribir */ } }
+// Tipo de usuario: equipo interno (elige ventanas) o EECC (solo «Mis pendientes»)
+function tipoPicker(el, sel, cambio) {
+  const pinta = () => { el.innerHTML = [['INTERNO', 'Equipo interno'], ['EECC', 'EECC (contratista)']].map(([v, t]) => `<button type="button" class="chip" data-v="${v}" aria-pressed="${v === sel}">${t}</button>`).join(''); cambio(sel); };
+  el.onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) { sel = b.dataset.v; pinta(); } }; pinta(); return () => sel;
+}
+let tipoU = 'INTERNO';
+tipoPicker($('u-tipo'), 'INTERNO', (v) => { tipoU = v; $('u-mod-w').hidden = v === 'EECC'; $('u-eecc-w').hidden = v !== 'EECC'; $('u-eecc').required = v === 'EECC'; });
 
 $('filas').addEventListener('click', async (e) => { const b = e.target.closest('button[data-acc]'); if (!b) return; const u = U.find(x => x.usuario === b.closest('tr').dataset.u); if (!u) return;
   try {
@@ -376,11 +390,15 @@ $('filas').addEventListener('click', async (e) => { const b = e.target.closest('
 function abrirPermisos(u) {
   $('h-tit').textContent = `Permisos de ${u.nombre}`; $('h-sub').textContent = `${u.usuario} · al guardar, su sesión abierta se cierra y vuelve a ingresar con los nuevos permisos`;
   $('h-cuerpo').innerHTML = `<div class="pick-t">Filiales que puede ver</div><div class="pick" id="p-fil"></div><p class="nota" style="margin:6px 0 14px">«Provincias (todas)» = las 7 provincias y su vista conjunta. Puedes marcar varias, por ejemplo Lima y Piura.</p>
-    <div class="pick-t">Ventanas que puede ver</div><div class="pick" id="p-mod"></div><p class="nota" style="margin:6px 0 14px">Las ventanas no marcadas no aparecen en el inicio ni en el menú, y no se pueden abrir con el link directo.</p>
+    <div class="pick-t">Tipo de usuario</div><div class="pick" id="p-tipo"></div>
+    <div id="p-mod-w" style="margin-top:12px"><div class="pick-t">Ventanas que puede ver</div><div class="pick" id="p-mod"></div><p class="nota" style="margin:6px 0 14px">Las ventanas no marcadas no aparecen en el inicio ni en el menú, y no se pueden abrir con el link directo.</p></div>
+    <label id="p-eecc-w" style="display:block;margin:12px 0 14px" hidden>EECC (contratista)<input id="p-eecc" list="l-eecc" maxlength="80" value="${esc(u.eecc || '')}"><span class="nota" style="font-weight:400;display:block">Solo verá «Mis pendientes» de esa EECC en las filiales marcadas y podrá adjuntar evidencias.</span></label>
     <div class="fila-f"><button type="button" class="btn-pri" id="p-ok">Guardar permisos</button><button type="button" class="btn-out" id="p-no">Cancelar</button><span class="err" id="p-err"></span></div>`;
-  const pf = picker($('p-fil'), FIL_OPS, 'TODAS', u.filial), pm = picker($('p-mod'), MODS, 'TODOS', u.modulos || 'TODOS');
+  const pf = picker($('p-fil'), FIL_OPS, 'TODAS', u.filial), pm = picker($('p-mod'), MODS, 'TODOS', u.eecc ? 'TODOS' : u.modulos || 'TODOS');
+  const pt = tipoPicker($('p-tipo'), u.eecc ? 'EECC' : 'INTERNO', (v) => { $('p-mod-w').hidden = v === 'EECC'; $('p-eecc-w').hidden = v !== 'EECC'; });
   $('p-no').onclick = () => $('modal').hidden = true;
-  $('p-ok').onclick = async () => { try { await guardarU(u, { filial: pf.valor(), modulos: pm.valor() }); $('modal').hidden = true; toast(`Permisos de ${u.nombre} guardados.`); await cargarLista(); } catch (er) { $('p-err').textContent = er.message; } };
+  $('p-ok').onclick = async () => { try { const ee = pt() === 'EECC' ? $('p-eecc').value.trim() : null; if (pt() === 'EECC' && !ee) throw new Error('Escribe la EECC.');
+    await guardarU(u, { filial: pf.valor(), modulos: pm.valor(), eecc: ee }); $('modal').hidden = true; toast(`Permisos de ${u.nombre} guardados.`); await cargarLista(); } catch (er) { $('p-err').textContent = er.message; } };
   $('modal').hidden = false;
 }
 // Historial de ingresos de un usuario

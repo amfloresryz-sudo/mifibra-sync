@@ -54,8 +54,10 @@
     const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || `Error ${r.status}`); return d;
   }
   function entrar(d) {
-    try { localStorage.setItem('mifibra_usuario', JSON.stringify({ u: d.usuario || '', n: d.nombre || '', f: d.filial || 'TODAS', m: d.modulos || 'TODOS' })); } catch { /* sin almacenamiento */ }
-    guardarToken(d.token); location.reload();   // al recargar se aplican la filial y los permisos del usuario en toda la página
+    try { localStorage.setItem('mifibra_usuario', JSON.stringify({ u: d.usuario || '', n: d.nombre || '', f: d.filial || 'TODAS', m: d.modulos || 'TODOS', e: d.eecc || null })); } catch { /* sin almacenamiento */ }
+    guardarToken(d.token);
+    if (d.eecc) { location.replace('/eecc.html'); return; }   // usuario de EECC: va directo a «Mis pendientes»
+    location.reload();   // al recargar se aplican la filial y los permisos del usuario en toda la página
   }
   $id('form-acceso').addEventListener('submit', async (ev) => {
     ev.preventDefault(); const btn = ev.submitter || $id('form-acceso').querySelector('button'); btn.disabled = true; $id('error-acceso').textContent = '';

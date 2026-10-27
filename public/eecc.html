@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="es">
+<head>
+<script src="/sesion.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Mis pendientes · Mi Fibra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --magenta: #FF0091; --magenta-txt: #B0005F; --rosa: #FFF0F7; --rosa-2: #FFD6EA;
+  --noche: #1A1A2E; --bg: #F6F7F9; --sup: #FFFFFF; --fg: #1F2937; --fg-2: #374151; --fg-3: #4B5563; --fg-4: #6B7280;
+  --borde: #E5E7EB; --borde-2: #D1D5DB; --ok: #157A4A; --ok-bg: #E3F4EA; --mal: #B42318; --mal-bg: #FDE8E7;
+  --gris-bg: #E7E8EC; --pista: #EEF0F3; --aviso-bg: #FFF6D6; --aviso-fg: #6B4E00; --azul: #1F5FAD; --azul-bg: #E3EEFB;
+  --f-disp: Montserrat, system-ui, sans-serif; --f-txt: 'DM Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --magenta: #FF3DAA; --magenta-txt: #FF8CCB; --rosa: #3A1430; --rosa-2: #4E1A40; --noche: #0E0E1A; --bg: #14141F; --sup: #1D1D2B;
+  --fg: #ECEDF2; --fg-2: #D4D6DE; --fg-3: #B4B7C3; --fg-4: #9497A6; --borde: #2E2F40; --borde-2: #3C3E52;
+  --ok: #5FD08F; --ok-bg: #173527; --mal: #FF8A80; --mal-bg: #3D1C1C; --gris-bg: #3A3C50; --pista: #262838; --aviso-bg: #3A3214; --aviso-fg: #F4DC8A;
+  --azul: #8DB8F0; --azul-bg: #1A2A40; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-txt); font-size: 15px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.cab { background: var(--noche); color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 5; }
+.cab-in { max-width: 1760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.marca { font: 800 17px var(--f-disp); letter-spacing: .2px; } .marca span { color: #FF5CB8; }
+.quien { margin-left: auto; text-align: right; font-size: 13px; line-height: 1.3; color: #D4D6DE; } .quien b { color: #fff; font-family: var(--f-disp); }
+.salir { background: transparent; border: 1px solid #ffffff55; color: #fff; border-radius: 10px; padding: 7px 12px; cursor: pointer; font-weight: 700; font-size: 13px; }
+.salir:hover { background: #ffffff1a; }
+main { max-width: 1760px; margin: 0 auto; padding: 18px 16px 60px; }
+h1 { font: 800 22px var(--f-disp); margin: 0 0 2px; } .sub { color: var(--fg-4); font-size: 13.5px; margin: 0 0 16px; }
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpi { background: var(--sup); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; }
+.kpi span { display: block; font-size: 12px; color: var(--fg-4); font-weight: 700; } .kpi b { font: 800 24px var(--f-disp); }
+.kpi.alerta b { color: var(--mal); } .kpi.bien b { color: var(--ok); }
+.herr { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.herr input[type=search], .herr select { background: var(--sup); border: 1px solid var(--borde-2); border-radius: 10px; padding: 9px 12px; min-width: 0; }
+.herr input[type=search] { flex: 1 1 240px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--borde-2); background: var(--sup); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-weight: 700; font-size: 13px; }
+.chip[aria-pressed=true] { background: var(--magenta); border-color: var(--magenta); color: #fff; }
+.chip small { font-weight: 500; opacity: .8; }
+.caja { background: var(--sup); border: 1px solid var(--borde); border-radius: 14px; overflow: auto; max-height: calc(100vh - 150px); }
+.caja.tabla { overflow-x: hidden; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+/* Todo en una línea y sin desplazamiento lateral: columnas de ancho fijo; lo que no entra se corta con «…» (el texto completo al pasar el puntero) */
+#tb { table-layout: fixed; }
+#tb th, #tb td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tb td { padding: 7px 3px; } #tb th { padding: 9px 2px; vertical-align: middle; }
+#tb .b { padding: 2px 6px; font-size: 10.5px; }
+#tb th .ord { display: none; } #tb th.on-ord .ord { display: inline; }
+.hv { display: inline-flex; border: 1px solid var(--borde-2); border-radius: 8px; overflow: hidden; vertical-align: middle; }
+.hv button { border: 0; background: var(--sup); color: var(--fg-4); font: 800 11px var(--f-disp); width: 24px; height: 22px; cursor: pointer; padding: 0; }
+.hv button + button { border-left: 1px solid var(--borde-2); }
+.hv button.on[data-v=H] { background: #2A4BA8; color: #fff; } .hv button.on[data-v=V] { background: #5B2DB8; color: #fff; }
+.hv button:hover:not(.on) { background: var(--rosa); color: var(--magenta-txt); }
+.adj { border: 0; background: var(--magenta); color: #fff; border-radius: 8px; width: 28px; height: 24px; cursor: pointer; font-size: 13px; padding: 0; }
+@media (max-width: 1500px) { #tb th .fcol { display: none; } #tb th:hover .fcol, #tb th .fcol.on, #tb th:focus-within .fcol { display: inline-grid; } #tb .b.dias { display: none; } #tb { font-size: 10.5px; } #tb th { font-size: 9.5px; letter-spacing: 0; } #tb .b { font-size: 9.5px; padding: 1px 4px; } .lnk { font-size: 10.5px; } }
+@media (max-width: 1150px) { #tb { font-size: 9.5px; } #tb th { font-size: 8.5px; } #tb .b { font-size: 8.5px; padding: 1px 3px; } #tb .b.dias { display: none; } .hv button { width: 18px; } main { padding-inline: 8px; } }
+/* Mismo formato que la tabla de Pendientes de Instalaciones */
+th { position: sticky; top: 0; z-index: 2; background: var(--rosa); color: var(--magenta-txt); font: 700 10.5px var(--f-disp); text-transform: uppercase; letter-spacing: .3px; text-align: center; padding: 9px 4px; vertical-align: bottom; line-height: 1.2; cursor: pointer; user-select: none; }
+th .t { text-decoration: none; } th.on-ord .t, th:hover .t { text-decoration: underline; text-underline-offset: 3px; }
+th .ord { font-size: 9px; opacity: .45; margin-left: 2px; } th.on-ord .ord { opacity: 1; }
+th.sin-ord { cursor: default; }
+td { padding: 8px 4px; border-top: 1px solid var(--borde); vertical-align: middle; text-align: center; white-space: nowrap; color: var(--fg-2); }
+tr:hover td { background: var(--rosa); }
+td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
+.lnk { background: none; border: 0; padding: 0; font: 700 12px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lnk.num { color: #157A4A; } .pl { color: var(--magenta-txt); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.fcol { margin-left: 2px; width: 16px; height: 18px; display: inline-grid; place-items: center; border-radius: 5px; border: 1px solid transparent; background: none; color: var(--magenta-txt); cursor: pointer; vertical-align: middle; padding: 0; }
+.fcol svg { width: 10px; height: 10px; } .fcol:hover { border-color: var(--magenta); } .fcol.on { background: var(--magenta); color: #fff; }
+.fpop { position: absolute; z-index: 40; width: 260px; background: var(--sup); color: var(--fg); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 12px; font-size: 13px; }
+.fpop input[type=search] { width: 100%; padding: 8px 10px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); }
+.fpop .fl { max-height: 250px; overflow: auto; margin: 8px 0; border-top: 1px solid var(--borde); border-bottom: 1px solid var(--borde); padding: 4px 0; }
+.fpop label { display: flex; align-items: center; gap: 8px; padding: 5px 4px; cursor: pointer; border-radius: 6px; } .fpop label:hover { background: var(--pista); }
+.fpop label small { margin-left: auto; color: var(--fg-4); } .fpop .fb { display: flex; gap: 8px; justify-content: flex-end; }
+/* Etiquetas de la tabla (iguales a Instalaciones) */
+.b.seg { border: 1px solid var(--borde-2); color: var(--fg-2); background: var(--sup); }
+.b.sg-b2b { background: #FFF1C2; color: #7A5200; } .b.sg-ref { background: #FFE0E0; color: #B42318; } .b.cn-in { background: #DFF5E3; color: #17703F; }
+.b.tt-ins { background: #FFE3F1; color: #A3005A; } .b.tt-tex { background: #EDE7FF; color: #5B2DB8; } .b.tt-tin { background: #DDF3F1; color: #0E6E66; }
+.b.tt-ceq { background: #FFEBD6; color: #9A4310; } .b.tt-rei { background: #E1EAFF; color: #2A4BA8; } .b.tt-otr { background: #ECEDF0; color: #4B5563; }
+.b.fut { background: #E6F0FB; color: #1D5FA8; } .b.hoy { background: #E3F4EA; color: #157A4A; } .b.inc { background: var(--mal-bg); color: var(--mal); }
+.b.coo { background: #FBEFD9; color: #8A5300; } .b.sag { background: var(--gris-bg); color: var(--fg-3); }
+.b.ges { background: var(--ok-bg); color: var(--ok); } .b.sges { background: var(--mal-bg); color: var(--mal); } .b.v1 { background: #FFE58A; color: #3D2E00; }
+.b.vh { background: #E1EAFF; color: #2A4BA8; } .b.vv { background: #EDE7FF; color: #5B2DB8; } .b.vo { background: var(--pista); color: var(--fg-3); }
+.b.dias { background: var(--ok-bg); color: var(--ok); margin-left: 4px; } .b.dias.v { background: #FFF1C2; color: #7A5200; } .b.dias.r { background: var(--mal-bg); color: var(--mal); }
+.tb-acc { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; flex-wrap: wrap; } .tb-acc .nota { margin-right: auto; }
+.ab { font: 800 15px var(--f-disp); color: var(--magenta-txt); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.os { color: var(--fg-4); font-size: 12px; display: block; }
+.b { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
+.b.ins { background: var(--azul-bg); color: var(--azul); } .b.misc { background: var(--aviso-bg); color: var(--aviso-fg); }
+.b.ev { background: var(--ok-bg); color: var(--ok); } .b.sin { background: var(--gris-bg); color: var(--fg-3); }
+.b.viejo { background: var(--mal-bg); color: var(--mal); } .b.edad { background: var(--pista); color: var(--fg-3); }
+.btn { border: 0; border-radius: 10px; padding: 8px 12px; cursor: pointer; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.btn.pri { background: var(--magenta); color: #fff; } .btn.pri:hover { filter: brightness(.95); }
+.btn.out { background: var(--sup); border: 1px solid var(--borde-2); } .btn:disabled { opacity: .5; cursor: default; }
+.vacio { padding: 30px; text-align: center; color: var(--fg-4); }
+.nota { color: var(--fg-4); font-size: 12.5px; }
+/* Tarjetas en el celular */
+.tarjetas { display: none; }
+@media (max-width: 760px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis .kpi:first-child { grid-column: 1 / -1; }
+  .caja.tabla { display: none; } .tarjetas { display: grid; gap: 10px; }
+  .tj { background: var(--sup); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; }
+  .tj-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tj-l { font-size: 13.5px; color: var(--fg-2); } .tj-l b { color: var(--fg); }
+  .marca { width: 100%; } .quien { flex: 1; text-align: left; margin: 0; }
+}
+/* Ficha */
+.fondo { position: fixed; inset: 0; background: #0009; display: flex; align-items: flex-start; justify-content: center; padding: 30px 12px; overflow: auto; z-index: 20; }
+.fondo[hidden] { display: none; }
+.modal { background: var(--sup); border-radius: 18px; width: 100%; max-width: 760px; padding: 18px 20px 22px; box-shadow: 0 20px 60px #0005; }
+.m-cab { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
+.m-cab h2 { font: 800 21px var(--f-disp); margin: 0; } .m-cab p { margin: 2px 0 0; color: var(--fg-4); font-size: 13px; }
+.x { border: 0; background: var(--pista); border-radius: 10px; width: 36px; height: 36px; font-size: 22px; cursor: pointer; line-height: 1; }
+.sec { border-top: 1px solid var(--borde); padding-top: 12px; margin-top: 12px; }
+.sec h3 { font: 700 13px var(--f-disp); margin: 0 0 8px; color: var(--fg-3); text-transform: uppercase; letter-spacing: .4px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; }
+.grid div > span { display: block; font-size: 11.5px; color: var(--fg-4); font-weight: 700; } .grid div b { font-weight: 600; font-size: 14px; word-break: break-word; }
+@media (max-width: 560px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.obs { background: var(--pista); border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; font-size: 13.5px; max-height: 200px; overflow: auto; }
+.subir { border: 2px dashed var(--borde-2); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+.subir.sobre { border-color: var(--magenta); background: var(--rosa); }
+.subir textarea { width: 100%; border: 1px solid var(--borde-2); border-radius: 10px; padding: 8px 10px; background: var(--sup); resize: vertical; min-height: 60px; }
+.cola { display: grid; gap: 6px; }
+.cola .it { display: flex; align-items: center; gap: 8px; font-size: 13px; background: var(--pista); border-radius: 10px; padding: 6px 10px; }
+.cola .it .nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra { height: 6px; background: var(--borde); border-radius: 6px; overflow: hidden; width: 90px; } .barra i { display: block; height: 100%; background: var(--magenta); width: 0; transition: width .2s; }
+.it.ok .barra i { background: var(--ok); } .it.mal { background: var(--mal-bg); color: var(--mal); }
+.evs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.ev { border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; background: var(--sup); font-size: 12px; }
+.ev .vis { display: block; aspect-ratio: 4/3; background: var(--pista); width: 100%; object-fit: cover; border: 0; }
+.ev .vis.doc { display: flex; align-items: center; justify-content: center; font: 800 22px var(--f-disp); color: var(--mal); text-decoration: none; }
+.ev .pie { padding: 6px 8px; line-height: 1.35; } .ev .pie b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.err { color: var(--mal); font-size: 13px; font-weight: 700; }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--noche); color: #fff; padding: 10px 16px; border-radius: 12px; z-index: 30; font-size: 14px; max-width: calc(100% - 32px); }
+.toast[hidden] { display: none; }
+.cargando { padding: 40px; text-align: center; color: var(--fg-4); }
+</style>
+</head>
+<body>
+<header class="cab"><div class="cab-in">
+  <div class="marca">Mi <span>Fibra</span> · Mis pendientes</div>
+  <div class="quien" id="quien"></div>
+  <button type="button" class="salir" id="salir">Salir</button>
+</div></header>
+<main>
+  <h1 id="tit">Mis pendientes</h1>
+  <p class="sub" id="sub">Cargando…</p>
+  <div class="kpis" id="kpis"></div>
+  <div class="herr">
+    <input type="search" id="q" placeholder="Busca por AB, OS, distrito o técnico…" aria-label="Buscar">
+    <select id="f-di" aria-label="Distrito"><option value="">Todos los distritos</option></select>
+    <select id="f-fil" aria-label="Filial" hidden></select>
+  </div>
+  <div class="herr">
+    <div class="chips" id="f-gr" role="group" aria-label="Tipo"></div>
+    <div class="chips" id="f-ev" role="group" aria-label="Evidencia"></div>
+  </div>
+  <div class="tb-acc"><span class="nota" id="n-filas"></span><button type="button" class="btn out" id="limpiar-col" hidden>Quitar filtros de columna</button><button type="button" class="btn pri" id="xls">⬇ Descargar Excel</button></div>
+  <div class="caja tabla"><table id="tb"><colgroup id="cols"></colgroup><thead><tr id="cab"></tr></thead><tbody id="filas"><tr><td colspan="21" class="cargando">Cargando tus pendientes…</td></tr></tbody></table></div>
+  <div class="tarjetas" id="tarjetas"></div>
+  <p class="nota" style="margin-top:12px">Solo ves los pendientes asignados a tu EECC. Los teléfonos de los clientes no se muestran. Las evidencias que adjuntes se guardan 30 días y luego se borran solas.</p>
+</main>
+<div class="fondo" id="fondo" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
+  <div class="m-cab"><div><h2 id="m-tit"></h2><p id="m-sub"></p></div><button type="button" class="x" id="m-x" aria-label="Cerrar">×</button></div>
+  <div id="m-cuerpo"></div>
+</div></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const n = (v) => Number(v || 0).toLocaleString('es-PE');
+const val = (v) => v === null || v === undefined || v === '' ? '—' : esc(v);
+const TOKEN = 'mifibra_portal_token';
+const token = () => { try { return sessionStorage.getItem(TOKEN) || ''; } catch { return ''; } };
+const U = window.mfUsuario || {};
+if (!token() || !U.e) { location.replace('/'); return; }
+const toast = (t) => { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(e._t); e._t = setTimeout(() => e.hidden = true, 4000); };
+$('salir').onclick = () => { try { sessionStorage.removeItem(TOKEN); localStorage.removeItem('mifibra_usuario'); } catch { /* nada */ } location.replace('/'); };
+
+async function api(accion, extra = '', cuerpo) {
+  const r = await fetch(`/api/eecc?accion=${accion}${extra}`, { method: cuerpo ? 'POST' : 'GET', cache: 'no-store',
+    headers: { 'x-portal-token': token(), ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) }, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401) { toast('Tu sesión venció. Vuelve a ingresar.'); setTimeout(() => $('salir').click(), 1500); throw new Error('Sesión vencida'); }
+  if (!r.ok) throw new Error(d.error || 'No se pudo completar.');
+  return d;
+}
+
+// ---------- Datos y filtros ----------
+let D = { pend: [], evidencias: {}, vivienda: {} };
+const F = { q: '', di: '', fil: '', gr: 'TODOS', ev: 'TODOS' };
+const hoy = () => new Date();
+const hoyIso = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+const msIso = (iso) => iso ? new Date(iso.length > 10 ? iso + '-05:00' : iso + 'T00:00:00-05:00').getTime() : 0;
+const dias = (iso) => iso ? Math.round((msIso(hoyIso()) - msIso(String(iso).slice(0, 10))) / 864e5) : null;
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const fIso = (s) => { if (!s) return '—'; const [, m, d] = String(s).slice(0, 10).split('-'); return `${d}-${MES[+m - 1]}.`; };
+const fCorta = fIso;
+const fRec = (iso) => iso ? `${fIso(iso)} ${String(iso).slice(11, 16)}` : '—';
+const fHora = (iso) => iso ? new Date(iso).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+const CORTOS = { 'SAN JUAN DE LURIGANCHO': 'SJL', 'SAN MARTIN DE PORRES': 'SMP', 'SAN JUAN DE MIRAFLORES': 'SJM', 'PUENTE PIEDRA': 'P. PIEDRA', 'JESUS MARIA': 'JESÚS M.', 'VILLA MARIA DEL TRIUNFO': 'VMT', 'VILLA SALVADOR': 'VES', 'VILLA EL SALVADOR': 'VES', 'CARMEN DE LA LEGUA REYNOSO': 'C. LEGUA', 'SANTIAGO DE SURCO': 'SURCO' };
+const corto = (d) => CORTOS[d] || d || '—';
+const tecCorto = (t) => { if (!t) return '—'; const [ape, nom] = t.split(','); return nom ? `${nom.trim().split(' ')[0]} ${ape.trim().split(' ')[0]}` : t; };
+const segB = (v) => { const t = String(v || '').toUpperCase(); return t === 'B2B' ? '<span class="b sg-b2b">B2B</span>' : t === 'REF' ? '<span class="b sg-ref">REF</span>' : `<span class="b seg">${esc(v || '—')}</span>`; };
+const cnCorto = (c) => ({ IC: 'CAMPO', VI: 'INBOUND', OT: 'OTROS' })[c] || '—';
+const cnB = (c) => c === 'VI' ? '<span class="b cn-in">INBOUND</span>' : cnCorto(c);
+const TIPO_TR = { 'INSTALACION SERVICIO': 'Instalación', 'TRASLADO EXT': 'Traslado ext.', 'TRASLADO INT': 'Traslado int.', 'CAMBIO DE EQUIPO': 'Cambio eq.', REINSTALACION: 'Reinstalac.', OTROS: 'Otros',
+  'TRASLADO EXTERNO': 'Traslado ext.', 'TRASLADO INTERNO': 'Traslado int.', 'REINSTALACION SERVICIO': 'Reinstalac.' };
+const TIPO_CLS = { 'INSTALACION SERVICIO': 'ins', 'TRASLADO EXT': 'tex', 'TRASLADO INT': 'tin', 'CAMBIO DE EQUIPO': 'ceq', REINSTALACION: 'rei', OTROS: 'otr', 'TRASLADO EXTERNO': 'tex', 'TRASLADO INTERNO': 'tin', 'REINSTALACION SERVICIO': 'rei' };
+const tipoTr = (p) => { const t = p.to || 'INSTALACION SERVICIO'; return TIPO_TR[t] || t.charAt(0) + t.slice(1).toLowerCase(); };
+const tipoCorto = tipoTr;
+const tipoCls = (p) => TIPO_CLS[p.to || 'INSTALACION SERVICIO'] || 'otr';
+// Vivienda: vertical (edificio, multifamiliar) u horizontal (casa)
+const vivT = (p) => { const v = String(p.viv || '').toUpperCase(); return !v || v === '—' ? '—' : /VERT|MULTI|EDIF|DEPA/.test(v) ? 'Vertical' : /HORI|HABIT|CASA/.test(v) ? 'Horizontal' : v.charAt(0) + v.slice(1).toLowerCase(); };
+const vivB = (p) => { const t = vivT(p); return t === '—' ? '—' : `<span class="b ${t === 'Vertical' ? 'vv' : t === 'Horizontal' ? 'vh' : 'vo'}" title="${esc(p.viv)}">${esc(t)}</span>`; };
+// Agenda (igual que Instalaciones): Futura / Hoy / Incumplida para agendas, Coordinada o Sin agenda
+const tipoProg = (p) => p.t || (/\d\s*-\s*\d/.test(p.fr || '') ? 'AG' : 'CO');
+const conFranja = (p) => /\d\s*-\s*\d/.test(p.fr || '');
+const tieneFranja = conFranja;
+const deObs = (p) => p.fo === 'obs';
+const nfr = (f) => String(f || '').replace(/\s+/g, '');
+const fpOs = (x) => x.fpo !== undefined && x.fp && x.fp === x.fpo;
+const frOs = (x) => x.fro !== undefined && x.fro && nfr(x.fr) === nfr(x.fro);
+const estAg = (p) => !p.fp || tipoProg(p) === 'SA' ? 'SIN AGENDA' : tipoProg(p) === 'CO' ? 'COORDINADA' : p.fp < hoyIso() ? 'INCUMPLIDA' : p.fp === hoyIso() ? 'HOY' : 'FUTURA';
+const EST_B = { FUTURA: 'fut', HOY: 'hoy', INCUMPLIDA: 'inc', COORDINADA: 'coo', 'SIN AGENDA': 'sag' };
+const EST_V = { INCUMPLIDA: 0, HOY: 1, FUTURA: 2, COORDINADA: 3, 'SIN AGENDA': 4 };
+const EST_TXT = { FUTURA: 'Futura', HOY: 'Hoy', INCUMPLIDA: 'Incumplida', COORDINADA: 'Coordinada', 'SIN AGENDA': 'Sin agenda' };
+const agenda = (p) => p.fp ? `${fCorta(p.fp)}${tieneFranja(p) ? ' · ' + esc(p.fr) : ''}` : '<span class="nota">sin fecha</span>';
+// Gestión y 1er contacto (mismas reglas que Instalaciones)
+const RE_PC = /#(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2})#/g;
+const RE_FEC = /\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b|\b(?:LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|DOMINGO|HOY|MA[NÑ]ANA)\b|\b\d{1,2}\s+DE\s+(?:ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SE?TIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\b/;
+const RE_FRA = /\b\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\s*(?:A|-|AL|HASTA)\s*\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\b|\bA\s+LAS\s+\d{1,2}|\b\d{1,2}\s*(?::\s*\d{2})?\s*(?:AM|PM)\b|\b(?:RANGO|FRANJA)\s+(?:DE\s+)?\d/;
+const RE_TEC = /\b(?:CL(?:IENTE)?\s+EN\s+SITIO|T[EÉ]C(?:NICO)?\.?\s+(?:EN\s+(?:CAMINO|SITIO|RUTA|DOMICILIO|CASA(?:\s+DEL?\s+CLIENTE)?)|LLEG[OÓ]))\b/g;
+const RE_MOT = /\b(?:CLIENTE|CL|AB|ABONADO|TITULAR|FAMILIAR|CONTESTA|RESPONDE|WHATSAPP|WSP|MENSAJES?|LLAMADAS?|VD|VISITA|REPROGRAM\w*|POSTERGA|AGENDA|CONFIRM\w*|SOLICITA|INDICA|AUDITA|PLANO|SUP|FACTIBILIDAD|CANCELA|DESISTE|REAGENDA)\b/;
+function evalGestion(p) {
+  const t0 = String(p.ovt || p.ov || '').toUpperCase(), pcs = [...t0.matchAll(RE_PC)];
+  p.pc = pcs.length > 0;
+  const t = t0.replace(RE_PC, ' ').replace(/%[^%]*%/g, ' ').replace(/\$R\$/g, ' ').replace(RE_TEC, ' ').replace(/\s+/g, ' ').trim();
+  const sinFec = t.replace(/\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b/g, ' ');
+  const fec = RE_FEC.test(t), fra = RE_FRA.test(sinFec), pal = t ? t.split(' ').filter(w => /[A-ZÁÉÍÓÚÑ0-9]/.test(w)).length : 0;
+  if (!t) { p.ges = false; p.gesM = t0.trim() ? 'El comentario solo dice dónde está el técnico' : 'Sin comentario'; }
+  else if (fec && fra) { p.ges = true; p.gesM = 'Comentario con fecha y franja'; }
+  else if ((pal >= 5 && RE_MOT.test(t)) || pal >= 10) { p.ges = true; p.gesM = 'Buen comentario'; }
+  else { p.ges = false; p.gesM = 'Comentario sin fecha ni franja y poco detallado'; }
+}
+const RE_VISI = /(?:(PRIMERA|SEGUNDA|[12])\s*(?:ERA|RA|ER|DA|DO|°|º|\.ª|ª)?\s*VISI?T[AO]S?\b|(VISITA\s+DIRECTA|\bVD)\b)/gi;
+const visI = (p) => { if (p.vi !== undefined) return p.vi; const L = [...String(p.ovt || p.ov || '').matchAll(RE_VISI)]; const m = L[L.length - 1];
+  return p.vi = !m ? null : m[2] ? 'VD' : /^(SEGUNDA|2)$/i.test(m[1]) ? '2' : '1'; };
+const visTxt = (v) => v === 'VD' ? 'VD' : `${v}° visita`;
+const nEv = (p) => D.evidencias[p.os] || 0;
+const edadB = (p) => { const d = dias(p.rec); return d === null ? '—' : `<span class="b dias${d >= 3 ? ' r' : d >= 1 ? ' v' : ''}">${d} d</span>`; };
+const evB = (p) => nEv(p) ? `<span class="b ev">📎 ${nEv(p)}</span>` : '<span class="b sin">Sin evidencia</span>';
+const ok = (c, t) => c ? ` class="os-ok" title="${t}"` : '';
+
+/* Columnas: [título, celda, valor para ordenar, texto para filtrar, verde si coincide con la OS, ancho relativo] */
+const hvDe = (p) => D.vivienda[p.os] || '';
+const hvH = (p) => `<span class="hv" data-hv="${p.os}" title="Marca la vivienda: H = horizontal (casa) · V = vertical (edificio)"><button type="button" data-v="H" class="${hvDe(p) === 'H' ? 'on' : ''}" aria-pressed="${hvDe(p) === 'H'}">H</button><button type="button" data-v="V" class="${hvDe(p) === 'V' ? 'on' : ''}" aria-pressed="${hvDe(p) === 'V'}">V</button></span>`;
+const COLS = [
+  ['Gestor', (p) => p.ge ? `<span title="${esc(p.ge)}">${esc(p.ge)}</span>` : '<span class="nota">—</span>', (p) => p.ge || '~', (p) => p.ge || '—', null, 7.5],
+  ['Zona', (p) => val(p.z), (p) => p.z || '~', (p) => p.z || '—', null, 4.2],
+  ['Planta', (p) => p.pl ? `<span class="pl" title="${esc(p.pl)}">${esc(p.pl)}</span>` : '—', (p) => p.pl || '~', (p) => p.pl || '—', null, 5.8],
+  ['Distrito', (p) => `<span title="${esc(p.di)}">${esc(corto(p.di))}</span>`, (p) => p.di || '~', (p) => p.di || '—', null, 6.8],
+  ['Vivienda', vivB, (p) => vivT(p), vivT, null, 5.2],
+  ['H / V', hvH, (p) => hvDe(p) || '~', (p) => hvDe(p) || '(vacío)', null, 4.2],
+  ['Seg.', (p) => segB(p.seg), (p) => p.seg || '~', (p) => p.seg || '—', null, 3.6],
+  ['Canal', (p) => cnB(p.cn), (p) => cnCorto(p.cn), (p) => cnCorto(p.cn), null, 4.6],
+  ['AB', (p) => `<button type="button" class="lnk num" data-os="${p.os}" title="Ver ficha del AB · OS ${p.os}">${p.ab}</button>${nEv(p) ? ` <span title="${nEv(p)} evidencia(s)">📎${nEv(p)}</span>` : ''}`, (p) => p.ab, (p) => String(p.ab), null, 5.2],
+  ['T. trabajo', (p) => `<span class="b tt-${tipoCls(p)}" title="${esc(p.to)}">${esc(tipoTr(p))}</span>`, tipoTr, tipoTr, null, 6],
+  ['EECC_F', (p) => val(p.ec), (p) => p.ec || '~', (p) => p.ec || '—', null, 4.8],
+  ['Técnico', (p) => `<span title="${esc(p.tec)}">${esc(tecCorto(p.tec))}</span>`, (p) => p.tec || '~', (p) => tecCorto(p.tec), null, 7.2],
+  ['Gestión', (p) => `<span class="b ${p.ges ? 'ges' : 'sges'}" title="${esc(p.gesM)}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span>`, (p) => p.ges ? 0 : 1, (p) => p.ges ? 'Gestionado' : 'Sin gestión', null, 5.6],
+  ['1er cont.', (p) => `<span class="b ${p.pc ? 'ges' : 'sag'}">${p.pc ? 'SÍ' : 'NO'}</span>`, (p) => p.pc ? 0 : 1, (p) => p.pc ? 'SÍ' : 'NO', null, 3.8],
+  ['Agenda', (p) => { const e = estAg(p); return `<span class="b ${EST_B[e]}">${EST_TXT[e]}${deObs(p) ? '*' : ''}</span>`; }, (p) => EST_V[estAg(p)], (p) => EST_TXT[estAg(p)], null, 5.4],
+  ['Visita', (p) => visI(p) ? `<span class="b v1">${visTxt(visI(p))}</span>` : '-', (p) => visI(p) ? (visI(p) === 'VD' ? 3 : +visI(p)) : 9, (p) => visI(p) ? visTxt(visI(p)) : '-', null, 3.8],
+  ['F. AG', (p) => estAg(p) === 'SIN AGENDA' ? '—' : fIso(p.fp), (p) => estAg(p) === 'SIN AGENDA' ? '~' : p.fp, (p) => estAg(p) === 'SIN AGENDA' ? '—' : fIso(p.fp), (p) => estAg(p) !== 'SIN AGENDA' && fpOs(p), 4.4],
+  ['Franja', (p) => conFranja(p) ? esc(p.fr) : '—', (p) => conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~', (p) => conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', (p) => conFranja(p) && frOs(p), 4.2],
+  ['Inic.', (p) => `<span class="b ${p.ini ? 'ges' : 'sag'}"${p.ini ? ` title="Inicio: ${esc(fRec(p.ini))}"` : ''}>${p.ini ? 'SÍ' : 'NO'}</span>`, (p) => p.ini ? 0 : 1, (p) => p.ini ? 'SÍ' : 'NO', null, 3.4],
+  ['F. recep', (p) => p.rec ? `${fRec(p.rec)} ${edadB(p)}` : '—', (p) => p.rec || '~', (p) => p.rec ? fRec(p.rec) : '—', null, 8],
+  ['', (p) => `<button type="button" class="adj" data-os="${p.os}" data-subir="1" title="Adjuntar evidencia (fotos, PDF o video)" aria-label="Adjuntar evidencia al AB ${p.ab}">📎</button>`, null, null, null, 2.6] ];
+const colFil = {};   // columna → Set de valores permitidos
+let ord = { c: 19, dir: 1 };   // F. recep: los más antiguos primero
+const base = () => D.pend.filter(p => (!F.fil || p.filial === F.fil) && (!F.di || p.di === F.di)
+  && (!F.q || [p.ab, p.os, p.di, p.tec, p.plano, p.ge].some(v => String(v ?? '').toUpperCase().includes(F.q))));
+const colOk = (p, sin = -1) => Object.entries(colFil).every(([c, S]) => +c === sin || S.has(COLS[c][3](p)));
+const filtrar = (sin = -1) => base().filter(p => (F.gr === 'TODOS' || p.grupo === F.gr) && (F.ev === 'TODOS' || (F.ev === 'CON' ? nEv(p) > 0 : !nEv(p))) && colOk(p, sin));
+
+function chips(el, ops, clave) {
+  el.innerHTML = ops.map(([v, t, c]) => `<button type="button" class="chip" data-v="${v}" aria-pressed="${F[clave] === v}">${t}${c != null ? ` <small>${n(c)}</small>` : ''}</button>`).join('');
+  el.onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) { F[clave] = b.dataset.v; pintar(); } };
+}
+const FUNNEL = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2h14l-5.5 6.5V14l-3-1.5v-4z"/></svg>';
+function pintarCab() {
+  $('cab').innerHTML = COLS.map(([t, , o], i) => !o ? '<th class="sin-ord"></th>'
+    : `<th data-c="${i}" class="${ord.c === i ? 'on-ord' : ''}" aria-sort="${ord.c === i ? (ord.dir > 0 ? 'ascending' : 'descending') : 'none'}"><span class="t">${esc(t)}</span><span class="ord">${ord.c === i ? (ord.dir > 0 ? '▲' : '▼') : '↕'}</span><button type="button" class="fcol${colFil[i] ? ' on' : ''}" data-fcol="${i}" aria-label="Filtrar ${esc(t)}" title="Filtrar esta columna">${FUNNEL}</button></th>`).join('');
+}
+const ordenados = (L) => { const f = COLS[ord.c][2]; return L.slice().sort((a, b) => { const x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * ord.dir || String(a.rec).localeCompare(String(b.rec)); }); };
+
+function pintar() {
+  D.pend.forEach(p => { if (p.ges === undefined) evalGestion(p); });
+  const B = base(), L = filtrar();
+  const ins = B.filter(p => p.grupo === 'INSTALACION').length, conEv = B.filter(p => nEv(p)).length;
+  chips($('f-gr'), [['TODOS', 'Todos', B.length], ['INSTALACION', 'Instalaciones', ins], ['MISCELANEO', 'Misceláneos', B.length - ins]], 'gr');
+  chips($('f-ev'), [['TODOS', 'Con y sin evidencia'], ['SIN', 'Sin evidencia', B.length - conEv], ['CON', 'Con evidencia', conEv]], 'ev');
+  const viejos = D.pend.filter(p => dias(p.rec) >= 7).length, insT = D.pend.filter(p => p.grupo === 'INSTALACION').length;
+  const k = (t, v, c = '') => `<div class="kpi ${c}"><span>${t}</span><b>${n(v)}</b></div>`;
+  $('kpis').innerHTML = k('Pendientes', D.pend.length) + k('Instalaciones', insT) + k('Misceláneos', D.pend.length - insT)
+    + k('Con evidencia', D.pend.filter(p => nEv(p)).length, 'bien') + k('Con 7 días o más', viejos, viejos ? 'alerta' : '');
+  const orden = ordenados(L);
+  const nCol = Object.keys(colFil).length;
+  $('n-filas').textContent = `${n(L.length)} de ${n(D.pend.length)} pendientes${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna` : ''}`;
+  $('limpiar-col').hidden = !nCol;
+  pintarCab();
+  const tot = COLS.reduce((a, c) => a + c[5], 0);
+  $('cols').innerHTML = COLS.map(c => `<col style="width:${(c[5] / tot * 100).toFixed(2)}%">`).join('');
+  $('filas').innerHTML = orden.length ? orden.map(p => `<tr>${COLS.map(([, h, , , v], i) => `<td${v ? ok(v(p), 'Coincide con la OS') : ''}${i === 5 ? ` data-x="${hvDe(p)}"` : ''}>${h(p)}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${COLS.length}" class="vacio">No hay pendientes con este filtro.</td></tr>`;
+  $('tarjetas').innerHTML = orden.length ? orden.map(p => `<div class="tj">
+      <div class="tj-top"><div><button type="button" class="ab" data-os="${p.os}">AB ${p.ab}</button><span class="os">OS ${p.os}</span></div><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></div>
+      <div class="tj-l"><b>${val(p.di)}</b> · ${vivB(p)} · ${segB(p.seg)} · ${esc(p.pl || '')}</div>
+      <div class="tj-l">Vivienda (marca tú): ${hvH(p)}</div>
+      <div class="tj-l">Agenda: <span class="b ${EST_B[estAg(p)]}">${EST_TXT[estAg(p)]}</span> ${estAg(p) === 'SIN AGENDA' ? '' : agenda(p)}</div>
+      <div class="tj-l">Técnico: ${val(p.tec)} · <span class="b ${p.ges ? 'ges' : 'sges'}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></div>
+      <div class="tj-top"><div>${edadB(p)} ${evB(p)}</div><button type="button" class="btn pri" data-os="${p.os}" data-subir="1">Adjuntar</button></div></div>`).join('')
+    : '<div class="vacio">No hay pendientes con este filtro.</div>';
+}
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.fpop')) return;
+  const fb = e.target.closest('[data-fcol]'); if (fb) { e.stopPropagation(); abrirFiltro(fb); return; }
+  cerrarFiltro();
+  const hb = e.target.closest('.hv button'); if (hb) { marcarHV(+hb.closest('.hv').dataset.hv, hb.dataset.v); return; }
+  const th = e.target.closest('#cab th[data-c]'); if (th) { const c = +th.dataset.c; ord = { c, dir: ord.c === c ? -ord.dir : 1 }; pintar(); return; }
+  const b = e.target.closest('[data-os]'); if (b && !b.closest('#m-cuerpo')) ficha(+b.dataset.os, !!b.dataset.subir);
+});
+async function marcarHV(os, v) {
+  const antes = D.vivienda[os] || '', nuevo = antes === v ? '' : v;   // clic en la marcada = la borra
+  if (nuevo) D.vivienda[os] = nuevo; else delete D.vivienda[os]; pintar();
+  try { await api('vivienda', '', { os, valor: nuevo }); toast(nuevo ? `AB guardado como ${nuevo === 'H' ? 'horizontal (H)' : 'vertical (V)'}.` : 'Marca de vivienda borrada.'); }
+  catch (e) { if (antes) D.vivienda[os] = antes; else delete D.vivienda[os]; pintar(); toast(e.message); }
+}
+$('limpiar-col').onclick = () => { Object.keys(colFil).forEach(k => delete colFil[k]); pintar(); };
+$('q').addEventListener('input', (e) => { F.q = e.target.value.trim().toUpperCase(); pintar(); });
+$('f-di').onchange = (e) => { F.di = e.target.value; pintar(); };
+$('f-fil').onchange = (e) => { F.fil = e.target.value; pintar(); };
+
+/* Filtro de cada columna (como el autofiltro de Excel) */
+function cerrarFiltro() { const f = document.querySelector('.fpop'); if (f) f.remove(); }
+function abrirFiltro(btn) {
+  const c = +btn.dataset.fcol, ya = document.querySelector('.fpop'); if (ya) { const mismo = ya._c === c; ya.remove(); if (mismo) return; }
+  const cnt = new Map(); filtrar(c).forEach(p => { const t = COLS[c][3](p); cnt.set(t, (cnt.get(t) || 0) + 1); });
+  const vals = [...cnt.keys()].sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }));
+  const sel = colFil[c] ? new Set(colFil[c]) : new Set(vals);
+  const pop = document.createElement('div'); pop.className = 'fpop'; pop._c = c;
+  pop.innerHTML = `<input type="search" placeholder="Buscar valor" aria-label="Buscar valor"><div class="fl"></div><div class="fb"><button type="button" class="btn out" data-f="quitar">Quitar filtro</button><button type="button" class="btn pri" data-f="ok">Aplicar</button></div>`;
+  const lista = (q = '') => { const V = vals.filter(v => !q || String(v).toUpperCase().includes(q.toUpperCase()));
+    pop.querySelector('.fl').innerHTML = `<label class="todo"><input type="checkbox" data-todo ${V.every(v => sel.has(v)) ? 'checked' : ''}> (Seleccionar todo)</label>` + V.map(v => `<label><input type="checkbox" value="${esc(v)}" ${sel.has(v) ? 'checked' : ''}> ${esc(v)}<small>${n(cnt.get(v))}</small></label>`).join(''); };
+  lista();
+  pop.addEventListener('input', (e) => { if (e.target.type === 'search') lista(e.target.value); });
+  pop.addEventListener('change', (e) => { const q = pop.querySelector('input[type=search]').value; if (e.target.dataset.todo !== undefined) { vals.filter(v => !q || String(v).toUpperCase().includes(q.toUpperCase())).forEach(v => e.target.checked ? sel.add(v) : sel.delete(v)); lista(q); } else if (e.target.type === 'checkbox') { e.target.checked ? sel.add(e.target.value) : sel.delete(e.target.value); } });
+  pop.addEventListener('click', (e) => { const f = e.target.closest('[data-f]'); if (!f) return;
+    if (f.dataset.f === 'quitar' || sel.size === vals.length) delete colFil[c]; else colFil[c] = new Set(sel);
+    pop.remove(); pintar(); });
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(); pop.style.top = (r.bottom + scrollY + 4) + 'px'; pop.style.left = Math.max(8, Math.min(r.left + scrollX - 120, scrollX + innerWidth - 270)) + 'px';
+  pop.querySelector('input[type=search]').focus();
+}
+
+/* Descargar Excel: lo que se ve en la tabla (con filtros), con encabezado como en el portal */
+const libs = {};
+const cargarJs = (url) => libs[url] || (libs[url] = new Promise((ok, mal) => { const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => { delete libs[url]; mal(new Error('No se pudo cargar el generador de Excel. Revisa tu conexión.')); }; document.head.appendChild(sc); }));
+const lienzo = document.createElement('canvas'); lienzo.width = lienzo.height = 1; const ctx1 = lienzo.getContext('2d', { willReadFrequently: true });
+function aHex(color, fondo) { ctx1.clearRect(0, 0, 1, 1); ctx1.fillStyle = fondo || '#FFFFFF'; ctx1.fillRect(0, 0, 1, 1); ctx1.fillStyle = '#000'; ctx1.fillStyle = color; ctx1.fillRect(0, 0, 1, 1); const [r, g, b] = ctx1.getImageData(0, 0, 1, 1).data; return [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase(); }
+const transp = (c) => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+// Excel = la tabla tal cual se ve (mismas columnas, textos, colores y negritas), con los filtros y el orden aplicados
+$('xls').onclick = async () => {
+  const b = $('xls'); b.disabled = true; const t0 = b.textContent; b.textContent = 'Generando…';
+  try {
+    await cargarJs('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
+    const tb = $('tb'), fondo = '#FFFFFF', ncol = COLS.length - 1;   // sin la columna del botón Adjuntar
+    const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Pendientes', { views: [{ state: 'frozen', ySplit: 1 }] }), borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
+    const filas = [tb.tHead.rows[0], ...[...tb.tBodies[0].rows].filter(r => r.cells.length > 1)], anchos = [];
+    filas.forEach((tr, i) => { const fila = ws.getRow(i + 1);
+      [...tr.cells].slice(0, ncol).forEach((td, j) => {
+        const txt = (td.dataset.x !== undefined ? td.dataset.x : (td.querySelector('.t') || td).textContent).replace(/\s+/g, ' ').replace(/[↕▲▼]/g, '').trim(), c = fila.getCell(j + 1);
+        c.value = i > 0 && /^\d+$/.test(txt) && txt.length < 12 ? Number(txt) : getComputedStyle(td).textTransform === 'uppercase' ? txt.toUpperCase() : txt;
+        const ins = td.querySelector('.on, .b, .pl, .lnk') || td, csI = getComputedStyle(ins), csT = getComputedStyle(td), csR = getComputedStyle(tr);
+        const bg = [csI.backgroundColor, csT.backgroundColor, csR.backgroundColor].find(x => !transp(x));
+        if (bg) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + aHex(bg, fondo) } };
+        c.font = { name: 'Calibri', size: 11, bold: i === 0 || parseInt(csI.fontWeight) >= 600 || parseInt(csT.fontWeight) >= 600,
+          underline: /underline/.test(csI.textDecorationLine) || undefined, color: { argb: 'FF' + aHex(ins !== td ? csI.color : csT.color, fondo) } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = { top: borde, left: borde, bottom: borde, right: borde };
+        anchos[j] = Math.max(anchos[j] || 6, txt.length + 3); });
+      fila.height = i === 0 ? 22 : 18; });
+    anchos.forEach((w, j) => ws.getColumn(j + 1).width = Math.min(w, 40));
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ncol } };
+    const blob = new Blob([await wb.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const f = new Date().toLocaleString('sv-SE', { timeZone: 'America/Lima' }).slice(0, 16).replace(/[-:]/g, '').replace(' ', '-');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `pendientes-${String(D.eecc || 'eecc').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${f}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(`Excel descargado con ${n(filas.length - 1)} pendientes, con el mismo formato de la tabla.`);
+  } catch (e) { toast(e.message || 'No se pudo generar el Excel.'); }
+  finally { b.disabled = false; b.textContent = t0; }
+};
+
+async function cargar() {
+  try {
+    D = await api('pendientes'); D.vivienda = D.vivienda || {};
+    $('quien').innerHTML = `<b>${esc(D.eecc)}</b><br>${esc(U.n || U.u || '')}`;
+    $('tit').textContent = `Mis pendientes · ${D.eecc}`;
+    $('sub').textContent = `Instalaciones y misceláneos registrados (pendientes) de tu EECC · actualizado ${fHora(D.actualizado)} · se actualiza cada 20 minutos`;
+    const dis = [...new Set(D.pend.map(p => p.di).filter(Boolean))].sort();
+    $('f-di').innerHTML = '<option value="">Todos los distritos</option>' + dis.map(d => `<option${d === F.di ? ' selected' : ''}>${esc(d)}</option>`).join('');
+    const fils = [...new Set(D.pend.map(p => p.filial))].sort();
+    $('f-fil').hidden = fils.length < 2;
+    $('f-fil').innerHTML = '<option value="">Todas las filiales</option>' + fils.map(f => `<option${f === F.fil ? ' selected' : ''}>${esc(f)}</option>`).join('');
+    pintar();
+  } catch (e) { $('sub').textContent = e.message; $('filas').innerHTML = `<tr><td colspan="21" class="vacio">${esc(e.message)}</td></tr>`; }
+}
+
+// ---------- Ficha del AB + evidencias ----------
+const MAX = { img: 10e6, pdf: 10e6, vid: 50e6 }, VID_SEG = 90;
+let abierta = null;
+function cerrar() { $('fondo').hidden = true; abierta = null; document.body.style.overflow = ''; }
+$('m-x').onclick = cerrar; $('fondo').addEventListener('click', (e) => { if (e.target === $('fondo')) cerrar(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('fondo').hidden) cerrar(); });
+
+function ficha(os, irASubir) {
+  const p = D.pend.find(x => x.os === os); if (!p) return;
+  abierta = p;
+  $('m-tit').textContent = `AB ${p.ab}`;
+  $('m-sub').textContent = `OS ${p.os} · ${tipoCorto(p)} · ${p.di || '—'} · ${p.filial}`;
+  const g = (pares) => `<div class="grid">${pares.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`;
+  $('m-cuerpo').innerHTML = `
+    <div class="sec" style="border:0;margin:0;padding:0"><h3>Datos del abonado y la OS</h3>${g([
+      ['AB', p.ab], ['OS', p.os], ['Tipo de orden', esc(p.to)], ['Distrito', val(p.di)], ['Vivienda', vivB(p)], ['Zona', val(p.z)], ['Gestor', val(p.ge)], ['Plano', val(p.plano)], ['Planta', val(p.pl)],
+      ['Plan', val(p.plan)], ['Segmento', val(p.seg)], ['Técnico', val(p.tec)], ['Agenda', agenda(p)], ['Cita inicial', p.cita ? fCorta(p.cita) : '—'], ['Recepción', fHora(p.rec)],
+      ['Antigüedad', edadB(p)], ['Coordenadas', p.co ? `<a href="https://www.google.com/maps?q=${encodeURIComponent(String(p.co).replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver en mapa</a>` : '—'], ['Filial', esc(p.filial)]])}</div>
+    <div class="sec"><h3>Comentario del técnico</h3>${(p.ovt || p.ov) ? `<div class="obs">${esc(p.ovt || p.ov)}</div>` : '<p class="nota">Sin comentario registrado.</p>'}</div>
+    <div class="sec" id="sec-subir"><h3>Adjuntar evidencia</h3>
+      <div class="subir" id="zona">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label class="btn pri" style="display:inline-block">📷 Elegir fotos, PDF o video<input type="file" id="arch" accept="image/*,application/pdf,video/mp4,video/quicktime,video/webm" multiple hidden></label>
+          <span class="nota">o arrastra los archivos aquí · fotos y PDF hasta 10 MB · video corto (máx. ${VID_SEG} s, 50 MB)</span>
+        </div>
+        <textarea id="coment" maxlength="500" placeholder="Comentario (opcional): qué muestra la evidencia, por qué no se pudo instalar…"></textarea>
+        <div class="cola" id="cola"></div>
+        <div><button type="button" class="btn pri" id="enviar" disabled>Subir evidencia</button> <span class="err" id="s-err" role="alert"></span></div>
+      </div></div>
+    <div class="sec"><h3>Evidencias de esta OS</h3><div id="evs"><p class="nota">Cargando…</p></div></div>`;
+  $('fondo').hidden = false; document.body.style.overflow = 'hidden';
+  prepararSubida(p);
+  verEvidencias(p);
+  if (irASubir) setTimeout(() => $('sec-subir').scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); else $('m-x').focus();
+}
+
+async function verEvidencias(p) {
+  try {
+    const { evidencias: E } = await api('evidencias', '&os=' + p.os);
+    if (abierta !== p) return;
+    D.evidencias[p.os] = E.length; pintar();
+    $('evs').innerHTML = !E.length ? '<p class="nota">Aún no hay evidencias para esta OS.</p>' : `<div class="evs">${E.map(x => {
+      const vis = !x.url ? '<div class="vis doc">—</div>' : x.tipo.startsWith('image/') ? `<a href="${esc(x.url)}" target="_blank" rel="noopener"><img class="vis" src="${esc(x.url)}" alt="${esc(x.nombre)}" loading="lazy"></a>`
+        : x.tipo.startsWith('video/') ? `<video class="vis" src="${esc(x.url)}" controls preload="metadata"></video>` : `<a class="vis doc" href="${esc(x.url)}" target="_blank" rel="noopener">PDF</a>`;
+      const vence = Math.max(0, Math.ceil((new Date(x.vence) - hoy()) / 864e5));
+      return `<div class="ev">${vis}<div class="pie"><b title="${esc(x.nombre)}">${esc(x.nombre)}</b>${fHora(x.creado_en)} · ${esc(x.nombre_usuario || x.usuario)}${x.comentario ? `<br><i>${esc(x.comentario)}</i>` : ''}<br><span class="nota">se borra en ${vence} ${vence === 1 ? 'día' : 'días'}</span></div></div>`; }).join('')}</div>`;
+  } catch (e) { if (abierta === p) $('evs').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+
+// Fotos: se achican (máx. 1600 px, JPEG) para que suban rápido con datos móviles
+function comprimir(f) {
+  return new Promise((ok) => {
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(f.type) && !/\.(heic|heif)$/i.test(f.name)) return ok(f);
+    const img = new Image(), url = URL.createObjectURL(f);
+    img.onload = () => { URL.revokeObjectURL(url);
+      const k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob((b) => ok(b && b.size < f.size ? new File([b], f.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : f), 'image/jpeg', 0.82); };
+    img.onerror = () => { URL.revokeObjectURL(url); ok(f); };
+    img.src = url;
+  });
+}
+const duracion = (f) => new Promise((ok) => { const v = document.createElement('video'), u = URL.createObjectURL(f); v.preload = 'metadata';
+  v.onloadedmetadata = () => { URL.revokeObjectURL(u); ok(v.duration); }; v.onerror = () => { URL.revokeObjectURL(u); ok(0); }; v.src = u; });
+const tam = (b) => b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
+
+function prepararSubida(p) {
+  let L = [];   // { f, el, estado }
+  const zona = $('zona'), cola = $('cola');
+  const refrescar = () => { $('enviar').disabled = !L.some(x => x.estado === 'listo'); };
+  async function agregar(files) {
+    $('s-err').textContent = '';
+    for (const f0 of files) {
+      const t = f0.type || '', tipo = t.startsWith('image/') ? 'img' : t === 'application/pdf' ? 'pdf' : t.startsWith('video/') ? 'vid' : null;
+      const it = document.createElement('div'); it.className = 'it'; cola.appendChild(it);
+      const pon = (estado, txt, f) => { it.className = 'it' + (estado === 'mal' ? ' mal' : estado === 'ok' ? ' ok' : '');
+        it.innerHTML = `<span>${tipo === 'img' ? '🖼️' : tipo === 'pdf' ? '📄' : tipo === 'vid' ? '🎬' : '⚠️'}</span><span class="nom">${esc((f || f0).name)}</span><span class="nota">${esc(txt)}</span><span class="barra"><i></i></span>${estado === 'listo' ? '<button type="button" class="x" style="width:26px;height:26px;font-size:16px" aria-label="Quitar">×</button>' : ''}`; };
+      if (!tipo) { pon('mal', 'tipo no permitido (solo fotos, PDF o video)'); continue; }
+      const x = { f: f0, el: it, estado: 'prep' }; pon('prep', 'preparando…'); L.push(x);
+      if (tipo === 'img') x.f = await comprimir(f0);
+      if (tipo === 'vid') { const s = await duracion(f0); if (s > VID_SEG + 1) { x.estado = 'mal'; pon('mal', `video de ${Math.round(s)} s: máximo ${VID_SEG} s`); continue; } }
+      if (x.f.size > MAX[tipo]) { x.estado = 'mal'; pon('mal', `${tam(x.f.size)}: máximo ${tam(MAX[tipo])}`); continue; }
+      x.estado = 'listo'; pon('listo', tam(x.f.size), x.f);
+      it.addEventListener('click', (e) => { if (e.target.closest('button') && x.estado === 'listo') { x.estado = 'quitado'; it.remove(); refrescar(); } });
+    }
+    L = L.filter(x => x.estado !== 'quitado'); refrescar();
+  }
+  $('arch').onchange = (e) => { agregar([...e.target.files]); e.target.value = ''; };
+  zona.addEventListener('dragover', (e) => { e.preventDefault(); zona.classList.add('sobre'); });
+  zona.addEventListener('dragleave', () => zona.classList.remove('sobre'));
+  zona.addEventListener('drop', (e) => { e.preventDefault(); zona.classList.remove('sobre'); agregar([...e.dataTransfer.files]); });
+
+  const subirUno = (url, f, barra) => new Promise((ok, mal) => {
+    const fd = new FormData(); fd.append('cacheControl', '3600'); fd.append('', f);
+    const x = new XMLHttpRequest(); x.open('PUT', url);
+    x.upload.onprogress = (e) => { if (e.lengthComputable) barra.style.width = Math.round(e.loaded / e.total * 100) + '%'; };
+    x.onload = () => x.status < 300 ? ok() : mal(new Error('No se pudo subir (' + x.status + ')')); x.onerror = () => mal(new Error('Sin conexión'));
+    x.send(fd);
+  });
+  $('enviar').onclick = async () => {
+    const lista = L.filter(x => x.estado === 'listo'); if (!lista.length) return;
+    $('enviar').disabled = true; $('s-err').textContent = '';
+    const comentario = $('coment').value.trim(); let bien = 0;
+    for (const x of lista) {
+      x.estado = 'subiendo'; const nota = x.el.querySelector('.nota'), barra = x.el.querySelector('.barra i'), bx = x.el.querySelector('button'); if (bx) bx.remove();
+      nota.textContent = 'subiendo…';
+      try {
+        const meta = { os: p.os, nombre: x.f.name, tipo: x.f.type, bytes: x.f.size };
+        const { ruta, subida } = await api('firmar', '', meta);
+        await subirUno(subida, x.f, barra);
+        await api('registrar', '', { ...meta, ruta, comentario });
+        x.estado = 'ok'; x.el.classList.add('ok'); nota.textContent = 'subido ✓'; barra.style.width = '100%'; bien++;
+      } catch (e) { x.estado = 'mal'; x.el.classList.add('mal'); nota.textContent = e.message; }
+    }
+    if (bien) { toast(`${bien} ${bien === 1 ? 'evidencia subida' : 'evidencias subidas'} para el AB ${p.ab}.`); $('coment').value = ''; verEvidencias(p); }
+    if (bien < lista.length) $('s-err').textContent = 'Algunos archivos no se subieron: revisa y vuelve a intentar.';
+    L = L.filter(x => x.estado === 'listo'); refrescar();
+  };
+}
+
+cargar();
+setInterval(() => { if (document.visibilityState === 'visible' && $('fondo').hidden) cargar(); }, 5 * 60e3);
+})();
+</script>
+</body>
+</html>
