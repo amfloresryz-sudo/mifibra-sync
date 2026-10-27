@@ -3,6 +3,8 @@
   python -m sync.main                         # una corrida: descarga el periodo, calcula y guarda lo que cambió
   python -m sync.main --excel archivo.xlsx    # usa un Excel ya descargado (sin robot)
   python -m sync.main --excel a.xlsx --sin-subir   # solo procesa y calcula, no escribe en Supabase
+  python -m sync.main --solo-descargar r.xlsx      # solo descarga el reporte (el turno descarga y procesa en paralelo)
+  python -m sync.main --excel r.xlsx --corte ISO   # procesa un reporte ya descargado, con la hora en que se pidió
 
 Cada corrida descarga UN reporte, igual que a mano en ScordSoft:
   Cronograma de Trabajo (Órdenes de Servicio) · Filial SELECCIONE (todas) · por Registro
@@ -16,6 +18,7 @@ from __future__ import annotations
 import argparse
 import calendar
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -160,11 +163,30 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--excel", type=Path, nargs="*", help="procesar Excel locales en vez de usar el robot")
     ap.add_argument("--sin-subir", action="store_true", help="solo procesar y calcular, no escribir en Supabase")
     ap.add_argument("--reescribir-todo", action="store_true", help="reescribir todas las órdenes (ignora las huellas)")
+    ap.add_argument("--solo-descargar", type=Path, help="solo descargar el reporte del periodo a esta ruta y terminar")
+    ap.add_argument("--corte", help="hora (ISO, UTC) en que se pidió el reporte: se usa como corte y como «actualizado»")
     args = ap.parse_args(argv)
 
-    inicio = _ahora()
+    if args.solo_descargar:
+        # Turno en paralelo: la descarga (lo más lento, ~14 min) corre mientras se procesa el reporte anterior.
+        from .descargar import descargar_reportes
+
+        hoy = datetime.now(LIMA).date()
+        d0, d1 = periodo(hoy)
+        t0 = time.time()
+        try:
+            r = descargar_reportes([(args.solo_descargar, d0, d1, "TODAS", "registro")])
+            if r and Path(r[0]).resolve() != args.solo_descargar.resolve():
+                shutil.move(str(r[0]), str(args.solo_descargar))
+        except Exception as e:  # noqa: BLE001
+            print(f"ERROR en la descarga: {e}", file=sys.stderr, flush=True)
+            return 1
+        print(f"[tiempo] descarga: {time.time() - t0:.0f} s", flush=True)
+        return 0
+
+    inicio = args.corte or _ahora()
     t_ini = time.time()
-    ahora = datetime.now(LIMA)
+    ahora = datetime.fromisoformat(args.corte).astimezone(LIMA) if args.corte else datetime.now(LIMA)
     desde, hasta = periodo(ahora.date())
     total = 0
     try:
