@@ -161,6 +161,16 @@ td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-c
 .cola .it .nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barra { height: 6px; background: var(--borde); border-radius: 6px; overflow: hidden; width: 90px; } .barra i { display: block; height: 100%; background: var(--magenta); width: 0; transition: width .2s; }
 .it.ok .barra i { background: var(--ok); } .it.mal { background: var(--mal-bg); color: var(--mal); }
+.coms { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.com { border: 1px solid var(--borde); border-left: 4px solid var(--magenta); border-radius: 10px; padding: 8px 10px; background: var(--sup); font-size: 13px; }
+.com .cab-c { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--fg-4); margin-bottom: 4px; }
+.com .cab-c b { color: var(--fg-2, var(--fg)); }
+.com p { margin: 0; white-space: pre-wrap; }
+.est-sc { border-radius: 999px; padding: 1px 8px; font-weight: 700; font-size: 10.5px; }
+.est-sc.pe { background: #FEF3C7; color: #92400E; } .est-sc.ok { background: #DCFCE7; color: #166534; } .est-sc.er { background: #FEE2E2; color: #991B1B; }
+.escribir { display: flex; flex-direction: column; gap: 8px; }
+.escribir textarea { width: 100%; border: 1px solid var(--borde-2); border-radius: 10px; padding: 8px 10px; background: var(--sup); resize: vertical; min-height: 60px; font: inherit; }
+.escribir .fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .evs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .ev { border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; background: var(--sup); font-size: 12px; }
 .ev .vis { display: block; aspect-ratio: 4/3; background: var(--pista); width: 100%; object-fit: cover; border: 0; }
@@ -529,6 +539,12 @@ function ficha(os, irASubir) {
       ['Plan', val(p.plan)], ['Segmento', val(p.seg)], ['Técnico', val(p.tec)], ['Agenda', agenda(p)], ['Cita inicial', p.cita ? fCorta(p.cita) : '—'], ['Recepción', fHora(p.rec)],
       ['Antigüedad', edadB(p)], ['Coordenadas', p.co ? `<a href="https://www.google.com/maps?q=${encodeURIComponent(String(p.co).replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver en mapa</a>` : '—'], ['Filial', esc(p.filial)]])}</div>
     <div class="sec"><h3>Comentario del técnico</h3>${(p.ovt || p.ov) ? `<div class="obs">${esc(p.ovt || p.ov)}</div>` : '<p class="nota">Sin comentario registrado.</p>'}</div>
+    <div class="sec" id="sec-com"><h3>Comentarios para Mi Fibra</h3>
+      <div class="coms" id="coms"><p class="nota">Cargando…</p></div>
+      <div class="escribir">
+        <textarea id="com-txt" maxlength="500" placeholder="Escribe aquí la gestión del AB: cliente no contesta, reagendado para el 29/10 9-13, falta poste…"></textarea>
+        <div class="fila"><button type="button" class="btn pri" id="com-env">💬 Enviar comentario</button><span class="nota" id="com-n">0/500 · lo verá Mi Fibra y se escribirá en ScordSoft</span> <span class="err" id="com-err" role="alert"></span></div>
+      </div></div>
     <div class="sec" id="sec-subir"><h3>Adjuntar evidencia</h3>
       <div class="subir" id="zona">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -542,8 +558,32 @@ function ficha(os, irASubir) {
     <div class="sec"><h3>Evidencias de esta OS</h3><div id="evs"><p class="nota">Cargando…</p></div></div>`;
   $('fondo').hidden = false; document.body.style.overflow = 'hidden';
   prepararSubida(p);
+  prepararComentario(p);
   verEvidencias(p);
+  verComentarios(p);
   if (irASubir) setTimeout(() => $('sec-subir').scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); else $('m-x').focus();
+}
+
+const EST_SC = { pendiente: ['pe', '⏳ Por escribir en ScordSoft'], escrito: ['ok', '✓ En ScordSoft'], error: ['er', '⚠ No se pudo escribir en ScordSoft'] };
+async function verComentarios(p) {
+  try {
+    const { comentarios: C } = await api('comentarios', '&os=' + p.os);
+    if (abierta !== p) return;
+    $('coms').innerHTML = !C.length ? '<p class="nota">Aún no hay comentarios de tu EECC para este AB.</p>' : C.map(c => { const [k, t] = EST_SC[c.scord_estado] || EST_SC.pendiente;
+      return `<div class="com"><div class="cab-c"><b>${esc(c.nombre_usuario || c.usuario)}</b><span>${fHora(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="est-sc ${k}"${c.scord_en ? ` title="Escrito el ${fHora(c.scord_en)}"` : ''}>${t}</span></div><p>${esc(c.texto)}</p></div>`; }).join('');
+  } catch (e) { if (abierta === p) $('coms').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+function prepararComentario(p) {
+  const ta = $('com-txt'), b = $('com-env');
+  ta.oninput = () => { $('com-n').textContent = `${ta.value.length}/500 · lo verá Mi Fibra y se escribirá en ScordSoft`; $('com-err').textContent = ''; };
+  b.onclick = async () => {
+    const t = ta.value.trim(); if (t.length < 3) { $('com-err').textContent = 'Escribe el comentario.'; ta.focus(); return; }
+    b.disabled = true; const t0 = b.textContent; b.textContent = 'Enviando…';
+    try { const r = await api('comentar', '', { os: p.os, texto: t }); ta.value = ''; ta.oninput();
+      toast(r.repetido ? 'Ese comentario ya estaba enviado.' : `Comentario enviado para el AB ${p.ab}.`); verComentarios(p); }
+    catch (e) { $('com-err').textContent = e.message; }
+    finally { b.disabled = false; b.textContent = t0; }
+  };
 }
 
 async function verEvidencias(p) {
@@ -624,7 +664,7 @@ function prepararSubida(p) {
         x.estado = 'ok'; x.el.classList.add('ok'); nota.textContent = 'subido ✓'; barra.style.width = '100%'; bien++;
       } catch (e) { x.estado = 'mal'; x.el.classList.add('mal'); nota.textContent = e.message; }
     }
-    if (bien) { toast(`${bien} ${bien === 1 ? 'evidencia subida' : 'evidencias subidas'} para el AB ${p.ab}.`); $('coment').value = ''; verEvidencias(p); }
+    if (bien) { toast(`${bien} ${bien === 1 ? 'evidencia subida' : 'evidencias subidas'} para el AB ${p.ab}.`); $('coment').value = ''; verEvidencias(p); verComentarios(p); }
     if (bien < lista.length) $('s-err').textContent = 'Algunos archivos no se subieron: revisa y vuelve a intentar.';
     L = L.filter(x => x.estado === 'listo'); refrescar();
   };
