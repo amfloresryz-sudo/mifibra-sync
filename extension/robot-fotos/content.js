@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.2
+// @version      1.3
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -17,7 +17,8 @@
   const TIPO = "INSTALACION SERVICIO INTERNET";
   const PERDIDA_MAX_DB = 1.0;   // foto 2: pérdida máxima entre caja y cliente
   const DIAS_TOLERANCIA = 1;    // fotos del día anterior son válidas
-  const LADO_MAX = 1600;        // px: se achican las fotos antes de enviarlas a la IA
+  const LADO_MAX = 1280;        // px: se achican las fotos antes de enviarlas a la IA (más liviano = más rápido)
+  const MIN_FOTOS = 6;          // con menos fotos la OS se marca OBSERVADA sin gastar IA (el manual pide 11–12; se permiten collages)
 
   const MANUAL = [
     [1, "Fachada del cliente", ["Fachada de la vivienda fácil de identificar (número de puerta visible)", "Sello con localización, fecha y hora"]],
@@ -35,7 +36,7 @@
   ];
 
   // ------------------------------------------------------------------ estado (sobrevive a las recargas de SCORD)
-  const K = "mfv-estado", KR = "mfv-resultado", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key";
+  const K = "mfv-estado", KL = "mfv-lote", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key", KC = "mfv-cache";
   const leer = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch { return null; } };
   const guardar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const clave = () => { try { return localStorage.getItem(KKEY) || ""; } catch { return ""; } };
@@ -76,8 +77,14 @@
         <button class="acc" id="mfv-keyok">Guardar</button>
         <div id="mfv-estado-claves" style="color:#64748b;margin-top:4px"></div>
       </div>
-      <div>Nº de abonado: <input id="mfv-ab" style="width:120px" inputmode="numeric">
-        <button class="acc" id="mfv-go">Validar</button></div>
+      <div>Nº de abonado (uno o varios, separados por espacio, coma o en líneas):</div>
+      <textarea id="mfv-ab" rows="2" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font:14px system-ui"
+        placeholder="28770 33300 33343"></textarea>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="acc" id="mfv-go">Validar</button>
+        <button class="sec" id="mfv-stop" style="display:none">Detener</button>
+        <button class="sec" id="mfv-xls" style="display:none">Descargar Excel</button>
+      </div>
       <div id="mfv-log"></div>
       <div id="mfv-res"></div>
     </div>`;
@@ -96,32 +103,107 @@
     $("#mfv-key").value = ""; $("#mfv-keyor").value = ""; estadoClaves(); $("#mfv-clave").style.display = "none"; log("Claves guardadas.");
   };
   $("#mfv-go").onclick = () => {
-    const ab = ($("#mfv-ab").value || "").replace(/\D/g, "");
-    if (!ab) return log("Escribe el Nº de abonado.");
-    if (!clave()) { $("#mfv-clave").style.display = "block"; return log("Primero guarda la clave de Gemini."); }
-    guardar(KR, null);
-    guardar(K, { ab, paso: "filial", t: Date.now() });
-    log(`Buscando AB ${ab}…`);
+    const abs = [...new Set(($("#mfv-ab").value || "").split(/[^0-9]+/).filter(Boolean).map((x) => String(parseInt(x, 10))))];
+    if (!abs.length) return log("Escribe el Nº de abonado.");
+    if (!clave() && !claveOR()) { $("#mfv-clave").style.display = "block"; return log("Primero guarda la clave de Gemini."); }
+    guardar(KL, { cola: abs.slice(1), resultados: [], total: abs.length, inicio: Date.now() });
+    guardar(K, { ab: abs[0], paso: "filial", t: Date.now() });
+    log(`Buscando AB ${abs[0]} (1 de ${abs.length})…`);
     location.href = PANTALLA_OS;
   };
-  $("#mfv-ab").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#mfv-go").click(); } });
+  $("#mfv-ab").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#mfv-go").click(); } });
+  $("#mfv-stop").onclick = () => {
+    const l = leer(KL); if (l) { l.cola = []; l.fin = true; guardar(KL, l); }
+    guardar(K, null); log("Detenido."); if (l) pintarLote(l);
+  };
+  $("#mfv-xls").onclick = () => { const l = leer(KL); if (l) descargarExcel(l.resultados || []); };
 
   // ------------------------------------------------------------------ resultado
-  function pintar(res) {
+  function pintar(res, destino) {
     abrir();
-    if (res.ab) $("#mfv-ab").value = res.ab;
-    if (res.error) { $("#mfv-res").innerHTML = `<p class="mfv-ERROR">AB ${res.ab}: ${esc(res.error)}</p>`; log(""); return; }
+    const caja = destino || $("#mfv-res");
+    if (res.error) { caja.innerHTML = `<p class="mfv-ERROR">AB ${res.ab}: ${esc(res.error)}</p>`; return; }
     const v = res.validacion || {};
     const filas = (v.manual || []).map((m) => `<tr><td>${m.item}</td><td>${esc(m.nombre)}</td>
       <td class="mfv-${m.estado === "NO APLICA" ? "NO" : m.estado}">${m.estado}</td>
       <td>${(m.fotos || []).join(", ") || "—"}</td><td>${esc(m.error || "")}</td></tr>`).join("");
     const color = v.resultado === "OK" ? "mfv-OK" : "mfv-ERROR";
-    $("#mfv-res").innerHTML = `
+    caja.innerHTML = `
       <h3 style="margin:10px 0 4px">AB ${res.ab} · OS ${esc(res.os || "")} — <span class="${color}">${v.resultado || "?"}</span></h3>
       <div>Ejecución ${esc(res.fecha || "")} · ${res.n} fotos${v.perdida_db != null ? ` · pérdida caja–cliente ${v.perdida_db} dB` : ""}</div>
       <p><b>${esc(v.resumen || "")}</b></p>
-      <table><tr><th>#</th><th>Foto del manual</th><th>Estado</th><th>Fotos</th><th>Error</th></tr>${filas}</table>`;
-    log(`Revisado con ${res.modelo || "IA"}.`);
+      ${filas ? `<table><tr><th>#</th><th>Foto del manual</th><th>Estado</th><th>Fotos</th><th>Error</th></tr>${filas}</table>` : ""}
+      <div style="color:#64748b;margin-top:4px">Revisado con: ${esc(res.modelo || "IA")}</div>`;
+  }
+
+  // Tabla de varios AB: una fila por AB; clic para ver el detalle.
+  function pintarLote(l) {
+    abrir();
+    const rs = l.resultados || [];
+    const enCurso = leer(K);
+    $("#mfv-stop").style.display = enCurso ? "inline-block" : "none";
+    $("#mfv-xls").style.display = rs.length ? "inline-block" : "none";
+    if (l.total === 1 && rs.length === 1) { pintar(rs[0]); log(""); return; }
+    const filas = rs.map((r, i) => {
+      const v = r.validacion || {}, est = r.error ? "ERROR" : v.resultado || "?";
+      const malos = (v.manual || []).filter((m) => m.estado === "ERROR" || m.estado === "FALTA").map((m) => m.item).join(", ");
+      return `<tr data-i="${i}" style="cursor:pointer"><td>${r.ab}</td><td>${esc(r.os || "")}</td>
+        <td class="mfv-${est === "OK" ? "OK" : "ERROR"}">${est === "ERROR" ? "NO SE PUDO" : est}</td>
+        <td>${esc(r.error || malos || "—")}</td></tr>`;
+    }).join("");
+    const ok = rs.filter((r) => (r.validacion || {}).resultado === "OK").length;
+    const obs = rs.filter((r) => (r.validacion || {}).resultado === "OBSERVADA").length;
+    $("#mfv-res").innerHTML = `
+      <h3 style="margin:10px 0 4px">${rs.length} de ${l.total} revisados · <span class="mfv-OK">${ok} OK</span> · <span class="mfv-ERROR">${obs} OBSERVADAS</span></h3>
+      <table><tr><th>AB</th><th>OS</th><th>Resultado</th><th>Fotos con error / falta</th></tr>${filas}</table>
+      <div style="color:#64748b;margin-top:4px">Clic en una fila para ver el detalle.</div>
+      <div id="mfv-det"></div>`;
+    $("#mfv-res").querySelectorAll("tr[data-i]").forEach((tr) => tr.onclick = () => pintar(rs[+tr.dataset.i], $("#mfv-det")));
+    if (!enCurso) log(l.fin ? `Listo: ${rs.length} AB revisados.` : "");
+  }
+
+  function descargarExcel(rs) {
+    const c = (x) => `"${String(x ?? "").replace(/"/g, '""')}"`;
+    const filas = [["AB", "OS", "Fecha ejecución", "Nº fotos", "Resultado", "Fotos con error / falta", "Resumen", "Revisado con"]];
+    for (const r of rs) {
+      const v = r.validacion || {};
+      const det = (v.manual || []).filter((m) => m.estado === "ERROR" || m.estado === "FALTA")
+        .map((m) => `Foto ${m.item} ${m.estado}: ${m.error}`).join(" | ");
+      filas.push([r.ab, r.os || "", r.fecha || "", r.n ?? "", r.error ? "NO SE PUDO" : v.resultado || "", r.error || det, v.resumen || "", r.modelo || ""]);
+    }
+    const csv = "\ufeffsep=;\r\n" + filas.map((f) => f.map(c).join(";")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `validacion_fotos_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  // Cache de resultados (no se repite la IA si la OS y sus fotos no cambiaron).
+  const cacheLeer = () => { try { return JSON.parse(localStorage.getItem(KC) || "{}"); } catch { return {}; } };
+  function cacheGuardar(k, r) {
+    try {
+      const c = cacheLeer(); c[k] = { ...r, guardado: Date.now() };
+      const claves = Object.keys(c).sort((a, b) => c[a].guardado - c[b].guardado);
+      while (claves.length > 300) delete c[claves.shift()];
+      localStorage.setItem(KC, JSON.stringify(c));
+    } catch {}
+  }
+
+  // Termina el AB actual y sigue con el siguiente de la lista.
+  function fin(r) {
+    guardar(K, null);
+    const l = leer(KL) || { cola: [], resultados: [], total: 1 };
+    l.resultados.push(r);
+    if (l.cola.length) {
+      const ab = l.cola.shift();
+      guardar(KL, l);
+      guardar(K, { ab, paso: "filial", t: Date.now() });
+      pintarLote(l);
+      log(`Siguiente: AB ${ab} (${l.resultados.length + 1} de ${l.total})…`);
+      setTimeout(() => { location.href = PANTALLA_OS; }, 800);
+      return;
+    }
+    l.fin = true; l.visto = true; guardar(KL, l); pintarLote(l);
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -139,13 +221,16 @@
     return "";
   }
   const fecha = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  function terminar(e, error) { guardar(K, null); const r = { ab: e.ab, error }; guardar(KR, r); pintar(r); }
+  function terminar(e, error) { fin({ ab: e.ab, os: e.os, error }); }
 
   async function continuar() {
     const e = leer(K);
-    if (!e) { const r = leer(KR); if (r && r.mostrar !== false) { pintar(r); r.mostrar = false; guardar(KR, r); } return; }
+    if (!e) return;
     if (Date.now() - e.t > 10 * 60 * 1000) return terminar(e, "se canceló (más de 10 min).");
-    abrir(); $("#mfv-ab").value = e.ab;
+    abrir();
+    const lote = leer(KL);
+    if (lote && lote.total > 1) pintarLote(lote);
+    $("#mfv-stop").style.display = "inline-block";
     const ruta = location.pathname.toLowerCase();
 
     if (ruta.endsWith(PANTALLA_OS.toLowerCase())) {
@@ -218,14 +303,25 @@
       // Cierra la galería para que no tape el resultado.
       document.querySelectorAll(".ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
       if (!urls.length) { guardar(K, { ...e, paso: "filial" }); location.href = PANTALLA_OS; return; }
+      const base = { ab: e.ab, os: e.os, fecha: datos.fecha, n: urls.length };
+      // Filtro rápido sin IA: muy pocas fotos = OBSERVADA al instante.
+      if (urls.length < MIN_FOTOS) {
+        return fin({ ...base, modelo: "filtro rápido (sin IA)", validacion: { resultado: "OBSERVADA", manual: [],
+          resumen: `Solo tiene ${urls.length} foto(s); el manual pide 11 (12 con MESH). Faltan evidencias.` } });
+      }
+      // Ya revisada antes (misma OS y misma cantidad de fotos): no se gasta IA.
+      const ck = `${e.ab}|${e.os}|${urls.length}`, previo = cacheLeer()[ck];
+      if (previo) {
+        return fin({ ...previo, modelo: `${previo.modelo} · guardado del ${new Date(previo.guardado).toLocaleDateString("es-PE")}` });
+      }
       try {
         const fotos = [];
         for (const u of urls) fotos.push(await achicar(await (await fetch(u, { credentials: "include" })).blob()));
         log(`OS ${e.os}: ${fotos.length} fotos. Revisando con la IA (puede tardar 1–3 min)…`);
         const { v, modelo } = await revisarIA(datos, fotos);
-        guardar(K, null);
-        const r = { ab: e.ab, os: e.os, fecha: datos.fecha, n: fotos.length, validacion: v, modelo, mostrar: true };
-        guardar(KR, r); pintar(r);
+        const r = { ...base, n: fotos.length, validacion: v, modelo };
+        cacheGuardar(ck, r);
+        fin(r);
       } catch (err) {
         terminar(e, `error al revisar: ${err.message || err}`);
       }
@@ -300,7 +396,7 @@ Responde solo con el JSON pedido.`;
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(key)}`);
       const j = await r.json();
-      const malos = ["image", "tts", "audio", "live", "embedding", "thinking", "exp", "omni", "preview", "lite"];
+      const malos = ["image", "tts", "audio", "live", "embedding", "thinking", "exp", "omni", "preview"]; // "lite" queda al final como respaldo
       return (j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
         .map((m) => m.name.split("/")[1]).filter((n) => n.includes("flash") && !malos.some((x) => n.includes(x)))
         .sort((a, b) => (a.includes("lite") - b.includes("lite")) || b.localeCompare(a));
@@ -314,7 +410,7 @@ Responde solo con el JSON pedido.`;
     const cuerpo = JSON.stringify({ contents: [{ role: "user", parts: partes }],
       generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: ESQUEMA } });
     // Primero el que funcionó en las pruebas; luego el "latest" y después los flash disponibles en la clave.
-    const cola = ["gemini-3.6-flash", "gemini-flash-latest"], probados = new Set();
+    const cola = key ? ["gemini-3.6-flash", "gemini-flash-latest"] : [], probados = new Set(); // sin clave de Gemini: directo al respaldo
     const limite = Date.now() + 4 * 60 * 1000; // máx. 4 min con Gemini; después se pasa al respaldo
     let ultimo = "", listados = false;
     while (cola.length && Date.now() < limite) {
@@ -334,7 +430,7 @@ Responde solo con el JSON pedido.`;
       }
       if (!r || [400, 404, 429, 500, 503].includes(r.status) && (r.status !== 400 || /not found|not supported/i.test(await r.clone().text()))) {
         ultimo = `${modelo}: ${r ? r.status : "tiempo agotado"}`;
-        if (!cola.length && !listados) { listados = true; (await modelosDisponibles(key)).filter((m) => !probados.has(m)).slice(0, 4).forEach((m) => cola.push(m)); }
+        if (!cola.length && !listados) { listados = true; (await modelosDisponibles(key)).filter((m) => !probados.has(m)).slice(0, 6).forEach((m) => cola.push(m)); }
         continue;
       }
       if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
