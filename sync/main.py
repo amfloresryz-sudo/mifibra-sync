@@ -205,6 +205,13 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
         tableros["speedtest"] = speedtest.construir(df, links_st or {}, tecnicos, actualizado)
     except Exception as e:  # noqa: BLE001
         print(f"Aviso: no se calculó el tablero de Speed Test: {e}", flush=True)
+    try:  # Áreas de los planos (Google My Maps) para el mapa de Ruteo de Pendientes
+        from . import areas
+        ar = areas.cargar(actualizado)
+        if ar is not None:
+            tableros["areas"] = ar
+    except Exception as e:  # noqa: BLE001
+        print(f"Aviso: no se calcularon las áreas de los planos: {e}", flush=True)
     try:  # Zonificación: todos los planos de cada distrito (catálogo de Lima + planos vistos en las órdenes)
         from . import zonificacion
         tableros["zonificacion"] = zonificacion.actualizar(df, actualizado, tableros)
