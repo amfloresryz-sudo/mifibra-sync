@@ -20,10 +20,10 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: "una (una actualización ahora), turno (cada 20 min durante ~5 h 30 min) o reescribir (reescribe todas las órdenes)"
+        description: "una (una actualización ahora), turno (cada 20 min durante ~5 h 30 min), reescribir (reescribe todas las órdenes) o comentarios (solo escribe en ScordSoft los comentarios de EECC pendientes)"
         default: "una"
         type: choice
-        options: [una, turno, reescribir]
+        options: [una, turno, reescribir, comentarios]
 
 permissions:
   contents: read
@@ -77,6 +77,7 @@ jobs:
           case "$MODO" in
             una)        python -m sync.main; exit $? ;;
             reescribir) python -m sync.main --reescribir-todo; exit $? ;;
+            comentarios) python -m sync.comentarios_scord; exit $? ;;
           esac
           # Turno EN PARALELO: en cada :00, :20 y :40 de Lima se PIDE el reporte a ScordSoft (lo más lento, ~14 min)
           # mientras se procesa el anterior. Así arranca una actualización cada 20 min exactos y cada una llega al
@@ -147,6 +148,9 @@ jobs:
             done
           }
           procesador & pid_proc=$!
+          # Comentarios de las EECC («Mis pendientes») → ScordSoft (Agendamiento de Ordenes · ING. VISITA): mira Supabase
+          # cada minuto y solo abre ScordSoft cuando hay alguno por escribir. Corre aparte: no frena las descargas.
+          ( python -u -m sync.comentarios_scord --vigilar 325 2>&1 | sed -u "s/^/[comentarios] /" ) & pid_com=$!
           pid_desc=""; errores=0
           while :; do
             [ -e "$COLA/ABORTAR" ] && break
@@ -176,6 +180,7 @@ jobs:
           # Cierre: se espera la descarga en curso, se procesa lo que quede y termina el procesador.
           [ -n "$pid_desc" ] && { wait "$pid_desc" || true; }
           touch "$COLA/FIN"; wait "$pid_proc" || true
+          kill "$pid_com" 2>/dev/null || true
           [ -e "$COLA/ABORTAR" ] && exit 1
           [ "$errores" -ge 3 ] && exit 1
           exit 0
