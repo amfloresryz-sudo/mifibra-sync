@@ -275,7 +275,7 @@
         urls = n;
       }
       // Cierra la galería para que no tape el resultado.
-      document.querySelectorAll(".ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
+      document.querySelectorAll("[class*=close-view-img], .ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
       if (!urls.length) { guardar(K, { ...e, paso: "filial", sinDirecto: true }); location.href = PANTALLA_OS; return; }
       recordarOS(e.ab, e.os);
       const ck = `${e.ab}|${e.os}|${urls.length}`, previo = cacheLeer()[ck];
@@ -325,7 +325,7 @@
       if (n.length === urls.length && n.length) quieto++; else quieto = 0;
       urls = n;
     }
-    document.querySelectorAll(".ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
+    document.querySelectorAll("[class*=close-view-img], .ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
     await espera(400);
     return urls;
   }
@@ -406,7 +406,7 @@
       if (dist === null) motivos.push("no hay coordenadas de " + (!cIni ? "la foto de inicio" : "las capturas") + " en SCORD");
       else { okDist = dist <= DIST_MAX_M; motivos.push(`distancia ${dist} m (${okDist ? "≤" : ">"} ${DIST_MAX_M} m)`); }
       if (ia) { okFoto = ia.misma_fachada && ia.confianza >= 60; motivos.push(`fotos: ${ia.misma_fachada ? "misma fachada" : "fachada distinta"} (${ia.confianza}% seguro) – ${ia.motivo}`); }
-      else if (local !== null) { okFoto = local >= 55; motivos.push(`fotos: parecido ${local}% (sin IA)`); }
+      else motivos.push("fotos: la IA no respondió, compáralas a mano" + (local !== null ? ` (parecido automático ${local}%)` : ""));
       const veredicto = okDist === false || okFoto === false ? "INCORRECTO" : okDist && okFoto ? "CORRECTO" : "REVISAR";
       guardar(K, null);
       const r = { tipo: "inicio", ab: e.ab, os: e.os, veredicto, dist, cIni, cCap, local, ia, motivos, uIni: uIni[0], uCap: uCap[0], mostrar: true };
