@@ -77,6 +77,8 @@ td { padding: 8px 4px; border-top: 1px solid var(--borde); vertical-align: middl
 tr:hover td { background: var(--rosa); }
 td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .lnk { background: none; border: 0; padding: 0; font: 700 12px var(--f-disp); color: var(--magenta-txt); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lnk.num { color: #157A4A; } a.co { color: var(--azul); font-variant-numeric: tabular-nums; white-space: nowrap; text-decoration: none; font-size: 12px; } td a.co { display: inline-grid; grid-template-columns: auto auto; column-gap: 3px; align-items: center; line-height: 1.25; text-align: left; }
+td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-column: 2; } .tj a.co::before { content: '📍 '; } a.co:hover { text-decoration: underline; }
 .lnk.num { color: #157A4A; } .pl { color: var(--magenta-txt); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .fcol { margin-left: 2px; width: 16px; height: 18px; display: inline-grid; place-items: center; border-radius: 5px; border: 1px solid transparent; background: none; color: var(--magenta-txt); cursor: pointer; vertical-align: middle; padding: 0; }
 .fcol svg { width: 10px; height: 10px; } .fcol:hover { border-color: var(--magenta); } .fcol.on { background: var(--magenta); color: #fff; }
@@ -270,11 +272,17 @@ const ok = (c, t) => c ? ` class="os-ok" title="${t}"` : '';
 /* Columnas: [título, celda, valor para ordenar, texto para filtrar, verde si coincide con la OS, ancho relativo] */
 const hvDe = (p) => D.vivienda[p.os] || '';
 const hvH = (p) => `<span class="hv" data-hv="${p.os}" title="Marca la vivienda: H = horizontal (casa) · V = vertical (edificio)"><button type="button" data-v="H" class="${hvDe(p) === 'H' ? 'on' : ''}" aria-pressed="${hvDe(p) === 'H'}">H</button><button type="button" data-v="V" class="${hvDe(p) === 'V' ? 'on' : ''}" aria-pressed="${hvDe(p) === 'V'}">V</button></span>`;
+// Coordenadas del AB (las que trae ScordSoft): texto corto y enlace a Google Maps
+const coLimpia = (c) => String(c || '').replace(/\s+/g, '');
+const coTxt = (c) => coLimpia(c).split(',').map(v => { const x = parseFloat(v); return isNaN(x) ? v : x.toFixed(5); }).join(', ');
+const mapaDe = (c) => `https://www.google.com/maps?q=${encodeURIComponent(coLimpia(c))}`;
 const COLS = [
   ['Gestor', (p) => p.ge ? `<span title="${esc(p.ge)}">${esc(p.ge)}</span>` : '<span class="nota">—</span>', (p) => p.ge || '~', (p) => p.ge || '—', null, 7.5],
   ['Zona', (p) => val(p.z), (p) => p.z || '~', (p) => p.z || '—', null, 4.2],
   ['Planta', (p) => p.pl ? `<span class="pl" title="${esc(p.pl)}">${esc(p.pl)}</span>` : '—', (p) => p.pl || '~', (p) => p.pl || '—', null, 5.8],
   ['Distrito', (p) => `<span title="${esc(p.di)}">${esc(corto(p.di))}</span>`, (p) => p.di || '~', (p) => p.di || '—', null, 6.8],
+  ['Coordenadas', (p) => p.co ? `<a class="co" href="${mapaDe(p.co)}" target="_blank" rel="noopener" title="Abrir en Google Maps · ${esc(coTxt(p.co))}">${coTxt(p.co).split(', ').map((v, i, a) => `<span>${esc(v)}${i < a.length - 1 ? ',' : ''}</span>`).join('')}</a>` : '<span class="nota">—</span>',
+    (p) => p.co || '~', (p) => p.co ? 'Con coordenadas' : 'Sin coordenadas', null, 7],
   ['Vivienda', vivB, (p) => vivT(p), vivT, null, 5.2],
   ['H / V', hvH, (p) => hvDe(p) || '~', (p) => hvDe(p) || '(vacío)', null, 4.2],
   ['Seg.', (p) => segB(p.seg), (p) => p.seg || '~', (p) => p.seg || '—', null, 3.6],
@@ -293,7 +301,7 @@ const COLS = [
   ['F. recep', (p) => p.rec ? `${fRec(p.rec)} ${edadB(p)}` : '—', (p) => p.rec || '~', (p) => p.rec ? fRec(p.rec) : '—', null, 8],
   ['', (p) => `<button type="button" class="adj" data-os="${p.os}" data-subir="1" title="Adjuntar evidencia (fotos, PDF o video)" aria-label="Adjuntar evidencia al AB ${p.ab}">📎</button>`, null, null, null, 2.6] ];
 const colFil = {};   // columna → Set de valores permitidos
-let ord = { c: 19, dir: 1 };   // F. recep: los más antiguos primero
+let ord = { c: COLS.findIndex(c => c[0] === 'F. recep'), dir: 1 };   // F. recep: los más antiguos primero
 const base = () => D.pend.filter(p => (!F.fil || p.filial === F.fil) && (!F.di || p.di === F.di)
   && (!F.q || [p.ab, p.os, p.di, p.tec, p.plano, p.ge].some(v => String(v ?? '').toUpperCase().includes(F.q))));
 const colOk = (p, sin = -1) => Object.entries(colFil).every(([c, S]) => +c === sin || S.has(COLS[c][3](p)));
@@ -338,6 +346,7 @@ function pintar() {
       <div class="tj-top"><div><button type="button" class="ab" data-os="${p.os}">AB ${p.ab}</button><span class="os">OS ${p.os}</span></div><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></div>
       <div class="tj-l"><b>${val(p.di)}</b> · ${vivB(p)} · ${segB(p.seg)} · ${esc(p.pl || '')}</div>
       <div class="tj-l">Vivienda (marca tú): ${hvH(p)}</div>
+      <div class="tj-l">Coordenadas: ${p.co ? `<a class="co" href="${mapaDe(p.co)}" target="_blank" rel="noopener">${esc(coTxt(p.co))} · Ver en mapa</a>` : '—'}</div>
       <div class="tj-l">Agenda: <span class="b ${EST_B[estAg(p)]}">${EST_TXT[estAg(p)]}</span> ${estAg(p) === 'SIN AGENDA' ? '' : agenda(p)}</div>
       <div class="tj-l">Técnico: ${val(p.tec)} · <span class="b ${p.ges ? 'ges' : 'sges'}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></div>
       <div class="tj-top"><div>${edadB(p)} ${evB(p)}</div><button type="button" class="btn pri" data-os="${p.os}" data-subir="1">Adjuntar</button></div></div>`).join('')
