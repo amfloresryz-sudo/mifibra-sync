@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
   if (new URL(req.url, 'http://x').searchParams.get('areas')) {
     if (!puedeModulo(req, 'instalaciones', 'zonificacion', 'fftt')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
     try { const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.areas');
-      return responder(res, 200, datos.length ? { ...datos[0].datos, actualizado: datos[0].actualizado } : { areas: [] }, 300); }
+      return responder(res, 200, datos.length ? { ...datos[0].datos, actualizado: datos[0].actualizado } : { areas: [] }, datos.length ? 300 : 0); }   // sin áreas no se guarda en caché
     catch (e) { return responder(res, 500, { error: e.message }); }
   }
   if (!puedeModulo(req, 'zonificacion', 'fftt')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
