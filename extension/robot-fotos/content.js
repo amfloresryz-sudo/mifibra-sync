@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.5
+// @version      1.6
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -35,11 +35,12 @@
   ];
 
   // ------------------------------------------------------------------ estado (sobrevive a las recargas de SCORD)
-  const K = "mfv-estado", KR = "mfv-resultado", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key", KC = "mfv-cache";
+  const K = "mfv-estado", KR = "mfv-resultado", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key", KC = "mfv-cache", KSH = "mfv-sheets-url";
   const leer = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch { return null; } };
   const guardar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const clave = () => { try { return localStorage.getItem(KKEY) || ""; } catch { return ""; } };
   const claveOR = () => { try { return localStorage.getItem(KOR) || ""; } catch { return ""; } };
+  const urlSheets = () => { try { return localStorage.getItem(KSH) || ""; } catch { return ""; } };
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   const $ = (s) => document.querySelector(s);
 
@@ -72,7 +73,9 @@
         Clave de Gemini (se guarda solo en este Chrome):<br>
         <input id="mfv-key" type="password" style="width:70%" placeholder="AIza…"><br>
         <span style="display:block;margin-top:6px">Respaldo gratis OpenRouter (opcional, se usa si Gemini está saturado):</span>
-        <input id="mfv-keyor" type="password" style="width:70%" placeholder="sk-or-…">
+        <input id="mfv-keyor" type="password" style="width:70%" placeholder="sk-or-…"><br>
+        <span style="display:block;margin-top:6px">Guardar resultados en Google Sheets (opcional, URL de la aplicación web):</span>
+        <input id="mfv-sheets" type="text" style="width:70%" placeholder="https://script.google.com/macros/s/…/exec">
         <button class="acc" id="mfv-keyok">Guardar</button>
         <div id="mfv-estado-claves" style="color:#64748b;margin-top:4px"></div>
       </div>
@@ -87,13 +90,14 @@
   btn.onclick = () => (panel.style.display === "block" ? (panel.style.display = "none") : abrir());
   $("#mfv-x").onclick = () => (panel.style.display = "none");
   const estadoClaves = () => { $("#mfv-estado-claves").textContent =
-    `Gemini: ${clave() ? "guardada ✓" : "falta"} · OpenRouter: ${claveOR() ? "guardada ✓" : "no configurada"}`; };
+    `Gemini: ${clave() ? "guardada ✓" : "falta"} · OpenRouter: ${claveOR() ? "guardada ✓" : "no configurada"} · Google Sheets: ${urlSheets() ? "conectado ✓" : "no configurado"}`; };
   $("#mfv-cfg").onclick = () => { const d = $("#mfv-clave"); d.style.display = d.style.display === "none" ? "block" : "none"; estadoClaves(); };
   $("#mfv-keyok").onclick = () => {
-    const v = $("#mfv-key").value.trim(), o = $("#mfv-keyor").value.trim();
-    if (!v && !o) return;
-    try { if (v) localStorage.setItem(KKEY, v); if (o) localStorage.setItem(KOR, o); } catch {}
-    $("#mfv-key").value = ""; $("#mfv-keyor").value = ""; estadoClaves(); $("#mfv-clave").style.display = "none"; log("Claves guardadas.");
+    const v = $("#mfv-key").value.trim(), o = $("#mfv-keyor").value.trim(), sh = $("#mfv-sheets").value.trim();
+    if (!v && !o && !sh) return;
+    if (sh && !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(sh)) return log("La URL de Google Sheets debe ser la de la aplicación web (termina en /exec).");
+    try { if (v) localStorage.setItem(KKEY, v); if (o) localStorage.setItem(KOR, o); if (sh) localStorage.setItem(KSH, sh); } catch {}
+    $("#mfv-key").value = ""; $("#mfv-keyor").value = ""; $("#mfv-sheets").value = ""; estadoClaves(); $("#mfv-clave").style.display = "none"; log("Claves guardadas.");
   };
   $("#mfv-go").onclick = () => {
     const ab = ($("#mfv-ab").value || "").replace(/\D/g, "");
@@ -123,6 +127,25 @@
       <table><tr><th>#</th><th>Foto del manual</th><th>Estado</th><th>Fotos</th><th>Error</th></tr>${filas}</table>`;
     log(`Revisado con ${res.modelo || "IA"}.`);
   }
+  // Envía el resultado a la hoja de Google Sheets del usuario (una fila por validación nueva)
+  async function enviarSheets(r) {
+    const url = urlSheets(); if (!url || !r || r.error) return "";
+    const v = r.validacion || {};
+    const estados = {}; (v.manual || []).forEach((m) => { estados["F" + m.item] = m.estado; });
+    const usuario = ((document.querySelector("a[href*='CambioClaveEmpleado']") || {}).textContent || "").trim();
+    const fila = {
+      fecha_revision: new Date().toLocaleString("es-PE"), ab: r.ab, os: r.os, fecha_ejecucion: r.fecha || "", tecnico: r.tecnico || "",
+      n_fotos: r.n, resultado: v.resultado || "", perdida_db: v.perdida_db ?? "",
+      errores: (v.manual || []).filter((m) => m.estado === "ERROR" || m.estado === "FALTA").map((m) => `Foto ${m.item} ${m.estado}: ${m.error}`).join(" | "),
+      resumen: v.resumen || "", ia: r.modelo || "", revisado_por: usuario, ...estados,
+    };
+    try {
+      // text/plain evita el bloqueo del navegador; Apps Script lo recibe igual
+      await fetch(url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(fila) });
+      return " · Enviado a Google Sheets ✓";
+    } catch { return " · No se pudo enviar a Google Sheets"; }
+  }
+
   // Si la misma OS con las mismas fotos ya se revisó, se muestra al instante (sin volver a usar la IA).
   const cacheLeer = () => { try { return JSON.parse(localStorage.getItem(KC) || "{}"); } catch { return {}; } };
   function cacheGuardar(k, r) {
@@ -260,9 +283,11 @@
         log(`OS ${e.os}: ${fotos.length} fotos. Revisando con la IA (puede tardar 1–3 min)…`);
         const { v, modelo } = await revisarIA(datos, fotos);
         guardar(K, null);
-        const r = { ab: e.ab, os: e.os, fecha: datos.fecha, n: fotos.length, validacion: v, modelo, mostrar: true };
+        const r = { ab: e.ab, os: e.os, fecha: datos.fecha, tecnico: datos.tecnico, n: fotos.length, validacion: v, modelo, mostrar: true };
         cacheGuardar(ck, { ...r, mostrar: undefined });
         guardar(KR, r); pintar(r);
+        const env = await enviarSheets(r);
+        if (env) log(`Revisado con ${modelo}.${env}`);
       } catch (err) {
         terminar(e, `error al revisar: ${err.message || err}`);
       }
