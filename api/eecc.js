@@ -10,6 +10,9 @@
 // POST ?accion=firmar    {os, nombre, tipo, bytes}                    → enlace para subir el archivo directo a Supabase
 // POST ?accion=registrar {os, ruta, nombre, tipo, bytes, comentario} → guarda la evidencia (después de subirla)
 // POST ?accion=vivienda  {os, valor: 'H'|'V'|''}                     → vivienda marcada a mano por la EECC (vacío = la borra)
+// GET  ?accion=comentarios&os=N          → comentarios de la EECC para esa OS (con su estado en ScordSoft)
+// GET  ?accion=con_comentario&filial=F   → { os: cantidad } de las OS con comentario de EECC (marca 💬 en Pendientes)
+// POST ?accion=comentar  {os, texto}                                  → comentario de la EECC (lo ve Mi Fibra y el robot lo escribe en ScordSoft)
 // Las evidencias se borran solas a los 30 días (archivo y registro).
 const crypto = require('crypto');
 const { consultar, pedir, guardar, autorizado, responder, permitidas, puedeModulo, FILIALES } = require('./_supabase');
@@ -95,6 +98,17 @@ async function podar() {
   await pedir(`evidencias?id=in.(${datos.map(x => x.id).join(',')})`, 'DELETE');
 }
 
+// Comentarios de la EECC: los de la casilla y los que acompañan a una evidencia (el mismo texto subido con
+// varios archivos se guarda una sola vez).
+const COLS_COM = 'id,os,ab,eecc,usuario,nombre_usuario,texto,origen,creado_en,scord_estado,scord_en';
+async function nuevoComentario(p, eecc, u, txt, origen) {
+  const desde = new Date(Date.now() - 15 * 60e3).toISOString();
+  const { datos } = await consultar(`eecc_comentarios?select=id&os=eq.${p.os}&texto=eq.${encodeURIComponent(txt)}&creado_en=gte.${desde}&limit=1`);
+  if (datos.length) return false;
+  await pedir('eecc_comentarios', 'POST', [{ os: p.os, ab: p.ab || null, filial: p.filial, eecc, usuario: u.u, nombre_usuario: u.n || u.u, texto: txt, origen }]);
+  return true;
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = ''; for await (const c of req) { s += c; if (s.length > 20000) throw new Error('Cuerpo demasiado grande'); }
@@ -135,6 +149,31 @@ module.exports = async (req, res) => {
       const ev = {}; datos.forEach(x => { ev[x.os] = (ev[x.os] || 0) + 1; });
       return responder(res, 200, { evidencias: ev });
     }
+    if (req.method === 'GET' && accion === 'con_comentario') {
+      if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
+      const f0 = String(q.get('filial') || '').toUpperCase();
+      const pedidas = f0 === 'TODAS' ? filiales : f0.split(',').flatMap(f => f === 'PROVINCIAS' ? filialesReales('PROVINCIAS') : [f]);
+      const fs = pedidas.filter(f => filiales.includes(f)); if (!fs.length) return responder(res, 200, { comentarios: {} });
+      const desde = new Date(Date.now() - 60 * 864e5).toISOString();
+      const { datos } = await consultar(`eecc_comentarios?select=os&filial=in.(${fs.map(encodeURIComponent).join(',')})&creado_en=gte.${desde}`);
+      const c = {}; datos.forEach(x => { c[x.os] = (c[x.os] || 0) + 1; });
+      return responder(res, 200, { comentarios: c }, 60);
+    }
+    if (req.method === 'GET' && accion === 'comentarios') {
+      const os = parseInt(q.get('os'), 10); if (!os) return responder(res, 400, { error: 'OS no válida' });
+      if (esEecc && !(await pendientesDe(eecc, filiales)).pend.some(p => p.os === os)) return responder(res, 403, { error: 'Esa OS no es de tu EECC.' });
+      const { datos } = await consultar(`eecc_comentarios?select=${COLS_COM}&os=eq.${os}&order=creado_en.desc&limit=50`);
+      return responder(res, 200, { comentarios: datos.map(x => ({ ...x, texto: sinTel(x.texto) })) });
+    }
+    if (req.method === 'POST' && accion === 'comentar') {
+      if (!esEecc) return responder(res, 403, { error: 'Solo los usuarios de EECC escriben aquí.' });
+      const b = await leerCuerpo(req), os = parseInt(b.os, 10), txt = texto(b.texto, 500);
+      if (txt.length < 3) return responder(res, 400, { error: 'Escribe el comentario.' });
+      const p = (await pendientesDe(eecc, filiales)).pend.find(x => x.os === os);
+      if (!p) return responder(res, 403, { error: 'Esa OS no es de tu EECC o ya no está pendiente.' });
+      const nuevo = await nuevoComentario(p, eecc, u, txt, 'casilla');
+      return responder(res, 200, { ok: true, repetido: !nuevo });
+    }
     if (req.method === 'GET' && accion === 'evidencias') {
       const os = parseInt(q.get('os'), 10); if (!os) return responder(res, 400, { error: 'OS no válida' });
       if (esEecc && !(await pendientesDe(eecc, filiales)).pend.some(p => p.os === os)) return responder(res, 403, { error: 'Esa OS no es de tu EECC.' });
@@ -170,6 +209,7 @@ module.exports = async (req, res) => {
       if (!new RegExp(`^${carpeta(p.filial)}/${os}/\\d+-[0-9a-f]{8}\\.${t[0]}$`).test(ruta)) return responder(res, 400, { error: 'Ruta de archivo no válida.' });
       await pedir('evidencias', 'POST', [{ os, ab: p.ab || null, filial: p.filial, eecc, usuario: u.u, nombre_usuario: u.n || u.u, nombre: texto(b.nombre, 120) || 'archivo',
         tipo, bytes, comentario: texto(b.comentario, 500) || null, ruta }]);
+      const com = texto(b.comentario, 500); if (com.length >= 3) await nuevoComentario(p, eecc, u, com, 'evidencia').catch(() => {});
       CACHE.clear();
       if (Math.random() < 0.2) podar().catch(() => {});
       return responder(res, 200, { ok: true });
