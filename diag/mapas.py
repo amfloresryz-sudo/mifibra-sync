@@ -1,5 +1,7 @@
 """Diagnóstico: qué geometrías traen los mapas de planta (solo conteos y nombres de carpetas; sin coordenadas)."""
-import collections, xml.etree.ElementTree as ET, requests
+import collections, os, xml.etree.ElementTree as ET, requests
+OUT = []
+def print(*a, **k): OUT.append(" ".join(str(x) for x in a))
 from sync import cajas
 t = cajas._tag
 for mid in cajas._mapas():
@@ -21,3 +23,6 @@ for mid in cajas._mapas():
     rec(doc, "(raíz)")
     print(f"=== Mapa «{nd}» ({len(r.content)//1024} KB)")
     for (c, g), v in sorted(cnt.items()): print(f"  {c!r:40} {g:14} {v:6} figuras · {pts[(c, g)]:7} vértices · ej: {ej.get((c, g), [])}")
+
+u = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/ajustes?on_conflict=clave"; k = os.environ["SUPABASE_SERVICE_KEY"]
+requests.post(u, json={"clave": "diag:mapas", "datos": {"t": OUT}}, headers={"apikey": k, "Authorization": f"Bearer {k}", "Prefer": "resolution=merge-duplicates,return=minimal"}, timeout=60).raise_for_status()
