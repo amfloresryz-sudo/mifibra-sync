@@ -161,7 +161,8 @@ body.rut-on { overflow: hidden; }
 .rut-eh { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; } .rut-eh span { color: var(--fg-3); font-size: 11.5px; }
 .rut-tr { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: 12px; } .rut-tr.off { opacity: .45; }
 .rut-tr input { accent-color: var(--magenta); } .rut-tr i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.rut-tr .lnk { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rut-tr > span { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
+.rut-tr .lnk { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rut-tr > span { display: flex; gap: 2px; flex-wrap: nowrap; justify-content: flex-end; }
+.rut-mas { font: 700 10.5px var(--f-disp); color: var(--fg-3); align-self: center; }
 .rut-mini { font: 800 9.5px var(--f-disp); min-width: 16px; height: 16px; border: 2px solid; border-radius: 50%; display: inline-grid; place-items: center; }
 .rut-pin span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); color: #fff; font: 800 11px/20px var(--f-disp, sans-serif); display: grid; place-items: center; }
 .rut-pin span.ed { border-color: #111; border-style: dashed; } .rut-pin span.sel { transform: scale(1.35); border-color: #FFD400; border-width: 3px; }
@@ -3371,7 +3372,7 @@ function rutDias(B) {
   B.forEach(p => { if (estAg(p) === 'SIN AGENDA' || !p.fp) sa++; else if (p.fp < hoy) atr++; else c[p.fp] = (c[p.fp] || 0) + 1; });
   const man = new Date(hoy + 'T12:00:00'); man.setDate(man.getDate() + 1); const ma = man.toISOString().slice(0, 10);
   const ops = Object.keys(c).sort().map(f => [f, `${f === hoy ? 'Hoy' : f === ma ? 'Mañana' : 'F. AG'} · ${fIso(f)} (${c[f]})`]);
-  if (atr) ops.push(['ATR', `Atrasados: F. AG antes de hoy (${atr})`]); if (sa) ops.push(['SA', `Sin agenda (${sa})`]); ops.push(['TODOS', `Todos (${B.length})`]);
+  if (atr) ops.push(['ATR', `Atrasados: F. AG antes de hoy (${atr})`]); if (sa) ops.push(['SA', `Sin agenda (${sa})`]); ops.unshift(['TODOS', `Todos los pendientes (${B.length})`]);
   return { ops, hoy, ma, c };
 }
 const rutDiaOk = (p, d, hoy) => d === 'TODOS' || (d === 'SA' ? (estAg(p) === 'SIN AGENDA' || !p.fp) : d === 'ATR' ? (estAg(p) !== 'SIN AGENDA' && p.fp && p.fp < hoy) : (estAg(p) !== 'SIN AGENDA' && p.fp === d));
@@ -3388,7 +3389,7 @@ async function abrirRuteo() {
     document.body.appendChild(ov); }
   ov.hidden = false; document.body.classList.add('rut-on');
   const { ops, hoy, ma, c } = rutDias(rutBase());
-  if (!RUT.dia || !ops.some(o => o[0] === RUT.dia)) RUT.dia = c[hoy] ? hoy : c[ma] ? ma : (ops[0] || ['TODOS'])[0];
+  if (!RUT.dia || !ops.some(o => o[0] === RUT.dia)) RUT.dia = 'TODOS';   // por defecto todos los pendientes; el día se elige arriba
   $('rut-dia').innerHTML = ops.map(([v, t]) => `<option value="${v}"${v === RUT.dia ? ' selected' : ''}>${esc(t)}</option>`).join('');
   RUT.ajustado = false; RUT.sel = null;
   await rutCargarMapa(); pintarRuteo(); $('rut-cerrar').focus();
@@ -3401,7 +3402,7 @@ async function rutCargarMapa() {
     try { await rutJs('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'); } catch { $('rut-mapa').textContent = 'No se pudo cargar el mapa. Revisa tu conexión.'; RUT.cargando = false; return; }
     RUT.cargando = false; }
   if (!window.L) return;
-  if (!RUT.mapa) { RUT.mapa = L.map('rut-mapa', { zoomControl: true }).setView([-12.06, -77.03], 11);
+  if (!RUT.mapa) { RUT.mapa = L.map('rut-mapa', { zoomControl: true, preferCanvas: true }).setView([-12.06, -77.03], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(RUT.mapa); }
   setTimeout(() => RUT.mapa.invalidateSize(), 60);
   if (!RUT.areas) { try { const r = await fetch('/api/zonificacion?areas=1', { headers: { 'x-portal-token': tokenPortal() } }); RUT.areas = r.ok ? ((await r.json()).areas || []) : []; } catch { RUT.areas = []; } rutPintarAreas(); }
@@ -3428,12 +3429,14 @@ function pintarRuteo() {
   // Leyenda por EECC
   const porE = {}; tecs.forEach(t => (porE[t.ec] || (porE[t.ec] = [])).push(t));
   $('rut-ley').innerHTML = `<h3 class="rut-h">Técnicos por EECC</h3>` + (Object.keys(porE).map(e => `<div class="rut-eg"><div class="rut-eh"><b>${esc(e)}</b><span>${porE[e].filter(t => t.tec !== 'SIN TÉCNICO').length} téc. · ${porE[e].reduce((a, t) => a + t.L.length, 0)} AB</span></div>`
-    + porE[e].map(t => `<div class="rut-tr${RUT.ocultos.has(t.k) ? ' off' : ''}"><input type="checkbox" data-rut-ver="${esc(t.k)}" ${RUT.ocultos.has(t.k) ? '' : 'checked'} aria-label="Mostrar ${esc(t.tec)}"><i style="background:${t.col}"></i><button type="button" class="lnk" data-rut-tec="${esc(t.k)}" title="Ver sus AB en el mapa">${esc(tecCorto(t.tec) || t.tec)}</button><span>${t.L.map(p => `<b class="rut-mini" style="border-color:${t.col}">${rutLbl(p)}</b>`).join('')}</span></div>`).join('') + '</div>').join('') || '<p class="nota">No hay AB pendientes para este día con estos filtros.</p>');
+    + porE[e].map(t => `<div class="rut-tr${RUT.ocultos.has(t.k) ? ' off' : ''}"><input type="checkbox" data-rut-ver="${esc(t.k)}" ${RUT.ocultos.has(t.k) ? '' : 'checked'} aria-label="Mostrar ${esc(t.tec)}"><i style="background:${t.col}"></i><button type="button" class="lnk" data-rut-tec="${esc(t.k)}" title="Ver sus AB en el mapa">${esc(tecCorto(t.tec) || t.tec)}</button><span>${t.L.slice(0, 8).map(p => `<b class="rut-mini" style="border-color:${t.col}">${rutLbl(p)}</b>`).join('')}${t.L.length > 8 ? `<small class="rut-mas">+${t.L.length - 8}</small>` : ''}</span></div>`).join('') + '</div>').join('') || '<p class="nota">No hay AB pendientes para este día con estos filtros.</p>');
   RUT.T = T;
   if (!RUT.mapa) return;
   if (RUT.capa) RUT.capa.remove(); RUT.capa = L.layerGroup().addTo(RUT.mapa); const todos = [];
   tecs.forEach(t => { if (RUT.ocultos.has(t.k)) return;
-    if ($('rut-rutas').checked && t.tec !== 'SIN TÉCNICO' && t.pts.length > 1) L.polyline(t.pts, { color: t.col, weight: 3, opacity: .75, dashArray: '7 6' }).addTo(RUT.capa);
+    if ($('rut-rutas').checked && t.tec !== 'SIN TÉCNICO') {   // la ruta une solo los AB del mismo día (F. AG), en el orden de la franja
+      const pd = {}; t.L.forEach(p => { const c = rutCoord(p.co); if (c && p.fp && estAg(p) !== 'SIN AGENDA') (pd[p.fp] || (pd[p.fp] = [])).push(c); });
+      Object.values(pd).forEach(v => { if (v.length > 1) L.polyline(v, { color: t.col, weight: 3, opacity: .75, dashArray: '7 6' }).addTo(RUT.capa); }); }
     t.L.forEach(p => { const c = rutCoord(p.co); if (!c) return; todos.push(c);
       const ed = !!rutAj(p), sel = RUT.sel === p.os;
       const ic = L.divIcon({ className: 'rut-pin', html: `<span class="${sel ? 'sel' : ''}${ed ? ' ed' : ''}" style="background:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
