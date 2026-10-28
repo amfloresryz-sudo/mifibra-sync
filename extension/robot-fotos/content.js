@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.6
+// @version      1.7
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -17,6 +17,7 @@
   const TIPO = "INSTALACION SERVICIO INTERNET";
   const PERDIDA_MAX_DB = 1.0;   // foto 2: pérdida máxima entre caja y cliente
   const DIAS_TOLERANCIA = 1;    // fotos del día anterior son válidas
+  const DIST_MAX_M = 20;        // inicio vs 1ra foto: distancia máxima permitida entre coordenadas (metros)
   const LADO_MAX = 1280;        // px: se achican las fotos antes de enviarlas a la IA (más liviano = respuesta más rápida)
 
   const MANUAL = [
@@ -80,7 +81,8 @@
         <div id="mfv-estado-claves" style="color:#64748b;margin-top:4px"></div>
       </div>
       <div>Nº de abonado: <input id="mfv-ab" style="width:120px" inputmode="numeric">
-        <button class="acc" id="mfv-go">Validar</button></div>
+        <button class="acc" id="mfv-go">Validar</button>
+        <button class="acc" id="mfv-go2" style="background:#2563eb" title="Compara la foto de inicio (Evidencia inicio OS APP) con la 1ra foto de las capturas: coordenadas (≤ 20 m) y parecido">📍 Inicio vs 1ra foto</button></div>
       <div id="mfv-log"></div>
       <div id="mfv-res"></div>
     </div>`;
@@ -99,15 +101,17 @@
     try { if (v) localStorage.setItem(KKEY, v); if (o) localStorage.setItem(KOR, o); if (sh) localStorage.setItem(KSH, sh); } catch {}
     $("#mfv-key").value = ""; $("#mfv-keyor").value = ""; $("#mfv-sheets").value = ""; estadoClaves(); $("#mfv-clave").style.display = "none"; log("Claves guardadas.");
   };
-  $("#mfv-go").onclick = () => {
+  const iniciar = (modo) => {
     const ab = ($("#mfv-ab").value || "").replace(/\D/g, "");
     if (!ab) return log("Escribe el Nº de abonado.");
-    if (!clave()) { $("#mfv-clave").style.display = "block"; return log("Primero guarda la clave de Gemini."); }
+    if (!clave() && modo !== "inicio") { $("#mfv-clave").style.display = "block"; return log("Primero guarda la clave de Gemini."); }
     guardar(KR, null);
-    guardar(K, { ab, paso: "filial", t: Date.now() });
+    guardar(K, { ab, modo, paso: "filial", t: Date.now() });
     log(`Buscando AB ${ab}…`);
     location.href = PANTALLA_OS;
   };
+  $("#mfv-go").onclick = () => iniciar("fotos");
+  $("#mfv-go2").onclick = () => iniciar("inicio");
   $("#mfv-ab").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#mfv-go").click(); } });
 
   // ------------------------------------------------------------------ resultado
@@ -115,6 +119,7 @@
     abrir();
     if (res.ab) $("#mfv-ab").value = res.ab;
     if (res.error) { $("#mfv-res").innerHTML = `<p class="mfv-ERROR">AB ${res.ab}: ${esc(res.error)}</p>`; log(""); return; }
+    if (res.tipo === "inicio") return pintarInicio(res);
     const v = res.validacion || {};
     const filas = (v.manual || []).map((m) => `<tr><td>${m.item}</td><td>${esc(m.nombre)}</td>
       <td class="mfv-${m.estado === "NO APLICA" ? "NO" : m.estado}">${m.estado}</td>
@@ -251,6 +256,8 @@
       return;
     }
 
+    if (e.paso === "fotos" && e.modo === "inicio") return revisarInicio(e);
+
     if (e.paso === "fotos") {
       const datos = {
         ab: e.ab, os: e.os, dir: e.dir,
@@ -292,6 +299,140 @@
         terminar(e, `error al revisar: ${err.message || err}`);
       }
     }
+  }
+
+  // ------------------------------------------------------------------ 📍 INICIO vs 1RA FOTO
+  // Distancia en metros entre dos coordenadas (fórmula de haversine)
+  function metros(a, b) {
+    const R = 6371000, rad = (x) => (x * Math.PI) / 180;
+    const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  const coord = (idLat, idLon) => {
+    const la = parseFloat(($(idLat) || {}).value), lo = parseFloat(($(idLon) || {}).value);
+    return isFinite(la) && isFinite(lo) && la !== 0 && lo !== 0 ? { lat: la, lon: lo } : null;
+  };
+
+  // Abre una galería de SCORD y devuelve las URLs de sus fotos (en orden)
+  async function urlsDeGaleria(boton) {
+    const antes = performance.getEntriesByType("resource").length;
+    boton.click();
+    let urls = [], quieto = 0;
+    for (let i = 0; i < 100 && quieto < 5; i++) {
+      await espera(300);
+      const n = [...new Set(performance.getEntriesByType("resource").slice(antes).map((x) => x.name).filter((u) => /downloadpageOS\.aspx/i.test(u)))];
+      if (n.length === urls.length && n.length) quieto++; else quieto = 0;
+      urls = n;
+    }
+    document.querySelectorAll(".ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
+    await espera(400);
+    return urls;
+  }
+
+  // Parecido sin IA: huella de la imagen (gradientes) + colores. 0–100 %.
+  function huella(b64) {
+    return new Promise((ok) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas"); c.width = 17; c.height = 16;
+        const g = c.getContext("2d"); g.drawImage(img, 0, 0, 17, 16);
+        const d = g.getImageData(0, 0, 17, 16).data;
+        const gris = [], hist = new Array(48).fill(0);
+        for (let i = 0; i < 17 * 16; i++) {
+          const r = d[i * 4], v = d[i * 4 + 1], a = d[i * 4 + 2];
+          gris.push(0.299 * r + 0.587 * v + 0.114 * a);
+          hist[r >> 4]++; hist[16 + (v >> 4)]++; hist[32 + (a >> 4)]++;
+        }
+        const bits = [];
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) bits.push(gris[y * 17 + x] > gris[y * 17 + x + 1] ? 1 : 0);
+        ok({ bits, hist });
+      };
+      img.onerror = () => ok(null);
+      img.src = "data:image/jpeg;base64," + b64;
+    });
+  }
+  function parecido(h1, h2) {
+    if (!h1 || !h2) return null;
+    const ham = h1.bits.reduce((t, b, i) => t + (b !== h2.bits[i] ? 1 : 0), 0);
+    const simForma = 1 - ham / h1.bits.length;
+    const n1 = h1.hist.reduce((a, b) => a + b, 0), n2 = h2.hist.reduce((a, b) => a + b, 0);
+    const simColor = h1.hist.reduce((t, v, i) => t + Math.min(v / n1, h2.hist[i] / n2), 0) / 3;
+    return Math.round(((simForma - 0.5) / 0.5 * 0.5 + simColor * 0.5) * 100);
+  }
+
+  const ESQ_INI = { type: "OBJECT", properties: {
+    misma_fachada: { type: "BOOLEAN" }, confianza: { type: "INTEGER" }, motivo: { type: "STRING" } },
+    required: ["misma_fachada", "confianza", "motivo"] };
+
+  async function compararConIA(b64a, b64b) {
+    const key = clave(); if (!key) return null;
+    const cuerpo = { contents: [{ role: "user", parts: [
+      { text: "Foto A: foto de INICIO de la visita (tomada por la app al llegar). Foto B: primera foto de las evidencias del técnico (fachada). " +
+        "¿Muestran la MISMA fachada / el mismo inmueble? Ignora sellos de fecha, mapas pequeños, logos y diferencias de encuadre, zoom, luz o puerta abierta/cerrada. " +
+        "Fíjate en número de puerta, rejas, colores, ventanas, letreros. Responde en español; motivo en una frase corta." },
+      { text: "Foto A:" }, { inline_data: { mime_type: "image/jpeg", data: b64a } },
+      { text: "Foto B:" }, { inline_data: { mime_type: "image/jpeg", data: b64b } }] }],
+      generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: ESQ_INI } };
+    try {
+      const { v, modelo } = await carrera(["gemini-3.6-flash", "gemini-flash-latest"], (m, senal) => llamarGemini(m, key, cuerpo, senal, true));
+      return { ...v, modelo };
+    } catch { return null; }
+  }
+
+  async function revisarInicio(e) {
+    const bIni = $("#btnverimagenFachada_tecnico"), bCap = $("#btnverimagen_tecnico");
+    if (!bIni || !bCap) {
+      if (/Ejecucion/i.test(location.pathname)) { guardar(K, { ...e, paso: "filial", sinDirecto: true }); location.href = PANTALLA_OS; }
+      return;
+    }
+    try {
+      const cIni = coord("#MainContent_ViewImageOServicio2_txtLatitudFachada", "#MainContent_ViewImageOServicio2_txtLongitudFachada");
+      const cCap = coord("#MainContent_txtLatitud", "#MainContent_txtLongitud");
+      log(`OS ${e.os}: descargando foto de inicio y 1ra foto…`);
+      const uIni = await urlsDeGaleria(bIni);
+      const uCap = await urlsDeGaleria(bCap);
+      if (!uIni.length) return terminar(e, `la OS ${e.os} no tiene foto de inicio.`);
+      if (!uCap.length) return terminar(e, `la OS ${e.os} no tiene capturas del técnico.`);
+      recordarOS(e.ab, e.os);
+      const [fIni, fCap] = await Promise.all([uIni[0], uCap[0]].map(async (u) => achicar(await (await fetch(u, { credentials: "include" })).blob())));
+      const dist = cIni && cCap ? Math.round(metros(cIni, cCap) * 10) / 10 : null;
+      const local = parecido(await huella(fIni), await huella(fCap));
+      log(`OS ${e.os}: comparando las fotos…`);
+      const ia = await compararConIA(fIni, fCap);
+      // Decisión
+      const motivos = [];
+      let okDist = null, okFoto = null;
+      if (dist === null) motivos.push("no hay coordenadas de " + (!cIni ? "la foto de inicio" : "las capturas") + " en SCORD");
+      else { okDist = dist <= DIST_MAX_M; motivos.push(`distancia ${dist} m (${okDist ? "≤" : ">"} ${DIST_MAX_M} m)`); }
+      if (ia) { okFoto = ia.misma_fachada && ia.confianza >= 60; motivos.push(`fotos: ${ia.misma_fachada ? "misma fachada" : "fachada distinta"} (${ia.confianza}% seguro) – ${ia.motivo}`); }
+      else if (local !== null) { okFoto = local >= 55; motivos.push(`fotos: parecido ${local}% (sin IA)`); }
+      const veredicto = okDist === false || okFoto === false ? "INCORRECTO" : okDist && okFoto ? "CORRECTO" : "REVISAR";
+      guardar(K, null);
+      const r = { tipo: "inicio", ab: e.ab, os: e.os, veredicto, dist, cIni, cCap, local, ia, motivos, uIni: uIni[0], uCap: uCap[0], mostrar: true };
+      guardar(KR, r); pintar(r);
+    } catch (err) { terminar(e, `error al comparar: ${err.message || err}`); }
+  }
+
+  function pintarInicio(r) {
+    const color = r.veredicto === "CORRECTO" ? "mfv-OK" : r.veredicto === "INCORRECTO" ? "mfv-ERROR" : "mfv-FALTA";
+    const icono = r.veredicto === "CORRECTO" ? "✅" : r.veredicto === "INCORRECTO" ? "❌" : "⚠️";
+    const c = (x) => x ? `${x.lat.toFixed(6)}, ${x.lon.toFixed(6)}` : "—";
+    $("#mfv-res").innerHTML = `
+      <h3 style="margin:10px 0 4px">AB ${r.ab} · OS ${esc(r.os || "")} — <span class="${color}">${icono} ${r.veredicto}</span></h3>
+      <div style="margin:6px 0">Foto de inicio vs 1ra foto de las capturas</div>
+      <table><tr><th></th><th>Foto de inicio</th><th>1ra foto (capturas)</th></tr>
+        <tr><td>Coordenadas</td><td>${c(r.cIni)}</td><td>${c(r.cCap)}</td></tr>
+        <tr><td>Foto</td><td><img src="${r.uIni}" style="max-width:150px;max-height:180px"></td><td><img src="${r.uCap}" style="max-width:150px;max-height:180px"></td></tr></table>
+      <ul style="margin:8px 0 0 18px;padding:0">${r.motivos.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>
+      <div style="color:#64748b;margin-top:4px">Regla: CORRECTO si la distancia es ≤ ${DIST_MAX_M} m y las fotos son de la misma fachada.${r.ia ? " Revisado con " + esc(r.ia.modelo) + "." : ""}</div>`;
+    log("");
+    // Aviso grande en pantalla (se cierra solo o con clic)
+    document.querySelectorAll("#mfv-aviso").forEach((x) => x.remove());
+    const av = document.createElement("div"); av.id = "mfv-aviso";
+    av.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100001;padding:16px 22px;border-radius:12px;font:700 18px system-ui;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:pointer;max-width:90vw;background:${r.veredicto === "CORRECTO" ? "#16a34a" : r.veredicto === "INCORRECTO" ? "#dc2626" : "#b45309"}`;
+    av.innerHTML = `${icono} AB ${esc(r.ab)} · OS ${esc(r.os || "")}: ${r.veredicto}<div style="font:400 13px system-ui;margin-top:6px">${r.motivos.map(esc).join("<br>")}</div>`;
+    av.onclick = () => av.remove(); document.body.appendChild(av); setTimeout(() => av.remove(), 12000);
   }
 
   // ------------------------------------------------------------------ IA (Gemini)
@@ -373,7 +514,7 @@ Responde solo con el JSON pedido.`;
   // Razonamiento corto = respuesta mucho más rápida. Se prueba el ajuste que acepte cada modelo y se recuerda.
   const PENSAR = [{ thinkingLevel: "low" }, { thinkingBudget: 512 }, null];
   const KTH = (m) => "mfv-pensar-" + m;
-  async function llamarGemini(modelo, key, cuerpoBase, senal) {
+  async function llamarGemini(modelo, key, cuerpoBase, senal, crudo) {
     let v = 0; try { v = +(localStorage.getItem(KTH(modelo)) || 0); } catch {}
     for (let i = 0; i < 4; i++) {
       const gc = { ...cuerpoBase.generationConfig };
@@ -399,7 +540,7 @@ Responde solo con el JSON pedido.`;
       if (!r.ok) throw new Error(`${modelo}: ${r.status}`);
       const j = await r.json();
       const texto = (j.candidates[0].content.parts || []).filter((p) => !p.thought && p.text).map((p) => p.text).join("");
-      return { v: aplicarPerdida(JSON.parse(texto)), modelo };
+      return { v: crudo ? JSON.parse(texto) : aplicarPerdida(JSON.parse(texto)), modelo };
     }
     throw new Error(`${modelo}: saturado`);
   }
