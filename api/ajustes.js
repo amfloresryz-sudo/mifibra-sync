@@ -47,6 +47,13 @@ function podarAgendas(ag) {
   return o;
 }
 
+// Ruteo editado: solo los últimos 30 días.
+function podarRuteo(r) {
+  const limite = new Date(Date.now() - 30 * 864e5).toISOString(), o = {};
+  Object.entries(r || {}).forEach(([k, a]) => { if (a && (a.en || '') >= limite) o[k] = a; });
+  return o;
+}
+
 // Resultado de 100 min corregido a mano para una OS (Averías). null = quitar el ajuste.
 function limpiarCien(a) {
   if (!a || typeof a !== 'object') return null;
@@ -159,6 +166,15 @@ module.exports = async (req, res) => {
         const agendas = { ...(previo.agendas || {}) };
         if (a) agendas[os] = { ...a, por: 'master' }; else delete agendas[os];
         nuevo = { ...previo, agendas: podarAgendas(agendas) };
+      } else if (accion === 'ruteo') {
+        // Ruteo de pendientes (mapa): técnico y EECC asignados a mano a una OS. Solo el usuario master; solo esa OS.
+        if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
+        if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede editar el ruteo.' });
+        const os = String(parseInt(cuerpo?.os, 10)); if (!/^\d{1,10}$/.test(os)) return responder(res, 400, { error: 'OS no válida' });
+        const a = cuerpo?.ajuste, ruteo = { ...(previo.ruteo || {}) };
+        if (a && (texto(a.tec, 80) || texto(a.ec, 60))) ruteo[os] = { tec: texto(a.tec, 80).toUpperCase(), ec: texto(a.ec, 60).toUpperCase(), nota: texto(a.nota, 120), ab: Number.isFinite(+a.ab) ? +a.ab : null, por: 'master', en: new Date().toISOString() };
+        else delete ruteo[os];
+        nuevo = { ...previo, ruteo: podarRuteo(ruteo) };
       } else if (accion === 'cien') {
         // Corregir el resultado de 100 min de una OS de avería: solo el usuario master.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
@@ -192,7 +208,7 @@ module.exports = async (req, res) => {
         nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos), eeccs: limpiarEeccs(cuerpo?.eeccs) };
       } else {
         // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {},  responsables: limpiarResponsables(previo.responsables, modulo === 'averias') };
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {},  responsables: limpiarResponsables(previo.responsables, modulo === 'averias'), ruteo: podarRuteo(previo.ruteo) };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
