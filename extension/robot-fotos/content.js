@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.4
+// @version      1.5
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -148,6 +148,17 @@
     }
     return "";
   }
+  // ¿La página se va a recargar (postback)? Se espera solo lo necesario en vez de tiempos fijos.
+  const seRecarga = (ms) => new Promise((ok) => {
+    let fin = false;
+    const si = () => { if (!fin) { fin = true; ok(true); } };
+    window.addEventListener("beforeunload", si, { once: true });
+    window.addEventListener("pagehide", si, { once: true });
+    setTimeout(() => { if (!fin) { fin = true; ok(false); } }, ms);
+  });
+  const KOS = "mfv-os-de-ab"; // AB → OS de instalación ya encontrada antes
+  const osConocida = (ab) => { try { return (JSON.parse(localStorage.getItem(KOS) || "{}"))[ab] || ""; } catch { return ""; } };
+  const recordarOS = (ab, os) => { try { const m = JSON.parse(localStorage.getItem(KOS) || "{}"); m[ab] = os; localStorage.setItem(KOS, JSON.stringify(m)); } catch {} };
   const fecha = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
   function terminar(e, error) { guardar(K, null); const r = { ab: e.ab, error }; guardar(KR, r); pintar(r); }
 
@@ -165,7 +176,7 @@
         if (fil.value !== FILIAL_LIMA) {
           guardar(K, { ...e, paso: "filial2" });
           fil.value = FILIAL_LIMA; fil.dispatchEvent(new Event("change", { bubbles: true }));
-          await espera(4000); // si no hubo recarga, se sigue en esta misma página
+          if (await seRecarga(2000)) return; // la página se recarga y el robot sigue solo
         }
         e.paso = "buscar";
       }
@@ -176,10 +187,17 @@
         const hoy = new Date(), ini = new Date(Date.now() - 90 * 864e5);
         $("#MainContent_txtFechaInicio").value = fecha(ini);
         $("#MainContent_txtFechaTermino").value = fecha(hoy);
-        guardar(K, { ...e, paso: "elegir" });
+        // Si ya se conoce la OS de instalación de este AB, se busca directo por N° de OS (1 sola fila)
+        const osDir = !e.sinDirecto && !(e.usadas || []).length ? osConocida(e.ab) : "";
+        const campoOS = $("#MainContent_txtNroOrdenServicio");
+        if (campoOS) campoOS.value = osDir;
+        guardar(K, { ...e, paso: "elegir", directo: !!osDir });
         $("#MainContent_btnBuscar").click();
-        await espera(5000);
-        if (leer(K)?.paso === "elegir" && document.querySelector("input[id^=RowSelector]")) return continuar(); // búsqueda sin recarga
+        if (await seRecarga(2500)) return;
+        for (let i = 0; i < 40; i++) { // búsqueda sin recarga: se sigue apenas aparecen las filas
+          if (leer(K)?.paso === "elegir" && document.querySelector("input[id^=RowSelector]")) return continuar();
+          await espera(250);
+        }
         return;
       }
       if (e.paso === "elegir") {
@@ -190,6 +208,7 @@
         const usadas = e.usadas || [];
         const cand = filas.filter((f) => /DESCARGADA/i.test(f.texto)).concat(filas.filter((f) => !/DESCARGADA/i.test(f.texto)))
           .filter((f) => !usadas.includes((f.texto.match(/\b\d{8}\b/) || [""])[0]));
+        if (!cand.length && e.directo) { guardar(K, { ...e, paso: "filial", sinDirecto: true, directo: false }); location.href = PANTALLA_OS; return; }
         if (!cand.length) return terminar(e, usadas.length ? "ninguna OS de instalación tiene capturas del técnico." : "no tiene OS de instalación (últimos 90 días).");
         const f = cand[0];
         const os = (f.texto.match(/\b\d{8}\b/) || [""])[0];
@@ -205,7 +224,7 @@
     }
 
     if (e.paso === "fotos" && $("#btnverimagen_tecnico") == null) {
-      if (/Ejecucion/i.test(location.pathname)) { guardar(K, { ...e, paso: "filial" }); location.href = PANTALLA_OS; } // sin capturas: probar otra OS
+      if (/Ejecucion/i.test(location.pathname)) { guardar(K, { ...e, paso: "filial", sinDirecto: true }); location.href = PANTALLA_OS; } // sin capturas: probar otra OS
       return;
     }
 
@@ -219,15 +238,16 @@
       const antes = performance.getEntriesByType("resource").length;
       $("#btnverimagen_tecnico").click();
       let urls = [], quieto = 0;
-      for (let i = 0; i < 60 && quieto < 4; i++) {
-        await espera(500);
+      for (let i = 0; i < 100 && quieto < 5; i++) {
+        await espera(300);
         const n = [...new Set(performance.getEntriesByType("resource").slice(antes).map((x) => x.name).filter((u) => /downloadpageOS\.aspx/i.test(u)))];
         if (n.length === urls.length && n.length) quieto++; else quieto = 0;
         urls = n;
       }
       // Cierra la galería para que no tape el resultado.
       document.querySelectorAll(".ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
-      if (!urls.length) { guardar(K, { ...e, paso: "filial" }); location.href = PANTALLA_OS; return; }
+      if (!urls.length) { guardar(K, { ...e, paso: "filial", sinDirecto: true }); location.href = PANTALLA_OS; return; }
+      recordarOS(e.ab, e.os);
       const ck = `${e.ab}|${e.os}|${urls.length}`, previo = cacheLeer()[ck];
       if (previo) {
         guardar(K, null);
@@ -325,8 +345,15 @@ Responde solo con el JSON pedido.`;
   }
 
   // Llama a un modelo de Gemini. Devuelve el resultado o lanza un error (err.fatal = clave inválida).
-  async function llamarGemini(modelo, key, cuerpo, senal) {
-    for (let i = 0; i < 2; i++) {
+  // Razonamiento corto = respuesta mucho más rápida. Se prueba el ajuste que acepte cada modelo y se recuerda.
+  const PENSAR = [{ thinkingLevel: "low" }, { thinkingBudget: 512 }, null];
+  const KTH = (m) => "mfv-pensar-" + m;
+  async function llamarGemini(modelo, key, cuerpoBase, senal) {
+    let v = 0; try { v = +(localStorage.getItem(KTH(modelo)) || 0); } catch {}
+    for (let i = 0; i < 4; i++) {
+      const gc = { ...cuerpoBase.generationConfig };
+      if (PENSAR[v]) gc.thinkingConfig = PENSAR[v];
+      const cuerpo = JSON.stringify({ ...cuerpoBase, generationConfig: gc });
       const ctl = new AbortController();
       const to = setTimeout(() => ctl.abort(), 90000); // 90 s por modelo
       const cortar = () => ctl.abort();
@@ -340,11 +367,14 @@ Responde solo con el JSON pedido.`;
       if (r.status === 400) {
         const t = await r.text();
         if (/API key not valid|API_KEY_INVALID/i.test(t)) { const e = new Error("la clave de Gemini no es válida (revísala en ⚙)."); e.fatal = true; throw e; }
+        // el modelo no acepta ese ajuste de razonamiento: se prueba el siguiente
+        if (/think/i.test(t) && v < PENSAR.length - 1) { v++; try { localStorage.setItem(KTH(modelo), String(v)); } catch {} continue; }
         throw new Error(`${modelo}: 400`);
       }
       if (!r.ok) throw new Error(`${modelo}: ${r.status}`);
       const j = await r.json();
-      return { v: aplicarPerdida(JSON.parse(j.candidates[0].content.parts[0].text)), modelo };
+      const texto = (j.candidates[0].content.parts || []).filter((p) => !p.thought && p.text).map((p) => p.text).join("");
+      return { v: aplicarPerdida(JSON.parse(texto)), modelo };
     }
     throw new Error(`${modelo}: saturado`);
   }
@@ -365,8 +395,8 @@ Responde solo con el JSON pedido.`;
     const key = clave();
     const partes = [{ text: prompt(d, fotos.length) }];
     fotos.forEach((b64, i) => partes.push({ text: `Foto ${i + 1}:` }, { inline_data: { mime_type: "image/jpeg", data: b64 } }));
-    const cuerpo = JSON.stringify({ contents: [{ role: "user", parts: partes }],
-      generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: ESQUEMA } });
+    const cuerpo = { contents: [{ role: "user", parts: partes }],
+      generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: ESQUEMA } };
     let ultimo = "";
     if (key) {
       const limite = Date.now() + 4 * 60 * 1000; // máx. 4 min con Gemini; después se pasa al respaldo
