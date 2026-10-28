@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.3
+// @version      1.4
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -17,8 +17,7 @@
   const TIPO = "INSTALACION SERVICIO INTERNET";
   const PERDIDA_MAX_DB = 1.0;   // foto 2: pérdida máxima entre caja y cliente
   const DIAS_TOLERANCIA = 1;    // fotos del día anterior son válidas
-  const LADO_MAX = 1280;        // px: se achican las fotos antes de enviarlas a la IA (más liviano = más rápido)
-  const MIN_FOTOS = 6;          // con menos fotos la OS se marca OBSERVADA sin gastar IA (el manual pide 11–12; se permiten collages)
+  const LADO_MAX = 1280;        // px: se achican las fotos antes de enviarlas a la IA (más liviano = respuesta más rápida)
 
   const MANUAL = [
     [1, "Fachada del cliente", ["Fachada de la vivienda fácil de identificar (número de puerta visible)", "Sello con localización, fecha y hora"]],
@@ -36,7 +35,7 @@
   ];
 
   // ------------------------------------------------------------------ estado (sobrevive a las recargas de SCORD)
-  const K = "mfv-estado", KL = "mfv-lote", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key", KC = "mfv-cache";
+  const K = "mfv-estado", KR = "mfv-resultado", KKEY = "mfv-gemini-key", KOR = "mfv-openrouter-key", KC = "mfv-cache";
   const leer = (k) => { try { return JSON.parse(sessionStorage.getItem(k) || "null"); } catch { return null; } };
   const guardar = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
   const clave = () => { try { return localStorage.getItem(KKEY) || ""; } catch { return ""; } };
@@ -77,14 +76,8 @@
         <button class="acc" id="mfv-keyok">Guardar</button>
         <div id="mfv-estado-claves" style="color:#64748b;margin-top:4px"></div>
       </div>
-      <div>Nº de abonado (uno o varios, separados por espacio, coma o en líneas):</div>
-      <textarea id="mfv-ab" rows="2" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font:14px system-ui"
-        placeholder="28770 33300 33343"></textarea>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-        <button class="acc" id="mfv-go">Validar</button>
-        <button class="sec" id="mfv-stop" style="display:none">Detener</button>
-        <button class="sec" id="mfv-xls" style="display:none">Descargar Excel</button>
-      </div>
+      <div>Nº de abonado: <input id="mfv-ab" style="width:120px" inputmode="numeric">
+        <button class="acc" id="mfv-go">Validar</button></div>
       <div id="mfv-log"></div>
       <div id="mfv-res"></div>
     </div>`;
@@ -103,82 +96,34 @@
     $("#mfv-key").value = ""; $("#mfv-keyor").value = ""; estadoClaves(); $("#mfv-clave").style.display = "none"; log("Claves guardadas.");
   };
   $("#mfv-go").onclick = () => {
-    const abs = [...new Set(($("#mfv-ab").value || "").split(/[^0-9]+/).filter(Boolean).map((x) => String(parseInt(x, 10))))];
-    if (!abs.length) return log("Escribe el Nº de abonado.");
-    if (!clave() && !claveOR()) { $("#mfv-clave").style.display = "block"; return log("Primero guarda la clave de Gemini."); }
-    guardar(KL, { cola: abs.slice(1), resultados: [], total: abs.length, inicio: Date.now() });
-    guardar(K, { ab: abs[0], paso: "filial", t: Date.now() });
-    log(`Buscando AB ${abs[0]} (1 de ${abs.length})…`);
+    const ab = ($("#mfv-ab").value || "").replace(/\D/g, "");
+    if (!ab) return log("Escribe el Nº de abonado.");
+    if (!clave()) { $("#mfv-clave").style.display = "block"; return log("Primero guarda la clave de Gemini."); }
+    guardar(KR, null);
+    guardar(K, { ab, paso: "filial", t: Date.now() });
+    log(`Buscando AB ${ab}…`);
     location.href = PANTALLA_OS;
   };
-  $("#mfv-ab").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#mfv-go").click(); } });
-  $("#mfv-stop").onclick = () => {
-    const l = leer(KL); if (l) { l.cola = []; l.fin = true; guardar(KL, l); }
-    guardar(K, null); log("Detenido."); if (l) pintarLote(l);
-  };
-  $("#mfv-xls").onclick = () => { const l = leer(KL); if (l) descargarExcel(l.resultados || []); };
+  $("#mfv-ab").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#mfv-go").click(); } });
 
   // ------------------------------------------------------------------ resultado
-  function pintar(res, destino) {
+  function pintar(res) {
     abrir();
-    const caja = destino || $("#mfv-res");
-    if (res.error) { caja.innerHTML = `<p class="mfv-ERROR">AB ${res.ab}: ${esc(res.error)}</p>`; return; }
+    if (res.ab) $("#mfv-ab").value = res.ab;
+    if (res.error) { $("#mfv-res").innerHTML = `<p class="mfv-ERROR">AB ${res.ab}: ${esc(res.error)}</p>`; log(""); return; }
     const v = res.validacion || {};
     const filas = (v.manual || []).map((m) => `<tr><td>${m.item}</td><td>${esc(m.nombre)}</td>
       <td class="mfv-${m.estado === "NO APLICA" ? "NO" : m.estado}">${m.estado}</td>
       <td>${(m.fotos || []).join(", ") || "—"}</td><td>${esc(m.error || "")}</td></tr>`).join("");
     const color = v.resultado === "OK" ? "mfv-OK" : "mfv-ERROR";
-    caja.innerHTML = `
+    $("#mfv-res").innerHTML = `
       <h3 style="margin:10px 0 4px">AB ${res.ab} · OS ${esc(res.os || "")} — <span class="${color}">${v.resultado || "?"}</span></h3>
       <div>Ejecución ${esc(res.fecha || "")} · ${res.n} fotos${v.perdida_db != null ? ` · pérdida caja–cliente ${v.perdida_db} dB` : ""}</div>
       <p><b>${esc(v.resumen || "")}</b></p>
-      ${filas ? `<table><tr><th>#</th><th>Foto del manual</th><th>Estado</th><th>Fotos</th><th>Error</th></tr>${filas}</table>` : ""}
-      <div style="color:#64748b;margin-top:4px">Revisado con: ${esc(res.modelo || "IA")}</div>`;
+      <table><tr><th>#</th><th>Foto del manual</th><th>Estado</th><th>Fotos</th><th>Error</th></tr>${filas}</table>`;
+    log(`Revisado con ${res.modelo || "IA"}.`);
   }
-
-  // Tabla de varios AB: una fila por AB; clic para ver el detalle.
-  function pintarLote(l) {
-    abrir();
-    const rs = l.resultados || [];
-    const enCurso = leer(K);
-    $("#mfv-stop").style.display = enCurso ? "inline-block" : "none";
-    $("#mfv-xls").style.display = rs.length ? "inline-block" : "none";
-    if (l.total === 1 && rs.length === 1) { pintar(rs[0]); log(""); return; }
-    const filas = rs.map((r, i) => {
-      const v = r.validacion || {}, est = r.error ? "ERROR" : v.resultado || "?";
-      const malos = (v.manual || []).filter((m) => m.estado === "ERROR" || m.estado === "FALTA").map((m) => m.item).join(", ");
-      return `<tr data-i="${i}" style="cursor:pointer"><td>${r.ab}</td><td>${esc(r.os || "")}</td>
-        <td class="mfv-${est === "OK" ? "OK" : "ERROR"}">${est === "ERROR" ? "NO SE PUDO" : est}</td>
-        <td>${esc(r.error || malos || "—")}</td></tr>`;
-    }).join("");
-    const ok = rs.filter((r) => (r.validacion || {}).resultado === "OK").length;
-    const obs = rs.filter((r) => (r.validacion || {}).resultado === "OBSERVADA").length;
-    $("#mfv-res").innerHTML = `
-      <h3 style="margin:10px 0 4px">${rs.length} de ${l.total} revisados · <span class="mfv-OK">${ok} OK</span> · <span class="mfv-ERROR">${obs} OBSERVADAS</span></h3>
-      <table><tr><th>AB</th><th>OS</th><th>Resultado</th><th>Fotos con error / falta</th></tr>${filas}</table>
-      <div style="color:#64748b;margin-top:4px">Clic en una fila para ver el detalle.</div>
-      <div id="mfv-det"></div>`;
-    $("#mfv-res").querySelectorAll("tr[data-i]").forEach((tr) => tr.onclick = () => pintar(rs[+tr.dataset.i], $("#mfv-det")));
-    if (!enCurso) log(l.fin ? `Listo: ${rs.length} AB revisados.` : "");
-  }
-
-  function descargarExcel(rs) {
-    const c = (x) => `"${String(x ?? "").replace(/"/g, '""')}"`;
-    const filas = [["AB", "OS", "Fecha ejecución", "Nº fotos", "Resultado", "Fotos con error / falta", "Resumen", "Revisado con"]];
-    for (const r of rs) {
-      const v = r.validacion || {};
-      const det = (v.manual || []).filter((m) => m.estado === "ERROR" || m.estado === "FALTA")
-        .map((m) => `Foto ${m.item} ${m.estado}: ${m.error}`).join(" | ");
-      filas.push([r.ab, r.os || "", r.fecha || "", r.n ?? "", r.error ? "NO SE PUDO" : v.resultado || "", r.error || det, v.resumen || "", r.modelo || ""]);
-    }
-    const csv = "\ufeffsep=;\r\n" + filas.map((f) => f.map(c).join(";")).join("\r\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    a.download = `validacion_fotos_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  }
-
-  // Cache de resultados (no se repite la IA si la OS y sus fotos no cambiaron).
+  // Si la misma OS con las mismas fotos ya se revisó, se muestra al instante (sin volver a usar la IA).
   const cacheLeer = () => { try { return JSON.parse(localStorage.getItem(KC) || "{}"); } catch { return {}; } };
   function cacheGuardar(k, r) {
     try {
@@ -187,23 +132,6 @@
       while (claves.length > 300) delete c[claves.shift()];
       localStorage.setItem(KC, JSON.stringify(c));
     } catch {}
-  }
-
-  // Termina el AB actual y sigue con el siguiente de la lista.
-  function fin(r) {
-    guardar(K, null);
-    const l = leer(KL) || { cola: [], resultados: [], total: 1 };
-    l.resultados.push(r);
-    if (l.cola.length) {
-      const ab = l.cola.shift();
-      guardar(KL, l);
-      guardar(K, { ab, paso: "filial", t: Date.now() });
-      pintarLote(l);
-      log(`Siguiente: AB ${ab} (${l.resultados.length + 1} de ${l.total})…`);
-      setTimeout(() => { location.href = PANTALLA_OS; }, 800);
-      return;
-    }
-    l.fin = true; l.visto = true; guardar(KL, l); pintarLote(l);
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -221,16 +149,13 @@
     return "";
   }
   const fecha = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  function terminar(e, error) { fin({ ab: e.ab, os: e.os, error }); }
+  function terminar(e, error) { guardar(K, null); const r = { ab: e.ab, error }; guardar(KR, r); pintar(r); }
 
   async function continuar() {
     const e = leer(K);
-    if (!e) return;
+    if (!e) { const r = leer(KR); if (r && r.mostrar !== false) { pintar(r); r.mostrar = false; guardar(KR, r); } return; }
     if (Date.now() - e.t > 10 * 60 * 1000) return terminar(e, "se canceló (más de 10 min).");
-    abrir();
-    const lote = leer(KL);
-    if (lote && lote.total > 1) pintarLote(lote);
-    $("#mfv-stop").style.display = "inline-block";
+    abrir(); $("#mfv-ab").value = e.ab;
     const ruta = location.pathname.toLowerCase();
 
     if (ruta.endsWith(PANTALLA_OS.toLowerCase())) {
@@ -294,7 +219,7 @@
       const antes = performance.getEntriesByType("resource").length;
       $("#btnverimagen_tecnico").click();
       let urls = [], quieto = 0;
-      for (let i = 0; i < 60 && quieto < 6; i++) {
+      for (let i = 0; i < 60 && quieto < 4; i++) {
         await espera(500);
         const n = [...new Set(performance.getEntriesByType("resource").slice(antes).map((x) => x.name).filter((u) => /downloadpageOS\.aspx/i.test(u)))];
         if (n.length === urls.length && n.length) quieto++; else quieto = 0;
@@ -303,25 +228,21 @@
       // Cierra la galería para que no tape el resultado.
       document.querySelectorAll(".ui-dialog-titlebar-close, .close, [aria-label=Close]").forEach((x) => { try { x.click(); } catch {} });
       if (!urls.length) { guardar(K, { ...e, paso: "filial" }); location.href = PANTALLA_OS; return; }
-      const base = { ab: e.ab, os: e.os, fecha: datos.fecha, n: urls.length };
-      // Filtro rápido sin IA: muy pocas fotos = OBSERVADA al instante.
-      if (urls.length < MIN_FOTOS) {
-        return fin({ ...base, modelo: "filtro rápido (sin IA)", validacion: { resultado: "OBSERVADA", manual: [],
-          resumen: `Solo tiene ${urls.length} foto(s); el manual pide 11 (12 con MESH). Faltan evidencias.` } });
-      }
-      // Ya revisada antes (misma OS y misma cantidad de fotos): no se gasta IA.
       const ck = `${e.ab}|${e.os}|${urls.length}`, previo = cacheLeer()[ck];
       if (previo) {
-        return fin({ ...previo, modelo: `${previo.modelo} · guardado del ${new Date(previo.guardado).toLocaleDateString("es-PE")}` });
+        guardar(K, null);
+        const r = { ...previo, modelo: `${previo.modelo} · guardado del ${new Date(previo.guardado).toLocaleDateString("es-PE")}`, mostrar: true };
+        guardar(KR, r); pintar(r); return;
       }
       try {
-        const fotos = [];
-        for (const u of urls) fotos.push(await achicar(await (await fetch(u, { credentials: "include" })).blob()));
+        // Todas las fotos se descargan a la vez (antes, una por una).
+        const fotos = await Promise.all(urls.map(async (u) => achicar(await (await fetch(u, { credentials: "include" })).blob())));
         log(`OS ${e.os}: ${fotos.length} fotos. Revisando con la IA (puede tardar 1–3 min)…`);
         const { v, modelo } = await revisarIA(datos, fotos);
-        const r = { ...base, n: fotos.length, validacion: v, modelo };
-        cacheGuardar(ck, r);
-        fin(r);
+        guardar(K, null);
+        const r = { ab: e.ab, os: e.os, fecha: datos.fecha, n: fotos.length, validacion: v, modelo, mostrar: true };
+        cacheGuardar(ck, { ...r, mostrar: undefined });
+        guardar(KR, r); pintar(r);
       } catch (err) {
         terminar(e, `error al revisar: ${err.message || err}`);
       }
@@ -396,11 +317,48 @@ Responde solo con el JSON pedido.`;
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${encodeURIComponent(key)}`);
       const j = await r.json();
-      const malos = ["image", "tts", "audio", "live", "embedding", "thinking", "exp", "omni", "preview"]; // "lite" queda al final como respaldo
+      const malos = ["image", "tts", "audio", "live", "embedding", "thinking", "exp", "omni", "preview"]; // "lite" queda al final
       return (j.models || []).filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
         .map((m) => m.name.split("/")[1]).filter((n) => n.includes("flash") && !malos.some((x) => n.includes(x)))
         .sort((a, b) => (a.includes("lite") - b.includes("lite")) || b.localeCompare(a));
     } catch { return []; }
+  }
+
+  // Llama a un modelo de Gemini. Devuelve el resultado o lanza un error (err.fatal = clave inválida).
+  async function llamarGemini(modelo, key, cuerpo, senal) {
+    for (let i = 0; i < 2; i++) {
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 90000); // 90 s por modelo
+      const cortar = () => ctl.abort();
+      senal.addEventListener("abort", cortar);
+      let r;
+      try {
+        r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${encodeURIComponent(key)}`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpo, signal: ctl.signal });
+      } catch { throw new Error(`${modelo}: tiempo agotado`); } finally { clearTimeout(to); senal.removeEventListener("abort", cortar); }
+      if ([429, 500, 503].includes(r.status) && i === 0 && !senal.aborted) { await espera(5000); continue; }
+      if (r.status === 400) {
+        const t = await r.text();
+        if (/API key not valid|API_KEY_INVALID/i.test(t)) { const e = new Error("la clave de Gemini no es válida (revísala en ⚙)."); e.fatal = true; throw e; }
+        throw new Error(`${modelo}: 400`);
+      }
+      if (!r.ok) throw new Error(`${modelo}: ${r.status}`);
+      const j = await r.json();
+      return { v: aplicarPerdida(JSON.parse(j.candidates[0].content.parts[0].text)), modelo };
+    }
+    throw new Error(`${modelo}: saturado`);
+  }
+
+  // Carrera: se consulta a varios modelos a la vez y se usa el primero que responda bien; los demás se cancelan.
+  async function carrera(modelos, fn) {
+    const ctl = new AbortController();
+    try {
+      return await Promise.any(modelos.map((m) => fn(m, ctl.signal)));
+    } catch (agg) {
+      const fatal = (agg.errors || []).find((x) => x && x.fatal);
+      if (fatal) throw fatal;
+      throw new Error((agg.errors || []).map((x) => x && x.message).join(" · "));
+    } finally { ctl.abort(); }
   }
 
   async function revisarIA(d, fotos) {
@@ -409,34 +367,25 @@ Responde solo con el JSON pedido.`;
     fotos.forEach((b64, i) => partes.push({ text: `Foto ${i + 1}:` }, { inline_data: { mime_type: "image/jpeg", data: b64 } }));
     const cuerpo = JSON.stringify({ contents: [{ role: "user", parts: partes }],
       generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: ESQUEMA } });
-    // Primero el que funcionó en las pruebas; luego el "latest" y después los flash disponibles en la clave.
-    const cola = key ? ["gemini-3.6-flash", "gemini-flash-latest"] : [], probados = new Set(); // sin clave de Gemini: directo al respaldo
-    const limite = Date.now() + 4 * 60 * 1000; // máx. 4 min con Gemini; después se pasa al respaldo
-    let ultimo = "", listados = false;
-    while (cola.length && Date.now() < limite) {
-      const modelo = cola.shift();
-      if (probados.has(modelo)) continue;
-      probados.add(modelo);
-      log(`Revisando con la IA (${modelo})…`);
-      let r = null;
-      for (let i = 0; i < 2; i++) {
-        const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 100000); // 100 s por modelo
+    let ultimo = "";
+    if (key) {
+      const limite = Date.now() + 4 * 60 * 1000; // máx. 4 min con Gemini; después se pasa al respaldo
+      const probados = new Set();
+      // Ronda 1: los dos modelos que mejor funcionaron, a la vez.
+      let ronda = ["gemini-3.6-flash", "gemini-flash-latest"];
+      let otros = null;
+      while (ronda.length && Date.now() < limite) {
+        ronda.forEach((m) => probados.add(m));
+        log(`Revisando con la IA (${ronda.join(" + ")})…`);
         try {
-          r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${encodeURIComponent(key)}`,
-            { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpo, signal: ctl.signal });
-        } catch { r = null; } finally { clearTimeout(to); }
-        if (r && [429, 500, 503].includes(r.status) && i === 0) { await espera(8000); continue; }
-        break;
+          return await carrera(ronda, (m, senal) => llamarGemini(m, key, cuerpo, senal));
+        } catch (err) {
+          if (err.fatal) throw err;
+          ultimo = err.message;
+        }
+        if (!otros) otros = (await modelosDisponibles(key)).filter((m) => !probados.has(m)); // flash normales y al final flash-lite
+        ronda = otros.splice(0, 2);
       }
-      if (!r || [400, 404, 429, 500, 503].includes(r.status) && (r.status !== 400 || /not found|not supported/i.test(await r.clone().text()))) {
-        ultimo = `${modelo}: ${r ? r.status : "tiempo agotado"}`;
-        if (!cola.length && !listados) { listados = true; (await modelosDisponibles(key)).filter((m) => !probados.has(m)).slice(0, 6).forEach((m) => cola.push(m)); }
-        continue;
-      }
-      if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
-      const j = await r.json();
-      const v = aplicarPerdida(JSON.parse(j.candidates[0].content.parts[0].text));
-      return { v, modelo };
     }
     if (claveOR()) {
       log("Gemini saturado: probando el respaldo gratis (OpenRouter)…");
@@ -495,26 +444,31 @@ Responde SOLO con un objeto JSON (sin texto antes ni después) con esta forma:
     const contenido = [{ type: "text", text: prompt(d, fotos.length) + FORMATO_JSON }];
     fotos.forEach((b64, i) => contenido.push({ type: "text", text: `Foto ${i + 1}:` },
       { type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } }));
-    let ultimo = "";
-    for (const modelo of modelos) {
-      log(`Revisando con el respaldo gratis (${modelo})…`);
+    const una = async (modelo, senal) => {
       const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 120000);
+      const cortar = () => ctl.abort(); senal.addEventListener("abort", cortar);
       try {
         const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST", signal: ctl.signal,
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "X-Title": "Robot validacion fotos" },
           body: JSON.stringify({ model: modelo, temperature: 0, messages: [{ role: "user", content: contenido }] }),
         });
-        if (r.status === 401) throw new Error("la clave de OpenRouter no es válida (revísala en ⚙).");
-        if (!r.ok) { ultimo = `${modelo}: ${r.status}`; continue; }
+        if (r.status === 401) { const e = new Error("la clave de OpenRouter no es válida (revísala en ⚙)."); e.fatal = true; throw e; }
+        if (!r.ok) throw new Error(`${modelo}: ${r.status}`);
         const j = await r.json();
         const v = aplicarPerdida(extraerJSON(j.choices[0].message.content || ""));
-        if (!Array.isArray(v.manual)) { ultimo = `${modelo}: respuesta incompleta`; continue; }
+        if (!Array.isArray(v.manual)) throw new Error(`${modelo}: respuesta incompleta`);
         return { v, modelo };
       } catch (e) {
-        if (/no es válida/.test(e.message)) throw e;
-        ultimo = `${modelo}: ${e.name === "AbortError" ? "tiempo agotado" : e.message}`;
-      } finally { clearTimeout(to); }
+        if (e.fatal) throw e;
+        throw new Error(e.name === "AbortError" ? `${modelo}: tiempo agotado` : e.message);
+      } finally { clearTimeout(to); senal.removeEventListener("abort", cortar); }
+    };
+    let ultimo = "";
+    for (let i = 0; i < modelos.length; i += 2) {
+      const par = modelos.slice(i, i + 2);
+      log(`Revisando con el respaldo gratis (${par.join(" + ")})…`);
+      try { return await carrera(par, una); } catch (e) { if (e.fatal) throw e; ultimo = e.message; }
     }
     throw new Error(`Gemini y el respaldo están saturados (${ultimo}). Intenta en unos minutos.`);
   }
