@@ -15,4 +15,3 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           AREAS_MAPAS: 1xIIblConcvjXe6w-jAVRhzobTymmb5I
-          AREAS_MAPAS: 1xIIblConcvjXe6w-jAVRhzobTymmb5I
