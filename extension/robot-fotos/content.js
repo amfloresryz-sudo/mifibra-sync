@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Robot validación de fotos (MiFibra)
 // @namespace    mifibra
-// @version      1.7
+// @version      1.8
 // @description  Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.
 // @match        https://mifibra.scordsoft.net/*
 // @grant        none
@@ -407,17 +407,43 @@
       else { okDist = dist <= DIST_MAX_M; motivos.push(`distancia ${dist} m (${okDist ? "≤" : ">"} ${DIST_MAX_M} m)`); }
       if (ia) { okFoto = ia.misma_fachada && ia.confianza >= 60; motivos.push(`fotos: ${ia.misma_fachada ? "misma fachada" : "fachada distinta"} (${ia.confianza}% seguro) – ${ia.motivo}`); }
       else motivos.push("fotos: la IA no respondió, compáralas a mano" + (local !== null ? ` (parecido automático ${local}%)` : ""));
-      const veredicto = okDist === false || okFoto === false ? "INCORRECTO" : okDist && okFoto ? "CORRECTO" : "REVISAR";
+      // Manda la foto: si es la misma fachada es CONFORME aunque la distancia pase de 20 m (se adjunta la evidencia de distancia)
+      const veredicto = okFoto === true ? "CONFORME" : okFoto === false ? "NO CONFORME" : "REVISAR";
+      const fueraRango = okDist === false;
       guardar(K, null);
-      const r = { tipo: "inicio", ab: e.ab, os: e.os, veredicto, dist, cIni, cCap, local, ia, motivos, uIni: uIni[0], uCap: uCap[0], mostrar: true };
+      const r = { tipo: "inicio", ab: e.ab, os: e.os, veredicto, fueraRango, dist, cIni, cCap, local, ia, motivos, uIni: uIni[0], uCap: uCap[0], mostrar: true };
       guardar(KR, r); pintar(r);
     } catch (err) { terminar(e, `error al comparar: ${err.message || err}`); }
   }
 
-  function pintarInicio(r) {
-    const color = r.veredicto === "CORRECTO" ? "mfv-OK" : r.veredicto === "INCORRECTO" ? "mfv-ERROR" : "mfv-FALTA";
-    const icono = r.veredicto === "CORRECTO" ? "✅" : r.veredicto === "INCORRECTO" ? "❌" : "⚠️";
+  // Texto de evidencia de distancia (para copiar y enviar por WhatsApp/correo)
+  function evidenciaTexto(r) {
     const c = (x) => x ? `${x.lat.toFixed(6)}, ${x.lon.toFixed(6)}` : "—";
+    return [`EVIDENCIA DE DISTANCIA – AB ${r.ab} · OS ${r.os}`,
+      `Resultado: ${r.veredicto}${r.fueraRango ? ` (fotos coinciden; distancia mayor a ${DIST_MAX_M} m)` : ""}`,
+      `Coordenadas foto de inicio: ${c(r.cIni)}`,
+      `Coordenadas capturas del técnico: ${c(r.cCap)}`,
+      `Distancia entre ambas: ${r.dist != null ? r.dist + " m" : "sin coordenadas"} (tolerancia ${DIST_MAX_M} m)`,
+      r.ia ? `Fotos: ${r.ia.misma_fachada ? "misma fachada" : "fachada distinta"} (${r.ia.confianza}% seguro) – ${r.ia.motivo}` : "Fotos: sin revisión de IA",
+      r.cIni && r.cCap ? `Mapa: https://www.google.com/maps/dir/?api=1&origin=${r.cIni.lat},${r.cIni.lon}&destination=${r.cCap.lat},${r.cCap.lon}&travelmode=walking` : "",
+      `Revisado: ${new Date().toLocaleString("es-PE")}`].filter(Boolean).join("\n");
+  }
+
+  function pintarInicio(r) {
+    // compatibilidad con resultados guardados de la versión anterior
+    if (r.veredicto === "CORRECTO") r.veredicto = "CONFORME"; else if (r.veredicto === "INCORRECTO") r.veredicto = "NO CONFORME";
+    const ok = r.veredicto === "CONFORME", mal = r.veredicto === "NO CONFORME";
+    const color = ok ? "mfv-OK" : mal ? "mfv-ERROR" : "mfv-FALTA";
+    const icono = ok ? "✅" : mal ? "❌" : "⚠️";
+    const c = (x) => x ? `${x.lat.toFixed(6)}, ${x.lon.toFixed(6)}` : "—";
+    const mapa = r.cIni && r.cCap ? `https://www.google.com/maps/dir/?api=1&origin=${r.cIni.lat},${r.cIni.lon}&destination=${r.cCap.lat},${r.cCap.lon}&travelmode=walking` : "";
+    const evid = r.dist != null ? `
+      <div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:${r.fueraRango ? "#fff7ed;border:1px solid #fdba74" : "#f1f5f9;border:1px solid #cbd5e1"}">
+        <b>📏 Evidencia de distancia:</b> ${r.dist} m entre la foto de inicio y las capturas ${r.fueraRango ? `<b style="color:#b45309">(más de ${DIST_MAX_M} m)</b>` : `(dentro de ${DIST_MAX_M} m)`}
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          ${mapa ? `<a href="${mapa}" target="_blank" rel="noopener" class="sec" style="padding:6px 10px;border-radius:6px;background:#e2e8f0;color:#111;text-decoration:none">🗺 Ver en Google Maps</a>` : ""}
+          <button class="sec" id="mfv-copiar-ev">📋 Copiar evidencia</button>
+        </div></div>` : "";
     $("#mfv-res").innerHTML = `
       <h3 style="margin:10px 0 4px">AB ${r.ab} · OS ${esc(r.os || "")} — <span class="${color}">${icono} ${r.veredicto}</span></h3>
       <div style="margin:6px 0">Foto de inicio vs 1ra foto de las capturas</div>
@@ -425,13 +451,21 @@
         <tr><td>Coordenadas</td><td>${c(r.cIni)}</td><td>${c(r.cCap)}</td></tr>
         <tr><td>Foto</td><td><img src="${r.uIni}" style="max-width:150px;max-height:180px"></td><td><img src="${r.uCap}" style="max-width:150px;max-height:180px"></td></tr></table>
       <ul style="margin:8px 0 0 18px;padding:0">${r.motivos.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>
-      <div style="color:#64748b;margin-top:4px">Regla: CORRECTO si la distancia es ≤ ${DIST_MAX_M} m y las fotos son de la misma fachada.${r.ia ? " Revisado con " + esc(r.ia.modelo) + "." : ""}</div>`;
+      ${evid}
+      <div style="color:#64748b;margin-top:4px">Regla: CONFORME si las fotos son de la misma fachada (si la distancia pasa de ${DIST_MAX_M} m, igual es conforme y se adjunta la evidencia de distancia).${r.ia ? " Revisado con " + esc(r.ia.modelo) + "." : ""}</div>`;
+    const bc = $("#mfv-copiar-ev");
+    if (bc) bc.onclick = async () => {
+      const t = evidenciaTexto(r);
+      try { await navigator.clipboard.writeText(t); bc.textContent = "✔ Copiado"; }
+      catch { const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); bc.textContent = "✔ Copiado"; }
+      setTimeout(() => (bc.textContent = "📋 Copiar evidencia"), 2500);
+    };
     log("");
     // Aviso grande en pantalla (se cierra solo o con clic)
     document.querySelectorAll("#mfv-aviso").forEach((x) => x.remove());
     const av = document.createElement("div"); av.id = "mfv-aviso";
-    av.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100001;padding:16px 22px;border-radius:12px;font:700 18px system-ui;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:pointer;max-width:90vw;background:${r.veredicto === "CORRECTO" ? "#16a34a" : r.veredicto === "INCORRECTO" ? "#dc2626" : "#b45309"}`;
-    av.innerHTML = `${icono} AB ${esc(r.ab)} · OS ${esc(r.os || "")}: ${r.veredicto}<div style="font:400 13px system-ui;margin-top:6px">${r.motivos.map(esc).join("<br>")}</div>`;
+    av.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100001;padding:16px 22px;border-radius:12px;font:700 18px system-ui;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:pointer;max-width:90vw;background:${ok ? "#16a34a" : mal ? "#dc2626" : "#b45309"}`;
+    av.innerHTML = `${icono} AB ${esc(r.ab)} · OS ${esc(r.os || "")}: ${r.veredicto}${r.fueraRango ? ` <span style="font-weight:400">(distancia ${r.dist} m &gt; ${DIST_MAX_M} m – ver evidencia)</span>` : ""}<div style="font:400 13px system-ui;margin-top:6px">${r.motivos.map(esc).join("<br>")}</div>`;
     av.onclick = () => av.remove(); document.body.appendChild(av); setTimeout(() => av.remove(), 12000);
   }
 

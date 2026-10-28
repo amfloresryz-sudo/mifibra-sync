@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Robot validación de fotos (MiFibra)",
-  "version": "1.7",
+  "version": "1.8",
   "description": "Botón dentro de SCORD: escribes el AB y revisa las fotos de la instalación contra el manual.",
   "host_permissions": ["https://generativelanguage.googleapis.com/*", "https://openrouter.ai/*"],
   "content_scripts": [
