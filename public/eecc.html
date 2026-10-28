@@ -25,12 +25,22 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-txt); font-size: 15px; }
 button, input, select, textarea { font: inherit; color: inherit; }
-.cab { background: var(--noche); color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 5; }
-.cab-in { max-width: 1760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cab { background: var(--noche); color: #fff; padding: 0; position: sticky; top: 0; z-index: 5; }
+.cab-in { max-width: 1760px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .marca { font: 800 17px var(--f-disp); letter-spacing: .2px; } .marca span { color: #FF5CB8; }
 .quien { margin-left: auto; text-align: right; font-size: 13px; line-height: 1.3; color: #D4D6DE; } .quien b { color: #fff; font-family: var(--f-disp); }
 .salir { background: transparent; border: 1px solid #ffffff55; color: #fff; border-radius: 10px; padding: 7px 12px; cursor: pointer; font-weight: 700; font-size: 13px; }
 .salir:hover { background: #ffffff1a; }
+.alertas { background: #FDE8E7; color: #B42318; border-bottom: 2px solid #F5B5B0; font: 700 13px var(--f-disp); padding: 7px 16px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.alertas[hidden] { display: none; }
+@media (max-width: 760px) { .alertas { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; padding: 6px 10px; font-size: 12px; } .alertas button { flex: none; } }
+.alertas .tit { text-transform: uppercase; letter-spacing: .3px; }
+.alertas button { border: 0; border-radius: 999px; padding: 4px 10px; font: 700 12.5px var(--f-disp); cursor: pointer; }
+.alertas .pv { background: #FFF1C2; color: #7A5200; } .alertas .vc { background: #B42318; color: #fff; }
+.alertas button:hover { filter: brightness(.94); }
+@media (prefers-reduced-motion: no-preference) { .alertas .vc { animation: parpadeo 1.6s ease-in-out infinite; } }
+@keyframes parpadeo { 50% { opacity: .55; } }
+.cinta-pista .al { color: #fff; background: #B42318; border-radius: 6px; padding: 1px 8px; margin-right: 70px; }
 .cinta { background: linear-gradient(90deg, #B0005F, #FF0091 50%, #B0005F); color: #fff; overflow: hidden; white-space: nowrap; font: 800 14px var(--f-disp); letter-spacing: .4px; border-bottom: 2px solid #FFD6EA; }
 .cinta-pista { display: inline-flex; padding: 9px 0; animation: cinta 32s linear infinite; }
 .cinta-pista span { padding-right: 70px; } .cinta-pista b { color: #FFE58A; }
@@ -103,6 +113,11 @@ td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-c
 .b.ges { background: var(--ok-bg); color: var(--ok); } .b.sges { background: var(--mal-bg); color: var(--mal); } .b.v1 { background: #FFE58A; color: #3D2E00; }
 .b.vh { background: #E1EAFF; color: #2A4BA8; } .b.vv { background: #EDE7FF; color: #5B2DB8; } .b.vo { background: var(--pista); color: var(--fg-3); }
 .b.dias { background: var(--ok-bg); color: var(--ok); margin-left: 4px; } .b.dias.v { background: #FFF1C2; color: #7A5200; } .b.dias.r { background: var(--mal-bg); color: var(--mal); }
+.b.ant { background: var(--ok-bg); color: var(--ok); } .b.ant.v { background: #FFF1C2; color: #7A5200; } .b.ant.r { background: var(--mal-bg); color: var(--mal); }
+.ini-pop { cursor: help; }
+.tip-ini { position: absolute; z-index: 50; background: var(--noche); color: #fff; border-radius: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.25); display: grid; gap: 1px; max-width: 260px; }
+.tip-ini[hidden] { display: none; } .tip-ini b { font: 700 11px var(--f-disp); color: #FFB8DC; text-transform: uppercase; letter-spacing: .3px; margin-top: 3px; }
+.tip-ini .dur { font: 800 15px var(--f-disp); color: #FFE58A; }
 .tb-acc { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; flex-wrap: wrap; } .tb-acc .nota { margin-right: auto; }
 .ab { font: 800 15px var(--f-disp); color: var(--magenta-txt); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .os { color: var(--fg-4); font-size: 12px; display: block; }
@@ -162,8 +177,10 @@ td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-c
   <div class="marca">Mi <span>Fibra</span> · Mis pendientes</div>
   <div class="quien" id="quien"></div>
   <button type="button" class="salir" id="salir">Salir</button>
-</div></header>
+</div>
 <div class="cinta" role="marquee" aria-label="Prioridad: los casos del canal INBOUND. Mi Fibra, el internet más rápido del Perú."><div class="cinta-pista" aria-hidden="true"><span>⚡ <b>PRIORIDAD:</b> LOS CASOS DEL CANAL <b>INBOUND</b> &nbsp;·&nbsp; MI FIBRA, EL INTERNET MÁS RÁPIDO DEL PERÚ 🚀</span><span>⚡ <b>PRIORIDAD:</b> LOS CASOS DEL CANAL <b>INBOUND</b> &nbsp;·&nbsp; MI FIBRA, EL INTERNET MÁS RÁPIDO DEL PERÚ 🚀</span><span>⚡ <b>PRIORIDAD:</b> LOS CASOS DEL CANAL <b>INBOUND</b> &nbsp;·&nbsp; MI FIBRA, EL INTERNET MÁS RÁPIDO DEL PERÚ 🚀</span><span>⚡ <b>PRIORIDAD:</b> LOS CASOS DEL CANAL <b>INBOUND</b> &nbsp;·&nbsp; MI FIBRA, EL INTERNET MÁS RÁPIDO DEL PERÚ 🚀</span></div></div>
+<div class="alertas" id="alertas" hidden role="alert"></div>
+</header>
 <main>
   <h1 id="tit">Mis pendientes</h1>
   <p class="sub" id="sub">Cargando…</p>
@@ -285,8 +302,6 @@ const coTxt = (c) => coLimpia(c).split(',').map(v => { const x = parseFloat(v); 
 const mapaDe = (c) => `https://www.google.com/maps?q=${encodeURIComponent(coLimpia(c))}`;
 const COLS = [
   ['Gestor', (p) => p.ge ? `<span title="${esc(p.ge)}">${esc(p.ge)}</span>` : '<span class="nota">—</span>', (p) => p.ge || '~', (p) => p.ge || '—', null, 7.5],
-  ['Zona', (p) => val(p.z), (p) => p.z || '~', (p) => p.z || '—', null, 4.2],
-  ['Planta', (p) => p.pl ? `<span class="pl" title="${esc(p.pl)}">${esc(p.pl)}</span>` : '—', (p) => p.pl || '~', (p) => p.pl || '—', null, 5.8],
   ['Distrito', (p) => `<span title="${esc(p.di)}">${esc(corto(p.di))}</span>`, (p) => p.di || '~', (p) => p.di || '—', null, 6.8],
   ['Coordenadas', (p) => p.co ? `<a class="co" href="${mapaDe(p.co)}" target="_blank" rel="noopener" title="Abrir en Google Maps · ${esc(coTxt(p.co))}">${coTxt(p.co).split(', ').map((v, i, a) => `<span>${esc(v)}${i < a.length - 1 ? ',' : ''}</span>`).join('')}</a>` : '<span class="nota">—</span>',
     (p) => p.co || '~', (p) => p.co ? 'Con coordenadas' : 'Sin coordenadas', null, 7],
@@ -304,8 +319,10 @@ const COLS = [
   ['Visita', (p) => visI(p) ? `<span class="b v1">${visTxt(visI(p))}</span>` : '-', (p) => visI(p) ? (visI(p) === 'VD' ? 3 : +visI(p)) : 9, (p) => visI(p) ? visTxt(visI(p)) : '-', null, 3.8],
   ['F. AG', (p) => estAg(p) === 'SIN AGENDA' ? '—' : fIso(p.fp), (p) => estAg(p) === 'SIN AGENDA' ? '~' : p.fp, (p) => estAg(p) === 'SIN AGENDA' ? '—' : fIso(p.fp), (p) => estAg(p) !== 'SIN AGENDA' && fpOs(p), 4.4],
   ['Franja', (p) => conFranja(p) ? esc(p.fr) : '—', (p) => conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~', (p) => conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', (p) => conFranja(p) && frOs(p), 4.2],
-  ['Inic.', (p) => `<span class="b ${p.ini ? 'ges' : 'sag'}"${p.ini ? ` title="Inicio: ${esc(fRec(p.ini))}"` : ''}>${p.ini ? 'SÍ' : 'NO'}</span>`, (p) => p.ini ? 0 : 1, (p) => p.ini ? 'SÍ' : 'NO', null, 3.4],
-  ['F. recep', (p) => p.rec ? `${fRec(p.rec)} ${edadB(p)}` : '—', (p) => p.rec || '~', (p) => p.rec ? fRec(p.rec) : '—', null, 8],
+  ['Inic.', (p) => `<span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini-os="${p.os}">${p.ini ? 'SÍ' : 'NO'}</span>`, (p) => p.ini ? 0 : 1, (p) => p.ini ? 'SÍ' : 'NO', null, 3.4],
+  ['F. recep', (p) => p.rec ? fRec(p.rec) : '—', (p) => p.rec || '~', (p) => p.rec ? fRec(p.rec) : '—', null, 6.4],
+  ['Días', (p) => { const d = dias(p.rec); return d === null ? '—' : `<span class="b ant${d >= 3 ? ' r' : d >= 1 ? ' v' : ''}" title="${d} ${d === 1 ? 'día' : 'días'} desde la recepción">${d} d</span>`; },
+    (p) => dias(p.rec) ?? -1, (p) => { const d = dias(p.rec); return d === null ? '—' : `${d} d`; }, null, 3.4],
   ['', (p) => `<button type="button" class="adj" data-os="${p.os}" data-subir="1" title="Adjuntar evidencia (fotos, PDF o video)" aria-label="Adjuntar evidencia al AB ${p.ab}">📎</button>`, null, null, null, 2.6] ];
 const colFil = {};   // columna → Set de valores permitidos
 let ord = { c: COLS.findIndex(c => c[0] === 'F. recep'), dir: 1 };   // F. recep: los más antiguos primero
@@ -325,7 +342,31 @@ function pintarCab() {
 }
 const ordenados = (L) => { const f = COLS[ord.c][2]; return L.slice().sort((a, b) => { const x = f(a), y = f(b); return (x > y ? 1 : x < y ? -1 : 0) * ord.dir || String(a.rec).localeCompare(String(b.rec)); }); };
 
+/* Alertas de franja: agendas de HOY con franja, sin iniciar la atención.
+   Por vencer = la franja termina en 60 min o menos · Vencida = la franja ya terminó. Se revisan cada minuto. */
+const finFranja = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? +m[2] : null; };
+function alertasFranja() {
+  const hoy = hoyIso(), ahora = new Date(), [hh, mm] = ahora.toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number), min = hh * 60 + mm;
+  const pv = [], vc = [];
+  D.pend.forEach(p => { if (p.ini || p.fp !== hoy || !conFranja(p)) return; const f = finFranja(p); if (f == null) return;
+    const falta = f * 60 - min; if (falta <= 0) vc.push({ p, t: -falta }); else if (falta <= 60) pv.push({ p, t: falta }); });
+  pv.sort((a, b) => a.t - b.t); vc.sort((a, b) => b.t - a.t);
+  return { pv, vc };
+}
+const minTxt = (m) => m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+const TXT_CINTA = '<span>⚡ <b>PRIORIDAD:</b> LOS CASOS DEL CANAL <b>INBOUND</b> &nbsp;·&nbsp; MI FIBRA, EL INTERNET MÁS RÁPIDO DEL PERÚ 🚀</span>';
+function pintarAlertas() {
+  const { pv, vc } = alertasFranja(), el = $('alertas'), ab = (x, c, t) => `<button type="button" class="${c}" data-os="${x.p.os}" title="Ver ficha del AB · franja ${esc(x.p.fr)}">AB ${x.p.ab} · ${esc(x.p.fr)} · ${t}</button>`;
+  el.hidden = !pv.length && !vc.length;
+  el.innerHTML = (vc.length ? `<span class="tit">⛔ Franja vencida sin iniciar:</span>${vc.map(x => ab(x, 'vc', `hace ${minTxt(x.t)}`)).join('')}` : '')
+    + (pv.length ? `<span class="tit">⚠ Por vencer franja y no inicia:</span>${pv.map(x => ab(x, 'pv', `vence en ${minTxt(x.t)}`)).join('')}` : '');
+  const aviso = pv.length || vc.length ? `<span class="al">⚠ ${pv.length + vc.length} AB por vencer o con franja vencida sin iniciar: ${[...vc, ...pv].slice(0, 6).map(x => 'AB ' + x.p.ab).join(', ')}${pv.length + vc.length > 6 ? '…' : ''}</span>` : '';
+  const pista = document.querySelector('.cinta-pista'); const nuevo = (aviso + TXT_CINTA).repeat(2).repeat(2);
+  if (pista.dataset.k !== nuevo) { pista.innerHTML = nuevo; pista.dataset.k = nuevo; }
+}
+setInterval(() => { if (D.pend.length) pintarAlertas(); }, 60e3);
 function pintar() {
+  pintarAlertas();
   D.pend.forEach(p => { if (p.ges === undefined) evalGestion(p); });
   const B = base(), L = filtrar();
   const ins = B.filter(p => p.grupo === 'INSTALACION').length, conEv = B.filter(p => nEv(p)).length;
@@ -347,7 +388,7 @@ function pintar() {
   pintarCab();
   const tot = COLS.reduce((a, c) => a + c[5], 0);
   $('cols').innerHTML = COLS.map(c => `<col style="width:${(c[5] / tot * 100).toFixed(2)}%">`).join('');
-  $('filas').innerHTML = orden.length ? orden.map(p => `<tr>${COLS.map(([, h, , , v], i) => `<td${v ? ok(v(p), 'Coincide con la OS') : ''}${i === 5 ? ` data-x="${hvDe(p)}"` : ''}>${h(p)}</td>`).join('')}</tr>`).join('')
+  $('filas').innerHTML = orden.length ? orden.map(p => `<tr>${COLS.map(([, h, , , v], i) => `<td${v ? ok(v(p), 'Coincide con la OS') : ''}${COLS[i][0] === 'H / V' ? ` data-x="${hvDe(p)}"` : ''}>${h(p)}</td>`).join('')}</tr>`).join('')
     : `<tr><td colspan="${COLS.length}" class="vacio">No hay pendientes con este filtro.</td></tr>`;
   $('tarjetas').innerHTML = orden.length ? orden.map(p => `<div class="tj">
       <div class="tj-top"><div><button type="button" class="ab" data-os="${p.os}">AB ${p.ab}</button><span class="os">OS ${p.os}</span></div><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></div>
@@ -359,6 +400,24 @@ function pintar() {
       <div class="tj-top"><div>${edadB(p)} ${evB(p)}</div><button type="button" class="btn pri" data-os="${p.os}" data-subir="1">Adjuntar</button></div></div>`).join('')
     : '<div class="vacio">No hay pendientes con este filtro.</div>';
 }
+// Inicio de la atención: al pasar el puntero o hacer clic sobre SÍ/NO se ve cuándo inició y cuánto tiempo lleva
+const durTxt = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mi = m % 60;
+  return d ? `${d} d ${h} h` : h ? `${h} h ${mi} min` : `${mi} min`; };
+const tipIni = document.createElement('div'); tipIni.className = 'tip-ini'; tipIni.hidden = true; tipIni.setAttribute('role', 'tooltip'); document.body.appendChild(tipIni);
+function verIni(el) {
+  const p = D.pend.find(x => String(x.os) === el.dataset.iniOs); if (!p) return;
+  tipIni.innerHTML = p.ini ? `<b>Inició la atención</b><span>${esc(fRec(p.ini))}</span><b>Tiempo transcurrido</b><span class="dur">${durTxt(Date.now() - (/Z$|[+-]\d\d:?\d\d$/.test(p.ini) ? Date.parse(p.ini) : msIso(p.ini)))}</span>`
+    : '<b>Aún no inicia la atención</b><span>El técnico todavía no marca el inicio en ScordSoft.</span>';
+  tipIni.hidden = false; const r = el.getBoundingClientRect(), w = tipIni.offsetWidth;
+  tipIni.style.top = (r.bottom + scrollY + 6) + 'px'; tipIni.style.left = Math.max(8, Math.min(r.left + scrollX + r.width / 2 - w / 2, scrollX + innerWidth - w - 8)) + 'px';
+}
+const ocultarIni = () => { tipIni.hidden = true; };
+document.addEventListener('mouseover', (e) => { const el = e.target.closest('.ini-pop'); if (el) verIni(el); });
+document.addEventListener('mouseout', (e) => { if (e.target.closest('.ini-pop')) ocultarIni(); });
+document.addEventListener('focusin', (e) => { const el = e.target.closest('.ini-pop'); if (el) verIni(el); });
+document.addEventListener('focusout', (e) => { if (e.target.closest('.ini-pop')) ocultarIni(); });
+document.addEventListener('scroll', ocultarIni, true);
+document.addEventListener('click', (e) => { const el = e.target.closest('.ini-pop'); if (el) { verIni(el); e.stopPropagation(); } else ocultarIni(); }, true);
 document.addEventListener('click', (e) => {
   if (e.target.closest('.fpop')) return;
   const fb = e.target.closest('[data-fcol]'); if (fb) { e.stopPropagation(); abrirFiltro(fb); return; }
