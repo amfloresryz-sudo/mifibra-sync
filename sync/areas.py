@@ -1,7 +1,7 @@
 """Áreas de los planos (polígonos de Google My Maps) para el mapa de Ruteo de la pestaña Pendientes.
 
 Los IDs de los mapas no van en el código (repositorio público): se guardan en Supabase, tabla ajustes, clave
-"robot:areas_mapas" → {"mapas": ["ID", ...]}. El robot los descarga, simplifica cada polígono (~10 m) y deja el
+"robot:areas_mapas" → {"mapas": ["ID", ...]}. El robot los descarga, simplifica cada figura (~10 m) y deja el
 resultado en el tablero "areas". Si algún mapa no se puede leer no se toca lo guardado.
 """
 from __future__ import annotations
