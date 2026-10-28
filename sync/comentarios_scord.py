@@ -44,7 +44,7 @@ MAX_INTENTOS = 3
 
 def pendientes(limite: int = 20) -> list[dict]:
     r = _pedir("GET", _url("eecc_comentarios"), "Leer comentarios pendientes", headers=_cabeceras(),
-               params={"select": "id,os,ab,filial,eecc,usuario,nombre_usuario,texto,scord_intentos",
+               params={"select": "id,os,ab,filial,eecc,usuario,nombre_usuario,texto,scord_intentos,creado_en",
                        "scord_estado": "eq.pendiente", "order": "creado_en.asc", "limit": str(limite)})
     return r.json()
 
@@ -126,15 +126,21 @@ def buscar_os(page: Page, base: str, c: dict):
         page.fill("#MainContent_txtAbonado", "")
         page.fill("#MainContent_txtNumeroOS", str(c["os"]))
         _postback(page, lambda: page.click("#MainContent_btnBuscar"))
-        fila = page.locator(f"{GRILLA} tr").filter(has=page.locator("input[id*=ibtnLogIngvisita]")).filter(
-            has_text=re.compile(rf"(^|\s){c['os']}(\s|$)"))
-        if fila.count() == 1:
+        # Fila cuya celda NROOS es exactamente la OS (se compara celda por celda: el texto de la fila
+        # viene pegado, p. ej. «INTERNET 46326REGISTRADA»).
+        ids = page.evaluate(
+            """([g, os]) => { const t = document.querySelector(g); if (!t) return [];
+                return [...t.querySelectorAll('tr')].filter(tr => tr.querySelector('input[id*=ibtnLogIngvisita]')
+                    && [...tr.cells].some(td => td.innerText.trim() === os))
+                  .map(tr => tr.querySelector('input[id*=ibtnLogIngvisita]').id); }""", [GRILLA, str(c["os"])])
+        fila = page.locator(f"{GRILLA} tr").filter(has=page.locator(f"#{ids[0]}")) if len(ids) == 1 else None
+        if fila is not None:
             texto = fila.inner_text()
             if c.get("ab") and not re.search(rf"\b0*{int(c['ab'])}\b", texto):
                 raise ErrorRobot(f"La OS {c['os']} en ScordSoft no es del AB {c['ab']}.")
             return fila
-        if fila.count() > 1:
-            raise ErrorRobot(f"La búsqueda de la OS {c['os']} trajo {fila.count()} filas.")
+        if len(ids) > 1:
+            raise ErrorRobot(f"La búsqueda de la OS {c['os']} trajo {len(ids)} filas.")
     raise ErrorRobot(f"No se encontró la OS {c['os']} en Agendamiento de Ordenes.")
 
 
@@ -157,7 +163,10 @@ def escribir(page: Page, base: str, c: dict, probar: bool) -> str:
     hist = historial(page, fila)
     if ya_esta(hist, cuerpo(c)):
         return "ya_estaba"
-    texto = texto_scord(c, hist)
+    hora = None
+    if c.get("creado_en"):   # el sello lleva la hora en que la EECC escribió el comentario (hora de Lima)
+        hora = datetime.fromisoformat(str(c["creado_en"]).replace("Z", "+00:00")).astimezone(timezone(timedelta(hours=-5)))
+    texto = texto_scord(c, hist, hora)
     print(f"   se graba: {texto}", flush=True)
     fila = buscar_os(page, base, c)   # tras cerrar la ventana la grilla puede haberse redibujado
     _postback(page, lambda: fila.locator("input[id*=ibtnLogIngvisita]").click(), "#MainContent_pnlVisitatecnico")
