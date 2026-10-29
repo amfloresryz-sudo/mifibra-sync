@@ -111,6 +111,21 @@ main .w { padding-block: 24px 56px; display: flex; flex-direction: column; gap: 
 .kpi .l { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
 .kpi .kv { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .kpi .s { font-size: 13px; color: var(--fg-3); }
+/* Ritmo del día */
+#rit-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.rit-curva { border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px 8px; background: var(--sup); }
+.rit-curva h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
+.rit-curva svg { width: 100%; height: 170px; display: block; }
+.rit-ley { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--fg-3); margin-top: 4px; }
+.rit-ley i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.rbar { position: relative; height: 8px; border-radius: 4px; background: var(--gris-bg, #eef0f4); min-width: 70px; margin-top: 4px; }
+.rbar b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.rbar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg-3); }
+.mal-t { color: var(--mal); font-weight: 700; }
+.rit-tec-btn { border-color: var(--mal) !important; color: var(--mal) !important; font-weight: 700; }
+.rit-tec-btn b { background: var(--mal); color: #fff; border-radius: 999px; padding: 0 7px; margin-left: 4px; font-size: 12px; }
+.rt-ch { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; margin: 1px 2px; white-space: nowrap; }
+.rt-ch.mal { background: var(--mal-bg); color: var(--mal); } .rt-ch.mid { background: var(--mid-bg); color: var(--mid); } .rt-ch.ok { background: var(--ok-bg); color: var(--ok); }
 .kpi.ok { background: var(--ok-bg); border-color: transparent; } .kpi.ok .kv { color: var(--ok); }
 .kpi.mal { background: var(--mal-bg); border-color: transparent; } .kpi.mal .kv { color: var(--mal); }
 .kpi.mid { background: var(--mid-bg); border-color: transparent; } .kpi.mid .kv { color: var(--mid); }
@@ -841,6 +856,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <button type="button" role="tab" id="tab-coord" aria-controls="v-coord" aria-selected="false" data-t="coord">Coordinaciones</button>
     <button type="button" role="tab" id="tab-avance" aria-controls="v-avance" aria-selected="false" data-t="avance">Avance</button>
     <button type="button" role="tab" id="tab-avt" aria-controls="v-avt" aria-selected="false" data-t="avt">Avance total</button>
+    <button type="button" role="tab" id="tab-ritmo" aria-controls="v-ritmo" aria-selected="false" data-t="ritmo">Ritmo del día</button>
   </div>
 </div></section>
 
@@ -1034,6 +1050,19 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <p class="pen-aviso" id="aviso-tb-cons" role="status" aria-live="polite"></p>
       <div class="scroll" id="cons-mat"></div>
       <p class="nota">Días trab. = días con al menos una instalación · Productividad = total ÷ días trabajados.</p>
+    </section>
+  </div>
+
+  <!-- RITMO DEL DÍA -->
+  <div role="tabpanel" id="v-ritmo" aria-labelledby="tab-ritmo" hidden style="flex-direction:column;gap:22px">
+    <section class="sec" id="sec-rit" aria-labelledby="t-rit">
+      <div class="sec-cab"><div><h2 id="t-rit">Ritmo del día: ¿llegamos a la meta de altas?</h2><p class="sub" id="rit-sub"></p></div>
+        <div class="pen-acc"><button type="button" class="btn-out rit-tec-btn" id="rit-tec-btn">👷 Técnicos a revisar</button><span class="segs" id="rit-por" role="group" aria-label="Agrupar por"><button type="button" class="chip" data-rp="z" aria-pressed="true">Por zona</button><button type="button" class="chip" data-rp="ec" aria-pressed="false">Por EECC</button></span><button type="button" class="btn-out" data-img="sec-rit" data-nom="ritmo-del-dia">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-rit" data-nom="ritmo-del-dia">Descargar Excel</button></div></div>
+      <div class="kpis" id="rit-kpis"></div>
+      <div class="rit-curva" id="rit-curva"></div>
+      <p class="pen-aviso" id="aviso-tb-rit" role="status" aria-live="polite"></p>
+      <div class="scroll" id="rit-tab"></div>
+      <p class="nota" id="rit-nota"></p>
     </section>
   </div>
 
@@ -1409,7 +1438,7 @@ $('eecs').addEventListener('click', (e) => { const b = e.target.closest('[data-e
 $('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; seg = msTog(seg, b.dataset.s); pintarFiltros(); pintarTodo(); });
 $('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = msTog(canal, b.dataset.cn); CFG = cfgDe(); pintarFiltros(); pintarTodo(); });
 $('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = msTog(zona, b.dataset.z); pintarFiltros(); pintarTodo(); });
-const VISTAS = ['panel','ingresos','pendientes','coord','avance','avt'];
+const VISTAS = ['panel','ingresos','pendientes','coord','avance','avt','ritmo'];
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]'); if (!b) return; tab = b.dataset.t;
   document.querySelectorAll('#tabs [role="tab"]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
@@ -3566,7 +3595,115 @@ document.addEventListener('click', async (e) => {
   try { await navigator.clipboard.writeText(txt); aviso(id, 'Tabla copiada. Pégala en Excel o WhatsApp.'); } catch { aviso(id, 'Tu navegador no permitió copiar.', true); }
 });
 // Solo se pinta la pestaña a la vista; las demás quedan marcadas y se pintan al abrirlas (antes se pintaban las 6 en cada filtro).
-const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt() };
+/* ---------- RITMO DEL DÍA: ¿llegamos a la meta de altas? ----------
+   Hoy = día del corte. Altas = instalaciones DESCARGADAS hoy. En curso = pendientes con inicio (fachada o atención) hoy.
+   Por atender = pendientes con agenda o coordinación para hoy que aún no inician. Proyección = altas de hoy + lo que en
+   los días hábiles del mes se hizo después de esta hora (promedio). Meta del día = meta del mes ÷ días hábiles (lun-sáb). */
+let ritmoPor = 'z', ritTec = null;
+$('rit-tec-btn').addEventListener('click', () => { if (!ritTec) return;
+  abrirFichaModal('Técnicos a revisar hoy', ritTec.sub, ritTec.html);
+  document.querySelector('#modal .modal').classList.remove('ficha');
+  if (typeof prepararOrden === 'function' && $('tb-rit-tec')) { orden['tb-rit-tec'] = null; prepararOrden($('tb-rit-tec')); } });
+const RIT_INI = 9 * 60, RIT_UNA = 15 * 60;   // «inició tarde» si su 1.ª instalación empieza después de las 9:00 · «1 sola alta» se mide desde las 15:00
+const hmMin = (s) => { const m = /(\d{1,2}):(\d{2})/.exec(s || ''); return m ? +m[1] * 60 + +m[2] : null; };
+const minHm = (m) => m == null ? '—' : `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+$('rit-por').addEventListener('click', (e) => { const b = e.target.closest('[data-rp]'); if (!b) return; ritmoPor = b.dataset.rp;
+  $('rit-por').querySelectorAll('[data-rp]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarRitmo(); });
+function pintarRitmo() {
+  const dH = D.dias, hoy = hoyIso(), ahora = hmMin((D.corte || '').slice(11, 16)) ?? 24 * 60;
+  const man = new Date(Date.UTC(D.anio, D.mes - 1, dH + 1)).toISOString().slice(0, 10);
+  const desp = ((D.config && D.config.despachadores) || []).map(x => String(x).toUpperCase());
+  const esDesp = (t) => !t || desp.some(d => t.toUpperCase().includes(d));
+  const grupo = (x) => ritmoPor === 'z' ? (x.z || 'SIN ZONA') : (x.ec || 'POR ASIGNAR');
+  const tFin = (x) => hmMin(x.hf) ?? hmMin(x.hi);   // hora en que quedó la alta (fin; si no hay, inicio)
+  const LM = D.liq.filter(ok), L = LM.filter(x => x.d === dH), P = D.pend.filter(ok);
+  const habiles = []; for (let d = 1; d < dH; d++) if (!diaInfo(d).fin) habiles.push(d);
+  const nHab = (() => { let c = 0; const ult = new Date(D.anio, D.mes, 0).getDate(); for (let d = 1; d <= ult; d++) if (!diaInfo(d).fin) c++; return c; })();
+  const metaDia = CFG.meta_mes ? Math.round(CFG.meta_mes / nHab) : null;
+  // Promedio de los días hábiles del mes: altas del día completo y altas hechas hasta cada minuto
+  const prom = (lista, hasta) => habiles.length ? lista.filter(x => habiles.includes(x.d) && (hasta == null || (tFin(x) ?? 0) <= hasta)).length / habiles.length : 0;
+  // ---- filas (zona o EECC)
+  const R = {}; const r0 = (k) => R[k] || (R[k] = { k, altas: 0, curso: 0, hacer: 0, hacerSin: 0, man: 0, sinAsig: 0, tec: new Set(), tarde: new Set(), sinIni: new Set(), una: new Set() });
+  L.forEach(x => r0(grupo(x)).altas++);
+  P.forEach(p => { const r = r0(grupo(p)), iniHoy = !!p.ini && p.ini.slice(0, 10) === hoy, t = tipoProg(p);
+    if (iniHoy) r.curso++;
+    else if ((t === 'AG' || t === 'CO') && p.fp === hoy) { r.hacer++; if (!p.tec || p.ec === 'POR ASIGNAR') r.hacerSin++; }
+    else if ((t === 'AG' || t === 'CO') && p.fp === man) r.man++;
+    if (p.ec === 'POR ASIGNAR') r.sinAsig++; });
+  // ---- técnicos del día (con alta hoy, OS iniciada hoy o agenda para hoy)
+  const T = {}; const t0 = (x) => esDesp(x.tec) ? null : (T[x.tec] || (T[x.tec] = { tec: x.tec, ec: x.ec, g: {}, z: {}, altas: 0, curso: 0, hacer: 0, ini: null }));
+  const suma = (o, k, v) => { o[k] = (o[k] || 0) + 1; };
+  const ini = (o, m) => { if (m != null && (o.ini == null || m < o.ini)) o.ini = m; };
+  L.forEach(x => { const o = t0(x); if (!o) return; o.altas++; suma(o.g, grupo(x)); suma(o.z, x.z || '—'); ini(o, hmMin(x.hi)); });
+  P.forEach(p => { const iniHoy = !!p.ini && p.ini.slice(0, 10) === hoy, t = tipoProg(p), paraHoy = (t === 'AG' || t === 'CO') && p.fp === hoy;
+    if (!iniHoy && !paraHoy) return; const o = t0(p); if (!o) return; suma(o.g, grupo(p)); suma(o.z, p.z || '—');
+    if (iniHoy) { o.curso++; ini(o, hmMin(p.ini.slice(11, 16))); } else o.hacer++; });
+  const mayor = (o) => Object.keys(o).sort((a, b) => o[b] - o[a])[0];
+  const tarde = (o) => o.ini != null && o.ini > RIT_INI, sinIni = (o) => o.ini == null && ahora > RIT_INI, una = (o) => ahora >= RIT_UNA && o.altas === 1 && !o.curso && !o.hacer;
+  Object.values(T).forEach(o => { const r = r0(mayor(o.g)); r.tec.add(o.tec); if (tarde(o)) r.tarde.add(o.tec); if (sinIni(o)) r.sinIni.add(o.tec); if (una(o)) r.una.add(o.tec); });
+  // ---- mes: % de días-técnico con 1 sola alta y hora promedio de la 1.ª instalación
+  const mesG = {}; const td = {};
+  LM.filter(x => x.d < dH && x.tec).forEach(x => { const k = x.tec + '#' + x.d; const o = td[k] || (td[k] = { g: grupo(x), n: 0, h: null }); o.n++; const m = hmMin(x.hi); if (m != null && (o.h == null || m < o.h)) o.h = m; });
+  Object.values(td).forEach(o => { const m = mesG[o.g] || (mesG[o.g] = { dias: 0, una: 0, hs: 0, hn: 0 }); m.dias++; if (o.n === 1) m.una++; if (o.h != null) { m.hs += o.h; m.hn++; } });
+  // ---- totales y proyección
+  const altas = L.length, enCurso = Object.values(R).reduce((a, r) => a + r.curso, 0), hacer = Object.values(R).reduce((a, r) => a + r.hacer, 0);
+  const pFull = prom(LM), pAhora = prom(LM, ahora), proy = Math.round(altas + Math.max(0, pFull - pAhora));
+  const tecs = Object.values(T), nTarde = tecs.filter(tarde).length, nSin = tecs.filter(sinIni).length, nUna = tecs.filter(una).length;
+  const sinAsig = P.filter(p => p.ec === 'POR ASIGNAR').length, manT = Object.values(R).reduce((a, r) => a + r.man, 0);
+  const cls = (v, m) => m == null ? '' : v >= m ? 'ok' : v >= m * 0.85 ? 'mid' : 'mal';
+  $('rit-sub').textContent = `${diaInfo(dH).wd} ${fDia(dH)} · corte ${minHm(ahora)} · comparado con el promedio de ${habiles.length} días hábiles del mes`;
+  $('rit-kpis').innerHTML =
+    kpi('Altas hoy', n(altas), `a esta hora el mes promedia ${dec(pAhora, 0)}`, cls(altas, pAhora * 1.05)) +
+    kpi('Proyección del día', n(proy), metaDia ? `meta del día ${n(metaDia)} (${pct(proy, metaDia, 0)})` : 'sin meta', cls(proy, metaDia)) +
+    kpi('En curso / por atender', `${n(enCurso)} / ${n(hacer)}`, 'iniciadas hoy · agendas de hoy sin iniciar') +
+    kpi('Técnicos en campo', n(tecs.length), `promedio del mes ${dec(habiles.length ? new Set(LM.filter(x => habiles.includes(x.d)).map(x => x.tec + '#' + x.d)).size / habiles.length : 0, 0)}`) +
+    kpi('Iniciaron después de las 9:00', n(nTarde + nSin), `${n(nSin)} aún sin iniciar · ${pct(nTarde + nSin, tecs.length, 0)} de los técnicos`, nTarde + nSin ? 'mal' : 'ok') +
+    kpi('Con 1 sola alta', ahora >= RIT_UNA ? n(nUna) : '—', ahora >= RIT_UNA ? 'sin más OS en curso ni agendadas hoy' : 'se mide desde las 3:00 p. m.', ahora >= RIT_UNA && nUna ? 'mid' : '') +
+    kpi('Agendadas para mañana', n(manT), `${n(sinAsig)} pendientes sin EECC asignada`, sinAsig ? 'mal' : '');
+  // ---- curva: altas acumuladas por hora (hoy, promedio del mes y ritmo de la meta)
+  const H0 = 7, H1 = 21, horas = []; for (let h = H0; h <= H1; h++) horas.push(h);
+  const acHoy = horas.map(h => h * 60 > ahora + 59 ? null : L.filter(x => (tFin(x) ?? 0) < (h + 1) * 60).length);
+  const acProm = horas.map(h => prom(LM, (h + 1) * 60 - 1)), acMeta = metaDia && pFull ? acProm.map(v => v / pFull * metaDia) : null;
+  const mx = Math.max(10, ...(acMeta || []), ...acProm, ...acHoy.filter(v => v != null)) * 1.08, W = 900, Hh = 170, pl = 34, pb = 20;
+  const X = (i) => pl + i * (W - pl - 8) / (horas.length - 1), Y = (v) => Hh - pb - v / mx * (Hh - pb - 8);
+  const lin = (a, c, dash = '') => { const pts = a.map((v, i) => v == null ? null : `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).filter(Boolean); return pts.length > 1 ? `<polyline fill="none" stroke="${c}" stroke-width="2.5" ${dash} points="${pts.join(' ')}"/>` : ''; };
+  const rej = [0, 0.25, 0.5, 0.75, 1].map(f => { const v = Math.round(mx * f / 10) * 10; return `<line x1="${pl}" x2="${W - 8}" y1="${Y(v)}" y2="${Y(v)}" stroke="${css('--borde')}"/><text x="${pl - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="${css('--fg-3')}">${v}</text>`; }).join('');
+  const ejeX = horas.map((h, i) => i % 2 ? '' : `<text x="${X(i)}" y="${Hh - 4}" text-anchor="middle" font-size="11" fill="${css('--fg-3')}">${h}:00</text>`).join('');
+  $('rit-curva').innerHTML = `<h4>Altas acumuladas por hora</h4><svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" role="img" aria-label="Altas acumuladas por hora: hoy, promedio del mes y ritmo para la meta">${rej}${ejeX}${acMeta ? lin(acMeta, css('--ok'), 'stroke-dasharray="6 5"') : ''}${lin(acProm, css('--fg-4') || '#9aa3b2')}${lin(acHoy, css('--magenta') || '#c0007a')}</svg>
+    <div class="rit-ley"><span><i style="background:${css('--magenta') || '#c0007a'}"></i>Hoy</span><span><i style="background:${css('--fg-4') || '#9aa3b2'}"></i>Promedio día hábil del mes</span>${acMeta ? `<span><i style="background:${css('--ok')}"></i>Ritmo para llegar a ${n(metaDia)}</span>` : ''}</div>`;
+  // ---- tabla por zona / EECC
+  const mesAltas = (k) => LM.filter(x => grupo(x) === k && habiles.includes(x.d)).length;
+  const totMes = LM.filter(x => habiles.includes(x.d)).length || 1;
+  const filas = Object.values(R).filter(r => r.altas || r.curso || r.hacer || r.tec.size || r.man || r.sinAsig)
+    .sort((a, b) => (a.k === 'POR ASIGNAR') - (b.k === 'POR ASIGNAR') || b.altas - a.altas);
+  const celda = (v, c = '') => `<td data-v="${v}"${c ? ` class="${c}"` : ''}>${v ? n(v) : '<span style="color:var(--fg-4)">0</span>'}</td>`;
+  const fila = (r) => {
+    const pr = prom(LM.filter(x => grupo(x) === r.k)), pa = prom(LM.filter(x => grupo(x) === r.k), ahora);
+    const py = Math.round(r.altas + Math.max(0, pr - pa)), mt = metaDia ? Math.round(metaDia * mesAltas(r.k) / totMes) : null;
+    const m = mesG[r.k], una = m && m.dias ? m.una / m.dias * 100 : null, hIni = m && m.hn ? Math.round(m.hs / m.hn) : null;
+    const av = mt ? Math.min(100, r.altas / mt * 100) : 0, ac = pr ? Math.min(100, pa / pr * 100) : 0;
+    const col = mt ? (py >= mt ? css('--ok') : py >= mt * 0.85 ? css('--mid') : css('--mal')) : css('--fg-4');
+    return `<tr><th scope="row" style="text-align:left">${esc(r.k)}</th>${celda(r.altas)}<td data-v="${pa.toFixed(1)}">${dec(pa, 0)}</td>${celda(r.curso)}${celda(r.hacer, r.hacerSin ? 'mal-t' : '')}
+      <td data-v="${py}"><b>${n(py)}</b>${mt ? `<div class="rbar" title="Altas hoy ${r.altas} de ${mt} · la raya marca dónde debería ir a esta hora"><b style="width:${av}%;background:${col}"></b><em style="left:${ac}%"></em></div>` : ''}</td><td data-v="${mt ?? ''}">${mt ? n(mt) : '—'}</td>
+      <td data-v="${r.tec.size}">${n(r.tec.size)}</td><td data-v="${r.tarde.size + r.sinIni.size}"${r.tarde.size + r.sinIni.size ? ' class="mal-t"' : ''}>${n(r.tarde.size + r.sinIni.size)}${r.sinIni.size ? ` <small>(${r.sinIni.size} sin iniciar)</small>` : ''}</td>
+      <td data-v="${r.una.size}">${ahora >= RIT_UNA ? n(r.una.size) : '—'}</td><td data-v="${una ?? ''}">${una == null ? '—' : dec(una, 0) + '%'}</td><td data-v="${hIni ?? ''}">${minHm(hIni)}</td>
+      ${celda(r.man)}${celda(r.sinAsig, r.sinAsig ? 'mal-t' : '')}</tr>`; };
+  const tot = { k: 'TOTAL', altas, curso: enCurso, hacer, man: manT, sinAsig };
+  $('rit-tab').innerHTML = `<table class="det ord" id="tb-rit"><thead><tr><th>${ritmoPor === 'z' ? 'Zona' : 'EECC'}</th><th>Altas hoy</th><th>Prom. a esta hora</th><th>En curso</th><th>Agendas hoy sin iniciar</th><th>Proyección del día</th><th>Meta del día</th><th>Técnicos en campo</th><th>Iniciaron después de 9:00</th><th>Con 1 sola alta</th><th>Mes: días-técnico con 1 alta</th><th>Mes: hora prom. 1.ª instalación</th><th>Agendadas mañana</th><th>Sin EECC asignada</th></tr></thead>
+    <tbody>${filas.map(fila).join('') || '<tr><td colspan="14">Sin datos para hoy.</td></tr>'}</tbody>
+    <tfoot><tr><th style="text-align:left">Total</th><td>${n(altas)}</td><td>${dec(pAhora, 0)}</td><td>${n(enCurso)}</td><td>${n(hacer)}</td><td><b>${n(proy)}</b></td><td>${metaDia ? n(metaDia) : '—'}</td><td>${n(tecs.length)}</td><td>${n(nTarde + nSin)}</td><td>${ahora >= RIT_UNA ? n(nUna) : '—'}</td><td>${(() => { const a = Object.values(mesG); const d = a.reduce((s, m) => s + m.dias, 0); return d ? dec(a.reduce((s, m) => s + m.una, 0) / d * 100, 0) + '%' : '—'; })()}</td><td>${(() => { const a = Object.values(mesG); const c = a.reduce((s, m) => s + m.hn, 0); return minHm(c ? Math.round(a.reduce((s, m) => s + m.hs, 0) / c) : null); })()}</td><td>${n(manT)}</td><td>${n(sinAsig)}</td></tr></tfoot></table>`;
+  if (typeof prepararOrden === 'function') { orden['tb-rit'] = null; prepararOrden($('tb-rit')); }
+  $('rit-nota').innerHTML = `<b>Proyección</b> = altas de hoy + lo que en promedio se hizo después de esta hora en los días hábiles del mes. <b>Meta del día</b> = meta del mes (${CFG.meta_mes ? n(CFG.meta_mes) : '—'}) ÷ ${nHab} días hábiles; por fila, repartida según lo que aporta cada ${ritmoPor === 'z' ? 'zona' : 'EECC'} en el mes. La raya de la barra marca dónde debería ir a esta hora. <b>Iniciaron después de 9:00</b> = su primera instalación de hoy empezó después de las 9:00 (o aún no empieza). <b>Con 1 sola alta</b> = desde las 3:00 p. m., técnicos con 1 alta y sin más OS en curso ni agendadas hoy. Cada técnico cuenta en la ${ritmoPor === 'z' ? 'zona' : 'EECC'} donde tiene más OS hoy.`;
+  // ---- técnicos a revisar
+  const mesTec = {}; LM.filter(x => x.d < dH && x.tec).forEach(x => { const o = mesTec[x.tec] || (mesTec[x.tec] = { n: 0, d: new Set() }); o.n++; o.d.add(x.d); });
+  const rev = tecs.map(o => ({ ...o, fl: [tarde(o) && ['mal', `Inició ${minHm(o.ini)}`], sinIni(o) && ['mal', 'Sin iniciar'], una(o) && ['mid', '1 sola alta'], (o.altas + o.curso + o.hacer) < 3 && ahora < RIT_UNA && ['mid', `${o.altas + o.curso + o.hacer} OS hoy (mín. 3)`]].filter(Boolean) }))
+    .filter(o => o.fl.length).sort((a, b) => b.fl.length - a.fl.length || (b.ini ?? 9999) - (a.ini ?? 9999));
+  $('rit-tec-btn').innerHTML = `👷 Técnicos a revisar <b>${rev.length}</b>`;
+  ritTec = { sub: `${diaInfo(dH).wd} ${fDia(dH)} · corte ${minHm(ahora)} · ${rev.length} de ${tecs.length} técnicos en campo con alguna alerta`, html: `<div class="pen-acc" style="margin:0 0 10px"><button type="button" class="btn-out" data-xls="tb-rit-tec" data-nom="tecnicos-a-revisar">Descargar Excel</button></div><div class="scroll"><table class="det ord" id="tb-rit-tec"><thead><tr><th>Técnico</th><th>EECC</th><th>Zona</th><th>1.ª instalación</th><th>Altas hoy</th><th>En curso</th><th>Agendas hoy sin iniciar</th><th>Mes: altas por día</th><th>Alertas</th></tr></thead><tbody>${rev.map(o => { const m = mesTec[o.tec];
+    return `<tr><td style="text-align:left" title="${esc(o.tec)}">${esc(o.tec)}</td><td>${esc(o.ec || '—')}</td><td>${esc(mayor(o.z) || '—')}</td><td data-v="${o.ini ?? 9999}">${minHm(o.ini)}</td><td>${n(o.altas)}</td><td>${n(o.curso)}</td><td>${n(o.hacer)}</td><td data-v="${m ? (m.n / m.d.size).toFixed(2) : ''}">${m ? dec(m.n / m.d.size, 1) : '—'}</td><td style="text-align:left">${o.fl.map(([c, t]) => `<span class="rt-ch ${c}">${t}</span>`).join('')}</td></tr>`; }).join('') || '<tr><td colspan="9">Sin alertas.</td></tr>'}</tbody></table></div>` };
+}
+
+const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => pintarRitmo() };
 const tabSucia = new Set();
 function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
