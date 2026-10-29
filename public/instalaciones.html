@@ -552,8 +552,13 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .cr-ley b { font: 800 26px var(--f-disp); } .cr-ley b small { font: 600 13px var(--f-disp); color: var(--fg-3); margin-left: 4px; }
 .cr-ley .s { font-size: 12.5px; color: var(--fg-3); }
 /* Avance total */
-.tb-avt { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; width: 100%; table-layout: fixed; min-width: 760px; }
-.tb-avt col.c-nom { width: 300px; } .tb-avt col.c-tec { width: 64px; } .tb-avt col.c-tot { width: 112px; } .tb-avt col.c-pr { width: 96px; }
+.tb-avt { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; width: auto; table-layout: fixed; }
+.tb-avt col.c-nom { width: 320px; } .tb-avt col.c-rut { width: 104px; } .tb-avt col.c-tec { width: 64px; } .tb-avt col.c-dat { width: 128px; } .tb-avt col.c-tot { width: 112px; } .tb-avt col.c-pr { width: 96px; } .tb-avt col.c-tp { width: 128px; }
+.tb-avt .avt-rut { border-right: 1px solid var(--borde-2); }
+.tb-avt .in-ruta { width: 62px; font: 700 13.5px var(--f-txt, inherit); text-align: center; padding: 4px 2px; border: 1px solid var(--borde-2); border-radius: 8px; background: var(--sup); color: var(--fg); }
+.tb-avt .in-ruta:focus-visible { outline: 2px solid var(--magenta); outline-offset: 1px; }
+.tb-avt .falta { display: block; font: 700 10.5px var(--f-txt, inherit); margin-top: 2px; } .tb-avt .falta.mal { color: var(--mal); } .tb-avt .falta.ok { color: var(--ok); }
+.tb-avt td.tp { color: var(--fg-2); font-weight: 600; white-space: nowrap; }
 .tb-avt th, .tb-avt td { padding: 8px 6px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--borde); font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
 .tb-avt thead th { font: 800 11.5px var(--f-disp); letter-spacing: .5px; color: #FFFFFF; text-transform: uppercase; background: var(--noche, #1A1A2E); line-height: 1.25; white-space: normal; text-align: center !important; }
 .tb-avt thead tr.t1 th { border-bottom: 0; padding: 10px 6px 4px; }
@@ -2538,6 +2543,14 @@ function pintarAvt() {
   [...avt.to].forEach(t => { if (!toCnt[t]) avt.to.delete(t); });
   const R = R0.filter(x => (msOk(avt.ec, x.ec)) && (!avt.to.size || avt.to.has(x.tr)));
   const sum = (L) => L.reduce((a, x) => a + x.n, 0);
+  // Tiempo promedio por trabajo: Hora I → Hora F de cada orden (solo las que traen las dos horas y duran entre 5 min y 12 h)
+  const durMin = (x) => { const a = /^(\d{1,2}):(\d{2})/.exec(x.hi), b = /^(\d{1,2}):(\d{2})/.exec(x.hf); if (!a || !b) return null; const m = (+b[1] * 60 + +b[2]) - (+a[1] * 60 + +a[2]); return m >= 5 && m <= 720 ? m : null; };
+  const tProm = (L) => { const v = L.map(durMin).filter(m => m != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const tTxt = (m) => m == null ? '—' : m >= 60 ? `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')} min` : `${Math.round(m)} min`;
+  // Rutas declaradas (técnicos que la EECC debía tener en campo): las mismas de Avance y Pendientes › Agendas del día, por día
+  const rutaDia = avt.per === 'dia' && !provTodas() ? isoDia(avt.dia) : null, RDia = rutaDia ? (AJ.rutas[rutaDia] || {}) : {};
+  const fijaEc = (e) => (RF && RF[D.filial || filialSel()] || {})[e];
+  const rutaMes = (e) => { let t = 0, hay = false; dias.forEach(d => { const v = (AJ.rutas[isoDia(d)] || {})[e] ?? (!diaInfo(d).fin ? fijaEc(e) : null); if (v != null) { t += +v; hay = true; } }); return hay ? t : null; };
   // segmentadores
   $('avt-segs').innerHTML = `<div class="g"><span class="seg-t">Periodo</span><button type="button" class="chip" data-avt-per="dia" aria-pressed="${avt.per === 'dia'}">Día</button><button type="button" class="chip" data-avt-per="mes" aria-pressed="${avt.per === 'mes'}">Mes acumulado</button>
       ${avt.per === 'dia' ? `<select class="sel-dia" id="avt-dia" aria-label="Día">${dias.map(d => `<option value="${d}" ${d === avt.dia ? 'selected' : ''}>${diaInfo(d).wd} ${fDia(d)}</option>`).join('')}</select>` : ''}</div>
@@ -2566,11 +2579,16 @@ function pintarAvt() {
   const bt = (v, e, t, c) => v ? `<button type="button" data-avtl="${esc(e)}§${esc(t)}§${esc(c)}" title="Ver el detalle (${v})">${n(v)}</button>` : '';
   const filas = ecs.map(e => { const L = R.filter(x => x.ec === e), tt = {}; L.forEach(x => tt[x.tec] = (tt[x.tec] || 0) + x.n);
     const ts = Object.keys(tt).sort((a, b) => tt[b] - tt[a] || a.localeCompare(b)), ab = avt.abiertos.has(e), tot = sum(L);
-    return `<tr class="ec"><td data-v="${esc(e)}"><button type="button" class="avt-z" data-avt-z="${esc(e)}" aria-expanded="${ab}">EECC ${esc(e)} <small>${ts.length} técnico${ts.length === 1 ? '' : 's'}</small></button></td><td>${ts.length}</td>${cols.map(c => `<td class="cl">${bt(cel(L, c), e, '', c)}</td>`).join('')}<td class="tot cl">${bt(tot, e, '', '')}</td><td class="pr">${dec(tot / ts.length)}</td></tr>`
-      + ts.map(t => { const Lt = L.filter(x => x.tec === t); return `<tr class="tec" data-avt-de="${esc(e)}"${ab ? '' : ' hidden'}><td title="${esc(t)}" style="overflow:hidden;text-overflow:ellipsis">${esc(t)}</td><td></td>${cols.map(c => { const v = cel(Lt, c); return `<td class="cl ${semT(v)}">${bt(v, e, t, c)}</td>`; }).join('')}<td class="tot cl ${semT(tt[t])}">${bt(tt[t], e, t, '')}</td><td class="pr"></td></tr>`; }).join(''); }).join('');
-  $('avt-mat').innerHTML = `<table class="tb-avt" id="tb-avt"><colgroup><col class="c-nom"><col class="c-tec">${cols.map(() => '<col>').join('')}<col class="c-tot"><col class="c-pr"></colgroup><thead><tr class="t1"><th rowspan="2">EECC / técnico</th><th rowspan="2">Téc.</th>${grupos.map(g => `<th colspan="${g.n}" class="grp" title="${esc(g.t)}">${esc(g.t)}</th>`).join('')}<th rowspan="2" class="tot">Total general</th><th rowspan="2">Prom./téc.</th></tr>
+    const rv = rutaDia ? RDia[e] : null, rf = rutaDia ? fijaEc(e) : null, rr = rv ?? rf, fa = rr != null ? rr - ts.length : null;
+    const celRut = provTodas() ? '<td class="avt-rut">—</td>' : rutaDia
+      ? `<td class="avt-rut"><input type="number" class="in-ruta" min="0" max="999" inputmode="numeric" data-avt-ruta="${esc(e)}" value="${rv ?? ''}" placeholder="${rf ?? '—'}" aria-label="Rutas declaradas de ${esc(e)}" title="${rf != null ? 'Ruta fija: ' + rf + ' · escribe un número solo si hoy es distinto' : 'Técnicos que la EECC debía tener en campo'}">${fa != null ? `<span class="falta ${fa > 0 ? 'mal' : 'ok'}">${fa > 0 ? `faltan ${fa}` : 'completo'}</span>` : ''}</td>`
+      : `<td class="avt-rut" title="Suma de las rutas declaradas (o fijas) de cada día del mes">${rutaMes(e) ?? '—'}</td>`;
+    return `<tr class="ec"><td data-v="${esc(e)}"><button type="button" class="avt-z" data-avt-z="${esc(e)}" aria-expanded="${ab}">EECC ${esc(e)} <small>${ts.length} técnico${ts.length === 1 ? '' : 's'}</small></button></td>${celRut}<td>${ts.length}</td>${cols.map(c => `<td class="cl">${bt(cel(L, c), e, '', c)}</td>`).join('')}<td class="tot cl">${bt(tot, e, '', '')}</td><td class="pr">${dec(tot / ts.length)}</td><td class="tp" data-v="${tProm(L) ?? ''}">${tTxt(tProm(L))}</td></tr>`
+      + ts.map(t => { const Lt = L.filter(x => x.tec === t); return `<tr class="tec" data-avt-de="${esc(e)}"${ab ? '' : ' hidden'}><td title="${esc(t)}" style="overflow:hidden;text-overflow:ellipsis">${esc(t)}</td><td class="avt-rut"></td><td></td>${cols.map(c => { const v = cel(Lt, c); return `<td class="cl ${semT(v)}">${bt(v, e, t, c)}</td>`; }).join('')}<td class="tot cl ${semT(tt[t])}">${bt(tt[t], e, t, '')}</td><td class="pr"></td><td class="tp">${tTxt(tProm(Lt))}</td></tr>`; }).join(''); }).join('');
+  const rutT = ecs.reduce((a, e) => { const v = rutaDia ? (RDia[e] ?? fijaEc(e)) : rutaMes(e); return v == null ? a : (a ?? 0) + +v; }, null);
+  $('avt-mat').innerHTML = `<table class="tb-avt" id="tb-avt"><colgroup><col class="c-nom"><col class="c-rut"><col class="c-tec">${cols.map(() => '<col class="c-dat">').join('')}<col class="c-tot"><col class="c-pr"><col class="c-tp"></colgroup><thead><tr class="t1"><th rowspan="2">EECC / técnico</th><th rowspan="2" class="avt-rut" title="Técnicos que la EECC debía tener en campo (se escriben por EECC; las mismas de Avance)">Rutas declaradas</th><th rowspan="2">Téc.</th>${grupos.map(g => `<th colspan="${g.n}" class="grp" title="${esc(g.t)}">${esc(g.t)}</th>`).join('')}<th rowspan="2" class="tot">Total general</th><th rowspan="2">Prom./téc.</th><th rowspan="2" title="Tiempo promedio de cada trabajo: de la Hora I a la Hora F de la orden">T. prom. por trabajo</th></tr>
     <tr class="t2">${cols.map(c => `<th title="${esc(c.replace('|', ' · '))}">${esc(c.split('|')[1])}</th>`).join('')}</tr></thead><tbody>${filas}</tbody>
-    <tfoot><tr><td>Total general</td><td>${tecs}</td>${cols.map(c => `<td class="cl">${bt(cel(R, c), '', '', c)}</td>`).join('')}<td class="tot cl">${bt(T, '', '', '')}</td><td class="pr">${tecs ? dec(T / tecs) : '—'}</td></tr></tfoot></table>`;
+    <tfoot><tr><td>Total general</td><td class="avt-rut">${rutT ?? '—'}</td><td>${tecs}</td>${cols.map(c => `<td class="cl">${bt(cel(R, c), '', '', c)}</td>`).join('')}<td class="tot cl">${bt(T, '', '', '')}</td><td class="pr">${tecs ? dec(T / tecs) : '—'}</td><td class="tp">${tTxt(tProm(R))}</td></tr></tfoot></table>`;
   $('avt-todo').textContent = ecs.length && ecs.every(e => avt.abiertos.has(e)) ? 'Contraer todo' : 'Expandir todo';
   avtR = R; avtPer = per;
 }
@@ -2600,6 +2618,23 @@ $('avt-segs').addEventListener('click', (e) => {
   const t = e.target.closest('[data-avt-to]'); if (t) { const v = t.dataset.avtTo; if (!v) avt.to.clear(); else avt.to.has(v) ? avt.to.delete(v) : avt.to.add(v); pintarAvt(); }
 });
 $('avt-segs').addEventListener('change', (e) => { if (e.target.id === 'avt-dia') { avt.dia = +e.target.value; pintarAvt(); } });
+/* Rutas declaradas desde Avance total (mismo registro que Avance y Pendientes › Agendas del día) */
+let tGuardarRutasAvt;
+$('avt-mat').addEventListener('change', (e) => {
+  const inp = e.target.closest('[data-avt-ruta]'); if (!inp) return;
+  const f = isoDia(avt.dia), ec = inp.dataset.avtRuta, v = inp.value.trim();
+  const dia = AJ.rutas[f] || (AJ.rutas[f] = {});
+  if (v === '') delete dia[ec]; else dia[ec] = Math.max(0, Math.min(999, Math.round(Number(v)) || 0));
+  if (!Object.keys(dia).length) delete AJ.rutas[f];
+  const est = $('aviso-tb-avt'); est.textContent = 'Guardando rutas…'; est.style.color = '';
+  clearTimeout(tGuardarRutasAvt);
+  tGuardarRutasAvt = setTimeout(async () => {
+    try { await guardarAjustes(); est.textContent = `Rutas guardadas · ${new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`; est.style.color = 'var(--ok)'; }
+    catch (err) { est.textContent = 'No se guardaron las rutas: ' + err.message; est.style.color = 'var(--mal)'; }
+    const ae = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.avtRuta : null;
+    pintarAvt(); tabSucia.add('avance'); if (ae) { const x = document.querySelector(`#tb-avt [data-avt-ruta="${CSS.escape(ae)}"]`); if (x) x.focus(); }
+  }, 700);
+});
 $('avt-mat').addEventListener('click', (e) => { const z = e.target.closest('[data-avt-z]'); if (!z) return; const k = z.dataset.avtZ; avt.abiertos.has(k) ? avt.abiertos.delete(k) : avt.abiertos.add(k); pintarAvt(); });
 $('avt-todo').addEventListener('click', () => { const ecs = [...document.querySelectorAll('#tb-avt [data-avt-z]')].map(b => b.dataset.avtZ);
   if (ecs.every(k => avt.abiertos.has(k))) avt.abiertos.clear(); else ecs.forEach(k => avt.abiertos.add(k)); pintarAvt(); });
