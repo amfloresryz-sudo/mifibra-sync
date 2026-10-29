@@ -62,7 +62,7 @@ async function sesionDe(req, permitirCambio = false) {
   const a = await accesoConfig(); return a.general === false ? null : { u: 'general', n: 'Clave general', f: 'TODAS' };
 }
 // Usuario de EECC (contratista): solo puede usar /api/eecc (sus pendientes y evidencias) y /api/usuarios (ingresar / cambiar clave).
-const SOLO_EECC = /^\/api\/(eecc|usuarios)(\b|\/|\?|$)/;
+const SOLO_EECC = /^\/api\/(eecc|usuarios)(\b|\/|\?|$)|^\/api\/zonificacion\?(?:[^#]*&)?areas=1(?:&|$)/;   // las EECC: su API, usuarios y solo las áreas de los planos (Ruteo)
 async function autorizado(req) { const p = await sesionDe(req); if (p && p.e && !SOLO_EECC.test(String(req.url || ''))) return false; if (p) req.usuario = p; return !!p; }
 
 function esMaster(req) {

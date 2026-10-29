@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
   // ?areas=1 → áreas de los planos (polígonos de Google My Maps) para el mapa de Ruteo de Pendientes
   if (new URL(req.url, 'http://x').searchParams.get('areas')) {
-    if (!puedeModulo(req, 'instalaciones', 'zonificacion', 'fftt')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });
+    if (!(req.usuario && req.usuario.e) && !puedeModulo(req, 'instalaciones', 'zonificacion', 'fftt')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });   // las EECC también ven las áreas
     try { const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.areas');
       return responder(res, 200, datos.length ? { ...datos[0].datos, actualizado: datos[0].actualizado } : { areas: [] }, datos.length ? 300 : 0); }   // sin áreas no se guarda en caché
     catch (e) { return responder(res, 500, { error: e.message }); }

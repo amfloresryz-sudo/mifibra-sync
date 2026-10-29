@@ -179,6 +179,27 @@ td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-c
 .err { color: var(--mal); font-size: 13px; font-weight: 700; }
 .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--noche); color: #fff; padding: 10px 16px; border-radius: 12px; z-index: 30; font-size: 14px; max-width: calc(100% - 32px); }
 .toast[hidden] { display: none; }
+/* Ruteo (mapa de mis pendientes) */
+.btn-rut { border-color: var(--magenta) !important; color: var(--magenta-txt); }
+body.rut-on { overflow: hidden; }
+.rut { position: fixed; inset: 0; z-index: 15; background: var(--sup); display: flex; flex-direction: column; } .rut[hidden] { display: none; }
+.rut-cab { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding: 12px 16px; border-bottom: 1px solid var(--borde); }
+.rut-cab h2 { margin: 0; font: 800 18px var(--f-disp); } .rut-cab .sub { margin: 2px 0 0; }
+.rut-ctl { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 13px; font-weight: 600; }
+.rut-ctl label { display: flex; gap: 6px; align-items: center; } .rut-ctl select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); }
+.rut-chk input { accent-color: var(--magenta); width: 15px; height: 15px; }
+.rut-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; }
+.rut-mapa { min-height: 300px; background: #E8EAEE; }
+.rut-lado { overflow: auto; border-left: 1px solid var(--borde); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.rut-h { margin: 6px 0 2px; font: 800 12px var(--f-disp); letter-spacing: .6px; text-transform: uppercase; color: var(--fg-4); }
+.rut-tr { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 6px; align-items: center; font-size: 12.5px; } .rut-tr.off { opacity: .45; }
+.rut-tr input { accent-color: var(--magenta); } .rut-tr i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.rut-tr .lnk { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rut-tr > span { display: flex; gap: 2px; justify-content: flex-end; }
+.rut-mini { font: 800 9.5px var(--f-disp); min-width: 16px; height: 16px; border: 2px solid; border-radius: 50%; display: inline-grid; place-items: center; }
+.rut-mas { font: 700 10.5px var(--f-disp); color: var(--fg-4); align-self: center; }
+.rut-pin span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); color: #fff; font: 800 11px/20px var(--f-disp, sans-serif); display: grid; place-items: center; }
+@media (max-width: 800px) { .rut-cuerpo { grid-template-columns: 1fr; grid-template-rows: 62vh auto; } .rut-lado { border-left: 0; border-top: 1px solid var(--borde); } }
+
 .cargando { padding: 40px; text-align: center; color: var(--fg-4); }
 </style>
 </head>
@@ -204,7 +225,7 @@ td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-c
     <div class="chips" id="f-gr" role="group" aria-label="Tipo"></div>
     <div class="chips" id="f-ev" role="group" aria-label="Evidencia"></div>
   </div>
-  <div class="tb-acc"><span class="nota" id="n-filas"></span><button type="button" class="btn out" id="limpiar-col" hidden>Quitar filtros de columna</button><button type="button" class="btn pri" id="xls">⬇ Descargar Excel</button></div>
+  <div class="tb-acc"><span class="nota" id="n-filas"></span><button type="button" class="btn out" id="limpiar-col" hidden>Quitar filtros de columna</button><button type="button" class="btn out btn-rut" id="ruteo" title="Mapa de tus pendientes por técnico, con las áreas de los planos">🗺 Ruteo</button><button type="button" class="btn pri" id="xls">⬇ Descargar Excel</button></div>
   <div class="caja tabla"><table id="tb"><colgroup id="cols"></colgroup><thead><tr id="cab"></tr></thead><tbody id="filas"><tr><td colspan="21" class="cargando">Cargando tus pendientes…</td></tr></tbody></table></div>
   <div class="tarjetas" id="tarjetas"></div>
   <p class="nota" style="margin-top:12px">Solo ves los pendientes asignados a tu EECC. Los teléfonos de los clientes no se muestran. Las evidencias que adjuntes se guardan 30 días y luego se borran solas.</p>
@@ -672,6 +693,84 @@ function prepararSubida(p) {
 
 cargar();
 setInterval(() => { if (document.visibilityState === 'visible' && $('fondo').hidden) cargar(); }, 5 * 60e3);
+/* ---------- Ruteo: mapa de mis pendientes (los de la tabla, con sus filtros) por técnico, con las áreas de los planos ----------
+   Cada AB va en su coordenada con el color de su técnico (número = inicio de su franja; C = coordinada; S = sin agenda).
+   La ruta de cada técnico une sus AB del mismo día en el orden de la franja. Clic en un AB = su ficha. */
+const RUT = { mapa: null, capa: null, capaA: null, areas: null, ocultos: new Set(), dia: 'TODOS', ajustado: false, cargando: false };
+const RUT_COL = ['#E6194B', '#3CB44B', '#4363D8', '#F58231', '#911EB4', '#42D4F4', '#F032E6', '#9A6324', '#469990', '#800000', '#808000', '#000075',
+  '#E6007E', '#1A936F', '#FF8C42', '#5F0F40', '#0F4C5C', '#B5179E', '#7209B7', '#3A86FF', '#FB5607', '#8AC926', '#6A4C93', '#D62828'];
+const rutCoord = (s) => { const m = String(s || '').split(/[,;\s]+/).map(Number).filter(v => isFinite(v) && v !== 0); if (m.length < 2) return null;
+  let [la, lo] = m; if (Math.abs(la) > Math.abs(lo)) [la, lo] = [lo, la]; return la > -19 && la < -0.5 && lo > -82 && lo < -68 ? [la, lo] : null; };
+const rutIni = (p) => { if (estAg(p) === 'SIN AGENDA') return 99; const m = /(\d{1,2})\s*-/.exec(p.fr || ''); return m ? +m[1] : 50; };
+const rutLbl = (p) => estAg(p) === 'SIN AGENDA' ? 'S' : conFranja(p) ? String(rutIni(p)) : 'C';
+const rutDiaOk = (p, d, hoy) => d === 'TODOS' || (d === 'SA' ? (estAg(p) === 'SIN AGENDA' || !p.fp) : d === 'ATR' ? (estAg(p) !== 'SIN AGENDA' && p.fp && p.fp < hoy) : (estAg(p) !== 'SIN AGENDA' && p.fp === d));
+async function abrirRuteo() {
+  let ov = $('rut');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'rut'; ov.className = 'rut'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-labelledby', 'rut-t');
+    ov.innerHTML = `<div class="rut-cab"><div><h2 id="rut-t">Ruteo de mis pendientes</h2><p class="sub" id="rut-sub"></p></div>
+        <div class="rut-ctl"><label>Día <select id="rut-dia"></select></label><label class="rut-chk"><input type="checkbox" id="rut-areas" checked> Áreas de planos</label>
+          <label class="rut-chk"><input type="checkbox" id="rut-rutas" checked> Ruta por técnico</label><button type="button" class="btn out" id="rut-cerrar">✕ Cerrar</button></div></div>
+      <div class="rut-cuerpo"><div id="rut-mapa" class="rut-mapa" aria-label="Mapa de mis AB pendientes"></div><aside class="rut-lado" id="rut-ley"></aside></div>`;
+    document.body.appendChild(ov); }
+  ov.hidden = false; document.body.classList.add('rut-on');
+  const B = filtrar(), hoy = hoyIso(), c = {}; let atr = 0, sa = 0;
+  B.forEach(p => { if (estAg(p) === 'SIN AGENDA' || !p.fp) sa++; else if (p.fp < hoy) atr++; else c[p.fp] = (c[p.fp] || 0) + 1; });
+  const ops = [['TODOS', `Todos mis pendientes (${B.length})`], ...Object.keys(c).sort().map(f => [f, `${f === hoy ? 'Hoy' : 'F. AG'} · ${fIso(f)} (${c[f]})`])];
+  if (atr) ops.push(['ATR', `Atrasados (${atr})`]); if (sa) ops.push(['SA', `Sin agenda (${sa})`]);
+  if (!ops.some(o => o[0] === RUT.dia)) RUT.dia = 'TODOS';
+  $('rut-dia').innerHTML = ops.map(([v, t]) => `<option value="${v}"${v === RUT.dia ? ' selected' : ''}>${esc(t)}</option>`).join('');
+  RUT.ajustado = false; await rutMapa(); pintarRuteo(); $('rut-cerrar').focus();
+}
+function cerrarRuteo() { const ov = $('rut'); if (ov) ov.hidden = true; document.body.classList.remove('rut-on'); $('ruteo').focus(); }
+const rutJs = (src) => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+async function rutMapa() {
+  if (!window.L && !RUT.cargando) { RUT.cargando = true;
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(l);
+    try { await rutJs('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'); } catch { $('rut-mapa').textContent = 'No se pudo cargar el mapa. Revisa tu conexión.'; RUT.cargando = false; return; }
+    RUT.cargando = false; }
+  if (!window.L) return;
+  if (!RUT.mapa) { RUT.mapa = L.map('rut-mapa', { zoomControl: true, preferCanvas: true }).setView([-12.06, -77.03], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(RUT.mapa); }
+  setTimeout(() => RUT.mapa.invalidateSize(), 60);
+  if (!RUT.areas) { try { const r = await fetch('/api/zonificacion?areas=1', { headers: { 'x-portal-token': token() } }); RUT.areas = r.ok ? ((await r.json()).areas || []) : []; } catch { RUT.areas = []; }
+    RUT.capaA = L.layerGroup(); RUT.areas.forEach(a => { const o = a.t === 'p' ? L.polygon(a.p, { color: '#3949AB', weight: 1.5, fillColor: '#7CB342', fillOpacity: .28 }) : L.polyline(a.p, { color: '#3949AB', weight: 2 });
+      if (a.n) o.bindTooltip(esc(a.n), { sticky: true }); o.addTo(RUT.capaA); });
+    if ($('rut-areas').checked) RUT.capaA.addTo(RUT.mapa); }
+}
+function pintarRuteo() {
+  const hoy = hoyIso(), P = filtrar().filter(p => rutDiaOk(p, RUT.dia, hoy));
+  const T = new Map(); P.forEach(p => { const k = p.tec || 'SIN TÉCNICO'; if (!T.has(k)) T.set(k, { k, L: [] }); T.get(k).L.push(p); });
+  const tecs = [...T.values()].sort((a, b) => (a.k === 'SIN TÉCNICO') - (b.k === 'SIN TÉCNICO') || a.k.localeCompare(b.k));
+  tecs.forEach((t, i) => { t.col = t.k === 'SIN TÉCNICO' ? '#8A8FA3' : RUT_COL[i % RUT_COL.length]; t.L.sort((a, b) => (a.fp || '').localeCompare(b.fp || '') || rutIni(a) - rutIni(b)); });
+  const sinCo = P.filter(p => !rutCoord(p.co)).length;
+  $('rut-sub').textContent = `${n(P.length)} AB · ${tecs.filter(t => t.k !== 'SIN TÉCNICO').length} técnicos${sinCo ? ` · ${sinCo} sin coordenadas (no salen en el mapa)` : ''} · con los filtros de la tabla`;
+  $('rut-ley').innerHTML = `<p class="nota">Haz clic en un AB del mapa para ver su ficha. Número = inicio de la franja · C = coordinada · S = sin agenda.</p><h3 class="rut-h">Técnicos</h3>`
+    + (tecs.map(t => `<div class="rut-tr${RUT.ocultos.has(t.k) ? ' off' : ''}"><input type="checkbox" data-rut-ver="${esc(t.k)}" ${RUT.ocultos.has(t.k) ? '' : 'checked'} aria-label="Mostrar ${esc(t.k)}"><i style="background:${t.col}"></i><button type="button" class="lnk" data-rut-tec="${esc(t.k)}" title="Ver sus AB en el mapa">${esc(t.k === 'SIN TÉCNICO' ? 'Sin técnico' : tecCorto(t.k))}</button><span>${t.L.slice(0, 8).map(p => `<b class="rut-mini" style="border-color:${t.col}">${rutLbl(p)}</b>`).join('')}${t.L.length > 8 ? `<small class="rut-mas">+${t.L.length - 8}</small>` : ''}</span></div>`).join('') || '<p class="nota">No hay AB para este día con estos filtros.</p>');
+  RUT.T = T;
+  if (!RUT.mapa) return;
+  if (RUT.capa) RUT.capa.remove(); RUT.capa = L.layerGroup().addTo(RUT.mapa); const todos = [];
+  tecs.forEach(t => { if (RUT.ocultos.has(t.k)) return;
+    if ($('rut-rutas').checked && t.k !== 'SIN TÉCNICO') { const pd = {}; t.L.forEach(p => { const c = rutCoord(p.co); if (c && p.fp && estAg(p) !== 'SIN AGENDA') (pd[p.fp] || (pd[p.fp] = [])).push(c); });
+      Object.values(pd).forEach(v => { if (v.length > 1) L.polyline(v, { color: t.col, weight: 3, opacity: .75, dashArray: '7 6' }).addTo(RUT.capa); }); }
+    t.L.forEach(p => { const c = rutCoord(p.co); if (!c) return; todos.push(c);
+      const ic = L.divIcon({ className: 'rut-pin', html: `<span style="background:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+      L.marker(c, { icon: ic, title: `AB ${p.ab}` }).bindTooltip(`<b>AB ${p.ab}</b> · ${esc(tecCorto(p.tec))}<br>${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp && estAg(p) !== 'SIN AGENDA' ? ' · ' + fIso(p.fp) : ''}<br>${esc(p.di || '')}`).on('click', () => ficha(p.os)).addTo(RUT.capa); }); });
+  if (todos.length && !RUT.ajustado) { RUT.mapa.fitBounds(todos, { padding: [40, 40], maxZoom: 14 }); RUT.ajustado = true; }
+}
+$('ruteo').addEventListener('click', abrirRuteo);
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#rut')) return;
+  if (e.target.closest('#rut-cerrar')) { cerrarRuteo(); return; }
+  const bt = e.target.closest('[data-rut-tec]'); if (bt && RUT.mapa) { const t = RUT.T.get(bt.dataset.rutTec), pts = t ? t.L.map(p => rutCoord(p.co)).filter(Boolean) : []; if (pts.length) RUT.mapa.fitBounds(pts, { padding: [60, 60], maxZoom: 15 }); }
+});
+document.addEventListener('change', (e) => {
+  if (!e.target.closest('#rut')) return;
+  if (e.target.id === 'rut-dia') { RUT.dia = e.target.value; RUT.ajustado = false; pintarRuteo(); }
+  else if (e.target.id === 'rut-areas') { if (RUT.capaA) e.target.checked ? RUT.capaA.addTo(RUT.mapa) : RUT.capaA.remove(); }
+  else if (e.target.id === 'rut-rutas') pintarRuteo();
+  else if (e.target.matches('[data-rut-ver]')) { const k = e.target.dataset.rutVer; e.target.checked ? RUT.ocultos.delete(k) : RUT.ocultos.add(k); pintarRuteo(); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('rut') && !$('rut').hidden && $('fondo').hidden) cerrarRuteo(); });
 })();
 </script>
 </body>
