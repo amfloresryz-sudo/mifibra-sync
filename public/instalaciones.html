@@ -796,7 +796,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .gcard .tops li span:first-child { color: var(--fg-4); font-size: 12px; }
 .gcard .tops li em { font-style: normal; color: var(--fg-3); font-size: 12px; }
 .gcard .volver { align-self: flex-start; }
-.b.fut { background: #E6F0FB; color: #1D5FA8; } .b.hoy { background: #E3F4EA; color: #157A4A; } .b.inc { background: var(--mal-bg); color: var(--mal); }
+.b.fut { background: #E6F0FB; color: #1D5FA8; } .b.man { background: #FFF1D6; color: #9A5B00; } .b.hoy { background: #E3F4EA; color: #157A4A; } .b.inc { background: var(--mal-bg); color: var(--mal); }
 .b.coo { background: #FBEFD9; color: #8A5300; } .b.sag { background: var(--gris-bg); color: var(--fg-3); }
 .b.ges { background: var(--ok-bg); color: var(--ok); }
 .lnk.num.ab-ok { color: var(--ok); }
@@ -1287,11 +1287,21 @@ const nfr = (f) => String(f || '').replace(/\s+/g, '');
 const fpOs = (x, fp) => x.fpo !== undefined && fp && fp === x.fpo;
 const frOs = (x) => x.fro !== undefined && x.fro && nfr(x.fr) === nfr(x.fro);
 const cOs = (ok, titulo) => ok ? ` class="os-ok" title="${titulo}"` : '';
-const estAg = (p) => !p.fp || tipoProg(p) === 'SA' ? 'SIN AGENDA' : tipoProg(p) === 'CO' ? 'COORDINADA' : p.fp < hoyIso() ? 'INCUMPLIDA' : p.fp === hoyIso() ? 'HOY' : 'FUTURA';
-const EST_B = { FUTURA: 'fut', HOY: 'hoy', INCUMPLIDA: 'inc', COORDINADA: 'coo', 'SIN AGENDA': 'sag' };
-const EST_V = { INCUMPLIDA: 0, HOY: 1, FUTURA: 2, COORDINADA: 3, 'SIN AGENDA': 4 };
-const EST_TXT = { FUTURA: 'Futura', HOY: 'Hoy', INCUMPLIDA: 'Incumplida', COORDINADA: 'Coordinada', 'SIN AGENDA': 'Sin agenda' };
-const progEstado = (p) => !p.fp ? 'SIN PROGRAMAR' : p.fp < hoyIso() ? 'VENCIDA' : p.fp === hoyIso() ? 'HOY' : 'FUTURA';
+/* Desde las 17:30 (hora de Lima) las AG y CO del día siguiente dejan de ser «futuras»: pasan a la bolsa trabajable
+   (estado «Mañana»). Se mide con la hora del corte de los datos o, si se mira el día en curso, con la hora actual. */
+const CORTE_FUT = 17 * 60 + 30;
+const mananaIso = () => new Date(Date.UTC(D.anio, D.mes - 1, D.dias + 1)).toISOString().slice(0, 10);
+function despuesCorteFut() {
+  const c = String(D.corte || ''); let m = (+c.slice(11, 13) || 0) * 60 + (+c.slice(14, 16) || 0);
+  try { if (new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }) === hoyIso()) { const t = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }); m = Math.max(m, +t.slice(0, 2) * 60 + +t.slice(3, 5)); } } catch { /* sin reloj de Lima */ }
+  return m >= CORTE_FUT;
+}
+const esMananaTrab = (fp) => !!fp && fp === mananaIso() && despuesCorteFut();   // AG/CO de mañana después de las 17:30
+const estAg = (p) => !p.fp || tipoProg(p) === 'SA' ? 'SIN AGENDA' : tipoProg(p) === 'CO' ? 'COORDINADA' : p.fp < hoyIso() ? 'INCUMPLIDA' : p.fp === hoyIso() ? 'HOY' : esMananaTrab(p.fp) ? 'MAÑANA' : 'FUTURA';
+const EST_B = { FUTURA: 'fut', HOY: 'hoy', 'MAÑANA': 'man', INCUMPLIDA: 'inc', COORDINADA: 'coo', 'SIN AGENDA': 'sag' };
+const EST_V = { INCUMPLIDA: 0, HOY: 1, 'MAÑANA': 1.5, FUTURA: 2, COORDINADA: 3, 'SIN AGENDA': 4 };
+const EST_TXT = { FUTURA: 'Futura', HOY: 'Hoy', 'MAÑANA': 'Mañana', INCUMPLIDA: 'Incumplida', COORDINADA: 'Coordinada', 'SIN AGENDA': 'Sin agenda' };
+const progEstado = (p) => !p.fp ? 'SIN PROGRAMAR' : p.fp < hoyIso() ? 'VENCIDA' : p.fp === hoyIso() ? 'HOY' : esMananaTrab(p.fp) ? 'MAÑANA' : 'FUTURA';
 const semaf = (v, meta, menor) => v == null ? '' : (menor ? v <= meta : v >= meta) ? 'ok' : (menor ? v <= meta * 1.5 : v >= meta - 10) ? 'mid' : 'mal';
 function kpi(l, v, s, cls = '', extra = '') { return `<div class="kpi ${cls}"><span class="l">${l}</span><span class="kv">${v}</span>${s ? `<span class="s">${s}</span>` : ''}${extra}</div>`; }
 
@@ -1667,7 +1677,7 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
     <tfoot><tr><td>Total general</td>${lima ? '<td></td>' : ''}${fechas.map(f => `<td class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${num(P.filter(p => f10(p) === f).length, 'T', f)}</td>`).join('')}<td>${num(P.length, 'T', 'ALL')}</td><td class="ant-c">${Math.round(antT / P.length * 100)}%</td></tr></tfoot></table>`;
 }
 
-const ALT_TIPOS = ['INCUMPLIDA', 'HOY', 'FUTURA', 'COORDINADA', 'SIN AGENDA'];
+const ALT_TIPOS = ['INCUMPLIDA', 'HOY', 'MAÑANA', 'FUTURA', 'COORDINADA', 'SIN AGENDA'];
 // Segmentadores de Altas pendientes con varias opciones a la vez («Todos» limpia la selección).
 $('altas-segs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-mv]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
@@ -1778,9 +1788,9 @@ $('modal-copiar-ab').addEventListener('click', async () => {
 });
 
 /* ---------- PENDIENTES ---------- */
-const PROG_B = { VENCIDA: '<span class="b no">Vencida</span>', HOY: '<span class="b inf">Hoy</span>', FUTURA: '<span class="b si">Futura</span>', 'SIN PROGRAMAR': '<span class="b vac">Sin programar</span>' };
+const PROG_B = { VENCIDA: '<span class="b no">Vencida</span>', HOY: '<span class="b inf">Hoy</span>', FUTURA: '<span class="b si">Futura</span>', 'MAÑANA': '<span class="b man">Mañana</span>', 'SIN PROGRAMAR': '<span class="b vac">Sin programar</span>' };
 const VIV = (v) => String(v || '—').replace('HORIZONTAL', 'HORIZ.').replace('VERTICAL', 'VERT.').replace('H. MULTIFAMILIAR', 'MULTIFAM.').replace('H. HABITACION', 'HABIT.');
-const PROG_V = { VENCIDA: 0, HOY: 1, 'SIN PROGRAMAR': 2, FUTURA: 3 };
+const PROG_V = { VENCIDA: 0, HOY: 1, 'MAÑANA': 1.5, 'SIN PROGRAMAR': 2, FUTURA: 3 };
 /* Antigüedad en horas desde la recepción hasta el corte */
 const horasP = (p) => p.rec ? (msIso(DC.corte) - msIso(p.rec)) / 3600000 : 0;   // los pendientes son siempre los de hoy
 const ANT = { 'HASTA 48 H': (h) => h <= 48, '48 H A 7 DÍAS': (h) => h > 48 && h <= 168, 'MÁS DE 7 DÍAS': (h) => h > 168 };
@@ -1879,11 +1889,11 @@ function pintarGestores() {
 function pintarTarjeta(g, Pg, gs) {
   const P = Pg.filter(p => gestorDe(p) === g), N = P.length, pos = gs.indexOf(g) + 1;
   const sg = P.filter(p => !p.ges).length, cg = N - sg;
-  const E = { FUTURA: 0, HOY: 0, INCUMPLIDA: 0, COORDINADA: 0, 'SIN AGENDA': 0 }; P.forEach(p => E[estAg(p)]++);
+  const E = { FUTURA: 0, HOY: 0, 'MAÑANA': 0, INCUMPLIDA: 0, COORDINADA: 0, 'SIN AGENDA': 0 }; P.forEach(p => E[estAg(p)]++);
   const conAg = N - E['SIN AGENDA'];
   const ant = P.filter(p => horasP(p) > 48).length, disp = N ? ant / N * 100 : null, meta = CFG.meta_disp;
   const cDisp = disp == null ? 'var(--fg-3)' : disp <= meta ? 'var(--ok)' : disp <= meta * 1.5 ? 'var(--mid)' : 'var(--mal)';
-  const COL = { FUTURA: '#2A78D6', HOY: '#1BAF7A', INCUMPLIDA: '#E0574F', COORDINADA: '#C98A0C' };
+  const COL = { FUTURA: '#2A78D6', HOY: '#1BAF7A', 'MAÑANA': '#E8A33D', INCUMPLIDA: '#E0574F', COORDINADA: '#C98A0C' };
   const viejos = P.filter(p => p.rec).sort((a, b) => a.rec < b.rec ? -1 : 1).slice(0, 5);
   const dAg = {}; P.filter(p => tipoProg(p) === 'AG' && p.fp).forEach(p => { dAg[p.di] = (dAg[p.di] || 0) + 1; });
   const topD = Object.entries(dAg).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -1892,8 +1902,8 @@ function pintarTarjeta(g, Pg, gs) {
     <div class="fila2"><div><span class="et"><i style="background:var(--ok)"></i>Gestionado</span><span class="num">${n(cg)} <small>(${pc(cg)})</small></span><div class="barra"><i style="width:${N ? cg / N * 100 : 0}%;background:var(--ok);border-radius:4px"></i></div></div>
       <div><span class="et"><i style="background:var(--mal)"></i>Sin gestión</span><span class="num">${n(sg)} <small>(${pc(sg)})</small></span><div class="barra"><i style="width:${N ? sg / N * 100 : 0}%;background:var(--mal);border-radius:4px"></i></div></div></div>
     <div><div class="disp"><span class="et">Detalle de agenda</span><span class="et">${n(conAg)} AG</span></div>
-      <div class="barra" style="margin:8px 0 10px;overflow:hidden">${['FUTURA','HOY','INCUMPLIDA','COORDINADA'].map(k => `<i style="width:${conAg ? E[k] / conAg * 100 : 0}%;background:${COL[k]}"></i>`).join('')}</div>
-      <div class="agd">${['FUTURA','HOY','INCUMPLIDA','COORDINADA'].map(k => `<div><span class="et"><i style="background:${COL[k]}"></i>${EST_TXT[k]}</span><span class="num">${n(E[k])}</span></div>`).join('')}
+      <div class="barra" style="margin:8px 0 10px;overflow:hidden">${['FUTURA','MAÑANA','HOY','INCUMPLIDA','COORDINADA'].filter(k => k !== 'MAÑANA' || E[k]).map(k => `<i style="width:${conAg ? E[k] / conAg * 100 : 0}%;background:${COL[k]}"></i>`).join('')}</div>
+      <div class="agd">${['FUTURA','MAÑANA','HOY','INCUMPLIDA','COORDINADA'].filter(k => k !== 'MAÑANA' || E[k]).map(k => `<div><span class="et"><i style="background:${COL[k]}"></i>${EST_TXT[k]}</span><span class="num">${n(E[k])}</span></div>`).join('')}
         <div><span class="et"><i style="background:var(--gris)"></i>Sin agenda</span><span class="num">${n(E['SIN AGENDA'])} <small>(${pc(E['SIN AGENDA'])})</small></span></div></div></div>
     <div style="border-top:1px solid var(--borde);padding-top:12px"><div class="disp"><span class="et" style="color:${cDisp}">% Dispersión ${disp == null ? '' : `<span class="chip-m" style="background:${disp <= meta ? 'var(--ok-bg)' : 'var(--mal-bg)'};color:${cDisp}">${disp - meta >= 0 ? '+' : ''}${dec(disp - meta)} pts vs meta</span>`}</span><span class="pv" style="color:${cDisp}">${disp == null ? '—' : dec(disp) + '%'}</span></div>
       <div class="barra" style="margin:10px 0 8px"><i style="width:${Math.min(100, disp || 0)}%;background:${cDisp};border-radius:4px"></i><b style="left:${Math.min(100, meta)}%"></b></div>
@@ -1947,7 +1957,7 @@ function pintarPendientes0() {
   segmentos('pen-segs', [
     { k: 'penEc', t: 'EECC', ops: ecsDe(pendFiltrados('penEc')), cnt: cnt('penEc', (p, o) => p.ec === o) },
     { k: 'penTp', t: 'Tipo', ops: ['AGENDA','COORDINADA','SIN AGENDA'], cnt: cnt('penTp', (p, o) => tpOk(p, o)) },
-    { k: 'penPr', t: 'Programación', ops: ['VENCIDA','HOY','FUTURA'], cnt: cnt('penPr', (p, o) => progEstado(p) === o) },
+    { k: 'penPr', t: 'Programación', ops: despuesCorteFut() ? ['VENCIDA','HOY','MAÑANA','FUTURA'] : ['VENCIDA','HOY','FUTURA'], cnt: cnt('penPr', (p, o) => progEstado(p) === o) },
     { k: 'penAnt', t: 'Antigüedad', ops: Object.keys(ANT), cnt: cnt('penAnt', (p, o) => ANT[o](horasP(p))) },
     { k: 'penGes', t: 'Gestionado', ops: Object.keys(GES), cnt: cnt('penGes', (p, o) => GES[o](p)) } ]);
   // El segmentador de gestores queda siempre a la vista; los demás van en «Más filtros».
@@ -2015,7 +2025,7 @@ $('pen-segs-ge').addEventListener('click', (e) => {
 /* ---------- Segmentadores propios del detalle (varias opciones a la vez); Gestores = el segmentador del inicio ---------- */
 const T_SEGS = [
   ['ges', 'Gestión', (p) => p.ges ? 'CON GESTIÓN' : 'SIN GESTIÓN', ['CON GESTIÓN', 'SIN GESTIÓN']],
-  ['ag', 'Tipo de agenda', (p) => estAg(p), ['FUTURA', 'HOY', 'INCUMPLIDA', 'COORDINADA', 'SIN AGENDA']],
+  ['ag', 'Tipo de agenda', (p) => estAg(p), ['FUTURA', 'MAÑANA', 'HOY', 'INCUMPLIDA', 'COORDINADA', 'SIN AGENDA']],
   ['ant', 'Antigüedad', (p) => { const e = edadDias(p.rec) ?? 0; return e <= 2 ? 'RECIENTE (0–2 D)' : e <= 5 ? 'MEDIA (3–5 D)' : 'ANTIGUA (6+ D)'; }, ['RECIENTE (0–2 D)', 'MEDIA (3–5 D)', 'ANTIGUA (6+ D)']],
   ['ec', 'EECC_F', (p) => p.ec || '(EN BLANCO)'],
   ['z', 'Zona', (p) => p.z || '(EN BLANCO)'],
@@ -3038,7 +3048,7 @@ function pintarAvance() {
   // programadas del día (agenda o coordinada para el día elegido) · AG futuras (agenda o coordinada para un día posterior)
   // · ingresaron hoy (F. Recep = hoy) · más de 24 h (el resto: F. Recep de días anteriores).
   const esHoy = (p) => !!p.rec && p.rec.slice(0, 10) === hoyIso(), dSel = isoDia(diaAv);
-  const grupoB = (p) => { const t = tipoProg(p); if ((t === 'AG' || t === 'CO') && p.fp) { if (p.fp === dSel) return 'prog'; if (p.fp > dSel) return 'fut'; } return esHoy(p) ? 'hoy' : 'm24'; };
+  const grupoB = (p) => { const t = tipoProg(p); if ((t === 'AG' || t === 'CO') && p.fp) { if (p.fp === dSel) return 'prog'; if (p.fp > dSel && !(dSel === hoyIso() && esMananaTrab(p.fp))) return 'fut'; } return esHoy(p) ? 'hoy' : 'm24'; };
   if (!provTodas()) Object.keys(RD).forEach(k => e0(k));
   // Provincias (todas): una fila por filial; al elegir una filial, una fila por EECC.
   const porFil = provTodas(), gk = (x) => porFil ? nomFil(x.fi) : x.ec;
@@ -3100,7 +3110,7 @@ function pintarAvance() {
       // Fila %: técnicos y faltas sobre las rutas declaradas; cada parte de la bolsa sobre la bolsa; liquidadas y falta sobre el objetivo
       return `<tr class="av-pct"><td>%</td><td class="sep">${conR ? '100%' : '—'}</td><td class="pc-mal">${conR ? pc(faltasT, rutasT) : '—'}</td><td class="pc-ok">${conR ? pc(tecs.size, rutasT) : '—'}</td><td>${T.bolsa ? '100%' : '—'}</td><td class="bf">${pc(T.fut, T.bolsa)}</td><td class="bm">${pc(T.m24, T.bolsa)}</td><td class="bh">${pc(T.hoy, T.bolsa)}</td><td class="av-prog">${pc(T.prog, T.bolsa)}</td><td>${objT ? '100%' : '—'}</td><td class="av-liq">${pc(Ld.length, objT)}</td><td class="av-falta">${pc(fT, objT)}</td><td></td><td></td></tr>`; })()}</tfoot></table>`;
   prepararOrden($('tb-av'));
-  $('av-nota').innerHTML = `<p class="nota">Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa INICIAL del día de la EECC (foto de los pendientes que el robot toma a las 0:00; si ese día no tiene foto, se estima), redondeado y fijo todo el día (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
+  $('av-nota').innerHTML = `<p class="nota">AG futuras = agendas o coordinadas de días posteriores; desde las 17:30 las de mañana ya no cuentan como futuras y pasan a la bolsa trabajable (más de 24 h o ingresaron hoy). Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Objetivo = ${dec(OBJ_PCT, 0)}% de la bolsa INICIAL del día de la EECC (foto de los pendientes que el robot toma a las 0:00; si ese día no tiene foto, se estima), redondeado y fijo todo el día (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
   pintarConsolidado(L);
 }
 function pintarConsolidado(L) {
