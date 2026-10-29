@@ -8,9 +8,10 @@ name: Sincronizar ScordSoft
 # se programa antes de que termine el anterior y espera
 # en cola (concurrency) hasta que el otro termina, así no quedan huecos aunque GitHub se atrase.
 # Cada actualización descarga UN reporte: Filial SELECCIONE, por Registro.
-#   · COMPLETA (1 por hora y la primera de cada turno): del 1 del mes anterior al fin del mes en curso (~14 min).
-#   · RÁPIDA (las demás): solo el mes en curso (~la mitad). Se junta con la última completa, así el portal
-#     siempre tiene los 2 meses; las órdenes del mes anterior se refrescan como máximo cada hora.
+#   · COMPLETA (1 cada 2 horas, cada hora del día 1 al 5 del mes, y la primera de cada turno): del 1 del mes
+#     anterior al fin del mes en curso (~22-27 min).
+#   · RÁPIDA (las demás): solo el mes en curso (~14-17 min). Se junta con la última completa, así el portal
+#     siempre tiene los 2 meses; las órdenes del mes anterior se refrescan como máximo cada 2 horas (cada hora a inicio de mes).
 # CADENA: al terminar, cada turno lanza el siguiente (workflow_dispatch). Fuera de horario el turno espera
 #   dormido y se vuelve a encadenar, así el de las 8:00 ya está despierto aunque el cron de GitHub se salte.
 #   El cron de abajo queda solo de respaldo por si la cadena se corta.
@@ -91,10 +92,13 @@ jobs:
             [ "$h" -ge 8 ] || { [ "$h" -eq 0 ] && [ "$m" -lt 15 ]; }
           }
           mes_lima() { TZ=America/Lima date +%Y-%m; }
-          base_vigente() {   # carpeta de la última descarga completa, si es de este mes y tiene menos de 55 min
-            local b; b=$(ls -d "$COLA"/base/*/ 2>/dev/null | sort | tail -1 || true)
+          base_vigente() {   # carpeta de la última descarga completa, si es de este mes y aún vigente:
+            # menos de 115 min (completa cada 2 h) o, del día 1 al 5 del mes, menos de 55 min (completa cada hora:
+            # a inicio de mes quedan muchos pendientes del mes anterior). La completa tarda más de 20 min y atrasaba la siguiente.
+            local b lim; b=$(ls -d "$COLA"/base/*/ 2>/dev/null | sort | tail -1 || true)
+            if [ "$((10#$(TZ=America/Lima date +%d)))" -le 5 ]; then lim=55; else lim=115; fi
             [ -n "$b" ] && [ "$(cat "$b/periodo" 2>/dev/null)" = "$(mes_lima)" ] \
-              && [ $(( $(date +%s) - $(cat "$b/ts" 2>/dev/null || echo 0) )) -lt $((55*60)) ] && echo "${b%/}"
+              && [ $(( $(date +%s) - $(cat "$b/ts" 2>/dev/null || echo 0) )) -lt $((lim*60)) ] && echo "${b%/}"
           }
           ultima_base() { local b; b=$(ls -d "$COLA"/base/*/ 2>/dev/null | sort | tail -1 || true); [ -n "$b" ] && echo "${b%/}"; }
           descargar() {   # $1 = marca, $2 = hora ISO del pedido, $3 = hh:mm, $4 = completa|rapida, $5 = epoch del pedido
