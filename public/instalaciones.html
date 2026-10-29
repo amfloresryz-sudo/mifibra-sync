@@ -194,6 +194,23 @@ body.rut-on { overflow: hidden; }
 .rut-bt { display: flex; flex-wrap: wrap; gap: 6px; } .rut-bt .btn-pri, .rut-bt .btn-out { min-height: 32px; padding: 5px 12px; font-size: 12px; text-decoration: none; }
 .rut-msg { margin: 0; min-height: 16px; color: var(--ok); } .rut-ayuda { margin: 0; }
 @media (max-width: 900px) { .rut-cuerpo { grid-template-columns: 1fr; grid-template-rows: 60vh auto; } .rut-lado { border-left: 0; border-top: 1px solid var(--borde); } .rut-cab { grid-template-columns: 1fr; } }
+/* Cinta de alertas (como el portal de EECC): agendas de hoy con franja por vencer o vencida sin iniciar, con los segmentadores aplicados */
+.cinta { background: linear-gradient(90deg, #B0005F, #FF0091 50%, #B0005F); color: #fff; overflow: hidden; white-space: nowrap; font: 800 14px var(--f-disp); letter-spacing: .4px; border-bottom: 2px solid #FFD6EA; }
+.cinta-pista { display: inline-flex; padding: 9px 0; animation: cinta 40s linear infinite; }
+.cinta-pista span { padding-right: 70px; } .cinta-pista b { color: #FFE58A; }
+.cinta-pista .al { color: #fff; background: #B42318; border-radius: 6px; padding: 1px 8px; margin-right: 70px; }
+.cinta:hover .cinta-pista { animation-play-state: paused; }
+@keyframes cinta { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .cinta-pista { animation-duration: 120s; } }
+.alertas-f { background: #FDE8E7; color: #B42318; border-bottom: 2px solid #F5B5B0; font: 700 13px var(--f-disp); padding: 7px 16px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.alertas-f[hidden] { display: none; }
+.alertas-f .tit { text-transform: uppercase; letter-spacing: .3px; } .alertas-f .fil { color: #7A2A22; font-weight: 600; font-size: 12px; }
+.alertas-f button { border: 0; border-radius: 999px; padding: 4px 10px; font: 700 12.5px var(--f-disp); cursor: pointer; }
+.alertas-f .pv { background: #FFF1C2; color: #7A5200; } .alertas-f .vc { background: #B42318; color: #fff; } .alertas-f button:hover { filter: brightness(.94); }
+.alertas-f .mas { background: transparent; color: #B42318; text-decoration: underline; }
+@media (prefers-reduced-motion: no-preference) { .alertas-f .vc { animation: parpadeo 1.6s ease-in-out infinite; } }
+@keyframes parpadeo { 50% { opacity: .55; } }
+@media (max-width: 760px) { .alertas-f { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; padding: 6px 10px; font-size: 12px; } .alertas-f button { flex: none; } }
 .modal-fondo { position: fixed; inset: 0; z-index: 50; background: rgba(15, 15, 30, .55); display: flex; align-items: center; justify-content: center;
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .modal { background: var(--sup); color: var(--fg); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); width: min(1500px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
@@ -836,6 +853,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
   <nav class="nav" aria-label="Módulos"><span class="on" aria-current="page">INSTALACIONES</span><a href="/averias.html">AVERÍAS</a><a href="/observadas.html">OBSERVADAS</a><a href="/#anuladas">ANULADAS</a><a href="/speedtest.html">SPEED TEST</a><a href="/#dashboard">DASHBOARD</a></nav>
 </div></header>
+<div class="cinta" role="marquee" aria-label="Alertas de franja y prioridad INBOUND"><div class="cinta-pista" id="cinta-pista" aria-hidden="true"></div></div>
+<div class="alertas-f" id="alertas-f" hidden role="alert"></div>
 
 <section class="franja"><div class="w">
   <div class="fila">
@@ -1503,9 +1522,9 @@ function pintarPanel() {
 
   // ingresos, instalaciones y pendientes por día
   const pi2 = cuenta(I, x => x.d), mxd = Math.max(1, ...DIAS.map(d => Math.max(pi2[d] || 0, porD[d] || 0)));
-  const filtrado = MS(seg).size || MS(canal).size || MS(zona).size;
+  const filtrado = MS(seg).size || MS(canal).size || MS(zona).size || ecSel.size;   // EECC también: los pendientes al cierre se reconstruyen
   const nomCn = [...MS(canal)].map(cnNom).join(', ');
-  $('dia-sub-f').textContent = filtrado ? ' · ' + [msTxt(seg), nomCn, MS(zona).size ? 'zona ' + msTxt(zona) : ''].filter(Boolean).join(' · ') : '';
+  $('dia-sub-f').textContent = filtrado ? ' · ' + [MS(seg).size ? msTxt(seg) : '', nomCn, MS(zona).size ? 'zona ' + msTxt(zona) : '', ecSel.size ? 'EECC ' + [...ecSel].join(', ') : ''].filter(Boolean).join(' · ') : '';
   $('liq-sub-f').textContent = $('dia-sub-f').textContent;
   $('dia-graf').innerHTML = `<div class="g2">${DIAS.map(d => { const a = pi2[d] || 0, b = porD[d] || 0, di = diaInfo(d);
     return `<div><div class="par"><button type="button" class="bb clic" data-ch="ing" data-d="${d}" data-k="ALL" title="${fDia(d)} · ingresos ${a}" style="height:${Math.max(2, a / mxd * 190)}px;background:var(--gris)"><span>${a}</span></button><button type="button" class="bb clic" data-ch="liq" data-d="${d}" data-k="ALL" title="${fDia(d)} · instalaciones ${b}" style="height:${Math.max(2, b / mxd * 190)}px;background:var(--magenta)"><span>${b}</span></button></div><div class="dia${di.fin ? ' fin' : ''}"><b>${d}</b>${di.wd}</div></div>`; }).join('')}</div>`;
@@ -1946,6 +1965,7 @@ function pintarPendientes0() {
       <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
   prepararOrden($('tb-pend'));
   cargarComEecc();
+  pintarCinta();
 }
 /* Comentarios que las EECC dejan en «Mis pendientes»: 💬 junto al AB y sección en la ficha */
 let CEC = {}, cecEn = 0, cecF = '';
@@ -3536,6 +3556,35 @@ document.addEventListener('submit', async (e) => {
   catch (err) { $('rut-msg').textContent = err.message; }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('rut') && !$('rut').hidden && !document.querySelector('.modal-fondo')) cerrarRuteo(); });
+/* ---------- Cinta de alertas: agendas de HOY con franja y sin iniciar la atención, con los segmentadores aplicados
+   (cabecera: filial, segmento, canal, zona y EECC; pestaña Pendientes: gestor, tipo, tipo de trabajo y más filtros).
+   Por vencer = la franja termina en 60 min o menos · Vencida = la franja ya terminó. Se revisa cada minuto. */
+const CINTA_TXT = '<span>⚡ <b>PRIORIDAD:</b> LOS CASOS DEL CANAL <b>INBOUND</b> &nbsp;·&nbsp; MI FIBRA, EL INTERNET MÁS RÁPIDO DEL PERÚ 🚀</span>';
+const cintaHoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+const cintaMin = (m) => m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+let cintaVer = false;
+function pintarCinta() {
+  if (!D || !D.pend) return;
+  const hoy = cintaHoy(), [hh, mm] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number), min = hh * 60 + mm;
+  const pv = [], vc = [];
+  pendFiltrados('').filter(p => tOk(p)).forEach(p => { if (p.ini || p.fp !== hoy || !conFranja(p) || estAg(p) === 'SIN AGENDA') return;
+    const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); if (!m) return; const falta = +m[2] * 60 - min;
+    if (falta <= 0) vc.push({ p, t: -falta }); else if (falta <= 60) pv.push({ p, t: falta }); });
+  pv.sort((a, b) => a.t - b.t); vc.sort((a, b) => b.t - a.t);
+  const filtros = [MS(seg).size ? 'segmento ' + msTxt(seg) : '', MS(canal).size ? 'canal ' + [...MS(canal)].map(cnNom).join(', ') : '', MS(zona).size ? 'zona ' + msTxt(zona) : '',
+    ecSel.size ? 'EECC ' + [...ecSel].join(', ') : '', MS(filtro.penGe).size ? 'gestor ' + msTxt(filtro.penGe) : '', MS(filtro.penEc).size ? 'EECC ' + msTxt(filtro.penEc) : ''].filter(Boolean);
+  const el = $('alertas-f'), MAX = cintaVer ? 999 : 12, ab = (x, c, t) => `<button type="button" class="${c}" data-ficha-ab="${x.p.os}" title="Ver ficha · ${esc(x.p.ec || '')} · ${esc(tecCorto(x.p.tec) || 'sin técnico')}">AB ${x.p.ab} · ${esc(x.p.ec || '—')} · ${esc(x.p.fr)} · ${t}</button>`;
+  const lista = (L, c, f) => L.slice(0, MAX).map(x => ab(x, c, f(x))).join('') + (L.length > MAX ? `<button type="button" class="mas" data-cinta-mas>+${L.length - MAX} más</button>` : '');
+  el.hidden = !pv.length && !vc.length;
+  el.innerHTML = (vc.length ? `<span class="tit">⛔ Franja vencida sin iniciar (${vc.length}):</span>${lista(vc, 'vc', x => `hace ${cintaMin(x.t)}`)}` : '')
+    + (pv.length ? `<span class="tit">⚠ Por vencer franja y no inicia (${pv.length}):</span>${lista(pv, 'pv', x => `vence en ${cintaMin(x.t)}`)}` : '')
+    + (filtros.length ? `<span class="fil">· con filtros: ${esc(filtros.join(' · '))}</span>` : '');
+  const aviso = pv.length || vc.length ? `<span class="al">⚠ ${pv.length + vc.length} AB por vencer o con franja vencida sin iniciar${filtros.length ? ' (' + esc(filtros.join(' · ')) + ')' : ''}: ${[...vc, ...pv].slice(0, 6).map(x => 'AB ' + x.p.ab).join(', ')}${pv.length + vc.length > 6 ? '…' : ''}</span>` : '';
+  const pista = $('cinta-pista'), nuevo = (aviso + CINTA_TXT).repeat(4);
+  if (pista.dataset.k !== nuevo) { pista.innerHTML = nuevo; pista.dataset.k = nuevo; }
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-cinta-mas]')) { cintaVer = true; pintarCinta(); } });
+setInterval(pintarCinta, 60e3);
 /* ---------- Copiar imagen y Excel (cualquier tabla con data-img / data-xls) ---------- */
 const libs = {};
 function cargar(url) { if (!libs[url]) libs[url] = new Promise((r, m) => { const sc = document.createElement('script'); sc.src = url; sc.onload = r; sc.onerror = () => { delete libs[url]; m(new Error('No se pudo cargar ' + url)); }; document.head.appendChild(sc); }); return libs[url]; }
@@ -3712,7 +3761,7 @@ function pintarRitmo() {
 
 const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => pintarRitmo() };
 const tabSucia = new Set();
-function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); }
+function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); pintarCinta(); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
 /* ---------- Periodo: selector de mes, semanas y desde/hasta ---------- */
 const MESES_C = (iso) => { const [y, m] = iso.split('-').map(Number); const t = MESES_L[m - 1]; return t.charAt(0).toUpperCase() + t.slice(1) + ' ' + y; };
