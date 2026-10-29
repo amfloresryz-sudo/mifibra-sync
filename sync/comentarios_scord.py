@@ -107,8 +107,13 @@ def _postback(page: Page, accion, espera: str | None = None, timeout: int = 60_0
 
 
 def buscar_os(page: Page, base: str, c: dict):
-    """Deja en la grilla la fila de la OS y la devuelve (verifica que sea del mismo abonado)."""
+    """Deja en la grilla la fila de la OS y la devuelve (verifica que sea del mismo abonado).
+
+    Los filtros (estado, fecha, Nº OS) se escriben directo en los campos, sin disparar «change»: algunos combos de
+    ScordSoft recargan la página al cambiar y borraban lo escrito (así es como funciona a mano y probado en el navegador).
+    Después de «Buscar» se espera a que la grilla muestre la OS o diga «TOTAL DE REGISTROS: 0»."""
     page.goto(f"{base}{PANTALLA}", wait_until="networkidle")
+    page.wait_for_selector("#MainContent_txtNumeroOS", timeout=60_000)
     filial = _norm(c["filial"])
     valor = page.evaluate(
         """(t) => { const n = s => s.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toUpperCase().trim();
@@ -116,32 +121,50 @@ def buscar_os(page: Page, base: str, c: dict):
                     return o ? o.value : null; }""", filial)
     if not valor:
         raise ErrorRobot(f"La filial {c['filial']} no está en ScordSoft.")
-    if page.input_value("#MainContent_cboFilial") != valor:
-        _postback(page, lambda: page.select_option("#MainContent_cboFilial", valor))
-    for estado in ("001", "0"):   # primero REGISTRADA; si ya cambió de estado, en todas
-        page.select_option("#MainContent_cboEstadoOS", estado)
-        page.eval_on_selector("#MainContent_txtFechaRegistroIni",
-                              "(el, v) => { el.value = v; el.dispatchEvent(new Event('change', {bubbles: true})); }",
-                              (date.today() - timedelta(days=365)).strftime("%d/%m/%Y"))
-        page.fill("#MainContent_txtAbonado", "")
-        page.fill("#MainContent_txtNumeroOS", str(c["os"]))
-        _postback(page, lambda: page.click("#MainContent_btnBuscar"))
-        # Fila cuya celda NROOS es exactamente la OS (se compara celda por celda: el texto de la fila
-        # viene pegado, p. ej. «INTERNET 46326REGISTRADA»).
-        ids = page.evaluate(
-            """([g, os]) => { const t = document.querySelector(g); if (!t) return [];
-                return [...t.querySelectorAll('tr')].filter(tr => tr.querySelector('input[id*=ibtnLogIngvisita]')
-                    && [...tr.cells].some(td => td.innerText.trim() === os))
-                  .map(tr => tr.querySelector('input[id*=ibtnLogIngvisita]').id); }""", [GRILLA, str(c["os"])])
-        fila = page.locator(f"{GRILLA} tr").filter(has=page.locator(f"#{ids[0]}")) if len(ids) == 1 else None
-        if fila is not None:
+    if page.input_value("#MainContent_cboFilial") != valor:   # cambiar la filial recarga la página (postback)
+        page.select_option("#MainContent_cboFilial", valor)
+        page.wait_for_timeout(1500)
+        page.wait_for_load_state("networkidle", timeout=60_000)
+        page.wait_for_selector("#MainContent_txtNumeroOS", timeout=60_000)
+        if page.input_value("#MainContent_cboFilial") != valor:
+            raise ErrorRobot(f"No se pudo elegir la filial {c['filial']} en Agendamiento de Ordenes.")
+    os_ = str(c["os"])
+    hace_un_anio = (date.today() - timedelta(days=365)).strftime("%d/%m/%Y")
+    visto = ""
+    for estado in ("001", "0"):   # primero REGISTRADA; si ya cambió de estado, en todas y con un año de fechas
+        page.evaluate(
+            """([os, est, ini]) => { const v = (id, x) => { const e = document.getElementById(id); if (e) e.value = x; };
+                v('MainContent_cboEstadoOS', est); v('MainContent_txtAbonado', ''); v('MainContent_txtNumeroOS', os);
+                if (ini) v('MainContent_txtFechaRegistroIni', ini); }""", [os_, estado, hace_un_anio if estado == "0" else None])
+        page.click("#MainContent_btnBuscar")
+        page.wait_for_timeout(1500)
+        try:
+            page.wait_for_function(
+                """([g, os]) => { const t = document.querySelector(g);
+                    if (t && [...t.querySelectorAll('td')].some(td => td.innerText.trim() === os)) return true;
+                    return /TOTAL DE REGISTROS:?\\s*0\\b/.test(document.body.innerText); }""", arg=[GRILLA, os_], timeout=60_000)
+        except Exception:  # noqa: BLE001 - se revisa abajo qué quedó en pantalla
+            pass
+        # Fila cuya celda NROOS es exactamente la OS (se compara celda por celda: el texto de la fila viene pegado)
+        r = page.evaluate(
+            """([g, os]) => { const t = document.querySelector(g), filas = t ? [...t.querySelectorAll('tr')].filter(tr => tr.querySelector('input[id*=ibtnLogIngvisita]')) : [];
+                const m = (document.body.innerText.match(/TOTAL DE REGISTROS:?\\s*\\d+/) || [''])[0];
+                return { ids: filas.filter(tr => [...tr.cells].some(td => td.innerText.trim() === os)).map(tr => tr.querySelector('input[id*=ibtnLogIngvisita]').id),
+                         n: filas.length, tot: m, os: document.getElementById('MainContent_txtNumeroOS')?.value || '',
+                         fil: document.getElementById('MainContent_cboFilial')?.value || '', est: document.getElementById('MainContent_cboEstadoOS')?.value || '',
+                         ej: filas.slice(0, 2).map(tr => [...tr.cells].slice(1, 5).map(td => td.innerText.trim()).join('/')).join(' | ') }; }""", [GRILLA, os_])
+        visto = f"[estado {estado}: {r['tot'] or 'sin total'} · filas {r['n']} · Nº OS en pantalla «{r['os']}» · filial {r['fil']} · estado {r['est']}{' · ' + r['ej'] if r['ej'] else ''}]"
+        print(f"   búsqueda {visto}", flush=True)
+        ids = r["ids"]
+        if len(ids) == 1:
+            fila = page.locator(f"{GRILLA} tr").filter(has=page.locator(f"#{ids[0]}"))
             texto = fila.inner_text()
             if c.get("ab") and not re.search(rf"\b0*{int(c['ab'])}\b", texto):
                 raise ErrorRobot(f"La OS {c['os']} en ScordSoft no es del AB {c['ab']}.")
             return fila
         if len(ids) > 1:
             raise ErrorRobot(f"La búsqueda de la OS {c['os']} trajo {len(ids)} filas.")
-    raise ErrorRobot(f"No se encontró la OS {c['os']} en Agendamiento de Ordenes.")
+    raise ErrorRobot(f"No se encontró la OS {c['os']} en Agendamiento de Ordenes. {visto}")
 
 
 def historial(page: Page, fila) -> str:
