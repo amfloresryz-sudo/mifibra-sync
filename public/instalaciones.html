@@ -179,7 +179,11 @@ body.rut-on { overflow: hidden; }
 .rut-tr .lnk { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .rut-tr > span { display: flex; gap: 2px; flex-wrap: nowrap; justify-content: flex-end; }
 .rut-mas { font: 700 10.5px var(--f-disp); color: var(--fg-3); align-self: center; }
 .rut-mini { font: 800 9.5px var(--f-disp); min-width: 16px; height: 16px; border: 2px solid; border-radius: 50%; display: inline-grid; place-items: center; }
-.rut-pin span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); color: #fff; font: 800 11px/20px var(--f-disp, sans-serif); display: grid; place-items: center; }
+.rut-pin span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); color: #fff; background: var(--c); font: 800 11px/20px var(--f-disp, sans-serif); display: grid; place-items: center; }
+.rut-pin span.t-co { border-radius: 5px; }   /* coordinada: cuadrado */
+.rut-pin span.t-sa { background: #fff; color: var(--c); border: 3px solid var(--c); }   /* sin agenda: hueco */
+.rut-mini.t-co { border-radius: 3px; } .rut-mini.t-sa { border-style: dotted; }
+.rut-tipos { display: inline-flex; gap: 10px; padding: 3px 10px; border: 1px solid var(--borde); border-radius: 10px; }
 .rut-pin span.ed { border-color: #111; border-style: dashed; } .rut-pin span.sel { transform: scale(1.35); border-color: #FFD400; border-width: 3px; }
 .rut-fc { border: 2px solid var(--magenta); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .rut-fh { display: flex; gap: 8px; align-items: baseline; } .rut-fh b { font: 800 16px var(--f-disp); } .rut-fh span { color: var(--fg-3); font-size: 12px; } .rut-fh .lnk { margin-left: auto; }
@@ -3384,7 +3388,7 @@ document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key ==
    Cada AB va en su coordenada con el color de su técnico (número = inicio de su franja; C = coordinada; S = sin agenda) y,
    si se marca, la ruta de cada técnico une sus AB en el orden de la franja. El usuario master puede cambiar el técnico/EECC de un AB
    en el ruteo (se guarda en el portal, no cambia ScordSoft) y abrir «Editar agenda». Las áreas salen del mapa de planos de Google My Maps. */
-const RUT = { mapa: null, capa: null, areas: null, capaA: null, sel: null, ocultos: new Set(), ec: new Set(), dia: '', ajustado: false, cargando: false };
+const RUT = { tOff: new Set(), mapa: null, capa: null, areas: null, capaA: null, sel: null, ocultos: new Set(), ec: new Set(), dia: '', ajustado: false, cargando: false };
 const RUT_COL = ['#E6194B', '#3CB44B', '#4363D8', '#F58231', '#911EB4', '#42D4F4', '#F032E6', '#9A6324', '#469990', '#800000', '#808000', '#000075',
   '#E6007E', '#1A936F', '#FF8C42', '#5F0F40', '#0F4C5C', '#B5179E', '#7209B7', '#3A86FF', '#FB5607', '#8AC926', '#6A4C93', '#D62828'];
 const rutCoord = (s) => { const m = String(s || '').split(/[,;\s]+/).map(Number).filter(v => isFinite(v) && v !== 0); if (m.length < 2) return null;
@@ -3393,6 +3397,8 @@ const rutAj = (p) => (AJ.ruteo || {})[p.os];
 const rutTec = (p) => { const a = rutAj(p); return (a && a.tec) || p.tec || 'SIN TÉCNICO'; };
 const rutEc = (p) => { const a = rutAj(p); return (a && a.ec) || p.ec || 'POR ASIGNAR'; };
 const rutIni = (p) => { if (estAg(p) === 'SIN AGENDA') return 99; const m = /(\d{1,2})\s*-/.exec(p.fr || ''); return m ? +m[1] : 50; };
+const rutTipo = (p) => estAg(p) === 'SIN AGENDA' ? 'sa' : estAg(p) === 'COORDINADA' ? 'co' : 'ag';   // ● agenda · ■ coordinada · ○ sin agenda
+const RUT_TIPOS = [['ag', '● Agenda'], ['co', '■ Coordinada'], ['sa', '○ Sin agenda']];
 const rutLbl = (p) => estAg(p) === 'SIN AGENDA' ? 'S' : conFranja(p) ? String(rutIni(p)) : 'C';
 const rutHoy = () => (D.corte || '').slice(0, 10) || isoDia(D.dias);
 function rutBase() { return pendFiltrados('').filter(p => tOk(p)); }
@@ -3410,7 +3416,7 @@ async function abrirRuteo() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'rut'; ov.className = 'rut'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-labelledby', 'rut-t');
     ov.innerHTML = `<div class="rut-cab"><div class="rut-tt"><h2 id="rut-t">Ruteo de pendientes</h2><p class="sub" id="rut-sub"></p></div>
         <div class="rut-ctl"><label>Día <select id="rut-dia" class="sel"></select></label>
-          <label class="rut-chk"><input type="checkbox" id="rut-areas" checked> Áreas de planos</label><label class="rut-chk"><input type="checkbox" id="rut-rutas" checked> Ruta por técnico</label>
+          <span class="rut-tipos" role="group" aria-label="Tipo de agenda">${RUT_TIPOS.map(([k, t]) => `<label class="rut-chk"><input type="checkbox" data-rut-tipo="${k}" checked> ${t}</label>`).join('')}</span><label class="rut-chk"><input type="checkbox" id="rut-areas" checked> Áreas de planos</label><label class="rut-chk"><input type="checkbox" id="rut-rutas" checked> Ruta por técnico</label>
           <button type="button" class="btn-out" id="rut-cerrar">✕ Cerrar</button></div>
         <div class="rut-ecs"><span class="seg-t">EECC</span><span id="rut-ec" class="chips"></span></div></div>
       <div class="rut-cuerpo"><div id="rut-mapa" class="rut-mapa" aria-label="Mapa de los AB pendientes"></div>
@@ -3458,17 +3464,17 @@ function pintarRuteo() {
   // Leyenda por EECC
   const porE = {}; tecs.forEach(t => (porE[t.ec] || (porE[t.ec] = [])).push(t));
   $('rut-ley').innerHTML = `<h3 class="rut-h">Técnicos por EECC</h3>` + (Object.keys(porE).map(e => `<div class="rut-eg"><div class="rut-eh"><b>${esc(e)}</b><span>${porE[e].filter(t => t.tec !== 'SIN TÉCNICO').length} téc. · ${porE[e].reduce((a, t) => a + t.L.length, 0)} AB</span></div>`
-    + porE[e].map(t => `<div class="rut-tr${RUT.ocultos.has(t.k) ? ' off' : ''}"><input type="checkbox" data-rut-ver="${esc(t.k)}" ${RUT.ocultos.has(t.k) ? '' : 'checked'} aria-label="Mostrar ${esc(t.tec)}"><i style="background:${t.col}"></i><button type="button" class="lnk" data-rut-tec="${esc(t.k)}" title="Ver sus AB en el mapa">${esc(tecCorto(t.tec) || t.tec)}</button><span>${t.L.slice(0, 8).map(p => `<b class="rut-mini" style="border-color:${t.col}">${rutLbl(p)}</b>`).join('')}${t.L.length > 8 ? `<small class="rut-mas">+${t.L.length - 8}</small>` : ''}</span></div>`).join('') + '</div>').join('') || '<p class="nota">No hay AB pendientes para este día con estos filtros.</p>');
+    + porE[e].map(t => `<div class="rut-tr${RUT.ocultos.has(t.k) ? ' off' : ''}"><input type="checkbox" data-rut-ver="${esc(t.k)}" ${RUT.ocultos.has(t.k) ? '' : 'checked'} aria-label="Mostrar ${esc(t.tec)}"><i style="background:${t.col}"></i><button type="button" class="lnk" data-rut-tec="${esc(t.k)}" title="Ver sus AB en el mapa">${esc(tecCorto(t.tec) || t.tec)}</button><span>${t.L.slice(0, 8).map(p => `<b class="rut-mini t-${rutTipo(p)}" style="border-color:${t.col}">${rutLbl(p)}</b>`).join('')}${t.L.length > 8 ? `<small class="rut-mas">+${t.L.length - 8}</small>` : ''}</span></div>`).join('') + '</div>').join('') || '<p class="nota">No hay AB pendientes para este día con estos filtros.</p>');
   RUT.T = T;
   if (!RUT.mapa) return;
   if (RUT.capa) RUT.capa.remove(); RUT.capa = L.layerGroup().addTo(RUT.mapa); const todos = [];
   tecs.forEach(t => { if (RUT.ocultos.has(t.k)) return;
     if ($('rut-rutas').checked && t.tec !== 'SIN TÉCNICO') {   // la ruta une solo los AB del mismo día (F. AG), en el orden de la franja
-      const pd = {}; t.L.forEach(p => { const c = rutCoord(p.co); if (c && p.fp && estAg(p) !== 'SIN AGENDA') (pd[p.fp] || (pd[p.fp] = [])).push(c); });
+      const pd = {}; t.L.forEach(p => { const c = rutCoord(p.co); if (c && p.fp && estAg(p) !== 'SIN AGENDA' && !RUT.tOff.has(rutTipo(p))) (pd[p.fp] || (pd[p.fp] = [])).push(c); });
       Object.values(pd).forEach(v => { if (v.length > 1) L.polyline(v, { color: t.col, weight: 3, opacity: .75, dashArray: '7 6' }).addTo(RUT.capa); }); }
-    t.L.forEach(p => { const c = rutCoord(p.co); if (!c) return; todos.push(c);
+    t.L.forEach(p => { const c = rutCoord(p.co); if (!c || RUT.tOff.has(rutTipo(p))) return; todos.push(c);
       const ed = !!rutAj(p), sel = RUT.sel === p.os;
-      const ic = L.divIcon({ className: 'rut-pin', html: `<span class="${sel ? 'sel' : ''}${ed ? ' ed' : ''}" style="background:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+      const ic = L.divIcon({ className: 'rut-pin', html: `<span class="t-${rutTipo(p)}${sel ? ' sel' : ''}${ed ? ' ed' : ''}" style="--c:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
       L.marker(c, { icon: ic, title: `AB ${p.ab}` }).bindTooltip(`<b>AB ${p.ab}</b> · ${esc(rutEc(p))}<br>${esc(tecCorto(rutTec(p)) || rutTec(p))}<br>${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp ? ' · ' + fIso(p.fp) : ''}`).on('click', () => rutElegir(p.os)).addTo(RUT.capa); }); });
   if (todos.length && !RUT.ajustado) { RUT.mapa.fitBounds(todos, { padding: [40, 40], maxZoom: 14 }); RUT.ajustado = true; }
   rutFicha();
@@ -3481,7 +3487,7 @@ function rutTecnicos() {   // técnicos conocidos del mes (pendientes, liquidada
 }
 function rutFicha() {
   const f = $('rut-ficha'), p = RUT.sel && penUni().find(x => x.os === RUT.sel);
-  if (!p) { f.innerHTML = `<p class="nota rut-ayuda">Haz clic en un AB del mapa (o en un técnico de la lista) para ver su detalle y, si hace falta, cambiar su técnico o su agenda.</p>`; return; }
+  if (!p) { f.innerHTML = `<p class="nota rut-ayuda">Haz clic en un AB del mapa (o en un técnico de la lista) para ver su detalle y, si hace falta, cambiar su técnico o su agenda. Forma: ● agenda · ■ coordinada · ○ sin agenda; número = inicio de la franja.</p>`; return; }
   const a = rutAj(p), tecs = rutTecnicos(), ecs = [...new Set(tecs.map(t => t[1]).concat((AJ.eeccs || []), [p.ec]).filter(Boolean))].sort();
   const porE = {}; tecs.forEach(([t, e]) => (porE[e] || (porE[e] = [])).push(t));
   f.innerHTML = `<div class="rut-fc"><div class="rut-fh"><b>AB ${p.ab}</b><span>OS ${p.os}</span><button type="button" class="lnk" data-rut-x aria-label="Cerrar detalle">✕</button></div>
@@ -3518,6 +3524,7 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'rut-dia') { RUT.dia = e.target.value; RUT.ajustado = false; RUT.sel = null; pintarRuteo(); }
   else if (e.target.id === 'rut-areas') { if (RUT.capaA) e.target.checked ? RUT.capaA.addTo(RUT.mapa) : RUT.capaA.remove(); }
   else if (e.target.id === 'rut-rutas') pintarRuteo();
+  else if (e.target.matches('[data-rut-tipo]')) { const k = e.target.dataset.rutTipo; e.target.checked ? RUT.tOff.delete(k) : RUT.tOff.add(k); pintarRuteo(); }
   else if (e.target.matches('[data-rut-ver]')) { const k = e.target.dataset.rutVer; e.target.checked ? RUT.ocultos.delete(k) : RUT.ocultos.add(k); pintarRuteo(); }
   else if (e.target.name === 'tec' && e.target.form && e.target.form.id === 'rut-f') { const o = e.target.selectedOptions[0]; if (o && o.dataset.ec) e.target.form.ec.value = o.dataset.ec; }
 });

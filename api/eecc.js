@@ -67,7 +67,7 @@ async function pendientesPortal(filiales) {
     const A = t.avt, dia = t.corte ? parseInt(String(t.corte).slice(8, 10), 10) : 0;
     if (A && A.o && dia) A.o.forEach(x => { if (x[0] !== dia) return;
       const tec = A.k[x[4]], ec0 = (tec && tecs[tec]) || A.e[x[3]];
-      H.push({ to: A.t[x[1]], tec, ec0, ec: noms[ec0] || ec0 }); });
+      H.push({ to: A.t[x[1]], sv: (A.s || [])[x[2]] || '', tec, ec0, ec: noms[ec0] || ec0, os: x[5], ab: x[6], hi: x[7] || '', hf: x[8] || '', di: (A.di || [])[x[9]] || '', filial }); });
   }
   return { L, H, actualizado };
 }
@@ -78,7 +78,10 @@ async function pendientesDe(eecc, filiales) {
   const { L, H, actualizado } = await pendientesPortal(filiales);
   const mia = (x) => x.ec === eecc || x.ec0 === eecc, h = H.filter(mia);
   // Hoy: instalaciones liquidadas (descargadas) y rutas en campo = técnicos con al menos 1 orden liquidada hoy.
-  const hoy = { liq: h.filter(x => x.to === 'INSTALACION SERVICIO').length, rutas: new Set(h.map(x => x.tec).filter(Boolean)).size };
+  // Instalaciones = solo servicio INTERNET (igual que Instalaciones › Avance); las de SERVICIO OTT no cuentan.
+  const ins = h.filter(x => x.to === 'INSTALACION SERVICIO' && (!x.sv || x.sv === 'INTERNET' || x.sv === 'SIN SERVICIO'));
+  const hoy = { liq: ins.length, rutas: new Set(h.map(x => x.tec).filter(Boolean)).size,
+    det: ins.map(x => ({ ab: x.ab, os: x.os, tec: x.tec, di: x.di, hi: x.hi, hf: x.hf, filial: x.filial })).sort((a, b) => String(a.hf).localeCompare(String(b.hf))) };
   const d = { pend: L.filter(mia).map(limpiar), hoy, actualizado };
   CACHE.set(k, { en: Date.now(), d });
   return d;
