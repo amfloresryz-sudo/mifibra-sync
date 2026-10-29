@@ -606,6 +606,29 @@ def speedtest_por_os(df: pd.DataFrame) -> dict[int, list]:
     return out
 
 
+def asignacion_por_os(df: pd.DataFrame) -> dict[str, list]:
+    """«Filial|Nro OS» → [observación de la última asignación, usuario que la hizo], solo OS REGISTRADA.
+
+    Es lo que se escribe en ScordSoft al reprogramar la OS (Agendamiento de Ordenes › Programación: fecha, técnico,
+    horario y observación). El portal lo muestra como motivo cuando la agenda de la OS cambia en el día. No va a la base:
+    solo al tablero de Instalaciones («camb»). Los teléfonos se ocultan."""
+    cols = [c for c in ("Ult. Observacion Asignacion", "Observaciones Asignacion") if c in df]
+    if not cols or "Nro OS" not in df or "Filial" not in df:
+        return {}
+    x = df[df["Estado Os"].astype(str).str.strip().str.upper().eq("REGISTRADA")] if "Estado Os" in df else df
+    usr = x["Usuario Ing. Asignacion"] if "Usuario Ing. Asignacion" in x else pd.Series("", index=x.index)
+    out = {}
+    for i, r in x.iterrows():
+        nro, fil = r["Nro OS"], str(r["Filial"] or "").strip().upper()
+        if pd.isna(nro) or not fil:
+            continue
+        txt = next((str(r[c]).strip() for c in cols if pd.notna(r[c]) and str(r[c]).strip()), "")
+        u = str(usr.get(i) or "").strip() if pd.notna(usr.get(i)) else ""
+        if txt or u:
+            out[f"{fil}|{int(nro)}"] = [_sin_tel(txt)[:300], u[:60]]
+    return out
+
+
 def procesar(ruta: Path, sincronizado_en: str, cajas=None) -> list[dict]:
     return a_filas(leer_excel(ruta), sincronizado_en, cajas)
 

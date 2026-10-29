@@ -18,6 +18,7 @@ mes anterior, e indicadores de la portada). Supabase solo recibe lo que cambió;
 from __future__ import annotations
 
 import argparse
+import re
 import calendar
 import os
 import shutil
@@ -113,6 +114,56 @@ def _bolsa_inicial(tableros: dict[str, dict], estado: dict, ahora: datetime) -> 
         for viejo in sorted(dias)[:-DIAS_BOLSA]:
             del dias[viejo]
         datos["bini"] = dias
+
+
+_RE_ANOT = re.compile(r"#\s*\d{1,2}/\d{1,2}/\d{4}\s*\d{1,2}:\d{2}\s*#")
+
+
+def _ultima_anotacion(t) -> str:
+    """Última anotación del comentario del técnico (desde su #dd/mm/aaaa hh:mm#), sin teléfonos."""
+    t = str(t or "").strip()
+    if not t:
+        return ""
+    ms = list(_RE_ANOT.finditer(t))
+    from .procesar import _sin_tel
+
+    return _sin_tel(t[ms[-1].start():] if ms else t[-300:])[:300]
+
+
+def _cambios_agenda(tableros: dict[str, dict], estado: dict, ahora: datetime, asignacion: dict[str, list]) -> None:
+    """Cambios de agenda del día de los pendientes (instalaciones y misceláneos REGISTRADA), por filial.
+
+    En cada actualización se compara la fecha y franja (AGENDA o COORDINADA) de cada OS con la de la actualización
+    anterior (guardada en el estado del robot, sin leer Supabase). Si la OS tenía agenda y cambió de fecha, de franja
+    o se quedó sin ella, se anota: [hora actualización anterior, hora de esta, fecha y franja antes, fecha y franja
+    ahora, observación de la asignación en ScordSoft, usuario, última anotación del técnico]. Va al tablero de
+    Instalaciones como «camb» {"FILIAL|OS": [cambios del día]} y se reinicia cada día."""
+    hoy, hora = ahora.date().isoformat(), ahora.strftime("%H:%M")
+    A = estado.setdefault("agd", {})
+    for clave, datos in tableros.items():
+        partes = clave.split(":")
+        if partes[0] != "instalaciones" or len(partes) != 2:
+            continue
+        fil = partes[1]
+        st = A.get(fil) or {}
+        prev, h0 = st.get("v") or {}, st.get("h") or ""
+        camb = (st.get("c") or {}) if st.get("dia") == hoy else {}
+        cur, nuevos = {}, 0
+        for x in (datos.get("pend") or []) + (datos.get("pendx") or []):
+            if x.get("os") is None:
+                continue
+            k = f"{(x.get('fi') or fil).upper()}|{x['os']}"
+            ag = [x.get("fp") or "", " ".join(str(x.get("fr") or "").split())] if x.get("t") in ("AG", "CO") and x.get("fp") else ["", ""]
+            cur[k] = ag
+            p = prev.get(k)
+            if p and p[0] and p != ag:   # tenía agenda y cambió (fecha, franja o se quedó sin agenda)
+                a = asignacion.get(k) or ["", ""]
+                camb.setdefault(k, []).append([h0, hora, p[0], p[1], ag[0], ag[1], a[0], a[1], _ultima_anotacion(x.get("ovt"))])
+                nuevos += 1
+        if nuevos:
+            print(f"  Cambios de agenda en {fil}: {nuevos} OS cambiaron de fecha o franja ({len(camb)} en el día).", flush=True)
+        A[fil] = {"dia": hoy, "h": hora, "v": cur, "c": camb}
+        datos["camb"] = camb
 
 
 def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links_st: dict | None = None) -> dict[str, dict]:
@@ -292,6 +343,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Aviso: no se cargaron los mapas de cajas: {e}", flush=True)
         filas_por_id: dict[int, dict] = {}
         links_st: dict[int, list] = {}
+        asignacion: dict[str, list] = {}
         base = set(args.base)
         for archivo in archivos:
             df0 = _leer_con_cache(archivo) if archivo in base else procesar.leer_excel(archivo)
@@ -299,6 +351,10 @@ def main(argv: list[str] | None = None) -> int:
                 links_st.update(procesar.speedtest_por_os(df0))
             except Exception as e:  # noqa: BLE001 - Speed Test nunca detiene la corrida
                 print(f"Aviso: no se leyeron los enlaces de Speedtest: {e}", flush=True)
+            try:
+                asignacion.update(procesar.asignacion_por_os(df0))
+            except Exception as e:  # noqa: BLE001 - el motivo de los cambios de agenda nunca detiene la corrida
+                print(f"Aviso: no se leyó la observación de asignación: {e}", flush=True)
             for fila in procesar.a_filas(df0, inicio, indice_cajas):
                 filas_por_id[fila["id_os"]] = fila
         filas = list(filas_por_id.values())
@@ -335,6 +391,10 @@ def main(argv: list[str] | None = None) -> int:
             _bolsa_inicial(tableros, estado, ahora)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se guardó la bolsa inicial del día: {e}", flush=True)
+        try:   # cambios de agenda del día (fecha o franja) respecto de la actualización anterior
+            _cambios_agenda(tableros, estado, ahora, asignacion)
+        except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
+            print(f"Aviso: no se calcularon los cambios de agenda: {e}", flush=True)
         total = subir.upsert_ordenes(filas, estado, cajas_ok=indice_cajas is not None)
         print(f"{total} órdenes escritas en Supabase.", flush=True)
         completo = all(por_filial.get(f, 0) > 0 for f in FILIALES)
