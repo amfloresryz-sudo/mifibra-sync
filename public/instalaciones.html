@@ -111,6 +111,18 @@ main .w { padding-block: 24px 56px; display: flex; flex-direction: column; gap: 
 .kpi .l { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
 .kpi .kv { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .kpi .s { font-size: 13px; color: var(--fg-3); }
+/* Cambio de agenda en el día (↻): clic para ver la agenda anterior y el motivo */
+.cfr { border: 0; background: #FDF1DC; color: #9A5B00; border-radius: 999px; padding: 1px 7px; margin-left: 5px; font: 700 11px var(--f-disp, inherit); cursor: pointer; white-space: nowrap; vertical-align: middle; }
+.cfr::before { content: "↻" attr(data-n); }
+.cfr:hover { background: #9A5B00; color: #fff; }
+.cfr.por { background: #EDE7FB; color: #5B2DB8; } .cfr.por:hover { background: #5B2DB8; color: #fff; }
+.cam-l { display: flex; flex-direction: column; gap: 10px; }
+.cam { border: 1px solid var(--borde); border-left: 4px solid #F2B54A; border-radius: 12px; padding: 10px 12px; }
+.cam.por { border-left-color: #5B2DB8; }
+.cam .h { font-size: 12px; color: var(--fg-3); margin-bottom: 6px; }
+.cam .ag { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; }
+.cam .ag s { color: var(--mal); text-decoration-thickness: 2px; } .cam .ag b { color: var(--ok); }
+.cam .mo { margin-top: 8px; font-size: 13.5px; white-space: pre-wrap; } .cam .mo i { color: var(--fg-3); font-style: normal; font-size: 12px; display: block; }
 /* Ritmo del día */
 #rit-kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .rit-curva { border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px 8px; background: var(--sup); }
@@ -1231,7 +1243,7 @@ const PAL_TXT = ['#FFFFFF','#FFFFFF','#0B0B0B','#0B0B0B','#0B0B0B','#FFFFFF','#F
 const FRANJAS = ['8 - 10','10 - 12','12 - 14','14 - 16','16 - 18','18 - 20'];
 let DIAS = [], MC = '', MESL = '', CFG = {};
 let coTipo = 'TODOS', seg = 'TODOS', canal = 'TODOS', zona = 'TODAS', vista = 'eecc', tab = 'panel', diaCo = 0, diaAv = 0, diaPenAg = 0;
-const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', hoIn: 'TODOS', hoEs: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTos: new Set(['INSTALACION SERVICIO']), penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
+const filtro = { hoTp: 'TODOS', hoFr: 'TODOS', hoEc: 'TODOS', hoIn: 'TODOS', hoEs: 'TODOS', hoCa: 'TODOS', ingEc: 'TODOS', ingTp: 'TODOS', detEc: 'TODOS', detTp: 'TODOS', altEc: new Set(), altTp: new Set(), penTos: new Set(['INSTALACION SERVICIO']), penEc: 'TODOS', penTp: 'TODOS', penPr: 'TODOS', penAnt: 'TODOS', penGes: 'TODOS', penGe: 'TODOS', coEc: 'TODOS', coEs: 'TODOS', coGe: 'TODOS', coCu: 'TODOS', coDesde: '', coHasta: '', coBuscar: '', desde: '', hasta: '', buscar: '' };
 const abiertos = new Set();
 const diaInfo = (d) => { const f = new Date(D.anio, D.mes - 1, d); return { wd: WD[f.getDay()], fin: f.getDay() === 0 }; };
 const fDia = (d) => `${String(d).padStart(2, '0')}-${MC}.`;
@@ -1742,7 +1754,7 @@ function abrirListaAltas(clave) {
   const nom = tz === 'T' ? 'Total general' : tz === 'Z' ? 'Zona ' + z : di;
   const cab = ['AB', 'Distrito', 'EECC', 'Gestor', 'F. Recep', 'Agenda', 'F. AG', 'Franja', 'Gestión'];
   const filas = L.map(p => `<tr><td data-v="${p.ab}"><button type="button" class="lnk num" data-altas-ab="${p.os}" title="Ver ficha del AB · OS ${p.os}">${p.ab}</button></td><td title="${esc(p.di)}">${esc(p.di || '—')}</td><td>${esc(p.ec)}</td><td>${esc(gestorDe(p) === 'SIN GESTOR' ? '—' : gestorDe(p))}</td>
-    <td data-v="${msIso(p.rec)}" style="white-space:nowrap">${fechaHora(p.rec)} ${edadB(p.rec)}</td><td>${AGENDA_B(p)}</td>${estAg(p) === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${esc(p.fp || '')}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${p.fp ? fIso(p.fp) : '—'}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
+    <td data-v="${msIso(p.rec)}" style="white-space:nowrap">${fechaHora(p.rec)} ${edadB(p.rec)}</td><td>${AGENDA_B(p)}</td>${estAg(p) === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${esc(p.fp || '')}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${p.fp ? fIso(p.fp) : '—'}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
     <td>${p.ges ? '<span class="b si">Gestionado</span>' : '<span class="b no">Sin gestión</span>'}</td></tr>`);
   document.querySelector('#modal .modal').classList.remove('ficha');
   $('modal-tit').textContent = `${nom} · ${f === 'ALL' ? 'todas las fechas' : fIso(f)}`;
@@ -1960,7 +1972,7 @@ function pintarPendientes0() {
       <td data-v="${p.pc ? 0 : 1}"><span class="b ${p.pc ? 'ges' : 'sag'}"${p.pcF ? ` title="Primer contacto: ${esc(fechaHora(p.pcF.replace(' ', 'T')))}"` : ' title="El comentario no trae #dd/mm/aaaa hh:mm#"'}>${p.pc ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
       <td data-v="${visI(p) ? (visI(p) === 'VD' ? 3 : visI(p)) : 9}">${visI(p) ? `<span class="b v1" title="Tomado del comentario">${visTxtI(visI(p))}</span>` : '-'}</td>
-      ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}</td>
+      ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
   prepararOrden($('tb-pend'));
@@ -2283,6 +2295,39 @@ function abrirListaCoord(clave) {
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-cr-lista]'); if (b) abrirListaCoord(b.dataset.crLista); });
 document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.cr-bar [data-cr-lista]')) { e.preventDefault(); abrirListaCoord(e.target.dataset.crLista); } });
 
+
+/* ---------- Cambios de agenda del día (↻) ----------
+   D.camb {"FILIAL|OS": [[hora act. anterior, hora act., fecha antes, franja antes, fecha ahora, franja ahora, observación
+   de la asignación en ScordSoft, usuario, última anotación del técnico]]}: lo detecta el robot comparando cada
+   actualización con la anterior. También cuentan las agendas editadas hoy en el portal (AJ.agendas, con su nota). */
+const filDe = (x) => (x.fi || (esCombo(D.filial || '') ? '' : (D.filial || filialSel())) || '').toUpperCase();
+function cambiosDe(x) {
+  const L = ((D.camb || {})[`${filDe(x)}|${x.os}`] || []).map(c => ({ h0: c[0], h: c[1], fp0: c[2], fr0: c[3], fp: c[4], fr: c[5], mot: c[6], usr: c[7], obs: c[8], por: false }));
+  const a = x.aj || (AJ.agendas || {})[x.os], o = x._o || {};
+  if (a && a.en && String(a.en).slice(0, 10) === hoyIso())
+    L.push({ h: new Date(a.en).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', hour12: false }), fp0: o.fp || x.fpo || '', fr0: o.fr || x.fro || '', fp: a.fp || '', fr: a.fr || '', mot: a.nota || '', usr: a.por || 'master', por: true });
+  return L;
+}
+const cambioTxt = (x) => cambiosDe(x).length ? 'CAMBIÓ FRANJA' : 'SIN CAMBIO';
+function cfrB(x) {
+  const L = cambiosDe(x); if (!L.length) return '';
+  const u = L[L.length - 1], ant = `${u.fp0 ? fIso(u.fp0) : 'sin fecha'} ${u.fr0 || ''}`.trim();
+  return ` <button type="button" class="cfr${L.every(c => c.por) ? ' por' : ''}" data-cfr="${x.os}" data-fi="${esc(filDe(x))}" title="Cambió de agenda hoy${L.length > 1 ? ` (${L.length} veces)` : ''} · antes: ${esc(ant)} · clic para ver el detalle y el motivo" aria-label="Cambió de agenda hoy" data-n="${L.length > 1 ? L.length : ''}"></button>`;
+}
+const agTxt = (fp, fr) => fp ? `${fIso(fp)}${fr ? ' · ' + esc(fr) : ''}` : '<span style="color:var(--fg-4)">sin agenda</span>';
+function verCambios(os, fi) {
+  const x = [D.pend, D.pendx || [], D.prog, D.liq].flat().find(y => String(y.os) === String(os) && (!fi || filDe(y) === fi)); if (!x) return;
+  const L = cambiosDe(x);
+  const html = `<div class="cam-l">${L.map((c, i) => `<div class="cam${c.por ? ' por' : ''}">
+      <div class="h">${i + 1}.º cambio · ${c.por ? `editado en el portal a las ${esc(c.h)} por ${esc(c.usr || 'master')}` : `detectado en la actualización de las ${esc(c.h)}${c.h0 ? ` (entre las ${esc(c.h0)} y las ${esc(c.h)})` : ''}`}</div>
+      <div class="ag"><span>Antes: <s>${agTxt(c.fp0, c.fr0)}</s></span><span aria-hidden="true">→</span><span>Ahora: <b>${agTxt(c.fp, c.fr)}</b></span></div>
+      ${c.por ? `<div class="mo"><i>Nota de la edición en el portal</i>${c.mot ? esc(c.mot) : 'Sin nota.'}</div>`
+        : `<div class="mo"><i>Motivo · observación de la asignación en ScordSoft${c.usr ? ` (${esc(c.usr)})` : ''}</i>${c.mot ? esc(c.mot) : 'ScordSoft no registró observación en la asignación.'}</div>
+           ${c.obs ? `<div class="mo"><i>Último comentario del técnico (OBS VISITA TÉCNICO)</i>${obsCompleta(c.obs)}</div>` : ''}`}
+    </div>`).join('')}</div><p class="fi-nota">El robot compara la agenda de cada OS en cada actualización (cada 20 min): si cambió la fecha o la franja la marca con ↻ durante el día. Los teléfonos se ocultan.</p>`;
+  abrirFichaModal(`AB ${x.ab} · cambios de agenda de hoy`, `OS ${x.os} · ${x.ec || '—'} · ${x.tec || 'sin técnico'} · agenda actual: ${x.fp ? fIso(x.fp) : 'sin fecha'} ${x.fr || ''}`, html);
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-cfr]'); if (b) { e.stopPropagation(); verCambios(b.dataset.cfr, b.dataset.fi); } }, true);
 /* Detalle de agendas de hoy (como en Seguimiento de agendas): solo lo programado para el día en curso */
 const HO_TP = { 'AG HOY': 'AG', 'COORDINADAS': 'CO' };
 const frNorm = (x) => String(x.fr || '').replace(/\s+/g, ' ').trim();
@@ -2294,7 +2339,7 @@ function hoyFiltrados(sin = '') {
   return D.prog.filter(ok).filter(x => x.d === D.dias && (x.t === 'AG' || x.t === 'CO') && x.e !== 'A'
     && (sin === 'hoTp' || msAny(filtro.hoTp, o => x.t === HO_TP[o]))
     && (sin === 'hoFr' || msOk(filtro.hoFr, frNorm(x)))
-    && (sin === 'hoEc' || msOk(filtro.hoEc, x.ec)) && (sin === 'hoIn' || msOk(filtro.hoIn, inicioHoy(x))) && (sin === 'hoEs' || msOk(filtro.hoEs, EST_OS[x.e] || '—')));
+    && (sin === 'hoEc' || msOk(filtro.hoEc, x.ec)) && (sin === 'hoIn' || msOk(filtro.hoIn, inicioHoy(x))) && (sin === 'hoEs' || msOk(filtro.hoEs, EST_OS[x.e] || '—')) && (sin === 'hoCa' || msOk(filtro.hoCa, cambioTxt(x))));
 }
 function pintarAgHoy() {
   if (!$('hoy-segs')) return;
@@ -2305,7 +2350,8 @@ function pintarAgHoy() {
     { k: 'hoFr', t: 'Franja', ops: frs, cnt: cnt('hoFr', (x, o) => frNorm(x) === o) },
     { k: 'hoEc', t: 'EECC_F', ops: ecsDe(hoyFiltrados('hoEc')), cnt: cnt('hoEc', (x, o) => x.ec === o) },
     { k: 'hoIn', t: 'Inicio', ops: ['CON INICIO', 'SIN INICIO'], cnt: cnt('hoIn', (x, o) => inicioHoy(x) === o) },
-    { k: 'hoEs', t: 'Estado OS', ops: ['REGISTRADA', 'DESCARGADA', 'OBSERVADA'], cnt: cnt('hoEs', (x, o) => EST_OS[x.e] === o) } ]);
+    { k: 'hoEs', t: 'Estado OS', ops: ['REGISTRADA', 'DESCARGADA', 'OBSERVADA'], cnt: cnt('hoEs', (x, o) => EST_OS[x.e] === o) },
+    { k: 'hoCa', t: 'Cambio hoy ↻', ops: ['CAMBIÓ FRANJA', 'SIN CAMBIO'], cnt: cnt('hoCa', (x, o) => cambioTxt(x) === o) } ]);
   const L = hoyFiltrados().map(x => ({ x, es: hoEstado(x) })).sort((a, b) => HO_ORD[a.es] - HO_ORD[b.es] || msIso(a.x.rec) - msIso(b.x.rec)).map(o => o.x);
   const T = D.prog.filter(ok).filter(x => x.d === D.dias && x.e !== 'A'), ag = T.filter(x => x.t === 'AG').length, co = T.filter(x => x.t === 'CO').length;
   const pen = L.filter(x => hoEstado(x) === 'PENDIENTE').length;
@@ -2314,7 +2360,7 @@ function pintarAgHoy() {
   const corte = msIso(D.corte) || Date.now();
   const esB = (e) => e === 'DESCARGADA' ? '<span class="b ges">Descargada</span>' : e === 'OBSERVADA' ? '<span class="b sges">Observada</span>' : e === 'EN ATENCIÓN' ? '<span class="b coo">En atención</span>' : '<span class="b sag">Pendiente</span>';
   $('aghoy-filas').innerHTML = L.map(x => { const es = hoEstado(x), h = x.rec ? Math.max(0, Math.round((corte - msIso(x.rec)) / 36e5)) : null, iniHoy = x.ini && x.ini.slice(0, 10) === hoyIso();
-    return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${x.t === 'AG' ? '<span class="b ag">AG HOY</span>' : '<span class="b co">CO</span>'}</td><td>${esc(x.fr || '—')}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(cnNom(x.cn))}">${esc(cnCorto(x.cn))}</td>
+    return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${x.t === 'AG' ? '<span class="b ag">AG HOY</span>' : '<span class="b co">CO</span>'}</td><td style="white-space:nowrap">${esc(x.fr || '—')}${cfrB(x)}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(cnNom(x.cn))}">${esc(cnCorto(x.cn))}</td>
       <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${h ?? -1}">${h == null ? '—' : h + ' h'}</td><td>${iniHoy ? x.ini.slice(11, 16) : '—'}</td><td data-v="${HO_ORD[es]}">${esB(es)}</td><td>${EST_OS[x.e] || '—'}</td></tr>`; }).join('') || '<tr><td colspan="15">No hay agendas ni coordinadas para hoy con estos filtros.</td></tr>';
   prepararOrden($('tb-aghoy'));
 }
@@ -2343,7 +2389,7 @@ function pintarCoDetalle() {
   const cuB = (k) => k === 'si' ? '<span class="b ges">Sí</span>' : (k === 'tarde' || k === 'no') ? '<span class="b sges">No</span>' : '<span class="b sag">Pendiente</span>';
   $('codet-filas').innerHTML = diferir('tb-codet', L.map(x => { const ge = gestorDe(x);
     return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${esc(x.seg || '—')}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
-      <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)}/${x.rec.slice(0, 4)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td>
+      <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)}/${x.rec.slice(0, 4)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td style="white-space:nowrap">${esc(x.fr || '—')}${cfrB(x)}</td>
       <td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${x.ini ? `${x.ini.slice(8, 10)}/${x.ini.slice(5, 7)}/${x.ini.slice(0, 4)}` : '—'}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td>
       <td><span class="ini-pop ini-txt" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'Sí' : 'No'}</span></td><td data-v="${kMed(x)}">${cuB(kMed(x))}</td><td>${EST_OS[x.e] || '—'}</td><td>${btnEd(x)}</td></tr>`; }), 19, '<tr><td colspan="19">No hay registros con estos filtros.</td></tr>');
@@ -2709,7 +2755,7 @@ function csDetalleAB(m, L, rangoTxt) {
   const fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—';
   const filas = diferir(tid, F.map(x => { const ge = gestorDe(x);
     return `<tr><td class="ab-c" data-v="${x.ab}"><button type="button" class="ab-com" data-com="${x.os}" title="Ver el comentario del técnico"><b>${x.ab}</b></button></td><td>${x.os}</td><td>${x.e !== 'D' ? `<span class="b sag" title="${esc(EST_OS[x.e] || x.e)}">—</span>` : x.k === 'si' ? '<span class="b ges">Sí</span>' : '<span class="b sges">No</span>'}</td><td>${ge === 'SIN GESTOR' ? 'S/ASIGNAR' : esc(ge)}</td><td>${esc(x.ec)}</td><td data-v="${zIdx(x.z)}">${esc(x.z || '—')}</td><td>${esc(x.pl || '—')}</td><td title="${esc(x.di)}">${esc(corto(x.di || '—'))}</td><td>${esc(x.seg || '—')}</td>
-      <td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td data-v="${msIso(x.rec)}">${x.rec ? fh(x.rec) + ' ' + x.rec.slice(11, 16) : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td>${esc(x.fr || '—')}</td><td>${tipoB(x)}</td>
+      <td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td data-v="${msIso(x.rec)}">${x.rec ? fh(x.rec) + ' ' + x.rec.slice(11, 16) : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td style="white-space:nowrap">${esc(x.fr || '—')}${cfrB(x)}</td><td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td data-v="${x.ini ? 0 : 1}"><span class="b ${x.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'SÍ' : 'NO'}</span></td><td>${btnEd(x)}</td></tr>`; }), 18, '<tr><td colspan="18">Sin AB con estos filtros.</td></tr>');
   return `<div class="cs-det csd"><div class="sec-cab"><div><h3 class="cs-h3">Detalle de cumplimiento por AB</h3><p class="sub">${esc(rangoTxt)} · Estado OS: ${esc(dt.es.size ? [...dt.es].map(v => v.toLowerCase()).join(', ') : 'todos')} · primero los que no cumplieron · BI = inicio de la atención del técnico</p></div>
       <div class="pen-acc"><span class="nota"><b>${n(F.length)}</b> AB · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span>${sinD ? ` · ${n(sinD)} sin descargar` : ''}</span><button type="button" class="btn-out" data-csd-ab="${m}">Copiar AB</button><button type="button" class="btn-out" data-img="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button></div></div>
@@ -3131,7 +3177,7 @@ function fichaAB(os) {
   const html = secF('Datos del abonado y la OS', grilla([
       ['OS', p.os], ['Plano', val(p.plano)], ['Planta', val(p.pl)], ['Plan', val(p.plan)],
       ['Vivienda', val(VIV(p.viv))], ['Segmento', val(p.seg)], ['Técnico', val(p.tec)], ['Distrito', val(p.di)],
-      ['Zona', val(p.z)], ['Franja', conFranja(p) ? esc(p.fr) : '—'], ['Agenda', agenda], ['Cita inicial', fIso(p.cita)],
+      ['Zona', val(p.z)], ['Franja', (conFranja(p) ? esc(p.fr) : '—') + cfrB(p)], ['Agenda', agenda], ['Cita inicial', fIso(p.cita)],
       ['Recepción', p.rec ? fechaHora(p.rec) : '—'], ['EECC según plano (ZONA.1.EECC)', val(p.ecp)], ['EECC_F (asignado)', val(p.ec)],
       ['Coordenadas', p.co ? `${esc(p.co)}<br><a href="https://www.google.com/maps?q=${encodeURIComponent(p.co.replace(/\s+/g, ''))}" target="_blank" rel="noopener">Ver en Google Maps</a>` : '—'] ]))
     + (() => { const asig = String(p.ec0 ?? p.ec).toUpperCase();
