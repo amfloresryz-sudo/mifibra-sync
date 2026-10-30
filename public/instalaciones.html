@@ -238,6 +238,7 @@ body.rut-on { overflow: hidden; }
 .ra-chip.ok-age, .ra-chip.ok-sin { background: var(--sup); border-color: var(--borde-2); color: var(--fg-2); }
 .ra-chip.x { background: #FFF1DC; border-color: #D97706; color: #8A4B00; border-style: dashed; }
 .ra-k { margin: 0; }
+.ra-segs { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
 .ra-fr { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .ra-fr-t { font: 800 10.5px var(--f-disp); letter-spacing: .8px; text-transform: uppercase; color: var(--fg-3); margin-right: 4px; }
 .ra-fr .chip { min-height: 30px; padding: 4px 11px; font-size: 12px; } .ra-fr .chip small { opacity: .75; margin-left: 2px; }
 .ra-ley { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--fg-3); }
@@ -3889,7 +3890,7 @@ function pintarRitmo() {
 /* ---------- Ritmo del día › Asistencia de rutas (la marca cada EECC en su portal; se borra sola a la medianoche) ----------
    Con EECC elegidas arriba: las rutas con asistencia y su estado de hoy, y aparte (en naranja) los técnicos SIN asistencia
    que igual están trabajando (alta hoy o AB iniciado hoy). Sin EECC elegida: resumen por EECC al final de la pestaña. */
-let ASI = null, asiEn = 0, raFr = new Set();   // raFr = franjas elegidas en Asistencia de rutas (vacío = todas)
+let ASI = null, asiEn = 0, raFr = new Set(), raAg = new Set();   // raAg = tipo de agenda elegido (en curso, hoy, atrasada, futura, sin agenda)   // raFr = franjas elegidas en Asistencia de rutas (vacío = todas)
 async function traerAsistencia() {
   if (ASI && Date.now() - asiEn < 60e3) return ASI;
   try { const r = await fetch('/api/eecc?accion=asistencia_todas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); ASI = r.ok ? await r.json() : { ec: {} }; }
@@ -3922,30 +3923,34 @@ async function pintarRitAsis() {
     const cat = (p) => { if (p.ini && p.ini.slice(0, 10) === hoy) return 'cur'; const t = tipoProg(p); if (t === 'SA' || !p.fp) return 'sa'; return p.fp === hoy ? 'hoy' : p.fp < hoy ? 'atr' : 'fut'; };
     const CAT = { cur: 'En curso', hoy: 'Para hoy', atr: 'Atrasado', fut: 'Futuro', sa: 'Sin agenda' }, ORDc = { cur: 0, hoy: 1, atr: 2, fut: 3, sa: 4 };
     const abChip = (p) => { const c = cat(p); return `<button type="button" class="ra-ab c-${c}" data-ficha-ab="${p.os}" title="${CAT[c]} · ${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp ? ' · F. AG ' + fIso(p.fp) : ''} · ${esc(p.di || '')}">${p.ab}${conFranja(p) && (c === 'hoy' || c === 'cur') ? `<small>${esc(p.fr.replace(/\s+/g, ''))}</small>` : c === 'fut' || c === 'atr' ? `<small>${fIso(p.fp)}</small>` : ''}</button>`; };
-    const frDe = (p) => conFranja(p) ? p.fr.replace(/\s+/g, ' ').trim() : 'SIN FRANJA', frOk = (p) => !raFr.size || raFr.has(frDe(p));
+    const frDe = (p) => conFranja(p) ? p.fr.replace(/\s+/g, ' ').trim() : 'SIN FRANJA', frSolo = (p) => !raFr.size || raFr.has(frDe(p)), agSolo = (p) => !raAg.size || raAg.has(cat(p)), frOk = (p) => frSolo(p) && agSolo(p);
     const filaTec = (k, nombre, grupo) => { const B = (bolsa[k] || []).filter(frOk).sort((a, b) => ORDc[cat(a)] - ORDc[cat(b)] || String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr)));
       const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const al = altasHoy[k] || [], [ce, se] = estado(T[k]);
       return `<tr class="ra-g-${grupo}"><th scope="row" title="${esc(nombre)}"><span class="ra-dot ${grupo === 'si' ? 'ok-' + ce : grupo}"></span>${esc(tecCorto(nombre) || nombre)}<small>${esc(se)}</small></th>
         <td>${al.length ? `<b class="ra-alta">${al.length}</b>` : '<span class="cero">0</span>'}</td><td>${c.cur || '·'}</td><td>${c.hoy || '·'}</td><td class="${c.atr ? 'mal-t' : ''}">${c.atr || '·'}</td><td>${c.fut || '·'}</td><td>${c.sa || '·'}</td><td><b>${B.length}</b></td>
         <td class="ra-abs">${B.map(abChip).join('') || '<span class="cero">sin AB asignados</span>'}</td></tr>`; };
-    const frC = {}; Object.values(bolsa).flat().filter(p => sel.includes(asiNorm(p.ec)) && tipoProg(p) !== 'SA').forEach(p => { const f = frDe(p); frC[f] = (frC[f] || 0) + 1; });
+    const delSel = Object.values(bolsa).flat().filter(p => sel.includes(asiNorm(p.ec)));
+    const frC = {}; delSel.filter(p => tipoProg(p) !== 'SA' && agSolo(p)).forEach(p => { const f = frDe(p); frC[f] = (frC[f] || 0) + 1; });
+    const agC = {}; delSel.filter(frSolo).forEach(p => { const c = cat(p); agC[c] = (agC[c] || 0) + 1; });
+    [...raAg].forEach(c => { if (!agC[c]) raAg.delete(c); });
     [...raFr].forEach(f => { if (!frC[f]) raFr.delete(f); });
     const frOrd = Object.keys(frC).sort((a, b) => (a === 'SIN FRANJA') - (b === 'SIN FRANJA') || parseInt(a, 10) - parseInt(b, 10));
     const frChips = `<div class="ra-fr" role="group" aria-label="Franja de las agendas"><span class="ra-fr-t">Franja</span><button type="button" class="chip" data-ra-fr="" aria-pressed="${!raFr.size}">Todas</button>${frOrd.map(f => `<button type="button" class="chip" data-ra-fr="${esc(f)}" aria-pressed="${raFr.has(f)}">${f === 'SIN FRANJA' ? 'Sin franja' : esc(f)} <small>${frC[f]}</small></button>`).join('')}</div>`;
-    box.innerHTML = cab + frChips + `<div class="ra-ley"><span class="ra-ab c-cur">En curso</span><span class="ra-ab c-hoy">Para hoy</span><span class="ra-ab c-atr">Atrasado</span><span class="ra-ab c-fut">Futuro</span><span class="ra-ab c-sa">Sin agenda</span><span>· clic en un AB para ver su ficha</span></div>` + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
+    const agChips = `<div class="ra-fr" role="group" aria-label="Tipo de agenda"><span class="ra-fr-t">Agenda</span><button type="button" class="chip" data-ra-ag="" aria-pressed="${!raAg.size}">Todas</button>${['cur', 'hoy', 'atr', 'fut', 'sa'].filter(c => agC[c] || raAg.has(c)).map(c => `<button type="button" class="chip" data-ra-ag="${c}" aria-pressed="${raAg.has(c)}">${({ cur: 'En curso', hoy: 'AG hoy', atr: 'Atrasadas', fut: 'Futuras', sa: 'Sin agenda' })[c]} <small>${agC[c] || 0}</small></button>`).join('')}</div>`;
+    box.innerHTML = cab + `<div class="ra-segs">${agChips}${frChips}</div><div class="ra-ley"><span class="ra-ab c-cur">En curso</span><span class="ra-ab c-hoy">Para hoy</span><span class="ra-ab c-atr">Atrasado</span><span class="ra-ab c-fut">Futuro</span><span class="ra-ab c-sa">Sin agenda</span><span>· clic en un AB para ver su ficha</span></div>` + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
       const delEc = Object.values(T).filter(o => o.ec === e).map(o => String(o.tec).toUpperCase().trim());
       const deBolsa = Object.keys(bolsa).filter(k => bolsa[k].some(p => asiNorm(p.ec) === e));
       const sinA = [...new Set([...delEc, ...deBolsa])].filter(k => !(a && a.set.has(k)));
       const sinTrab = sinA.filter(k => trabajando(T[k])), sinHoy = sinA.filter(k => !trabajando(T[k]) && (bolsa[k] || []).some(p => cat(p) === 'hoy'));
       const nom = (k) => (T[k] && T[k].tec) || ((bolsa[k] || [])[0] || {}).tec || k;
       const enCampo = conA.filter(t => trabajando(T[t])).length, r = rfDe(e);
-      const conAf = raFr.size ? conA.filter(k => (bolsa[k] || []).some(frOk)) : conA, sinTrabF = raFr.size ? sinTrab.filter(k => (bolsa[k] || []).some(frOk)) : sinTrab, sinHoyF = raFr.size ? sinHoy.filter(k => (bolsa[k] || []).some(frOk)) : sinHoy;
+      const filtro2 = raFr.size || raAg.size; const conAf = filtro2 ? conA.filter(k => (bolsa[k] || []).some(frOk)) : conA, sinTrabF = filtro2 ? sinTrab.filter(k => (bolsa[k] || []).some(frOk)) : sinTrab, sinHoyF = filtro2 ? sinHoy.filter(k => (bolsa[k] || []).some(frOk)) : sinHoy;
       const filas = [...conAf.sort((x, y) => (trabajando(T[y]) ? 1 : 0) - (trabajando(T[x]) ? 1 : 0) || (bolsa[y] || []).length - (bolsa[x] || []).length).map(k => filaTec(k, nom(k), 'si')),
         sinTrabF.length ? `<tr class="ra-sep"><td colspan="9">⚠ Sin asistencia pero trabajando (${sinTrabF.length})</td></tr>` + sinTrabF.map(k => filaTec(k, nom(k), 'x')).join('') : '',
         sinHoyF.length ? `<tr class="ra-sep ra-sep2"><td colspan="9">Sin asistencia con AB para hoy (${sinHoyF.length}) · revisar si salen a campo o reasignar</td></tr>` + sinHoyF.map(k => filaTec(k, nom(k), 'y')).join('') : ''].join('');
       const totB = conA.reduce((s, k) => s + (bolsa[k] || []).filter(frOk).length, 0);
       return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando · bolsa de las rutas con asistencia: <b>${totB}</b> AB</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
-        ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr><th>Técnico</th><th>Altas hoy</th><th>En curso</th><th>Para hoy</th><th>Atrasados</th><th>Futuros</th><th>Sin agenda</th><th>Bolsa</th><th>AB asignados</th></tr></thead><tbody>${conAf.length ? `<tr class="ra-sep ra-sep0"><td colspan="9">Con asistencia (${conAf.length}${raFr.size ? ` con AB en ${[...raFr].map(f => f === 'SIN FRANJA' ? 'sin franja' : f).join(', ')}` : ''})</td></tr>` : ''}${filas}</tbody></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
+        ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr><th>Técnico</th><th>Altas hoy</th><th>En curso</th><th>Para hoy</th><th>Atrasados</th><th>Futuros</th><th>Sin agenda</th><th>Bolsa</th><th>AB asignados</th></tr></thead><tbody>${conAf.length ? `<tr class="ra-sep ra-sep0"><td colspan="9">Con asistencia (${conAf.length}${raFr.size || raAg.size ? ` con AB en ${[raAg.size ? [...raAg].map(c => ({ cur: 'en curso', hoy: 'AG hoy', atr: 'atrasadas', fut: 'futuras', sa: 'sin agenda' })[c]).join(', ') : '', raFr.size ? [...raFr].map(f => f === 'SIN FRANJA' ? 'sin franja' : f).join(', ') : ''].filter(Boolean).join(' · ')}` : ''})</td></tr>` : ''}${filas}</tbody></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
     return;
   }
   // Resumen por EECC (sin EECC elegida)
@@ -3967,8 +3972,9 @@ async function pintarRitAsis() {
     <p class="nota">Elige una o varias EECC arriba para ver los nombres de sus rutas con asistencia y, en naranja, los técnicos que no marcaron asistencia pero ya están trabajando.</p>`;
   if (typeof prepararOrden === 'function') { orden['tb-rit-asis'] = null; prepararOrden($('tb-rit-asis')); }
 }
-document.addEventListener('click', (e) => { const b = e.target.closest('[data-ra-fr]'); if (!b) return; const v = b.dataset.raFr;
-  if (!v) raFr.clear(); else raFr.has(v) ? raFr.delete(v) : raFr.add(v); pintarRitAsis(); });
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-ra-fr], [data-ra-ag]'); if (!b) return;
+  const S = b.dataset.raFr != null ? raFr : raAg, v = b.dataset.raFr != null ? b.dataset.raFr : b.dataset.raAg;
+  if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarRitAsis(); });
 const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); } };
 const tabSucia = new Set();
 function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); pintarCinta(); }
