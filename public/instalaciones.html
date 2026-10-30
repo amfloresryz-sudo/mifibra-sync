@@ -238,6 +238,24 @@ body.rut-on { overflow: hidden; }
 .ra-chip.ok-age, .ra-chip.ok-sin { background: var(--sup); border-color: var(--borde-2); color: var(--fg-2); }
 .ra-chip.x { background: #FFF1DC; border-color: #D97706; color: #8A4B00; border-style: dashed; }
 .ra-k { margin: 0; }
+.ra-ley { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--fg-3); }
+.ra-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ra-tb th, .ra-tb td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; vertical-align: middle; }
+.ra-tb thead th { font: 800 10.5px var(--f-disp); letter-spacing: .3px; text-transform: uppercase; color: var(--magenta-txt); background: var(--rosa); }
+.ra-tb tbody th { text-align: left; font-weight: 800; white-space: nowrap; } .ra-tb tbody th small { display: block; font-weight: 500; font-size: 11px; color: var(--fg-3); margin-left: 16px; }
+.ra-tb td.ra-abs { text-align: left; min-width: 340px; } .ra-tb .cero { color: var(--fg-4); }
+.ra-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--fg-4); }
+.ra-dot.ok-alta { background: var(--ok); } .ra-dot.ok-cur { background: #1A56A8; } .ra-dot.x { background: #D97706; } .ra-dot.y { background: #B42318; }
+.ra-g-x th, .ra-g-x td { background: #FFF7EB; } .ra-g-y th, .ra-g-y td { background: #FDF1F0; }
+.ra-sep td { text-align: left !important; font: 800 11px var(--f-disp); letter-spacing: .4px; text-transform: uppercase; color: #8A4B00; background: #FFF1DC; }
+.ra-sep0 td { color: var(--ok); background: var(--ok-bg); } .ra-sep2 td { color: var(--mal); background: var(--mal-bg); }
+.ra-alta { color: var(--ok); }
+.ra-ab { display: inline-flex; flex-direction: column; align-items: center; border: 1px solid; border-radius: 8px; padding: 2px 7px; margin: 2px 3px 2px 0; font: 700 11.5px var(--f-disp); cursor: pointer; background: var(--sup); line-height: 1.15; }
+.ra-ab small { font-size: 9.5px; font-weight: 600; opacity: .85; }
+.ra-ab.c-cur { background: #E3EEFF; border-color: #1A56A8; color: #1A56A8; } .ra-ab.c-hoy { background: var(--rosa); border-color: var(--magenta); color: var(--magenta-txt); }
+.ra-ab.c-atr { background: var(--mal-bg); border-color: var(--mal); color: var(--mal); } .ra-ab.c-fut { border-color: var(--borde-2); color: var(--fg-2); }
+.ra-ab.c-sa { border-style: dashed; border-color: var(--fg-4); color: var(--fg-3); }
+
 .modal-fondo { position: fixed; inset: 0; z-index: 50; background: rgba(15, 15, 30, .55); display: flex; align-items: center; justify-content: center;
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .modal { background: var(--sup); color: var(--fg); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); width: min(1500px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
@@ -3895,13 +3913,30 @@ async function pintarRitAsis() {
   const sel = [...ecSel].map(asiNorm);
   const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy o con un AB iniciado hoy</p></div></div>`;
   if (sel.length) {
-    box.innerHTML = cab + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
-      const sinA = Object.values(T).filter(o => o.ec === e && !(a && a.set.has(String(o.tec).toUpperCase().trim())) && trabajando(o));
+    // Bolsa de cada técnico: todos sus AB pendientes asignados (con los filtros de la cabecera) y sus altas de hoy
+    const bolsa = {}; D.pend.filter(okSinEc).forEach(p => { const k = String(p.tec || '').toUpperCase().trim(); if (k) (bolsa[k] || (bolsa[k] = [])).push(p); });
+    const altasHoy = {}; D.liq.filter(x => x.d === dH && okSinEc(x)).forEach(x => { const k = String(x.tec || '').toUpperCase().trim(); if (k) (altasHoy[k] || (altasHoy[k] = [])).push(x); });
+    const cat = (p) => { if (p.ini && p.ini.slice(0, 10) === hoy) return 'cur'; const t = tipoProg(p); if (t === 'SA' || !p.fp) return 'sa'; return p.fp === hoy ? 'hoy' : p.fp < hoy ? 'atr' : 'fut'; };
+    const CAT = { cur: 'En curso', hoy: 'Para hoy', atr: 'Atrasado', fut: 'Futuro', sa: 'Sin agenda' }, ORDc = { cur: 0, hoy: 1, atr: 2, fut: 3, sa: 4 };
+    const abChip = (p) => { const c = cat(p); return `<button type="button" class="ra-ab c-${c}" data-ficha-ab="${p.os}" title="${CAT[c]} · ${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp ? ' · F. AG ' + fIso(p.fp) : ''} · ${esc(p.di || '')}">${p.ab}${conFranja(p) && (c === 'hoy' || c === 'cur') ? `<small>${esc(p.fr.replace(/\s+/g, ''))}</small>` : c === 'fut' || c === 'atr' ? `<small>${fIso(p.fp)}</small>` : ''}</button>`; };
+    const filaTec = (k, nombre, grupo) => { const B = (bolsa[k] || []).slice().sort((a, b) => ORDc[cat(a)] - ORDc[cat(b)] || String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr)));
+      const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const al = altasHoy[k] || [], [ce, se] = estado(T[k]);
+      return `<tr class="ra-g-${grupo}"><th scope="row" title="${esc(nombre)}"><span class="ra-dot ${grupo === 'si' ? 'ok-' + ce : grupo}"></span>${esc(tecCorto(nombre) || nombre)}<small>${esc(se)}</small></th>
+        <td>${al.length ? `<b class="ra-alta">${al.length}</b>` : '<span class="cero">0</span>'}</td><td>${c.cur || '·'}</td><td>${c.hoy || '·'}</td><td class="${c.atr ? 'mal-t' : ''}">${c.atr || '·'}</td><td>${c.fut || '·'}</td><td>${c.sa || '·'}</td><td><b>${B.length}</b></td>
+        <td class="ra-abs">${B.map(abChip).join('') || '<span class="cero">sin AB asignados</span>'}</td></tr>`; };
+    box.innerHTML = cab + `<div class="ra-ley"><span class="ra-ab c-cur">En curso</span><span class="ra-ab c-hoy">Para hoy</span><span class="ra-ab c-atr">Atrasado</span><span class="ra-ab c-fut">Futuro</span><span class="ra-ab c-sa">Sin agenda</span><span>· clic en un AB para ver su ficha</span></div>` + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
+      const delEc = Object.values(T).filter(o => o.ec === e).map(o => String(o.tec).toUpperCase().trim());
+      const deBolsa = Object.keys(bolsa).filter(k => bolsa[k].some(p => asiNorm(p.ec) === e));
+      const sinA = [...new Set([...delEc, ...deBolsa])].filter(k => !(a && a.set.has(k)));
+      const sinTrab = sinA.filter(k => trabajando(T[k])), sinHoy = sinA.filter(k => !trabajando(T[k]) && (bolsa[k] || []).some(p => cat(p) === 'hoy'));
+      const nom = (k) => (T[k] && T[k].tec) || ((bolsa[k] || [])[0] || {}).tec || k;
       const enCampo = conA.filter(t => trabajando(T[t])).length, r = rfDe(e);
-      return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
-        ${conA.length ? `<div class="ra-tit">Con asistencia (${conA.length})</div><div class="ra-chips">${conA.sort((x, y) => (trabajando(T[y]) ? 1 : 0) - (trabajando(T[x]) ? 1 : 0) || x.localeCompare(y)).map(t => { const [c, s] = estado(T[t]); return chip((T[t] && T[t].tec) || t, 'ok-' + c, s); }).join('')}</div>` : ''}
-        ${sinA.length ? `<div class="ra-tit ra-tit-x">⚠ Sin asistencia pero trabajando (${sinA.length})</div><div class="ra-chips">${sinA.map(o => chip(o.tec, 'x', o.curso.length ? `iniciando AB ${o.curso.join(', ')}` : `${o.altas} alta${o.altas === 1 ? '' : 's'} hoy`)).join('')}</div>` : ''}
-        ${!conA.length && !sinA.length ? '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>' : ''}</div>`; }).join('');
+      const filas = [...conA.sort((x, y) => (trabajando(T[y]) ? 1 : 0) - (trabajando(T[x]) ? 1 : 0) || (bolsa[y] || []).length - (bolsa[x] || []).length).map(k => filaTec(k, nom(k), 'si')),
+        sinTrab.length ? `<tr class="ra-sep"><td colspan="9">⚠ Sin asistencia pero trabajando (${sinTrab.length})</td></tr>` + sinTrab.map(k => filaTec(k, nom(k), 'x')).join('') : '',
+        sinHoy.length ? `<tr class="ra-sep ra-sep2"><td colspan="9">Sin asistencia con AB para hoy (${sinHoy.length}) · revisar si salen a campo o reasignar</td></tr>` + sinHoy.map(k => filaTec(k, nom(k), 'y')).join('') : ''].join('');
+      const totB = conA.reduce((s, k) => s + (bolsa[k] || []).length, 0);
+      return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando · bolsa de las rutas con asistencia: <b>${totB}</b> AB</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
+        ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr><th>Técnico</th><th>Altas hoy</th><th>En curso</th><th>Para hoy</th><th>Atrasados</th><th>Futuros</th><th>Sin agenda</th><th>Bolsa</th><th>AB asignados</th></tr></thead><tbody>${conA.length ? `<tr class="ra-sep ra-sep0"><td colspan="9">Con asistencia (${conA.length})</td></tr>` : ''}${filas}</tbody></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
     return;
   }
   // Resumen por EECC (sin EECC elegida)
