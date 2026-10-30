@@ -182,6 +182,20 @@ td a.co::before { content: '📍'; grid-row: 1 / span 2; } td a.co span { grid-c
 .err { color: var(--mal); font-size: 13px; font-weight: 700; }
 .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--noche); color: #fff; padding: 10px 16px; border-radius: 12px; z-index: 30; font-size: 14px; max-width: calc(100% - 32px); }
 .toast[hidden] { display: none; }
+/* Asistencia de hoy */
+.asis { background: var(--sup); border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px; margin: 0 0 14px; }
+.asis[hidden] { display: none; }
+.asis-cab { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 14px; align-items: flex-start; margin-bottom: 10px; }
+.asis-cab h2 { margin: 0; font: 800 17px var(--f-disp); } .asis-cab .nota { margin: 2px 0 0; }
+.asis-acc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .asis-n { font: 800 14px var(--f-disp); color: var(--magenta-txt); margin-right: 4px; }
+.asis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 10px; }
+.asis-it { display: flex; gap: 8px; align-items: center; border: 1px solid var(--borde); border-radius: 10px; padding: 7px 10px; cursor: pointer; font-size: 13px; background: var(--sup); }
+.asis-it input { accent-color: var(--magenta); width: 17px; height: 17px; flex: none; }
+.asis-it b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .asis-it small { color: var(--fg-4); font-size: 11px; }
+.asis-it span { min-width: 0; } .asis-it.on { border-color: var(--magenta); background: var(--rosa); }
+.asis-pie { margin: 10px 0 0; }
+.asis.guardada .asis-n::after { content: ' ✓'; }
+
 /* Ruteo (mapa de mis pendientes) */
 .btn-rut { border-color: var(--magenta) !important; color: var(--magenta-txt); }
 body.rut-on { overflow: hidden; }
@@ -223,6 +237,12 @@ body.rut-on { overflow: hidden; }
   <h1 id="tit">Mis pendientes</h1>
   <p class="sub" id="sub">Cargando…</p>
   <div class="kpis" id="kpis"></div>
+  <section class="asis" id="asis" aria-labelledby="asis-t" hidden>
+    <div class="asis-cab"><div><h2 id="asis-t">Asistencia de hoy</h2><p class="nota" id="asis-sub">Marca las rutas (técnicos) que salen hoy a campo.</p></div>
+      <div class="asis-acc"><span class="asis-n" id="asis-n"></span><button type="button" class="btn out" id="asis-todas">Marcar todas</button><button type="button" class="btn out" id="asis-ninguna">Ninguna</button><button type="button" class="btn pri" id="asis-guardar">Guardar asistencia</button></div></div>
+    <div class="asis-grid" id="asis-grid"></div>
+    <p class="nota asis-pie">Rutas = técnicos de tu EECC que descargaron alguna orden este mes. La asistencia se borra sola a la medianoche: cada día se marca de nuevo.</p>
+  </section>
   <div class="herr">
     <input type="search" id="q" placeholder="Busca por AB, OS, distrito o técnico…" aria-label="Buscar">
     <select id="f-di" aria-label="Distrito"><option value="">Todos los distritos</option></select>
@@ -535,7 +555,7 @@ $('xls').onclick = async () => {
 
 async function cargar() {
   try {
-    D = await api('pendientes'); D.vivienda = D.vivienda || {};
+    D = await api('pendientes'); D.vivienda = D.vivienda || {}; if (!asisCambio) cargarAsis();
     $('quien').innerHTML = `<b>${esc(D.eecc)}</b><br>${esc(U.n || U.u || '')}`;
     $('tit').textContent = `Mis pendientes · ${D.eecc}`;
     $('sub').textContent = `Instalaciones y misceláneos registrados (pendientes) de tu EECC · actualizado ${fHora(D.actualizado)} · se actualiza cada 20 minutos`;
@@ -795,6 +815,30 @@ document.addEventListener('change', (e) => {
   else if (e.target.matches('[data-rut-ver]')) { const k = e.target.dataset.rutVer; e.target.checked ? RUT.ocultos.delete(k) : RUT.ocultos.add(k); pintarRuteo(); }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('rut') && !$('rut').hidden && $('fondo').hidden) cerrarRuteo(); });
+
+/* ---------- Asistencia de hoy: la EECC marca qué rutas salen a campo; se borra sola a la medianoche ---------- */
+let ASIS = null, asisSel = new Set(), asisCambio = false;
+async function cargarAsis() {
+  try { ASIS = await api('asistencia'); asisSel = new Set(ASIS.tecs || []); asisCambio = false; pintarAsis(); }
+  catch (e) { $('asis').hidden = true; }
+}
+function pintarAsis() {
+  if (!ASIS || !(ASIS.rutas || []).length) { $('asis').hidden = true; return; }
+  $('asis').hidden = false;
+  const R = ASIS.rutas, hm = (iso) => iso ? new Date(iso).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }) : '';
+  $('asis-t').textContent = `Asistencia de hoy · ${fIso(ASIS.fecha)}`;
+  $('asis-sub').textContent = ASIS.en && !asisCambio ? `Guardada a las ${hm(ASIS.en)}${ASIS.por ? ' por ' + ASIS.por : ''}. Si cambia, marca y vuelve a guardar.` : asisCambio ? 'Tienes cambios sin guardar.' : 'Aún no registras la asistencia de hoy: marca las rutas que salen a campo y guarda.';
+  $('asis-n').textContent = `${asisSel.size} de ${R.length} rutas`;
+  $('asis').classList.toggle('guardada', !!ASIS.en && !asisCambio);
+  $('asis-guardar').disabled = !asisCambio && !!ASIS.en;
+  $('asis-grid').innerHTML = R.map(r => `<label class="asis-it${asisSel.has(r.tec) ? ' on' : ''}" title="${esc(r.tec)}"><input type="checkbox" data-asis="${esc(r.tec)}" ${asisSel.has(r.tec) ? 'checked' : ''}><span><b>${esc(tecCorto(r.tec))}</b><small>${r.n} órdenes · ${r.dias} ${r.dias === 1 ? 'día' : 'días'} en el mes</small></span></label>`).join('');
+}
+$('asis-grid').addEventListener('change', (e) => { const i = e.target.closest('[data-asis]'); if (!i) return; i.checked ? asisSel.add(i.dataset.asis) : asisSel.delete(i.dataset.asis); asisCambio = true; pintarAsis(); });
+$('asis-todas').onclick = () => { (ASIS.rutas || []).forEach(r => asisSel.add(r.tec)); asisCambio = true; pintarAsis(); };
+$('asis-ninguna').onclick = () => { asisSel.clear(); asisCambio = true; pintarAsis(); };
+$('asis-guardar').onclick = async () => { const b = $('asis-guardar'); b.disabled = true; b.textContent = 'Guardando…';
+  try { ASIS = await api('asistencia', '', { tecs: [...asisSel] }); asisSel = new Set(ASIS.tecs || []); asisCambio = false; toast(`Asistencia guardada: ${asisSel.size} de ${ASIS.rutas.length} rutas.`); }
+  catch (e) { toast(e.message); } finally { b.textContent = 'Guardar asistencia'; pintarAsis(); } };
 })();
 </script>
 </body>

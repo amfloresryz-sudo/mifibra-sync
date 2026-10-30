@@ -52,7 +52,7 @@ async function pendientesPortal(filiales) {
     consultar(`tableros?select=clave,datos->pend,datos->pendx,datos->avt,datos->corte,actualizado&clave=in.(${cl})`),
     consultar(`ajustes?select=clave,datos&clave=in.(${cl})`)]);
   const aj = {}; A.forEach(x => { aj[x.clave] = x.datos || {}; });
-  const L = [], H = []; let actualizado = null;   // H = órdenes descargadas HOY por técnicos de EECC (avance del día)
+  const L = [], H = [], M = []; let actualizado = null;   // M = técnicos que descargaron en el mes (rutas de la EECC)   // H = órdenes descargadas HOY por técnicos de EECC (avance del día)
   for (const t of T) {
     const filial = t.clave.split(':')[1], a = aj[t.clave] || {};
     const tecs = a.tecnicos || {}, noms = a.nombres || {}, ges = a.gestores || {}, ags = a.agendas || {};
@@ -65,24 +65,29 @@ async function pendientesPortal(filiales) {
     (t.pendx || []).forEach(p => L.push(fijar(p, 'MISCELANEO')));
     // Avance del día: misma EECC que ve el portal (técnico reasignado a mano y nombre corregido).
     const A = t.avt, dia = t.corte ? parseInt(String(t.corte).slice(8, 10), 10) : 0;
+    if (A && A.o) A.o.forEach(x => { const tec = A.k[x[4]]; if (!tec || tec === 'SIN TÉCNICO') return; const ec0 = tecs[tec] || A.e[x[3]];
+      M.push({ tec, d: x[0], ec0, ec: noms[ec0] || ec0 }); });
     if (A && A.o && dia) A.o.forEach(x => { if (x[0] !== dia) return;
       const tec = A.k[x[4]], ec0 = (tec && tecs[tec]) || A.e[x[3]];
       H.push({ to: A.t[x[1]], sv: (A.s || [])[x[2]] || '', tec, ec0, ec: noms[ec0] || ec0, os: x[5], ab: x[6], hi: x[7] || '', hf: x[8] || '', di: (A.di || [])[x[9]] || '', filial }); });
   }
-  return { L, H, actualizado };
+  return { L, H, M, actualizado };
 }
 const CACHE = new Map();   // 60 s por instancia (el robot actualiza cada 20 min)
 async function pendientesDe(eecc, filiales) {
   const k = eecc + '|' + filiales.join(','), c = CACHE.get(k);
   if (c && Date.now() - c.en < 60e3) return c.d;
-  const { L, H, actualizado } = await pendientesPortal(filiales);
+  const { L, H, M, actualizado } = await pendientesPortal(filiales);
   const mia = (x) => x.ec === eecc || x.ec0 === eecc, h = H.filter(mia);
   // Hoy: instalaciones liquidadas (descargadas) y rutas en campo = técnicos con al menos 1 orden liquidada hoy.
   // Instalaciones = solo servicio INTERNET (igual que Instalaciones › Avance); las de SERVICIO OTT no cuentan.
   const ins = h.filter(x => x.to === 'INSTALACION SERVICIO' && (!x.sv || x.sv === 'INTERNET' || x.sv === 'SIN SERVICIO'));
   const hoy = { liq: ins.length, rutas: new Set(h.map(x => x.tec).filter(Boolean)).size,
     det: ins.map(x => ({ ab: x.ab, os: x.os, tec: x.tec, di: x.di, hi: x.hi, hf: x.hf, filial: x.filial })).sort((a, b) => String(a.hf).localeCompare(String(b.hf))) };
-  const d = { pend: L.filter(mia).map(limpiar), hoy, actualizado };
+  // Rutas de la EECC = técnicos que descargaron alguna orden en el mes (con cuántas órdenes y en cuántos días)
+  const rt = {}; M.filter(mia).forEach(x => { const o = rt[x.tec] || (rt[x.tec] = { tec: x.tec, n: 0, d: new Set() }); o.n++; o.d.add(x.d); });
+  const rutas = Object.values(rt).map(o => ({ tec: o.tec, n: o.n, dias: o.d.size })).sort((a, b) => b.dias - a.dias || b.n - a.n || a.tec.localeCompare(b.tec));
+  const d = { pend: L.filter(mia).map(limpiar), hoy, rutas, actualizado };
   CACHE.set(k, { en: Date.now(), d });
   return d;
 }
@@ -110,6 +115,16 @@ async function nuevoComentario(p, eecc, u, txt, origen) {
   if (datos.length) return false;
   await pedir('eecc_comentarios', 'POST', [{ os: p.os, ab: p.ab || null, filial: p.filial, eecc, usuario: u.u, nombre_usuario: u.n || u.u, texto: txt, origen }]);
   return true;
+}
+
+// Asistencia diaria de rutas: una fila en ajustes («asistencia:DIA») con la fecha de Lima. Al cambiar el día queda
+// vacía sola (se borra a la medianoche): lo de un día anterior no se muestra y se reemplaza al guardar.
+const CLAVE_ASIS = 'asistencia:DIA';
+const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+async function asistencia() {
+  const { datos } = await consultar(`ajustes?select=datos&clave=eq.${encodeURIComponent(CLAVE_ASIS)}`);
+  const a = (datos[0] && datos[0].datos) || {};
+  return a.fecha === hoyLima() ? { fecha: a.fecha, ec: a.ec || {} } : { fecha: hoyLima(), ec: {} };
 }
 
 async function leerCuerpo(req) {
@@ -143,6 +158,24 @@ module.exports = async (req, res) => {
         V.forEach(x => { vm[x.os] = x.valor; });
       }
       return responder(res, 200, { eecc, filiales, actualizado: d.actualizado, pend: d.pend, hoy: d.hoy, evidencias: ev, vivienda: vm });
+    }
+    if (req.method === 'GET' && accion === 'asistencia') {
+      if (!eecc) return responder(res, 400, { error: 'Elige una EECC.' });
+      const [a, d] = await Promise.all([asistencia(), pendientesDe(eecc, filiales)]);
+      return responder(res, 200, { fecha: a.fecha, rutas: d.rutas, ...(a.ec[eecc] || { tecs: [] }) });
+    }
+    if (req.method === 'POST' && accion === 'asistencia') {
+      if (!esEecc) return responder(res, 403, { error: 'Solo los usuarios de EECC marcan su asistencia.' });
+      const b = await leerCuerpo(req), d = await pendientesDe(eecc, filiales), ok = new Set(d.rutas.map(r => r.tec));
+      const tecs = [...new Set((Array.isArray(b.tecs) ? b.tecs : []).map(t => texto(t, 80)).filter(t => ok.has(t)))].slice(0, 300);
+      const a = await asistencia();
+      a.ec[eecc] = { tecs, por: u.n || u.u || '', en: new Date().toISOString(), rutas: d.rutas.length };
+      await guardar('ajustes', [{ clave: CLAVE_ASIS, datos: a, actualizado: new Date().toISOString() }], 'clave');
+      return responder(res, 200, { fecha: a.fecha, rutas: d.rutas, ...a.ec[eecc] });
+    }
+    if (req.method === 'GET' && accion === 'asistencia_todas') {
+      if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
+      return responder(res, 200, await asistencia());
     }
     if (req.method === 'GET' && accion === 'con_evidencia') {
       if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });

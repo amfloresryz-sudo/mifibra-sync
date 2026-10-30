@@ -223,6 +223,21 @@ body.rut-on { overflow: hidden; }
 @media (prefers-reduced-motion: no-preference) { .alertas-f .vc { animation: parpadeo 1.6s ease-in-out infinite; } }
 @keyframes parpadeo { 50% { opacity: .55; } }
 @media (max-width: 760px) { .alertas-f { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; padding: 6px 10px; font-size: 12px; } .alertas-f button { flex: none; } }
+/* Ritmo del día › asistencia de rutas */
+.rit-asis { border-top: 1px solid var(--borde); padding-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+.ra-h { margin: 0; font: 800 16px var(--f-disp); }
+.ra-ec { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.ra-eh { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 13px; } .ra-eh > b { font: 800 15px var(--f-disp); } .ra-eh span { color: var(--fg-3); }
+.ra-no { color: var(--mal) !important; font-weight: 800; }
+.ra-tit { font: 800 11px var(--f-disp); letter-spacing: .5px; text-transform: uppercase; color: var(--ok); } .ra-tit-x { color: #B45309; }
+.ra-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ra-chip { display: inline-flex; flex-direction: column; border-radius: 10px; padding: 5px 10px; border: 1px solid; font-size: 12px; line-height: 1.25; min-width: 120px; }
+.ra-chip b { font-weight: 800; } .ra-chip small { font-size: 11px; opacity: .85; }
+.ra-chip.ok-alta { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.ra-chip.ok-cur { background: #E3EEFF; border-color: #1A56A8; color: #1A56A8; }
+.ra-chip.ok-age, .ra-chip.ok-sin { background: var(--sup); border-color: var(--borde-2); color: var(--fg-2); }
+.ra-chip.x { background: #FFF1DC; border-color: #D97706; color: #8A4B00; border-style: dashed; }
+.ra-k { margin: 0; }
 .modal-fondo { position: fixed; inset: 0; z-index: 50; background: rgba(15, 15, 30, .55); display: flex; align-items: center; justify-content: center;
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .modal { background: var(--sup); color: var(--fg); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.35); width: min(1500px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
@@ -1103,6 +1118,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <p class="pen-aviso" id="aviso-tb-rit" role="status" aria-live="polite"></p>
       <div class="scroll" id="rit-tab"></div>
       <p class="nota" id="rit-nota"></p>
+      <div id="rit-asis" class="rit-asis"></div>
     </section>
   </div>
 
@@ -3850,7 +3866,64 @@ function pintarRitmo() {
     return `<tr><td style="text-align:left" title="${esc(o.tec)}">${esc(o.tec)}</td><td>${esc(o.ec || '—')}</td><td>${esc(mayor(o.z) || '—')}</td><td data-v="${o.ini ?? 9999}">${minHm(o.ini)}</td><td>${n(o.altas)}</td><td>${n(o.curso)}</td><td>${n(o.hacer)}</td><td data-v="${m ? (m.n / m.d.size).toFixed(2) : ''}">${m ? dec(m.n / m.d.size, 1) : '—'}</td><td style="text-align:left">${o.fl.map(([c, t]) => `<span class="rt-ch ${c}">${t}</span>`).join('')}</td></tr>`; }).join('') || '<tr><td colspan="9">Sin alertas.</td></tr>'}</tbody></table></div>` };
 }
 
-const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => pintarRitmo() };
+/* ---------- Ritmo del día › Asistencia de rutas (la marca cada EECC en su portal; se borra sola a la medianoche) ----------
+   Con EECC elegidas arriba: las rutas con asistencia y su estado de hoy, y aparte (en naranja) los técnicos SIN asistencia
+   que igual están trabajando (alta hoy o AB iniciado hoy). Sin EECC elegida: resumen por EECC al final de la pestaña. */
+let ASI = null, asiEn = 0;
+async function traerAsistencia() {
+  if (ASI && Date.now() - asiEn < 60e3) return ASI;
+  try { const r = await fetch('/api/eecc?accion=asistencia_todas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); ASI = r.ok ? await r.json() : { ec: {} }; }
+  catch { ASI = ASI || { ec: {} }; }
+  asiEn = Date.now(); return ASI;
+}
+const asiNorm = (e) => { const k = String(e || '').toUpperCase().trim(); return String(((AJ && AJ.nombres) || {})[k] || k).toUpperCase().trim(); };
+async function pintarRitAsis() {
+  const box = $('rit-asis'); if (!box) return;
+  if (provTodas()) { box.innerHTML = ''; return; }
+  const A = await traerAsistencia(), hoy = hoyIso(), dH = D.dias, hmA = (iso) => iso ? new Date(iso).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }) : '';
+  const asis = {}; Object.entries(A.ec || {}).forEach(([e, v]) => { asis[asiNorm(e)] = { ...v, set: new Set((v.tecs || []).map(t => String(t).toUpperCase().trim())) }; });
+  // Actividad de hoy por técnico (con los filtros de la cabecera menos la EECC, para el resumen)
+  const okSinEc = (x) => msOk(seg, x.seg) && okCn(x) && msOk(zona, x.z);
+  const T = {}; const t0 = (x) => { const k = String(x.tec || '').toUpperCase().trim(); if (!k) return null; return T[k] || (T[k] = { tec: x.tec, ec: asiNorm(x.ec), altas: 0, curso: [], hacer: 0, abs: [] }); };
+  D.liq.filter(x => x.d === dH && okSinEc(x)).forEach(x => { const o = t0(x); if (o) { o.altas++; o.abs.push(x.ab); } });
+  D.pend.filter(okSinEc).forEach(p => { const iniHoy = !!p.ini && p.ini.slice(0, 10) === hoy, t = tipoProg(p), paraHoy = (t === 'AG' || t === 'CO') && p.fp === hoy;
+    if (!iniHoy && !paraHoy) return; const o = t0(p); if (!o) return; if (iniHoy) o.curso.push(p.ab); else o.hacer++; });
+  const estado = (o) => !o ? ['sin', 'Sin actividad aún'] : o.curso.length ? ['cur', `En curso · AB ${o.curso.join(', ')}`] : o.altas ? ['alta', `${o.altas} alta${o.altas === 1 ? '' : 's'} hoy`] : o.hacer ? ['age', `${o.hacer} agenda${o.hacer === 1 ? '' : 's'} hoy sin iniciar`] : ['sin', 'Sin actividad aún'];
+  const trabajando = (o) => o && (o.altas || o.curso.length);
+  const rf = RF[D.filial || 'LIMA'] || {}, rfDe = (e) => { const k = Object.keys(rf).find(x => asiNorm(x) === e); return k != null ? rf[k] : null; };
+  const chip = (tec, cls, txt) => `<span class="ra-chip ${cls}" title="${esc(tec)} · ${esc(txt)}"><b>${esc(tecCorto(tec) || tec)}</b><small>${esc(txt)}</small></span>`;
+  const sel = [...ecSel].map(asiNorm);
+  const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy o con un AB iniciado hoy</p></div></div>`;
+  if (sel.length) {
+    box.innerHTML = cab + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
+      const sinA = Object.values(T).filter(o => o.ec === e && !(a && a.set.has(String(o.tec).toUpperCase().trim())) && trabajando(o));
+      const enCampo = conA.filter(t => trabajando(T[t])).length, r = rfDe(e);
+      return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
+        ${conA.length ? `<div class="ra-tit">Con asistencia (${conA.length})</div><div class="ra-chips">${conA.sort((x, y) => (trabajando(T[y]) ? 1 : 0) - (trabajando(T[x]) ? 1 : 0) || x.localeCompare(y)).map(t => { const [c, s] = estado(T[t]); return chip((T[t] && T[t].tec) || t, 'ok-' + c, s); }).join('')}</div>` : ''}
+        ${sinA.length ? `<div class="ra-tit ra-tit-x">⚠ Sin asistencia pero trabajando (${sinA.length})</div><div class="ra-chips">${sinA.map(o => chip(o.tec, 'x', o.curso.length ? `iniciando AB ${o.curso.join(', ')}` : `${o.altas} alta${o.altas === 1 ? '' : 's'} hoy`)).join('')}</div>` : ''}
+        ${!conA.length && !sinA.length ? '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>' : ''}</div>`; }).join('');
+    return;
+  }
+  // Resumen por EECC (sin EECC elegida)
+  const ecs = new Set([...Object.keys(asis), ...Object.keys(rf).map(asiNorm), ...Object.values(T).filter(trabajando).map(o => o.ec)].filter(e => e && !/^(POR ASIGNAR|SIN EECC)$/.test(e)));
+  const filas = [...ecs].map(e => { const a = asis[e], conA = a ? [...a.set] : [], r = rfDe(e);
+    const trab = conA.filter(t => trabajando(T[t])).length, sinIni = conA.length - trab;
+    const sinA = Object.values(T).filter(o => o.ec === e && !(a && a.set.has(String(o.tec).toUpperCase().trim())) && trabajando(o)).length;
+    return { e, a, conA: conA.length, r, trab, sinIni, sinA, pct: r && a ? conA.length / r * 100 : null }; })
+    .sort((x, y) => (!!y.a - !!x.a) || y.sinA - x.sinA || x.e.localeCompare(y.e));
+  const tot = filas.reduce((s, f) => { s.r += f.r || 0; s.c += f.conA; s.t += f.trab; s.s += f.sinIni; s.x += f.sinA; return s; }, { r: 0, c: 0, t: 0, s: 0, x: 0 });
+  const sinReg = filas.filter(f => !f.a).length;
+  box.innerHTML = cab + `<div class="kpis ra-k">${kpi('Rutas con asistencia', n(tot.c), tot.r ? `de ${n(tot.r)} rutas fijas (${pct(tot.c, tot.r, 0)})` : 'rutas marcadas por las EECC', tot.r && tot.c < tot.r * 0.9 ? 'mid' : '')}
+      ${kpi('Ya trabajando', n(tot.t), `${n(tot.s)} con asistencia aún sin alta ni AB iniciado`)}${kpi('Sin asistencia pero trabajando', n(tot.x), 'técnicos que no marcaron y ya inician altas', tot.x ? 'mal' : 'ok')}
+      ${kpi('EECC sin registrar', n(sinReg), sinReg ? filas.filter(f => !f.a).map(f => f.e).join(', ') : 'todas registraron', sinReg ? 'mal' : 'ok')}</div>
+    <div class="scroll"><table class="det ord" id="tb-rit-asis"><thead><tr><th>EECC</th><th>Registro</th><th>Rutas fijas</th><th>Con asistencia</th><th>% de las fijas</th><th>Trabajando</th><th>Con asistencia sin iniciar</th><th>Sin asistencia pero trabajando</th></tr></thead><tbody>
+    ${filas.map(f => `<tr><th scope="row" style="text-align:left">${esc(f.e)}</th><td>${f.a ? `${hmA(f.a.en)}${f.a.por ? ` <small>${esc(f.a.por)}</small>` : ''}` : '<span class="mal-t">No registró</span>'}</td><td>${f.r ?? '—'}</td><td>${f.a ? n(f.conA) : '—'}</td>
+      <td class="${f.pct == null ? '' : f.pct >= 90 ? 'bien' : f.pct >= 75 ? 'medio' : 'malo'}">${f.pct == null ? '—' : dec(f.pct, 0) + '%'}</td><td>${n(f.trab)}</td><td>${f.a ? n(f.sinIni) : '—'}</td><td class="${f.sinA ? 'mal-t' : ''}">${n(f.sinA)}</td></tr>`).join('') || '<tr><td colspan="8">Sin datos de hoy.</td></tr>'}</tbody>
+    <tfoot><tr><th style="text-align:left">Total</th><td></td><td>${n(tot.r)}</td><td>${n(tot.c)}</td><td>${tot.r ? pct(tot.c, tot.r, 0) : '—'}</td><td>${n(tot.t)}</td><td>${n(tot.s)}</td><td>${n(tot.x)}</td></tr></tfoot></table></div>
+    <p class="nota">Elige una o varias EECC arriba para ver los nombres de sus rutas con asistencia y, en naranja, los técnicos que no marcaron asistencia pero ya están trabajando.</p>`;
+  if (typeof prepararOrden === 'function') { orden['tb-rit-asis'] = null; prepararOrden($('tb-rit-asis')); }
+}
+const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); } };
 const tabSucia = new Set();
 function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); pintarCinta(); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
