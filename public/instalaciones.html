@@ -3911,7 +3911,8 @@ async function pintarRitAsis() {
   const rf = RF[D.filial || 'LIMA'] || {}, rfDe = (e) => { const k = Object.keys(rf).find(x => asiNorm(x) === e); return k != null ? rf[k] : null; };
   const chip = (tec, cls, txt) => `<span class="ra-chip ${cls}" title="${esc(tec)} · ${esc(txt)}"><b>${esc(tecCorto(tec) || tec)}</b><small>${esc(txt)}</small></span>`;
   const sel = [...ecSel].map(asiNorm);
-  const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy o con un AB iniciado hoy</p></div></div>`;
+  const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy o con un AB iniciado hoy</p></div>
+    <div class="pen-acc no-img"><button type="button" class="btn-out" data-img="rit-asis" data-nom="asistencia-rutas">Copiar imagen</button></div></div><p class="pen-aviso no-img" id="aviso-rit-asis" role="status" aria-live="polite"></p>`;
   if (sel.length) {
     // Bolsa de cada técnico: todos sus AB pendientes asignados (con los filtros de la cabecera) y sus altas de hoy
     const bolsa = {}; D.pend.filter(okSinEc).forEach(p => { const k = String(p.tec || '').toUpperCase().trim(); if (k) (bolsa[k] || (bolsa[k] = [])).push(p); });
