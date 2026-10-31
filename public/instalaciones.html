@@ -260,6 +260,14 @@ body.rut-on { overflow: hidden; }
 .rg-tb thead th { font: 800 10px var(--f-disp); text-transform: uppercase; letter-spacing: .3px; color: var(--fg-3); } .rg-tb tbody th { text-align: left; font-weight: 800; }
 .rg-bar { display: inline-block; width: 54px; height: 7px; border-radius: 4px; background: var(--gris-bg); overflow: hidden; vertical-align: middle; margin-right: 4px; } .rg-bar i { display: block; height: 100%; background: var(--ok); }
 @media (max-width: 1100px) { .rg { grid-template-columns: 1fr; } .rg-ks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Marcador de asistencia por EECC (resumen) */
+#tb-rit-asis { border-collapse: separate; border-spacing: 0 3px; }
+#tb-rit-asis tr.ra-mk-am > * { background: #FFF6D6 !important; border-top: 2px solid #E0B100; border-bottom: 2px solid #E0B100; }
+#tb-rit-asis tr.ra-mk-am > :first-child { border-left: 2px solid #E0B100; border-radius: 8px 0 0 8px; } #tb-rit-asis tr.ra-mk-am > :last-child { border-right: 2px solid #E0B100; border-radius: 0 8px 8px 0; }
+#tb-rit-asis tr.ra-mk-rj > * { background: #FDECEA !important; border-top: 2px solid #D9534F; border-bottom: 2px solid #D9534F; }
+#tb-rit-asis tr.ra-mk-rj > :first-child { border-left: 2px solid #D9534F; border-radius: 8px 0 0 8px; } #tb-rit-asis tr.ra-mk-rj > :last-child { border-right: 2px solid #D9534F; border-radius: 0 8px 8px 0; }
+.ra-mk-ley { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--fg-3); }
+.ra-mk-m { border-radius: 8px; padding: 3px 10px; font-weight: 700; border: 2px solid; } .ra-mk-m.am { background: #FFF6D6; border-color: #E0B100; color: #7A5A00; } .ra-mk-m.rj { background: #FDECEA; border-color: #D9534F; color: #A1251F; }
 .ra-ley { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--fg-3); }
 .ra-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ra-tb th, .ra-tb td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; vertical-align: middle; }
@@ -4045,9 +4053,10 @@ async function pintarRitAsis() {
       ${kpi('Ya trabajando', n(tot.t), `${n(tot.s)} con asistencia aún sin alta ni AB iniciado`)}${kpi('Sin asistencia pero trabajando', n(tot.x), 'técnicos que no marcaron y ya inician altas', tot.x ? 'mal' : 'ok')}
       ${kpi('EECC sin registrar', n(sinReg), sinReg ? filas.filter(f => !f.a).map(f => f.e).join(', ') : 'todas registraron', sinReg ? 'mal' : 'ok')}</div>
     <div class="scroll"><table class="det ord" id="tb-rit-asis"><thead><tr><th>EECC</th><th>Registro</th><th>Rutas fijas</th><th>Con asistencia</th><th>% de las fijas</th><th>Trabajando</th><th>Con asistencia sin iniciar</th><th>Sin asistencia pero trabajando</th></tr></thead><tbody>
-    ${filas.map(f => `<tr><th scope="row" style="text-align:left">${esc(f.e)}</th><td>${f.a ? `${hmA(f.a.en)}${f.a.por ? ` <small>${esc(f.a.por)}</small>` : ''}` : '<span class="mal-t">No registró</span>'}</td><td>${f.r ?? '—'}</td><td>${f.a ? n(f.conA) : '—'}</td>
-      <td class="${f.pct == null ? '' : f.pct >= 90 ? 'bien' : f.pct >= 75 ? 'medio' : 'malo'}">${f.pct == null ? '—' : dec(f.pct, 0) + '%'}</td><td>${n(f.trab)}</td><td>${f.a ? n(f.sinIni) : '—'}</td><td class="${f.sinA ? 'mal-t' : ''}">${n(f.sinA)}</td></tr>`).join('') || '<tr><td colspan="8">Sin datos de hoy.</td></tr>'}</tbody>
+    ${filas.map(f => { const mk = !f.a ? 'rj' : f.pct == null ? '' : f.pct < 80 ? 'rj' : f.pct < 90 ? 'am' : ''; return `<tr${mk ? ` class="ra-mk-${mk}" title="${mk === 'rj' ? (f.a ? 'Asistencia menor al 80% de sus rutas fijas' : 'No registró asistencia') : 'Asistencia entre 80% y 89% de sus rutas fijas'}"` : ''}><th scope="row" style="text-align:left">${esc(f.e)}</th><td>${f.a ? `${hmA(f.a.en)}${f.a.por ? ` <small>${esc(f.a.por)}</small>` : ''}` : '<span class="mal-t">No registró</span>'}</td><td>${f.r ?? '—'}</td><td>${f.a ? n(f.conA) : '—'}</td>
+      <td class="${f.pct == null ? '' : f.pct >= 90 ? 'bien' : f.pct >= 80 ? 'medio' : 'malo'}">${f.pct == null ? '—' : dec(f.pct, 0) + '%'}</td><td>${n(f.trab)}</td><td>${f.a ? n(f.sinIni) : '—'}</td><td class="${f.sinA ? 'mal-t' : ''}">${n(f.sinA)}</td></tr>`; }).join('') || '<tr><td colspan="8">Sin datos de hoy.</td></tr>'}</tbody>
     <tfoot><tr><th style="text-align:left">Total</th><td></td><td>${n(tot.r)}</td><td>${n(tot.c)}</td><td>${tot.r ? pct(tot.c, tot.r, 0) : '—'}</td><td>${n(tot.t)}</td><td>${n(tot.s)}</td><td>${n(tot.x)}</td></tr></tfoot></table></div>
+    <div class="ra-mk-ley"><span class="ra-mk-m am">80% a 89% de asistencia</span><span class="ra-mk-m rj">Menos de 80% o no registró</span><span>· % de las rutas fijas con asistencia; 90% o más queda sin marcar</span></div>
     <p class="nota">Elige una o varias EECC arriba para ver los nombres de sus rutas con asistencia y, en naranja, los técnicos que no marcaron asistencia pero ya están trabajando.</p>`;
   if (typeof prepararOrden === 'function') { orden['tb-rit-asis'] = null; prepararOrden($('tb-rit-asis')); }
 }
