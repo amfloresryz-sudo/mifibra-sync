@@ -244,6 +244,22 @@ body.rut-on { overflow: hidden; }
 .ra-tb tfoot th, .ra-tb tfoot td { background: var(--gris-bg, #F1F2F5); font-weight: 800; border-top: 2px solid var(--borde-2); }
 .ra-tb td.ra-obs { color: #8A5300; font-weight: 800; } .ra-tb td.ra-obs .lnk { color: #8A5300; font-weight: 800; }
 .ra-total { font-size: 13.5px; color: var(--fg-2); background: var(--rosa); border: 1px solid var(--rosa-2, #F6C6DD); border-radius: 10px; padding: 6px 12px; align-self: flex-start; } .ra-total b { color: var(--magenta-txt); font-size: 15px; }
+/* Asistencia › estados y resumen gerencial */
+.ra-ab.c-fin { background: #EEF0F4; border-color: #4B5565; color: #2B3240; } .ra-ab.c-esp { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.ra-ab.c-ret { background: var(--mal); border-color: var(--mal); color: #fff; } .ra-ab.c-atr { background: var(--mal-bg); border-color: var(--mal); color: var(--mal); }
+.ra-fin-n { color: #2B3240; font-weight: 800; } .ra-cur-n { color: #1A56A8; font-weight: 800; } .ra-esp-n { color: var(--ok); font-weight: 800; } .ra-ret-n { color: var(--mal); background: var(--mal-bg) !important; font-weight: 800; }
+.ra-tb td.ra-bi, .ra-tb tfoot td.ra-bi { color: #4B2A99; font-weight: 800; background: #F6F2FF; }
+.rg { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; }
+.rg-ks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-content: start; }
+.rg-k { border: 1px solid var(--borde); border-radius: 12px; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px; background: var(--sup); border-top: 4px solid var(--borde-2); }
+.rg-k .l { font: 800 10px var(--f-disp); letter-spacing: .6px; text-transform: uppercase; color: var(--fg-3); } .rg-k .v { font: 800 24px var(--f-disp); line-height: 1.15; } .rg-k .s { font-size: 11px; color: var(--fg-3); }
+.rg-k.bi { border-top-color: #6D4BD1; } .rg-k.bi .v { color: #4B2A99; } .rg-k.fin { border-top-color: #4B5565; } .rg-k.cur { border-top-color: #1A56A8; } .rg-k.cur .v { color: #1A56A8; }
+.rg-k.esp { border-top-color: var(--ok); } .rg-k.esp .v { color: var(--ok); } .rg-k.ret { border-top-color: var(--mal); } .rg-k.ret .v { color: var(--mal); } .rg-k.hr { border-top-color: var(--magenta); }
+.rg-fr { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 10px; background: var(--sup); } .rg-h { font: 800 11px var(--f-disp); letter-spacing: .6px; text-transform: uppercase; color: var(--fg-3); margin-bottom: 4px; }
+.rg-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; } .rg-tb th, .rg-tb td { padding: 5px 6px; text-align: center; border-bottom: 1px solid var(--borde); }
+.rg-tb thead th { font: 800 10px var(--f-disp); text-transform: uppercase; letter-spacing: .3px; color: var(--fg-3); } .rg-tb tbody th { text-align: left; font-weight: 800; }
+.rg-bar { display: inline-block; width: 54px; height: 7px; border-radius: 4px; background: var(--gris-bg); overflow: hidden; vertical-align: middle; margin-right: 4px; } .rg-bar i { display: block; height: 100%; background: var(--ok); }
+@media (max-width: 1100px) { .rg { grid-template-columns: 1fr; } .rg-ks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ra-ley { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--fg-3); }
 .ra-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .ra-tb th, .ra-tb td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; vertical-align: middle; }
@@ -3921,55 +3937,98 @@ async function pintarRitAsis() {
   const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy o con un AB iniciado hoy</p></div>
     <div class="pen-acc no-img"><button type="button" class="btn-out" data-img="rit-asis" data-nom="asistencia-rutas">Copiar imagen</button></div></div><p class="pen-aviso no-img" id="aviso-rit-asis" role="status" aria-live="polite"></p>`;
   if (sel.length) {
-    // Bolsa de cada técnico: todos sus AB pendientes asignados (con los filtros de la cabecera) y sus altas de hoy
+    // Bolsa de cada técnico: todos sus AB pendientes asignados (con los filtros de la cabecera), sus altas de hoy y observados de hoy
     const bolsa = {}; D.pend.filter(okSinEc).forEach(p => { const k = String(p.tec || '').toUpperCase().trim(); if (k) (bolsa[k] || (bolsa[k] = [])).push(p); });
     const altasHoy = {}; D.liq.filter(x => x.d === dH && okSinEc(x)).forEach(x => { const k = String(x.tec || '').toUpperCase().trim(); if (k) (altasHoy[k] || (altasHoy[k] = [])).push(x); });
     const obsHoy = {}; (D.obs || []).filter(o => o.f === hoy && !o.rc && okSinEc(o)).forEach(o => { const k = String(o.tec || '').toUpperCase().trim(); if (k) (obsHoy[k] || (obsHoy[k] = [])).push(o); });
-    const TOT = { ab: 0, tec: 0 };   // total de la vista (todas las EECC elegidas, con los segmentadores)
-    const cat = (p) => { if (p.ini && p.ini.slice(0, 10) === hoy) return 'cur'; const t = tipoProg(p); if (t === 'SA' || !p.fp) return 'sa'; return p.fp === hoy ? 'hoy' : p.fp < hoy ? 'atr' : 'fut'; };
-    const CAT = { cur: 'En curso', hoy: 'Para hoy', atr: 'Atrasado', fut: 'Futuro', sa: 'Sin agenda' }, ORDc = { cur: 0, hoy: 1, atr: 2, fut: 3, sa: 4 };
-    // Tiempos: inicio de la atención (fachada o atención) de lo que está en curso y duración de las altas de hoy (fin − inicio)
-    const ahoraMin = (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })();
+    // Base inicial: foto de los pendientes al iniciar el día (la misma del Avance); si no hay foto se estima
+    const foto = D.bini && D.bini[hoy], baseTec = {}, baseEc = {};
+    const sumaB = (ec, tec) => { const e = asiNorm(ec || 'POR ASIGNAR'), k = String(tec || '').toUpperCase().trim(); baseEc[e] = (baseEc[e] || 0) + 1; if (k) baseTec[k] = (baseTec[k] || 0) + 1; };
+    if (foto && foto.f) foto.f.forEach(r => { const x = { ec: r[1] || 'POR ASIGNAR', tec: r[2], seg: r[3], cn: r[4], z: r[5] }; fijarEc(x); if (okSinEc(x)) sumaB(x.ec, x.tec); });
+    else { const antes = (x) => !!x.rec && x.rec.slice(0, 10) < hoy; D.pend.filter(okSinEc).forEach(p => { if (antes(p)) sumaB(p.ec, p.tec); }); D.liq.filter(x => x.d >= dH && okSinEc(x)).forEach(x => { if (antes(x)) sumaB(x.ec, x.tec); }); }
+    const baseTxt = foto && foto.f ? `foto de las ${foto.c || '0:00'}` : 'estimada';
+    // Hora de referencia: la de ahora si los datos son de hoy (si no, la del corte)
+    const esHoy = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    const ahoraMin = esHoy ? (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })() : (hmMin((D.corte || '').slice(11, 16)) ?? 24 * 60);
+    const frIni = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? +m[1] * 60 : null; };
+    // Estados: Finalizado (alta hoy) · En curso · En espera (AG de hoy cuya franja aún no empieza) · Sin iniciar (su franja ya empezó y no inicia) · Atrasado · Futuro · Sin agenda
+    const cat = (p) => { if (p.ini && p.ini.slice(0, 10) === hoy) return 'cur'; const t = tipoProg(p); if (t === 'SA' || !p.fp) return 'sa';
+      if (p.fp < hoy) return 'atr'; if (p.fp > hoy) return 'fut'; const fi = frIni(p); return fi != null && fi <= ahoraMin ? 'ret' : 'esp'; };
+    const CAT = { fin: 'Finalizado', cur: 'En curso', esp: 'En espera', ret: 'Sin iniciar', atr: 'Atrasado', fut: 'Futuro', sa: 'Sin agenda' }, ORDc = { ret: 0, cur: 1, esp: 2, atr: 3, fut: 4, sa: 5 };
+    const CATL = { fin: 'Finalizados', cur: 'En curso', esp: 'En espera', ret: 'Sin iniciar (ya le toca)', atr: 'Atrasados', fut: 'Futuros', sa: 'Sin agenda' };
     const durTx = (m) => m == null || m < 0 ? '—' : m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
+    const prom = (L) => L.length ? Math.round(L.reduce((a, v) => a + v, 0) / L.length) : null;
     const iniMin = (p) => hmMin((p.ini || '').slice(11, 16)), durAlta = (x) => { const a = hmMin(x.hi), b = hmMin(x.hf); return a != null && b != null && b >= a ? b - a : null; };
-    const lleva = (p) => { const m = iniMin(p); return m == null ? null : (hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }) ? ahoraMin : hmMin((D.corte || '').slice(11, 16))) - m; };
-    const altChip = (x) => `<button type="button" class="ra-ab c-alt" data-ficha-ab="${x.os}" title="Alta hoy · inicio ${esc(x.hi || '—')} · fin ${esc(x.hf || '—')} · tiempo ${durTx(durAlta(x))}${x.fr ? ' · ' + esc(x.fr) : ''} · ${esc(x.di || '')}">${x.ab}<small>${esc(x.hi || '?')}–${esc(x.hf || '?')} · ${durTx(durAlta(x))}</small></button>`;
-    const abChip = (p) => { const c = cat(p); return `<button type="button" class="ra-ab c-${c}" data-ficha-ab="${p.os}" title="${CAT[c]} · ${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp ? ' · F. AG ' + fIso(p.fp) : ''} · ${esc(p.di || '')}">${p.ab}${c === 'cur' ? `<small>inicio ${minHm(iniMin(p))} · lleva ${durTx(lleva(p))}</small>` : conFranja(p) && c === 'hoy' ? `<small>${esc(p.fr.replace(/\s+/g, ''))}</small>` : c === 'fut' || c === 'atr' ? `<small>${fIso(p.fp)}</small>` : ''}</button>`; };
+    const finChip = (x) => `<button type="button" class="ra-ab c-fin" data-ficha-ab="${x.os}" title="Finalizado · inicio ${esc(x.hi || '—')} · fin ${esc(x.hf || '—')} · tiempo ${durTx(durAlta(x))}${x.fr ? ' · franja ' + esc(x.fr) : ''} · ${esc(x.di || '')}">✓ ${x.ab}<small>${esc(x.hi || '?')}–${esc(x.hf || '?')} · ${durTx(durAlta(x))}</small></button>`;
+    const abChip = (p) => { const c = cat(p), fr = conFranja(p) ? p.fr.replace(/\s+/g, '') : '';
+      const sub = c === 'cur' ? `inicio ${minHm(iniMin(p))} · lleva ${durTx(ahoraMin - (iniMin(p) ?? ahoraMin))}` : c === 'ret' ? `${fr} · debió iniciar ${minHm(frIni(p))}` : c === 'esp' ? (fr ? `${fr} · en espera` : 'coordinada') : c === 'fut' || c === 'atr' ? fIso(p.fp) : '';
+      return `<button type="button" class="ra-ab c-${c}" data-ficha-ab="${p.os}" title="${CAT[c]} · ${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp ? ' · F. AG ' + fIso(p.fp) : ''} · ${esc(p.di || '')}">${p.ab}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`; };
     const frDe = (p) => conFranja(p) ? p.fr.replace(/\s+/g, ' ').trim() : 'SIN FRANJA', frSolo = (p) => !raFr.size || raFr.has(frDe(p)), agSolo = (p) => !raAg.size || raAg.has(cat(p)), frOk = (p) => frSolo(p) && agSolo(p);
+    const finOk = (x) => frSolo(x) && (!raAg.size || raAg.has('fin'));
+    const GT = { ab: 0, tec: 0 };
     const filaTec = (k, nombre, grupo, tt) => { const B = (bolsa[k] || []).filter(frOk).sort((a, b) => ORDc[cat(a)] - ORDc[cat(b)] || String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr)));
       const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const ob = obsHoy[k] || [], [ce, se] = estado(T[k]);
-      const al = (altasHoy[k] || []).filter(x => frSolo(x) && (!raAg.size || raAg.has('alt'))).sort((a, b) => String(a.hi).localeCompare(String(b.hi)));
-      const ds = al.map(durAlta).filter(v => v != null), prom = ds.length ? Math.round(ds.reduce((a, v) => a + v, 0) / ds.length) : null;
-      if (tt) { tt.n++; tt.al += al.length; tt.ob += ob.length; tt.b += B.length; tt.ds.push(...ds); ['cur', 'hoy', 'atr', 'fut', 'sa'].forEach(x => { tt[x] += c[x] || 0; }); }
+      const al = (altasHoy[k] || []).filter(finOk).sort((a, b) => String(a.hi).localeCompare(String(b.hi))), ds = al.map(durAlta).filter(v => v != null), pr = prom(ds), bi = baseTec[k] || 0;
+      if (tt) { tt.n++; tt.bi += bi; tt.al += al.length; tt.ob += ob.length; tt.b += B.length; tt.ds.push(...ds); ['cur', 'esp', 'ret', 'atr', 'fut', 'sa'].forEach(x => { tt[x] += c[x] || 0; }); }
+      const v = (x, cls = '') => `<td${x && cls ? ` class="${cls}"` : ''}>${x || '<span class="cero">·</span>'}</td>`;
       return `<tr class="ra-g-${grupo}"><th scope="row" title="${esc(nombre)}"><span class="ra-dot ${grupo === 'si' ? 'ok-' + ce : grupo}"></span>${esc(tecCorto(nombre) || nombre)}<small>${esc(se)}</small></th>
-        <td>${al.length ? `<b class="ra-alta">${al.length}</b>` : '<span class="cero">0</span>'}</td><td${ob.length ? ` class="ra-obs" title="Observados hoy: ${ob.map(o => 'AB ' + o.ab + ' · ' + esc(o.m || '')).join(' | ')}"` : ''}>${ob.length ? `<button type="button" class="lnk" data-ficha-ab="${ob[0].os}">${ob.length}</button>` : '<span class="cero">0</span>'}</td><td title="${ds.length ? `Promedio de ${ds.length} alta${ds.length === 1 ? '' : 's'} de hoy (fin − inicio)` : 'Sin altas con inicio y fin hoy'}">${prom == null ? '<span class="cero">—</span>' : `<b>${durTx(prom)}</b>`}</td><td>${c.cur || '·'}</td><td>${c.hoy || '·'}</td><td class="${c.atr ? 'mal-t' : ''}">${c.atr || '·'}</td><td>${c.fut || '·'}</td><td>${c.sa || '·'}</td><td><b>${B.length}</b></td>
-        <td class="ra-abs">${al.map(altChip).join('')}${B.map(abChip).join('') || (al.length ? '' : '<span class="cero">sin AB asignados</span>')}</td></tr>`; };
+        <td class="ra-bi">${bi || '<span class="cero">0</span>'}</td>${v(al.length, 'ra-fin-n')}<td${ob.length ? ` class="ra-obs" title="Observados hoy: ${ob.map(o => 'AB ' + o.ab + ' · ' + esc(o.m || '')).join(' | ')}"` : ''}>${ob.length ? `<button type="button" class="lnk" data-ficha-ab="${ob[0].os}">${ob.length}</button>` : '<span class="cero">·</span>'}</td>
+        <td title="${ds.length ? `Promedio de ${ds.length} alta${ds.length === 1 ? '' : 's'} de hoy (fin − inicio)` : 'Sin altas con inicio y fin hoy'}">${pr == null ? '<span class="cero">—</span>' : `<b>${durTx(pr)}</b>`}</td>
+        ${v(c.cur, 'ra-cur-n')}${v(c.esp, 'ra-esp-n')}${v(c.ret, 'ra-ret-n')}${v(c.atr, 'mal-t')}${v(c.fut)}${v(c.sa)}<td><b>${B.length}</b></td>
+        <td class="ra-abs">${al.map(finChip).join('')}${B.map(abChip).join('') || (al.length ? '' : '<span class="cero">sin AB asignados</span>')}</td></tr>`; };
+    // Resumen gerencial de una EECC: estados de hoy, horarios reales (inicio de jornada, fin de la última alta) y su cuadro por franja
+    const resumen = (e) => { const Pd = Object.values(bolsa).flat().filter(p => asiNorm(p.ec) === e), Ad = Object.values(altasHoy).flat().filter(x => asiNorm(x.ec) === e);
+      const n0 = (c) => Pd.filter(p => cat(p) === c).length, base = baseEc[e] || 0, fin = Ad.length;
+      const porTec = {}; Ad.forEach(x => { const k = x.tec, o = porTec[k] || (porTec[k] = { a: null, b: null }); const a = hmMin(x.hi), b = hmMin(x.hf); if (a != null && (o.a == null || a < o.a)) o.a = a; if (b != null && (o.b == null || b > o.b)) o.b = b; });
+      Pd.filter(p => cat(p) === 'cur').forEach(p => { const o = porTec[p.tec] || (porTec[p.tec] = { a: null, b: null }); const a = iniMin(p); if (a != null && (o.a == null || a < o.a)) o.a = a; });
+      const iniJ = prom(Object.values(porTec).map(o => o.a).filter(v => v != null)), finJ = prom(Object.values(porTec).map(o => o.b).filter(v => v != null)), tpo = prom(Ad.map(durAlta).filter(v => v != null));
+      const k = (cls, l, val, s) => `<div class="rg-k ${cls}"><span class="l">${l}</span><span class="v">${val}</span><span class="s">${s}</span></div>`;
+      const cards = k('bi', 'Base inicial', n(base), baseTxt) + k('fin', 'Finalizados hoy', n(fin), base ? `${pct(fin, base, 0)} de la base` : '') + k('cur', 'En curso', n(n0('cur')), 'iniciados, sin cerrar')
+        + k('esp', 'En espera', n(n0('esp')), 'AG de hoy, su franja aún no empieza') + k('ret', 'Sin iniciar', n(n0('ret')), 'su franja ya empezó', ) + k('hr', 'Inicio de jornada', minHm(iniJ), 'promedio, 1.ª atención de cada técnico')
+        + k('hr', 'Fin de la última alta', minHm(finJ), 'promedio por técnico') + k('hr', 'Tiempo por alta', durTx(tpo), 'promedio, fin − inicio');
+      // Por franja: lo del día (altas de hoy + pendientes con AG de hoy) con sus horas reales
+      const F = {}; const f0 = (f) => F[f] || (F[f] = { f, ab: 0, fin: 0, cur: 0, esp: 0, ret: 0, hi: [], hf: [] });
+      Ad.forEach(x => { const o = f0(conFranja(x) ? x.fr.replace(/\s+/g, ' ').trim() : 'SIN FRANJA'); o.ab++; o.fin++; const a = hmMin(x.hi), b = hmMin(x.hf); if (a != null) o.hi.push(a); if (b != null) o.hf.push(b); });
+      Pd.forEach(p => { const c = cat(p); if (!['cur', 'esp', 'ret'].includes(c)) return; const o = f0(frDe(p)); o.ab++; o[c]++; if (c === 'cur' && iniMin(p) != null) o.hi.push(iniMin(p)); });
+      const filasF = Object.values(F).sort((a, b) => (a.f === 'SIN FRANJA') - (b.f === 'SIN FRANJA') || parseInt(a.f, 10) - parseInt(b.f, 10));
+      const tabla = filasF.length ? `<table class="rg-tb"><thead><tr><th>Franja</th><th>AB del día</th><th>Finalizados</th><th>En curso</th><th>En espera</th><th>Sin iniciar</th><th>Inicio real prom.</th><th>Fin real prom.</th><th>Avance</th></tr></thead><tbody>${filasF.map(o => { const av = o.ab ? o.fin / o.ab * 100 : 0, m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(o.f), hi = prom(o.hi), hf = prom(o.hf);
+        const tarde = m && hi != null && hi > +m[1] * 60 + 30, fuera = m && hf != null && hf > +m[2] * 60;
+        return `<tr><th scope="row">${o.f === 'SIN FRANJA' ? 'Sin franja' : esc(o.f)}</th><td><b>${o.ab}</b></td><td class="${o.fin ? 'ra-fin-n' : ''}">${o.fin || '·'}</td><td class="${o.cur ? 'ra-cur-n' : ''}">${o.cur || '·'}</td><td class="${o.esp ? 'ra-esp-n' : ''}">${o.esp || '·'}</td><td class="${o.ret ? 'ra-ret-n' : ''}">${o.ret || '·'}</td>
+          <td class="${tarde ? 'mal-t' : ''}" title="${tarde ? 'Inicia más de 30 min después del comienzo de la franja' : ''}">${minHm(hi)}</td><td class="${fuera ? 'mal-t' : ''}" title="${fuera ? 'Termina después del fin de la franja' : ''}">${minHm(hf)}</td>
+          <td><div class="rg-bar"><i style="width:${Math.min(100, av).toFixed(0)}%"></i></div><small>${av.toFixed(0)}%</small></td></tr>`; }).join('')}</tbody></table>` : '<p class="nota">Sin AB del día con franja.</p>';
+      return `<div class="rg"><div class="rg-ks">${cards}</div><div class="rg-fr"><div class="rg-h">Horario por franja · hoy</div>${tabla}</div></div>`; };
     const delSel = Object.values(bolsa).flat().filter(p => sel.includes(asiNorm(p.ec)));
     const frC = {}; delSel.filter(p => tipoProg(p) !== 'SA' && agSolo(p)).forEach(p => { const f = frDe(p); frC[f] = (frC[f] || 0) + 1; });
     const agC = {}; delSel.filter(frSolo).forEach(p => { const c = cat(p); agC[c] = (agC[c] || 0) + 1; });
-    Object.values(altasHoy).flat().filter(x => sel.includes(asiNorm(x.ec)) && frSolo(x)).forEach(() => { agC.alt = (agC.alt || 0) + 1; });
+    Object.values(altasHoy).flat().filter(x => sel.includes(asiNorm(x.ec)) && frSolo(x)).forEach(() => { agC.fin = (agC.fin || 0) + 1; });
     [...raAg].forEach(c => { if (!agC[c]) raAg.delete(c); });
     [...raFr].forEach(f => { if (!frC[f]) raFr.delete(f); });
     const frOrd = Object.keys(frC).sort((a, b) => (a === 'SIN FRANJA') - (b === 'SIN FRANJA') || parseInt(a, 10) - parseInt(b, 10));
     const frChips = `<div class="ra-fr" role="group" aria-label="Franja de las agendas"><span class="ra-fr-t">Franja</span><button type="button" class="chip" data-ra-fr="" aria-pressed="${!raFr.size}">Todas</button>${frOrd.map(f => `<button type="button" class="chip" data-ra-fr="${esc(f)}" aria-pressed="${raFr.has(f)}">${f === 'SIN FRANJA' ? 'Sin franja' : esc(f)} <small>${frC[f]}</small></button>`).join('')}</div>`;
-    const agChips = `<div class="ra-fr" role="group" aria-label="Tipo de agenda"><span class="ra-fr-t">Agenda</span><button type="button" class="chip" data-ra-ag="" aria-pressed="${!raAg.size}">Todas</button>${['alt', 'cur', 'hoy', 'atr', 'fut', 'sa'].filter(c => agC[c] || raAg.has(c)).map(c => `<button type="button" class="chip" data-ra-ag="${c}" aria-pressed="${raAg.has(c)}">${({ alt: 'Altas hoy', cur: 'En curso', hoy: 'AG hoy', atr: 'Atrasadas', fut: 'Futuras', sa: 'Sin agenda' })[c]} <small>${agC[c] || 0}</small></button>`).join('')}</div>`;
-    box.innerHTML = cab + `<div class="ra-segs">${agChips}${frChips}</div><div class="ra-ley"><span class="ra-ab c-alt">Alta hoy</span><span class="ra-ab c-cur">En curso</span><span class="ra-ab c-hoy">Para hoy</span><span class="ra-ab c-atr">Atrasado</span><span class="ra-ab c-fut">Futuro</span><span class="ra-ab c-sa">Sin agenda</span><span>· clic en un AB para ver su ficha</span></div>` + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
+    const AGS = ['fin', 'cur', 'esp', 'ret', 'atr', 'fut', 'sa'];
+    const agChips = `<div class="ra-fr" role="group" aria-label="Estado"><span class="ra-fr-t">Estado</span><button type="button" class="chip" data-ra-ag="" aria-pressed="${!raAg.size}">Todos</button>${AGS.filter(c => agC[c] || raAg.has(c)).map(c => `<button type="button" class="chip" data-ra-ag="${c}" aria-pressed="${raAg.has(c)}">${CATL[c]} <small>${agC[c] || 0}</small></button>`).join('')}</div>`;
+    const ley = `<div class="ra-ley">${AGS.map(c => `<span class="ra-ab c-${c}">${c === 'fin' ? '✓ ' : ''}${CAT[c]}</span>`).join('')}<span>· clic en un AB para ver su ficha</span></div>`;
+    const H = ['Técnico', 'Base inicial', 'Finalizados', 'Observados hoy', 'Tiempo prom. por alta', 'En curso', 'En espera', 'Sin iniciar', 'Atrasados', 'Futuros', 'Sin agenda', 'Bolsa', 'AB asignados'], NC = H.length;
+    box.innerHTML = cab + `<div class="ra-segs">${agChips}${frChips}</div>` + ley + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
       const delEc = Object.values(T).filter(o => o.ec === e).map(o => String(o.tec).toUpperCase().trim());
       const deBolsa = Object.keys(bolsa).filter(k => bolsa[k].some(p => asiNorm(p.ec) === e));
       const sinA = [...new Set([...delEc, ...deBolsa])].filter(k => !(a && a.set.has(k)));
-      const sinTrab = sinA.filter(k => trabajando(T[k])), sinHoy = sinA.filter(k => !trabajando(T[k]) && (bolsa[k] || []).some(p => cat(p) === 'hoy'));
+      const sinTrab = sinA.filter(k => trabajando(T[k])), sinHoy = sinA.filter(k => !trabajando(T[k]) && (bolsa[k] || []).some(p => ['esp', 'ret'].includes(cat(p))));
       const nom = (k) => (T[k] && T[k].tec) || ((bolsa[k] || [])[0] || {}).tec || k;
       const enCampo = conA.filter(t => trabajando(T[t])).length, r = rfDe(e);
-      const filtro2 = raFr.size || raAg.size, tieneAlg = (k) => (bolsa[k] || []).some(frOk) || (altasHoy[k] || []).some(x => frSolo(x) && (!raAg.size || raAg.has('alt'))); const conAf = filtro2 ? conA.filter(tieneAlg) : conA, sinTrabF = filtro2 ? sinTrab.filter(tieneAlg) : sinTrab, sinHoyF = filtro2 ? sinHoy.filter(tieneAlg) : sinHoy;
-      const tt = { n: 0, al: 0, ob: 0, b: 0, ds: [], cur: 0, hoy: 0, atr: 0, fut: 0, sa: 0 };
+      const filtro2 = raFr.size || raAg.size, tieneAlg = (k) => (bolsa[k] || []).some(frOk) || (altasHoy[k] || []).some(finOk);
+      const conAf = filtro2 ? conA.filter(tieneAlg) : conA, sinTrabF = filtro2 ? sinTrab.filter(tieneAlg) : sinTrab, sinHoyF = filtro2 ? sinHoy.filter(tieneAlg) : sinHoy;
+      const tt = { n: 0, bi: 0, al: 0, ob: 0, b: 0, ds: [], cur: 0, esp: 0, ret: 0, atr: 0, fut: 0, sa: 0 };
       const filas = [...conAf.sort((x, y) => (trabajando(T[y]) ? 1 : 0) - (trabajando(T[x]) ? 1 : 0) || (bolsa[y] || []).length - (bolsa[x] || []).length).map(k => filaTec(k, nom(k), 'si', tt)),
-        sinTrabF.length ? `<tr class="ra-sep"><td colspan="11">⚠ Sin asistencia pero trabajando (${sinTrabF.length})</td></tr>` + sinTrabF.map(k => filaTec(k, nom(k), 'x', tt)).join('') : '',
-        sinHoyF.length ? `<tr class="ra-sep ra-sep2"><td colspan="11">Sin asistencia con AB para hoy (${sinHoyF.length}) · revisar si salen a campo o reasignar</td></tr>` + sinHoyF.map(k => filaTec(k, nom(k), 'y', tt)).join('') : ''].join('');
-      const totB = conA.reduce((s, k) => s + (bolsa[k] || []).filter(frOk).length, 0);
-      return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando · bolsa de las rutas con asistencia: <b>${totB}</b> AB</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
-        ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr><th>Técnico</th><th>Altas hoy</th><th title="AB observados hoy por el técnico">Observados hoy</th><th title="Tiempo promedio por servicio: altas de hoy, fin − inicio">Tiempo prom. por alta</th><th>En curso</th><th>Para hoy</th><th>Atrasados</th><th>Futuros</th><th>Sin agenda</th><th>Bolsa</th><th>AB asignados</th></tr></thead><tbody>${conAf.length ? `<tr class="ra-sep ra-sep0"><td colspan="11">Con asistencia (${conAf.length}${raFr.size || raAg.size ? ` con AB en ${[raAg.size ? [...raAg].map(c => ({ alt: 'altas hoy', cur: 'en curso', hoy: 'AG hoy', atr: 'atrasadas', fut: 'futuras', sa: 'sin agenda' })[c]).join(', ') : '', raFr.size ? [...raFr].map(f => f === 'SIN FRANJA' ? 'sin franja' : f).join(', ') : ''].filter(Boolean).join(' · ')}` : ''})</td></tr>` : ''}${filas}</tbody><tfoot><tr><th scope="row">Total · ${tt.n} técnicos</th><td>${tt.al}</td><td>${tt.ob}</td><td>${tt.ds.length ? durTx(Math.round(tt.ds.reduce((a, v) => a + v, 0) / tt.ds.length)) : '—'}</td><td>${tt.cur}</td><td>${tt.hoy}</td><td>${tt.atr}</td><td>${tt.fut}</td><td>${tt.sa}</td><td><b>${tt.b}</b></td><td class="ra-abs"><b>${tt.b} AB</b> en la vista</td></tr></tfoot></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
-    { const tf = [...box.querySelectorAll('.ra-tb tfoot')]; let ab = 0, tc = 0; tf.forEach(t => { const c = t.querySelectorAll('td, th'); tc += parseInt(c[0].textContent.replace(/\D+/g, ''), 10) || 0; ab += parseInt(c[9].textContent, 10) || 0; });
-      const el = document.createElement('div'); el.className = 'ra-total'; el.innerHTML = `Total según los filtros: <b>${ab}</b> abonados · <b>${tc}</b> técnicos${sel.length > 1 ? ` · ${sel.length} EECC` : ''}`; box.querySelector('.ra-segs').after(el); }
+        sinTrabF.length ? `<tr class="ra-sep"><td colspan="${NC}">⚠ Sin asistencia pero trabajando (${sinTrabF.length})</td></tr>` + sinTrabF.map(k => filaTec(k, nom(k), 'x', tt)).join('') : '',
+        sinHoyF.length ? `<tr class="ra-sep ra-sep2"><td colspan="${NC}">Sin asistencia con AB para hoy (${sinHoyF.length}) · revisar si salen a campo o reasignar</td></tr>` + sinHoyF.map(k => filaTec(k, nom(k), 'y', tt)).join('') : ''].join('');
+      GT.ab += tt.b; GT.tec += tt.n;
+      const filtTx = filtro2 ? ` con AB en ${[raAg.size ? [...raAg].map(c => CATL[c].toLowerCase()).join(', ') : '', raFr.size ? [...raFr].map(f => f === 'SIN FRANJA' ? 'sin franja' : f).join(', ') : ''].filter(Boolean).join(' · ')}` : '';
+      return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
+        ${resumen(e)}
+        ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr>${H.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${conAf.length ? `<tr class="ra-sep ra-sep0"><td colspan="${NC}">Con asistencia (${conAf.length}${filtTx})</td></tr>` : ''}${filas}</tbody>
+          <tfoot><tr><th scope="row">Total · ${tt.n} técnicos</th><td class="ra-bi">${tt.bi}</td><td>${tt.al}</td><td>${tt.ob}</td><td>${durTx(prom(tt.ds))}</td><td>${tt.cur}</td><td>${tt.esp}</td><td>${tt.ret}</td><td>${tt.atr}</td><td>${tt.fut}</td><td>${tt.sa}</td><td><b>${tt.b}</b></td><td class="ra-abs"><b>${tt.b} AB</b> en la vista</td></tr></tfoot></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
+    { const el = document.createElement('div'); el.className = 'ra-total'; el.innerHTML = `Total según los filtros: <b>${GT.ab}</b> abonados · <b>${GT.tec}</b> técnicos${sel.length > 1 ? ` · ${sel.length} EECC` : ''}`; box.querySelector('.ra-segs').after(el); }
     return;
   }
   // Resumen por EECC (sin EECC elegida)
