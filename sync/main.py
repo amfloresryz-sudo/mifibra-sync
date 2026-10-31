@@ -88,7 +88,7 @@ def _bolsa_inicial(tableros: dict[str, dict], estado: dict, ahora: datetime) -> 
 
     Se toma en la actualización de las 0:00 (o, si esa falló, en la primera antes de las 9:00) y ya no cambia en el
     día: el portal saca de ella el objetivo del día (80 % de la bolsa inicial). Queda en el tablero de Instalaciones
-    («bini»: {fecha: {c: hora de la foto, f: filas [os, eecc, técnico, segmento, canal, zona, filial]}}) y en el
+    («bini»: {fecha: {c: hora de la foto, f: filas [os, eecc, técnico, segmento, canal, zona, filial, F. AG, tipo AG/CO/SA]}}) y en el
     estado del robot, para no perderla en las siguientes corridas."""
     hoy = ahora.date().isoformat()
     B = estado.setdefault("bini", {})
@@ -108,7 +108,7 @@ def _bolsa_inicial(tableros: dict[str, dict], estado: dict, ahora: datetime) -> 
         dias = B.setdefault(partes[1], {})
         if hoy not in dias and ahora.hour < 9:
             dias[hoy] = {"c": ahora.strftime("%H:%M"),
-                         "f": [[x.get("os"), x.get("ec"), x.get("tec"), x.get("seg"), x.get("cn"), x.get("z"), x.get("fi")]
+                         "f": [[x.get("os"), x.get("ec"), x.get("tec"), x.get("seg"), x.get("cn"), x.get("z"), x.get("fi"), x.get("fp"), x.get("t")]
                                for x in datos.get("pend", [])]}
             print(f"  Bolsa inicial del {hoy} de {partes[1]}: {len(dias[hoy]['f'])} pendientes (foto de las {dias[hoy]['c']}).", flush=True)
         for viejo in sorted(dias)[:-DIAS_BOLSA]:
