@@ -242,6 +242,9 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
             datos["pendx"] = instalaciones.pendientes_otros(otros_in, tecnicos, corte, filial=filial, zonas=zz, excluir=("INSTALACION SERVICIO",),
                                                               permitidos=instalaciones.DET_INSTALACIONES - {"INSTALACION"})
             datos["avt"] = instalaciones.avance_total(avt, datos["anio"], datos["mes"])
+            sem = _cols(d[(d["estado_os"] == "DESCARGADA") & d["contrata"].astype(str).str.startswith("EECC")
+                          & (fa[d.index] >= pd.Timestamp(hoy - timedelta(days=7)))], instalaciones.COLUMNAS_AVT)
+            datos["tec7"] = instalaciones.tecnicos_semana(sem)
             datos["filial"] = filial
             tableros[f"observadas:{filial}"] = {"obs": datos.pop("obs"), "filial": filial, "corte": datos["corte"]}
             tableros[f"instalaciones:{filial}"] = datos

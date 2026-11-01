@@ -357,3 +357,17 @@ def avance_total(df: pd.DataFrame, anio: int, mes: int) -> dict:
     filas = [[int(r.d), idx["t"][r.to], idx["s"][r.sv], idx["e"][r.ec], idx["k"][r.tec], ent(r.nro_os), ent(r.abonado_codigo),
               hora(r.atencion_inicio), hora(r.atencion_fin), idx["di"][r.dis], idx["fi"][r.fil]] for r in x.sort_values(["fa", "atencion_inicio"]).itertuples()]
     return {**tablas, "o": filas}
+
+
+def tecnicos_semana(df: pd.DataFrame) -> list:
+    """Técnicos de EECC que descargaron alguna orden en los últimos 7 días: [técnico, EECC, órdenes, días].
+    El portal de las EECC los suma a las rutas del mes para la Asistencia (así el día 1 del mes no queda vacía)."""
+    if df is None or df.empty:
+        return []
+    x = df.assign(fa=pd.to_datetime(df["fecha_atencion"], errors="coerce").dt.date,
+                  tec=df["tecnico_ejecutor"].map(_txt), ec=[_contrata(c) or "" for c in df["contrata"]])
+    x = x[(x["tec"] != "") & (x["ec"] != "") & x["fa"].notna()]
+    if x.empty:
+        return []
+    g = x.groupby(["tec", "ec"]).agg(n=("fa", "size"), d=("fa", "nunique")).reset_index()
+    return [[r.tec, r.ec, int(r.n), int(r.d)] for r in g.itertuples()]
