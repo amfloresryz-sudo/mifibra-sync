@@ -839,7 +839,7 @@ function pintarAsis() {
   $('m-cuerpo').innerHTML = `<div class="asis-cab2"><span class="asis-n">${asisSel.size} de ${R.length} rutas${ASIS.en && !asisCambio ? ' ✓' : ''}</span>
       <div class="asis-acc"><button type="button" class="btn out" data-asis-todas>Marcar todas</button><button type="button" class="btn out" data-asis-ninguna>Ninguna</button><button type="button" class="btn pri" data-asis-guardar ${!asisCambio && ASIS.en ? 'disabled' : ''}>Guardar asistencia</button></div></div>
     <div class="asis-grid">${R.map(r => `<label class="asis-it${asisSel.has(r.tec) ? ' on' : ''}" title="${esc(r.tec)}"><input type="checkbox" data-asis="${esc(r.tec)}" ${asisSel.has(r.tec) ? 'checked' : ''}><span><b>${esc(tecCorto(r.tec))}</b><small>${r.n} órdenes · ${r.dias} ${r.dias === 1 ? 'día' : 'días'} en el mes</small></span></label>`).join('')}</div>
-    <p class="nota asis-pie">Rutas = técnicos de tu EECC que descargaron alguna orden este mes. La asistencia se borra sola a la medianoche: cada día se marca de nuevo.</p>`;
+    <p class="nota asis-pie">Rutas = técnicos de tu EECC que descargaron alguna orden este mes o en los últimos 7 días. La asistencia se borra sola a la medianoche: cada día se marca de nuevo.</p>`;
 }
 function abrirAsis() { if (!ASIS) return; asisAbierta = true; abierta = null; pintarAsis(); $('fondo').hidden = false; document.body.style.overflow = 'hidden'; $('m-x').focus(); }
 $('asis-btn').onclick = abrirAsis;
