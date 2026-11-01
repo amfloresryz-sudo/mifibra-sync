@@ -49,10 +49,10 @@ async function storage(ruta, method, cuerpo) {
 async function pendientesPortal(filiales) {
   const cl = filiales.map(f => encodeURIComponent('instalaciones:' + f)).join(',');
   const [{ datos: T }, { datos: A }] = await Promise.all([
-    consultar(`tableros?select=clave,datos->pend,datos->pendx,datos->avt,datos->corte,actualizado&clave=in.(${cl})`),
+    consultar(`tableros?select=clave,datos->pend,datos->pendx,datos->avt,datos->tec7,datos->corte,actualizado&clave=in.(${cl})`),
     consultar(`ajustes?select=clave,datos&clave=in.(${cl})`)]);
   const aj = {}; A.forEach(x => { aj[x.clave] = x.datos || {}; });
-  const L = [], H = [], M = []; let actualizado = null;   // M = técnicos que descargaron en el mes (rutas de la EECC)   // H = órdenes descargadas HOY por técnicos de EECC (avance del día)
+  const L = [], H = [], M = [], S = []; let actualizado = null;   // S = técnicos que descargaron en los últimos 7 días   // M = técnicos que descargaron en el mes (rutas de la EECC)   // H = órdenes descargadas HOY por técnicos de EECC (avance del día)
   for (const t of T) {
     const filial = t.clave.split(':')[1], a = aj[t.clave] || {};
     const tecs = a.tecnicos || {}, noms = a.nombres || {}, ges = a.gestores || {}, ags = a.agendas || {};
@@ -67,17 +67,18 @@ async function pendientesPortal(filiales) {
     const A = t.avt, dia = t.corte ? parseInt(String(t.corte).slice(8, 10), 10) : 0;
     if (A && A.o) A.o.forEach(x => { const tec = A.k[x[4]]; if (!tec || tec === 'SIN TÉCNICO') return; const ec0 = tecs[tec] || A.e[x[3]];
       M.push({ tec, d: x[0], ec0, ec: noms[ec0] || ec0 }); });
+    (t.tec7 || []).forEach(([tec, e, n, d]) => { const ec0 = tecs[tec] || e; S.push({ tec, n, dias: d, ec0, ec: noms[ec0] || ec0 }); });
     if (A && A.o && dia) A.o.forEach(x => { if (x[0] !== dia) return;
       const tec = A.k[x[4]], ec0 = (tec && tecs[tec]) || A.e[x[3]];
       H.push({ to: A.t[x[1]], sv: (A.s || [])[x[2]] || '', tec, ec0, ec: noms[ec0] || ec0, os: x[5], ab: x[6], hi: x[7] || '', hf: x[8] || '', di: (A.di || [])[x[9]] || '', filial }); });
   }
-  return { L, H, M, actualizado };
+  return { L, H, M, S, actualizado };
 }
 const CACHE = new Map();   // 60 s por instancia (el robot actualiza cada 20 min)
 async function pendientesDe(eecc, filiales) {
   const k = eecc + '|' + filiales.join(','), c = CACHE.get(k);
   if (c && Date.now() - c.en < 60e3) return c.d;
-  const { L, H, M, actualizado } = await pendientesPortal(filiales);
+  const { L, H, M, S, actualizado } = await pendientesPortal(filiales);
   const mia = (x) => x.ec === eecc || x.ec0 === eecc, h = H.filter(mia);
   // Hoy: instalaciones liquidadas (descargadas) y rutas en campo = técnicos con al menos 1 orden liquidada hoy.
   // Instalaciones = solo servicio INTERNET (igual que Instalaciones › Avance); las de SERVICIO OTT no cuentan.
@@ -86,6 +87,8 @@ async function pendientesDe(eecc, filiales) {
     det: ins.map(x => ({ ab: x.ab, os: x.os, tec: x.tec, di: x.di, hi: x.hi, hf: x.hf, filial: x.filial })).sort((a, b) => String(a.hf).localeCompare(String(b.hf))) };
   // Rutas de la EECC = técnicos que descargaron alguna orden en el mes (con cuántas órdenes y en cuántos días)
   const rt = {}; M.filter(mia).forEach(x => { const o = rt[x.tec] || (rt[x.tec] = { tec: x.tec, n: 0, d: new Set() }); o.n++; o.d.add(x.d); });
+  // + técnicos de los últimos 7 días (al empezar el mes la lista no queda vacía)
+  S.filter(mia).forEach(x => { if (!rt[x.tec]) rt[x.tec] = { tec: x.tec, n: x.n, d: new Set(Array.from({ length: x.dias }, (_, i) => 's' + i)) }; });
   const rutas = Object.values(rt).map(o => ({ tec: o.tec, n: o.n, dias: o.d.size })).sort((a, b) => b.dias - a.dias || b.n - a.n || a.tec.localeCompare(b.tec));
   const d = { pend: L.filter(mia).map(limpiar), hoy, rutas, actualizado };
   CACHE.set(k, { en: Date.now(), d });
