@@ -271,8 +271,8 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
         for x in lista:
             x["z"] = _zona(x["di"])
     # Observadas (página Observadas): OS que siguen en estado OBSERVADA (y las recuperadas, rc=1), por fecha de observación (hora de Lima).
-    # Recuperadas: OS que fueron observadas y luego se descargaron con «$R$» en el comentario del técnico (tasa de recuperación).
-    _rec = df["obs_visita_todo"].fillna("").astype(str).str.contains("$R$", regex=False) if "obs_visita_todo" in df else False
+    # Recuperadas: OS que fueron observadas (tienen motivo de observación) y hoy están DESCARGADAS (tasa de recuperación).
+    _rec = df["motivo_observacion"].fillna("").astype(str).str.strip().ne("") if "motivo_observacion" in df else False
     ob = df[(df["estado_os"] == "OBSERVADA") | ((df["estado_os"] == "DESCARGADA") & _rec)].copy()
     ob["fo"] = _lima(ob["fecha_observacion"]) if "fecha_observacion" in ob else pd.NaT
     ob = ob[ob["fo"].notna()]
