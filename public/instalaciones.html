@@ -249,14 +249,15 @@ body.rut-on { overflow: hidden; }
 .ra-ab.c-ret { background: var(--mal); border-color: var(--mal); color: #fff; } .ra-ab.c-atr { background: var(--mal-bg); border-color: var(--mal); color: var(--mal); }
 .ra-fin-n { color: #2B3240; font-weight: 800; } .ra-cur-n { color: #1A56A8; font-weight: 800; } .ra-esp-n { color: var(--ok); font-weight: 800; } .ra-ret-n { color: var(--mal); background: var(--mal-bg) !important; font-weight: 800; }
 .ra-tb td.ra-bi, .ra-tb tfoot td.ra-bi { color: #4B2A99; font-weight: 800; background: #F6F2FF; }
-.rg { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; }
+.rg { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 12px; }
 .rg-ks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-content: start; }
 .rg-k { border: 1px solid var(--borde); border-radius: 12px; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px; background: var(--sup); border-top: 4px solid var(--borde-2); }
 .rg-k .l { font: 800 10px var(--f-disp); letter-spacing: .6px; text-transform: uppercase; color: var(--fg-3); } .rg-k .v { font: 800 24px var(--f-disp); line-height: 1.15; } .rg-k .s { font-size: 11px; color: var(--fg-3); }
 .rg-k.bi { border-top-color: #6D4BD1; } .rg-k.bi .v { color: #4B2A99; } .rg-k.fin { border-top-color: #4B5565; } .rg-k.cur { border-top-color: #1A56A8; } .rg-k.cur .v { color: #1A56A8; }
 .rg-k.esp { border-top-color: var(--ok); } .rg-k.esp .v { color: var(--ok); } .rg-k.ret { border-top-color: var(--mal); } .rg-k.ret .v { color: var(--mal); } .rg-k.hr { border-top-color: var(--magenta); }
 .rg-fr { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 10px; background: var(--sup); } .rg-h { font: 800 11px var(--f-disp); letter-spacing: .6px; text-transform: uppercase; color: var(--fg-3); margin-bottom: 4px; }
-.rg-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; } .rg-tb th, .rg-tb td { padding: 5px 6px; text-align: center; border-bottom: 1px solid var(--borde); }
+.rg-tb { width: 100%; border-collapse: collapse; font-size: 12.5px; } .rg-tb th, .rg-tb td { white-space: nowrap; }
+.ra-tb td.ra-desc { min-width: 130px; max-width: 220px; background: #F7F8FA; } .rg-tb th, .rg-tb td { padding: 5px 6px; text-align: center; border-bottom: 1px solid var(--borde); }
 .rg-tb thead th { font: 800 10px var(--f-disp); text-transform: uppercase; letter-spacing: .3px; color: var(--fg-3); } .rg-tb tbody th { text-align: left; font-weight: 800; }
 .rg-bar { display: inline-block; width: 54px; height: 7px; border-radius: 4px; background: var(--gris-bg); overflow: hidden; vertical-align: middle; margin-right: 4px; } .rg-bar i { display: block; height: 100%; background: var(--ok); }
 @media (max-width: 1100px) { .rg { grid-template-columns: 1fr; } .rg-ks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -273,7 +274,7 @@ body.rut-on { overflow: hidden; }
 .ra-tb th, .ra-tb td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; vertical-align: middle; }
 .ra-tb thead th { font: 800 10.5px var(--f-disp); letter-spacing: .3px; text-transform: uppercase; color: var(--magenta-txt); background: var(--rosa); }
 .ra-tb tbody th { text-align: left; font-weight: 800; white-space: nowrap; } .ra-tb tbody th small { display: block; font-weight: 500; font-size: 11px; color: var(--fg-3); margin-left: 16px; }
-.ra-tb td.ra-abs { text-align: left; min-width: 340px; } .ra-tb .cero { color: var(--fg-4); }
+.ra-tb td.ra-abs { text-align: left; min-width: 230px; } .ra-tb .cero { color: var(--fg-4); }
 .ra-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--fg-4); }
 .ra-dot.ok-alta { background: var(--ok); } .ra-dot.ok-cur { background: #1A56A8; } .ra-dot.x { background: #D97706; } .ra-dot.y { background: #B42318; }
 .ra-g-x th, .ra-g-x td { background: #FFF7EB; } .ra-g-y th, .ra-g-y td { background: #FDF1F0; }
@@ -3992,7 +3993,7 @@ async function pintarRitAsis() {
         <td class="ra-bi">${bi || '<span class="cero">0</span>'}</td>${v(al.length, 'ra-fin-n')}<td${ob.length ? ` class="ra-obs" title="Observados hoy: ${ob.map(o => 'AB ' + o.ab + ' · ' + esc(o.m || '')).join(' | ')}"` : ''}>${ob.length ? `<button type="button" class="lnk" data-ficha-ab="${ob[0].os}">${ob.length}</button>` : '<span class="cero">·</span>'}</td>
         <td title="${ds.length ? `Promedio de ${ds.length} alta${ds.length === 1 ? '' : 's'} de hoy (fin − inicio)` : 'Sin altas con inicio y fin hoy'}">${pr == null ? '<span class="cero">—</span>' : `<b>${durTx(pr)}</b>`}</td>
         ${v(c.cur, 'ra-cur-n')}${v(c.esp, 'ra-esp-n')}${v(c.ret, 'ra-ret-n')}${v(c.atr, 'mal-t')}${v(c.fut)}${v(c.sa)}<td><b>${B.length}</b></td>
-        <td class="ra-abs">${al.map(finChip).join('')}${B.map(abChip).join('') || (al.length ? '' : '<span class="cero">sin AB asignados</span>')}</td></tr>`; };
+        <td class="ra-abs ra-desc">${al.map(finChip).join('') || '<span class="cero">—</span>'}</td><td class="ra-abs">${B.map(abChip).join('') || '<span class="cero">sin AB pendientes</span>'}</td></tr>`; };
     // Resumen gerencial de una EECC: estados de hoy, horarios reales (inicio de jornada, fin de la última alta) y su cuadro por franja
     const resumen = (e) => { const Pd = Object.values(bolsa).flat().filter(p => asiNorm(p.ec) === e), Ad = Object.values(altasHoy).flat().filter(x => asiNorm(x.ec) === e);
       const n0 = (c) => Pd.filter(p => cat(p) === c).length, base = baseEc[e] || 0, fin = Ad.length;
@@ -4025,7 +4026,7 @@ async function pintarRitAsis() {
     const AGS = ['fin', 'cur', 'esp', 'ret', 'atr', 'fut', 'sa'];
     const agChips = `<div class="ra-fr" role="group" aria-label="Estado"><span class="ra-fr-t">Estado</span><button type="button" class="chip" data-ra-ag="" aria-pressed="${!raAg.size}">Todos</button>${AGS.filter(c => agC[c] || raAg.has(c)).map(c => `<button type="button" class="chip" data-ra-ag="${c}" aria-pressed="${raAg.has(c)}">${CATL[c]} <small>${agC[c] || 0}</small></button>`).join('')}</div>`;
     const ley = `<div class="ra-ley">${AGS.map(c => `<span class="ra-ab c-${c}">${c === 'fin' ? '✓ ' : ''}${CAT[c]}</span>`).join('')}<span>· clic en un AB para ver su ficha</span></div>`;
-    const H = ['Técnico', 'Base inicial', 'Finalizados', 'Observados hoy', 'Tiempo prom. por alta', 'En curso', 'En espera', 'Sin iniciar', 'Atrasados', 'Futuros', 'Sin agenda', 'Bolsa', 'AB asignados'], NC = H.length;
+    const H = ['Técnico', 'Base inicial', 'Finalizados', 'Observados hoy', 'Tiempo prom. por alta', 'En curso', 'En espera', 'Sin iniciar', 'Atrasados', 'Futuros', 'Sin agenda', 'Bolsa', 'AB descargados', 'AB asignados'], NC = H.length;
     box.innerHTML = cab + `<div class="ra-segs">${agChips}${frChips}</div>` + ley + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
       const delEc = Object.values(T).filter(o => o.ec === e).map(o => String(o.tec).toUpperCase().trim());
       const deBolsa = Object.keys(bolsa).filter(k => bolsa[k].some(p => asiNorm(p.ec) === e));
@@ -4044,7 +4045,7 @@ async function pintarRitAsis() {
       return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
         ${resumen(e)}
         ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr>${H.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${conAf.length ? `<tr class="ra-sep ra-sep0"><td colspan="${NC}">Con asistencia (${conAf.length}${filtTx})</td></tr>` : ''}${filas}</tbody>
-          <tfoot><tr><th scope="row">Total · ${tt.n} técnicos</th><td class="ra-bi">${tt.bi}</td><td>${tt.al}</td><td>${tt.ob}</td><td>${durTx(prom(tt.ds))}</td><td>${tt.cur}</td><td>${tt.esp}</td><td>${tt.ret}</td><td>${tt.atr}</td><td>${tt.fut}</td><td>${tt.sa}</td><td><b>${tt.b}</b></td><td class="ra-abs"><b>${tt.b} AB</b> en la vista</td></tr></tfoot></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
+          <tfoot><tr><th scope="row">Total · ${tt.n} técnicos</th><td class="ra-bi">${tt.bi}</td><td>${tt.al}</td><td>${tt.ob}</td><td>${durTx(prom(tt.ds))}</td><td>${tt.cur}</td><td>${tt.esp}</td><td>${tt.ret}</td><td>${tt.atr}</td><td>${tt.fut}</td><td>${tt.sa}</td><td><b>${tt.b}</b></td><td class="ra-abs"><b>${tt.al} AB</b> descargados hoy</td><td class="ra-abs"><b>${tt.b} AB</b> pendientes en la vista</td></tr></tfoot></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
     { const el = document.createElement('div'); el.className = 'ra-total'; el.innerHTML = `Total según los filtros: <b>${GT.ab}</b> abonados · <b>${GT.tec}</b> técnicos${sel.length > 1 ? ` · ${sel.length} EECC` : ''}`; box.querySelector('.ra-segs').after(el); }
     return;
   }
