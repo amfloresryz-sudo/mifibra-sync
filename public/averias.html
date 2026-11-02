@@ -616,8 +616,9 @@ const okCn = (x, c = canal) => c === 'TODOS' || x.cn === c;
 const enZona = (x) => (zona === 'TODAS' || x.z === zona) && okCn(x);
 const zIdx = (z) => { const i = ZORD.indexOf(z); return i < 0 ? 99 : i; };
 const deTipo = (x) => (tipo === 'TODOS' || x.t === tipo) && enZona(x);
-const TIPO_CHIP = { TODOS: 'TODOS', AVERIA: 'AVERÍA', TC: 'TC', MISC: 'MISCELÁNEOS' };
-const TIPO_TXT = () => ({ TODOS: 'averías, TC y misceláneos', AVERIA: 'avería', TC: 'TC', MISC: 'misceláneos (traslados, reinstalación y cambio de equipo)' }[tipo]);
+const TIPO_CHIP = { TODOS: 'TODOS', AVERIA: 'AVERÍA', TC: 'TC', MCD: 'MCD', MISC: 'MISCELÁNEOS' };
+const tLbl = (t, acento = true) => t === 'TC' ? 'TC' : t === 'MCD' ? 'MCD' : acento ? 'AVERÍA' : 'AVERIA';   // etiqueta de AVERÍA / TC / MCD
+const TIPO_TXT = () => ({ TODOS: 'averías, TC, MCD y misceláneos', AVERIA: 'avería', TC: 'TC', MCD: 'MCD', MISC: 'misceláneos (traslados, reinstalación y cambio de equipo)' }[tipo]);
 const conAgenda = (p) => p.ags === 'ok';
 // Sin contador: con #AGENDA ATC con formato o con 1.ª / 2.ª visita en el comentario.
 const sinCont = (p) => conAgenda(p) || !!visDe(p);
@@ -627,7 +628,7 @@ function kpi(l, v, s, cls = '') { return `<div class="kpi ${cls}"><span class="l
 /* ---------- tipo + pestañas ---------- */
 function pintarTipos() {
   const c = (t) => D.pend.filter(p => (t === 'TODOS' || p.t === t) && enZona(p)).length;
-  $('tipos').innerHTML = ['TODOS','AVERIA','TC','MISC'].map(k => `<button type="button" class="chip" data-t="${k}" aria-pressed="${k === tipo}" ${k === 'MISC' ? 'title="Traslado interno, traslado externo, reinstalación y cambio de equipo"' : ''}>${TIPO_CHIP[k]} (${c(k)})</button>`).join('');
+  $('tipos').innerHTML = ['TODOS','AVERIA','TC','MCD','MISC'].map(k => `<button type="button" class="chip" data-t="${k}" aria-pressed="${k === tipo}" ${k === 'MISC' ? 'title="Traslado interno, traslado externo, reinstalación y cambio de equipo"' : ''}>${TIPO_CHIP[k]} (${c(k)})</button>`).join('');
   const cc = (k) => D.pend.filter(p => (tipo === 'TODOS' || p.t === tipo) && okCn(p, k) && (zona === 'TODAS' || p.z === zona)).length;
   $('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${k === canal}">${t} (${cc(k)})</button>`).join('');
   const cz = (z) => D.pend.filter(p => (tipo === 'TODOS' || p.t === tipo) && okCn(p) && (z === 'TODAS' || p.z === z)).length;
@@ -834,7 +835,7 @@ const obsHtmlG = (t) => esc(t).replace(/(#\s*AGENDA(?:\s+(?:ATC|MCD))?[^#\n]*#)/
 const obsTecG = (t) => esc(t).replace(/\s*(#\s*\d{1,2}\/\d{1,2}\/\d{4}\s*\d{1,2}:\d{2}\s*#)/g, '\n$1').replace(/^\n/, '').replace(/#\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*(\d{1,2}:\d{2})\s*#/g, '<b>$1 $2</b>').replace(/%([^%]*)%/g, '<b>$1</b>');
 function abrirFicha(tipoF, os) {
   const p = D.pend.concat(pendOtros()).find(x => String(x.os) === String(os)); if (!p) return;
-  const rec = p.rec ? fechaHora(p.rec) : '—', tipoTxt = p.otro ? p.to : p.t === 'TC' ? 'TC' : 'AVERÍA';
+  const rec = p.rec ? fechaHora(p.rec) : '—', tipoTxt = p.otro ? p.to : tLbl(p.t);
   const cab = `AB ${p.ab} · OS ${p.os} · ${tipoTxt} · ${p.di || '—'} · ${p.ec}`;
   const siNo = (b, txt) => b ? `<span class="b ${txt === 'inf' ? 'inf' : 'no'}">Sí</span>` : '<span class="b vac">No</span>';
   let tit, sub, html;
@@ -878,7 +879,7 @@ function abrirFicha(tipoF, os) {
     html = sec('Resultado', grilla([['Reiterada', p.rei ? `<span class="b no">Sí</span> <small>${p.rei + 1}.ª avería/TC en 30 días</small>` : '<span class="b vac">No</span>'], ['Regla', 'Otra avería/TC del mismo AB en los 30 días anteriores']]))
       + sec(`OS anteriores del abonado (${L.length})`, L.length ? `<div class="scroll"><table class="fi-tab"><thead><tr><th>OS</th><th>Tipo</th><th>F. recep.</th><th>Hace</th><th>Estado</th><th>EECC</th><th>Técnico</th><th>Causa</th><th>Solución</th></tr></thead><tbody>${L.map(x => {
           const hace = p.rec ? Math.round((new Date(p.rec.slice(0, 10)) - new Date(x.fr)) / 86400000) : null;
-          return `<tr><td>${x.os}</td><td>${x.t === 'TC' ? 'TC' : 'AVERÍA'}</td><td>${fIsoD(x.fr)}</td><td>${hace == null ? '—' : hace + ' d'}</td><td>${esc(ESTADO_TXT[x.e] || x.e)}</td><td>${val(x.ec)}</td><td>${esc(tecCorto(x.tec))}</td><td>${val(x.ca)}</td><td>${val(x.sol)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="fi-nota">Sin otras averías ni TC del abonado en los 30 días anteriores.</p>')
+          return `<tr><td>${x.os}</td><td>${tLbl(x.t)}</td><td>${fIsoD(x.fr)}</td><td>${hace == null ? '—' : hace + ' d'}</td><td>${esc(ESTADO_TXT[x.e] || x.e)}</td><td>${val(x.ec)}</td><td>${esc(tecCorto(x.tec))}</td><td>${val(x.ca)}</td><td>${val(x.sol)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="fi-nota">Sin otras averías ni TC del abonado en los 30 días anteriores.</p>')
       + '<p class="fi-nota">Se cuentan las OS de avería y TC del mismo abonado (registradas, descargadas u observadas; no las anuladas) recibidas hasta 30 días antes de esta OS.</p>';
   }
   $('modal-tit').textContent = tit; $('modal-sub').textContent = sub; $('modal-aviso').textContent = '';
@@ -1139,16 +1140,16 @@ function segmentos(contenedor, grupos) {
   filtro[g.dataset.k] = b.dataset.v; pintarTodo();
 }));
 /* Tipo de trabajo pendiente: Averías (por defecto, respeta Tipo y Zona de la cabecera) u otro tipo de orden (sin instalaciones) */
-// Varias a la vez y ligado al Tipo de la cabecera: TODOS = todos · AVERÍA = AVERÍA · TC = TC + MCD · MISCELÁNEOS = OTROS + CAMBIO DE EQUIPO + TRASLADO INT
+// Varias a la vez y ligado al Tipo de la cabecera: TODOS = todos · AVERÍA = AVERÍA · TC = TC · MCD = MCD · MISCELÁNEOS = OTROS + CAMBIO DE EQUIPO + TRASLADO INT
 const penTos = new Set(); let penTosIni = false;
-const TOS_TIPO = { AVERIA: ['AVERIA'], TC: ['TC', 'MCD'], MISC: ['OTROS', 'CAMBIO DE EQUIPO', 'TRASLADO INT'] };
+const TOS_TIPO = { AVERIA: ['AVERIA'], TC: ['TC'], MCD: ['MCD'], MISC: ['OTROS', 'CAMBIO DE EQUIPO', 'TRASLADO INT'] };
 const ddmmIso = (f) => f ? `${f.slice(8, 10)}/${f.slice(5, 7)}` : '';
 let pendxAv = null;
 const pendOtros = () => (pendxAv && pendxAv.src === D.pendx) ? pendxAv : (pendxAv = Object.assign((D.pendx || []).map(x => ({ ...x, t: x.to, inf: false, infd: null, rei: 0, prev: [], inst: null,
   ags: 'ok', ag: x.fp ? `${ddmmIso(x.fp)} ${/\d/.test(x.fr || '') ? x.fr : ''}`.trim() : '—', mot: x.to, otro: true })), { src: D.pendx }));
-const tosDisponibles = () => ['AVERIA', 'TC', ...[...new Set(pendOtros().map(p => p.to))]];
+const tosDisponibles = () => [...new Set(['AVERIA', 'TC', 'MCD', ...pendOtros().map(p => p.to)])];
 function tosDeTipo() { penTos.clear(); (tipo === 'TODOS' ? tosDisponibles() : TOS_TIPO[tipo] || []).forEach(t => penTos.add(t)); }
-const pendUni = () => { if (!penTosIni) { penTosIni = true; tosDeTipo(); } return [...D.pend.filter(p => (p.t === 'AVERIA' || p.t === 'TC') && penTos.has(p.t)), ...pendOtros().filter(p => penTos.has(p.to))]; };
+const pendUni = () => { if (!penTosIni) { penTosIni = true; tosDeTipo(); } return [...D.pend.filter(p => (p.t === 'AVERIA' || p.t === 'TC' || p.t === 'MCD') && penTos.has(p.t)), ...pendOtros().filter(p => penTos.has(p.to))]; };
 const pendTipo = () => pendUni().filter(enZona);
 const ecsDe = (L) => [...new Set(L.map(p => p.ec))].sort((a, b) => a === 'POR ASIGNAR' ? -1 : b === 'POR ASIGNAR' ? 1 : a < b ? -1 : 1);
 const agOk = (p, f) => f === 'TODOS' || (f === 'CON AGENDA') === conAgenda(p);
@@ -1246,7 +1247,7 @@ function pintarAgendas() {
   const L = A.filter(x => (agdF.ec === 'TODOS' || x.ec === agdF.ec) && (agdF.res === 'TODOS' || resTxt(x) === agdF.res) && (!qq || [x.ab, x.os, x.tec, x.di].some(v => String(v || '').toUpperCase().includes(qq))))
     .sort((a, b) => a.d - b.d || String(a.fr).localeCompare(String(b.fr), 'es', { numeric: true }));
   $('agd-n').textContent = `${n(L.length)} de ${n(A.length)} agendas`;
-  $('agd-filas').innerHTML = L.map(x => `<tr><td data-v="${x.d}">${fDiaA(x.d)}</td><td>${esc(x.fr)}</td><td>${x.fo === 'os' ? 'OS' : '<span title="#AGENDA ATC o MCD de las observaciones">Observación</span>'}</td><td><span class="b ${x.t === 'TC' ? 'tc' : 'av'}">${x.t === 'TC' ? 'TC' : 'AVERIA'}</span></td>
+  $('agd-filas').innerHTML = L.map(x => `<tr><td data-v="${x.d}">${fDiaA(x.d)}</td><td>${esc(x.fr)}</td><td>${x.fo === 'os' ? 'OS' : '<span title="#AGENDA ATC o MCD de las observaciones">Observación</span>'}</td><td><span class="b ${x.t === 'TC' || x.t === 'MCD' ? 'tc' : 'av'}">${tLbl(x.t, false)}</span></td>
     <td data-v="${zIdx(x.z)}">${esc(x.z)}</td><td title="${esc(x.di)}">${esc(corto(x.di))}</td><td>${x.ab}</td><td>${x.os}</td><td>${esc(x.ec)}</td><td title="${esc(x.tec)}">${esc(tecCorto(x.tec))}</td>
     <td data-v="${msIso(x.rec)}">${x.rec ? fechaHora(x.rec) : '—'}</td><td data-v="${msIso(x.ini)}">${x.ini ? fechaHora(x.ini) : '—'}</td><td>${({ D: 'Descargada', R: 'Registrada', O: 'Observada' })[x.e] || x.e}</td>
     <td>${RES_A[kMedA(x)] || `<span class="b vac">${resTxt(x) === 'NO DESCARGADA' ? 'No descargada' : resTxt(x) === 'HOY' ? 'Hoy' : 'Futura'}</span>`}</td></tr>`).join('') || '<tr><td colspan="14">No hay agendas con estos filtros.</td></tr>';
@@ -1357,7 +1358,7 @@ function filasPend() {
 const hhmmIso = (ms) => ms ? hhmm(ms) : '—';
 const COLS_PEND = [
   (p) => [p.z || '—', String(zIdx(p.z)).padStart(3, '0')], (p) => [p.di || '—'], (p) => [p.seg || '—'], (p) => [String(p.ab), String(p.ab).padStart(9, '0')], (p) => [String(p.os), String(p.os).padStart(9, '0')],
-  (p) => [p.otro ? p.to : p.t === 'TC' ? 'TC' : 'AVERIA'], (p) => [p.inf ? 'Sí' : 'No'], (p) => [p.rei ? 'Sí' : 'No'], (p) => [p.ec || '—'], (p) => [tecCorto(p.tec) || '—'],
+  (p) => [p.otro ? p.to : tLbl(p.t, false)], (p) => [p.inf ? 'Sí' : 'No'], (p) => [p.rei ? 'Sí' : 'No'], (p) => [p.ec || '—'], (p) => [tecCorto(p.tec) || '—'],
   (p) => { const st = estado(p).st; return st ? [ddmes(st), new Date(st).toISOString().slice(0, 10)] : ['—', '~']; },
   (p) => [p.ags === 'ok' ? 'Con agenda' : p.ags === 'vacio' || visDe(p) ? 'Sin agenda' : 'Sin formato'],
   (p) => { const v = visDe(p); return v ? [visTxt(v), String(visV(v))] : ['-', '9']; },
@@ -1419,17 +1420,17 @@ function celdaTiempo(p) {
 }
 function pintarPendientes() {
   { const cnt = {}; pendOtros().forEach(p => cnt[p.to] = (cnt[p.to] || 0) + 1);
-    const tos = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b));
+    const tos = Object.keys(cnt).filter(t => t !== 'MCD').sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b));
     pendUni();
-    const nAv = (t) => D.pend.filter(p => p.t === t && enZona(p)).length;
-    $('pen-to').innerHTML = `<div class="g"><span class="seg-t">Tipo de trabajo</span><button type="button" class="chip" data-pto="" aria-pressed="${penTos.size === tosDisponibles().length}">Todos</button><button type="button" class="chip" data-pto="AVERIA" aria-pressed="${penTos.has('AVERIA')}">AVERÍA (${nAv('AVERIA')})</button><button type="button" class="chip" data-pto="TC" aria-pressed="${penTos.has('TC')}">TC (${nAv('TC')})</button>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${penTos.has(t)}">${esc(t)} (${pendOtros().filter(p => p.to === t && enZona(p)).length})</button>`).join('')}</div>`; }
+    const nAv = (t) => D.pend.filter(p => p.t === t && enZona(p)).length + (t === 'MCD' ? pendOtros().filter(p => p.to === 'MCD' && enZona(p)).length : 0);
+    $('pen-to').innerHTML = `<div class="g"><span class="seg-t">Tipo de trabajo</span><button type="button" class="chip" data-pto="" aria-pressed="${penTos.size === tosDisponibles().length}">Todos</button><button type="button" class="chip" data-pto="AVERIA" aria-pressed="${penTos.has('AVERIA')}">AVERÍA (${nAv('AVERIA')})</button><button type="button" class="chip" data-pto="TC" aria-pressed="${penTos.has('TC')}">TC (${nAv('TC')})</button><button type="button" class="chip" data-pto="MCD" aria-pressed="${penTos.has('MCD')}">MCD (${nAv('MCD')})</button>${tos.map(t => `<button type="button" class="chip" data-pto="${esc(t)}" aria-pressed="${penTos.has(t)}">${esc(t)} (${pendOtros().filter(p => p.to === t && enZona(p)).length})</button>`).join('')}</div>`; }
   const P0 = pendTipo();
   segmentos('pen-segs', [
     { k: 'penEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
     { k: 'penAg', t: 'Agenda', ops: ['CON AGENDA','SIN AGENDA'], cnt: (o) => P0.filter(p => agOk(p, o)).length } ]);
   const L = filasPend();
   const nCol = Object.keys(colFil).length;
-  $('pen-n').innerHTML = `${L.length} de ${pendUni().length} pendientes${penTos.size === tosDisponibles().length ? '' : ' de ' + [...penTos].map(t => t === 'AVERIA' ? 'avería' : t.toLowerCase()).join(', ')}${zona === 'TODAS' ? '' : ' · zona ' + zona}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
+  $('pen-n').innerHTML = `${L.length} de ${pendUni().length} pendientes${penTos.size === tosDisponibles().length ? '' : ' de ' + [...penTos].map(t => t === 'AVERIA' ? 'avería' : t === 'TC' || t === 'MCD' ? t : t.toLowerCase()).join(', ')}${zona === 'TODAS' ? '' : ' · zona ' + zona}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   $('pen-filas').innerHTML = L.map(p => {
     const e = estado(p), rec = e.st, ed = rec ? edad(rec) : null;
     const tag = `<button type="button" class="lnk" data-ficha="rei" data-os="${p.os}" title="Ver detalle de Reiterada">${p.rei ? `<span class="b no">Sí · ${p.rei + 1}.ª</span>` : '<span class="b vac">No</span>'}</button>`;
@@ -1444,7 +1445,7 @@ function pintarPendientes() {
     const tiempoV = sinCont(p) || e.m == null ? -1 : Math.round(e.m);
     const cumpleV = sinCont(p) ? 0 : e.ok === true ? 3 : e.ok === false ? 1 : 2;
     return `<tr data-os="${p.os}"><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td><span class="b seg">${esc(p.seg)}</span></td><td data-v="${p.ab}"><button type="button" class="lnk num" data-ficha="ab" data-os="${p.os}" title="Ver datos del AB">${p.ab}</button></td><td data-v="${p.os}"><button type="button" class="lnk num" data-ficha="os" data-os="${p.os}" title="Ver las FFTT de la OS">${p.os}</button></td>
-      <td>${p.otro ? `<span class="b vac" title="${esc(p.to)}">${esc(p.to.length > 18 ? p.to.slice(0, 17) + '…' : p.to)}</span>` : `<span class="b ${p.t === 'TC' ? 'tc' : 'av'}">${p.t === 'TC' ? 'TC' : 'AVERIA'}</span>`}</td><td data-v="${p.inf ? 1 : 0}">${inf}</td><td data-v="${p.rei}">${tag}</td><td title="${esc(p.ec)}">${esc(p.ec)}</td>
+      <td>${p.otro ? `<span class="b vac" title="${esc(p.to)}">${esc(p.to.length > 18 ? p.to.slice(0, 17) + '…' : p.to)}</span>` : `<span class="b ${p.t === 'TC' || p.t === 'MCD' ? 'tc' : 'av'}">${tLbl(p.t, false)}</span>`}</td><td data-v="${p.inf ? 1 : 0}">${inf}</td><td data-v="${p.rei}">${tag}</td><td title="${esc(p.ec)}">${esc(p.ec)}</td>
       <td class="izq" title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
       <td data-v="${rec || ''}">${rec ? `${ddmes(rec)} ${hhmm(rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td>
       <td data-v="${p.ags === 'ok' ? 'A ' + p.ag : p.ags === 'vacio' ? 'C' : 'B'}">${ag}</td><td class="vis" data-v="${visV(vv)}" title="${vv ? esc(visTxt(vv)) : ''}">${vis}</td><td class="tm" data-v="${tiempoV}">${celdaTiempo(p)}</td><td data-v="${hll || ''}">${hll ? hhmm(hll) + (mas1 ? ' <small>+1d</small>' : '') : sinCont(p) ? '-' : '—'}</td>
