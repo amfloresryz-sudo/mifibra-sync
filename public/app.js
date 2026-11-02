@@ -446,6 +446,7 @@
     if (window.mfModulo && ruta !== 'inicio' && !window.mfModulo(ruta)) { history.replaceState(null, '', '#inicio'); ruta = 'inicio'; }   // ventana no permitida
     if (ruta === 'averias') { location.replace('/averias.html'); return; } // el módulo Averías y TC vive en su propia página
     if (ruta === 'instalaciones') { location.replace('/instalaciones.html'); return; } // el módulo Instalaciones vive en su propia página
+    if (ruta === 'anuladas') { location.replace('/anuladas.html'); return; } // el módulo Anuladas vive en su propia página
     if (ruta === 'observadas') { location.replace('/observadas.html'); return; } // el módulo Observadas vive en su propia página
     document.querySelectorAll('.nav a[data-ruta]').forEach((a) => a.classList.toggle('activo', a.dataset.ruta === ruta));
     window.scrollTo(0, 0);

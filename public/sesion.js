@@ -40,7 +40,7 @@
   window.mfPuede = (k) => !P || P.includes(String(k || '').toUpperCase());
   window.mfModulo = (k) => !M || M.includes(k);
   // Ventana no permitida: se vuelve al inicio (y se ocultan sus accesos del menú)
-  const PAG = { 'instalaciones.html': 'instalaciones', 'averias.html': 'averias', 'observadas.html': 'observadas', 'fftt.html': 'fftt', 'speedtest.html': 'speedtest', 'zonificacion.html': 'zonificacion' };
+  const PAG = { 'instalaciones.html': 'instalaciones', 'averias.html': 'averias', 'observadas.html': 'observadas', 'anuladas.html': 'anuladas', 'fftt.html': 'fftt', 'speedtest.html': 'speedtest', 'zonificacion.html': 'zonificacion' };
   const pag = PAG[location.pathname.split('/').pop()];
   if (M && pag && !M.includes(pag) && !(pag === 'zonificacion' && M.includes('fftt'))) { location.replace('/'); return; }   // Zonificación: también con FFTT
   const ocultar = () => { if (!M) return; document.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href'), k = PAG[h.replace(/^\//, '').split('#')[0]] || (/#(anuladas|dashboard|observadas|instalaciones|averias)$/.exec(h) || [])[1];
