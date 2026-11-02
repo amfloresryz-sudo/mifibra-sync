@@ -196,7 +196,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div><span class="seg-t">Filial</span><div class="chips" id="f-filial" role="group" aria-label="Filial"></div></div>
     <div><span class="seg-t">Mes de atención</span><div class="chips" id="f-mes" role="group" aria-label="Mes de atención"></div></div>
     <div><span class="seg-t">Fecha de instalación</span><div class="rango"><label><small>Desde</small><input type="date" id="f-desde" class="fecha" aria-label="Fecha de instalación desde"></label><label><small>Hasta</small><input type="date" id="f-hasta" class="fecha" aria-label="Fecha de instalación hasta"></label></div></div>
-    <div><span class="seg-t">Plan contratado</span><div class="chips" id="f-plan" role="group" aria-label="Plan contratado"></div></div>
+    <div><span class="seg-t">EECC <span style="text-transform:none;font-weight:600;opacity:.75">· varias a la vez</span></span><div class="chips" id="f-ec" role="group" aria-label="EECC"></div></div>
+    <div hidden><span class="seg-t">Plan contratado</span><div class="chips" id="f-plan" role="group" aria-label="Plan contratado"></div></div>
     <button type="button" class="limpiar" id="limpiar">Limpiar filtros</button>
   </div>
 </div></section>
@@ -303,25 +304,27 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('corte').innerHTML = `Instalaciones del <b>${dmy(O.length ? O.reduce((a, o) => o.d < a ? o.d : a, O[0].d) : '')}</b> al <b>${O.length ? dmy(O.reduce((a, o) => o.d > a ? o.d : a, O[0].d)) : '—'}</b>${act ? ` · actualizado ${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}`;
 
   // ----- Filtros -----
-  const F = { filial: '', mes: '', desde: '', hasta: '', plan: '' };
+  const F = { filial: '', mes: '', desde: '', hasta: '', plan: '', ec: '' };
   // Filial: varias a la vez («LIMA,PIURA»); vacío = todas
-  const fset = () => F.filial ? F.filial.split(',') : [], fTxt = () => fset().join(' + ');
+  const fset = () => F.filial ? F.filial.split(',') : [], fTxt = () => fset().join(' + '), eset = () => F.ec ? F.ec.split('|') : [];
   const mbps = (t) => { const m = /^(\d+) Mbps$/.exec(t); return m ? +m[1] : 1e9; };
   const planes = (() => { const C = {}; O.forEach(o => C[o.pn] = (C[o.pn] || 0) + 1); return Object.keys(C).sort((a, b) => mbps(a) - mbps(b) || C[b] - C[a] || a.localeCompare(b)); })();
   const filiales = [...new Set(O.map(o => o.f))].sort(), meses = [...new Set(O.map(o => o.d.slice(0, 7)))].sort();
+  const eeccs = () => { const C = {}; O.filter(o => sel(o, 'ec')).forEach(o => { C[o.e] = (C[o.e] || 0) + 1; }); eset().forEach(e => { C[e] = C[e] || 0; }); return Object.keys(C).sort((a, b) => (a === 'SIN EECC') - (b === 'SIN EECC') || a.localeCompare(b)).map(e => [e, `${e} (${C[e].toLocaleString('es-PE')})`]); };
   const chips = (id, ops, todos, k) => {
-    $(id).innerHTML = [['', todos], ...ops].map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${k === 'filial' && v ? fset().includes(v) : String(F[k]) === String(v)}">${esc(t)}</button>`).join('');
+    $(id).innerHTML = [['', todos], ...ops].map(([v, t]) => `<button type="button" class="chip" data-v="${esc(v)}" aria-pressed="${k === 'filial' && v ? fset().includes(v) : k === 'ec' && v ? eset().includes(v) : String(F[k]) === String(v)}">${esc(t)}</button>`).join('');
   };
-  const pintarChips = () => { chips('f-filial', filiales.map(f => [f, f]), 'Todas', 'filial'); chips('f-mes', meses.map(m => [m, mesTxt(m)]), 'Todos', 'mes'); chips('f-plan', planes.map(t => [t, t]), 'Todos', 'plan'); $('f-desde').value = F.desde; $('f-hasta').value = F.hasta; $('f-desde').max = F.hasta || ''; $('f-hasta').min = F.desde || ''; };
+  const pintarChips = () => { chips('f-filial', filiales.map(f => [f, f]), 'Todas', 'filial'); chips('f-mes', meses.map(m => [m, mesTxt(m)]), 'Todos', 'mes'); chips('f-plan', planes.map(t => [t, t]), 'Todos', 'plan'); chips('f-ec', eeccs(), 'Todas', 'ec'); $('f-desde').value = F.desde; $('f-hasta').value = F.hasta; $('f-desde').max = F.hasta || ''; $('f-hasta').min = F.desde || ''; };
   const enlazar = (id, k) => $(id).addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
     if (k === 'filial' && b.dataset.v) { const S = new Set(fset()); S.has(b.dataset.v) ? S.delete(b.dataset.v) : S.add(b.dataset.v); F.filial = filiales.filter(f => S.has(f)).join(','); }
+    else if (k === 'ec' && b.dataset.v) { const S = new Set(eset()); S.has(b.dataset.v) ? S.delete(b.dataset.v) : S.add(b.dataset.v); F.ec = [...S].join('|'); }
     else F[k] = b.dataset.v; if (k === 'mes') F.desde = F.hasta = ''; pintarChips(); pintar(); });
-  enlazar('f-filial', 'filial'); enlazar('f-mes', 'mes'); enlazar('f-plan', 'plan');
+  enlazar('f-filial', 'filial'); enlazar('f-mes', 'mes'); enlazar('f-plan', 'plan'); enlazar('f-ec', 'ec');
   // Rango de fechas: si solo se llena «Desde», va hasta el último día con datos; si «Hasta» queda antes que «Desde», se intercambian
   const ponerRango = () => { F.desde = $('f-desde').value; F.hasta = $('f-hasta').value; if (F.desde && F.hasta && F.hasta < F.desde) [F.desde, F.hasta] = [F.hasta, F.desde]; if (F.desde || F.hasta) F.mes = ''; pintarChips(); pintar(); };
   $('f-desde').addEventListener('change', ponerRango); $('f-hasta').addEventListener('change', ponerRango);
-  $('limpiar').addEventListener('click', () => { Object.assign(F, { filial: '', mes: '', desde: '', hasta: '', plan: '' }); pintarChips(); pintar(); });
-  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || fset().includes(o.f)) && (sin === 'mes' || sin === 'fecha' || !F.mes || o.d.startsWith(F.mes)) && (sin === 'fecha' || !F.desde || o.d >= F.desde) && (sin === 'fecha' || !F.hasta || o.d <= F.hasta) && (!F.plan || o.pn === F.plan);
+  $('limpiar').addEventListener('click', () => { Object.assign(F, { filial: '', mes: '', desde: '', hasta: '', plan: '', ec: '' }); pintarChips(); pintar(); });
+  const sel = (o, sin = '') => (sin === 'filial' || !F.filial || fset().includes(o.f)) && (sin === 'mes' || sin === 'fecha' || !F.mes || o.d.startsWith(F.mes)) && (sin === 'fecha' || !F.desde || o.d >= F.desde) && (sin === 'fecha' || !F.hasta || o.d <= F.hasta) && (!F.plan || o.pn === F.plan) && (sin === 'ec' || !F.ec || eset().includes(o.e));
 
   // ----- Ventana flotante de los gráficos -----
   const flot = document.createElement('div'); flot.className = 'flot'; flot.hidden = true; document.body.appendChild(flot);
@@ -341,7 +344,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('t-tit').innerHTML = a.pr ? `${quien}, <em>${pc(pCli)}</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.` : `${quien} no hay pruebas registradas con estos filtros.`;
     const per = F.desde || F.hasta ? (F.desde === F.hasta ? dmy(F.desde) : `${F.desde ? dmy(F.desde) : 'inicio'} al ${F.hasta ? dmy(F.hasta) : 'hoy'}`) : F.mes ? mesTxt(F.mes) : meses.length ? `${mesTxt(meses[0])} a ${mesTxt(meses[meses.length - 1]).toLowerCase()}` : '';
     pintarEvo();
-    $('ctx').textContent = `${per} · ${fTxt() || 'Todas las filiales'} · ${!F.plan ? 'Todos los planes' : F.plan}`;
+    $('ctx').textContent = `${per} · ${fTxt() || 'Todas las filiales'} · ${eset().length ? 'EECC ' + eset().join(' + ') : 'Todas las EECC'}`;
     const nRep = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
     $('kpis').innerHTML = `
       <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span><span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
