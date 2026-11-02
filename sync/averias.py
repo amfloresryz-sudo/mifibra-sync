@@ -160,7 +160,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, z
         return {"os": int(r["nro_os"]), "f": r["fa"].strftime("%Y-%m-%d"), "ec": _contrata(r["contrata"]) or "",
                 "tec": _txt(r["tecnico_ejecutor"])}
 
-    st = df[df["tipo"].isin(["AVERIA", "TC", "MISC"])].copy()
+    st = df[df["tipo"].isin(["AVERIA", "TC", "MCD", "MISC"])].copy()   # MCD: tipo propio en el segmentador de la cabecera
     # TMR: recepción → fin de la atención (minutos). Si el fin es anterior a la recepción no vale.
     st["tmr"] = (st["hf"].dt.floor("min") - st["start"]).dt.total_seconds() / 60
     st["nrei"] = [reiteradas(a, i, f) for a, i, f in zip(st["abonado_codigo"], st["id_os"], st["fr"])]

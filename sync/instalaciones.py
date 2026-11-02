@@ -326,9 +326,9 @@ def pendientes_otros_averias(df: pd.DataFrame, tec_contrata: dict[str, str], cor
     averías / TC (que ya son el tablero). Las de SERVICIO TECNICO sin detalle AVERIA/TC salen como su propio tipo."""
     if df is None or df.empty:
         return []
-    # Según TIPO_AB: los marcados para Averías, sin AVERIA ni TC (que ya son el tablero): MCD, cambio de equipo, otros, traslado interno.
+    # Según TIPO_AB: los marcados para Averías, sin AVERIA, TC ni MCD (que ya son el tablero): cambio de equipo, otros, traslado interno.
     return pendientes_otros(df, tec_contrata, corte, filial=filial, zonas=zonas, excluir=("INSTALACION SERVICIO",),
-                            permitidos=DET_AVERIAS - {"AVERIA", "TC"})
+                            permitidos=DET_AVERIAS - {"AVERIA", "TC", "MCD"})
 
 
 # ---------- Avance total: todas las órdenes DESCARGADAS del mes hechas por técnicos de EECC ----------
