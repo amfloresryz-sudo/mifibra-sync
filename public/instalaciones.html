@@ -178,6 +178,12 @@ body.rut-on { overflow: hidden; }
 .rut-ctl { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; font-size: 12.5px; font-weight: 600; color: var(--fg-2); }
 .rut-ctl label { display: flex; gap: 6px; align-items: center; } .rut-ctl .sel { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); }
 .rut-chk input { accent-color: var(--magenta); width: 15px; height: 15px; }
+.rut-modo { display: inline-flex; gap: 6px; align-items: center; } .rut-modo .chip { min-height: 32px; padding: 6px 12px; }
+.rut-pin.fx { overflow: visible; } .rut-pin.fx svg { display: block; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); transition: transform .15s; }
+.rut-pin.fx .sel svg { transform: scale(1.35); } .rut-pin.fx .sel .sh { stroke: #FFD400; stroke-width: 3.2; } .rut-pin.fx .ed .sh { stroke: #111; stroke-dasharray: 3 2; }
+.rut-cab { grid-template-columns: minmax(260px, 1fr) minmax(0, max-content); }   /* el título no se aplasta: los controles pasan a 2 líneas */
+.rut-fm { display: inline-block; vertical-align: -4px; margin-right: 6px; }   /* forma de la EECC en botones y leyenda */
+.rut-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: 0 0 0 1px rgba(0,0,0,.15); }   /* color de la EECC en el ruteo */
 .rut-ecs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; } .rut-ecs .seg-t { font: 800 10.5px var(--f-disp); letter-spacing: .8px; color: var(--fg-3); }
 .rut-ecs .chip { min-height: 28px; padding: 3px 11px; font-size: 12px; }
 .rut-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
@@ -3576,9 +3582,38 @@ document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key ==
    Cada AB va en su coordenada con el color de su técnico (número = inicio de su franja; C = coordinada; S = sin agenda) y,
    si se marca, la ruta de cada técnico une sus AB en el orden de la franja. El usuario master puede cambiar el técnico/EECC de un AB
    en el ruteo (se guarda en el portal, no cambia ScordSoft) y abrir «Editar agenda». Las áreas salen del mapa de planos de Google My Maps. */
-const RUT = { tOff: new Set(), mapa: null, capa: null, areas: null, capaA: null, sel: null, ocultos: new Set(), ec: new Set(), dia: '', ajustado: false, cargando: false };
+const RUT = { modo: 'auto', tOff: new Set(), mapa: null, capa: null, areas: null, capaA: null, sel: null, ocultos: new Set(), ec: new Set(), dia: '', ajustado: false, cargando: false };
 const RUT_COL = ['#E6194B', '#3CB44B', '#4363D8', '#F58231', '#911EB4', '#42D4F4', '#F032E6', '#9A6324', '#469990', '#800000', '#808000', '#000075',
   '#E6007E', '#1A936F', '#FF8C42', '#5F0F40', '#0F4C5C', '#B5179E', '#7209B7', '#3A86FF', '#FB5607', '#8AC926', '#6A4C93', '#D62828'];
+// Colores por EECC (ruteo «Por EECC»): uno fijo por EECC, en orden alfabético de las EECC del día; POR ASIGNAR en gris
+const RUT_COL_EC = ['#E6194B', '#3CB44B', '#4363D8', '#F58231', '#911EB4', '#00A6B4', '#F032E6', '#9A6324', '#000075', '#808000', '#469990', '#800000', '#FFB000', '#5F0F40'];
+// Íconos por EECC (modo «Por EECC»), al estilo de los mapas de Google: círculo del color de la EECC con un dibujo blanco propio.
+// La pastilla de la esquina lleva el inicio de la franja (S = sin agenda, C = coordinada sin franja): círculo = agenda, cuadrada = coordinada, punteada = sin agenda.
+const RUT_GLIFOS = [
+  ['estrella', '<polygon points="12,2 14.9,8.6 22,9.2 16.6,13.9 18.2,21 12,17.2 5.8,21 7.4,13.9 2,9.2 9.1,8.6"/>'],
+  ['huella', '<ellipse cx="12" cy="16" rx="5" ry="4.2"/><circle cx="5.5" cy="10" r="2.2"/><circle cx="9.5" cy="6" r="2.3"/><circle cx="14.5" cy="6" r="2.3"/><circle cx="18.5" cy="10" r="2.2"/>'],
+  ['rayo', '<polygon points="13.5,2 4.5,13.5 11,13.5 9.5,22 19.5,9.5 13,9.5"/>'],
+  ['corazón', '<path d="M12 21C5 15.5 2.5 12.5 2.5 8.6 2.5 5.6 4.8 3.5 7.6 3.5c1.8 0 3.4 1 4.4 2.5 1-1.5 2.6-2.5 4.4-2.5 2.8 0 5.1 2.1 5.1 5.1 0 3.9-2.5 6.9-9.5 12.4z"/>'],
+  ['casa', '<polygon points="12,3 2.5,11.5 5.5,11.5 5.5,20.5 10,20.5 10,15 14,15 14,20.5 18.5,20.5 18.5,11.5 21.5,11.5"/>'],
+  ['hoja', '<path d="M20 3C9 3 4 9 4 16c0 2 .6 3.6 1.5 5C7 14 11 10 16 8c-4 3-7.5 7-8.5 13.5C15 21 20 15 20 3z"/>'],
+  ['bandera', '<path d="M5 2.5h2v19H5z M7 3.5h12l-3 4.5 3 4.5H7z"/>'],
+  ['campana', '<path d="M12 2.5c-3.5 0-5.5 2.7-5.5 6V13L4 17h16l-2.5-4V8.5c0-3.3-2-6-5.5-6z M9.5 18.5a2.5 2.5 0 0 0 5 0z"/>'],
+  ['sol', '<circle cx="12" cy="12" r="4.6"/><g stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 1.8v2.8M12 19.4v2.8M1.8 12h2.8M19.4 12h2.8M4.8 4.8l2 2M17.2 17.2l2 2M4.8 19.2l2-2M17.2 6.8l2-2"/></g>'],
+  ['luna', '<path d="M15.5 2.5a9.5 9.5 0 1 0 6 14.5 7.5 7.5 0 0 1-6-14.5z"/>'],
+  ['gota', '<path d="M12 2s-7.5 8.5-7.5 13a7.5 7.5 0 0 0 15 0C19.5 10.5 12 2 12 2z"/>'],
+  ['corona', '<polygon points="2.5,7 7.5,12 12,4 16.5,12 21.5,7 19.5,19 4.5,19"/>'],
+  ['gema', '<polygon points="6,3 18,3 22,9 12,21.5 2,9"/>'],
+  ['cruz', '<path d="M9.5 2.5h5v7h7v5h-7v7h-5v-7h-7v-5h7z"/>']];
+const RUT_GLIFO_NA = ['pregunta', '<text x="12" y="13" text-anchor="middle" dominant-baseline="middle" font-family="Montserrat,sans-serif" font-weight="800" font-size="17" fill="#fff">?</text>'];   // POR ASIGNAR
+const rutGlifo = (fi) => fi < 0 ? RUT_GLIFO_NA : RUT_GLIFOS[fi % RUT_GLIFOS.length];
+function rutPinSvg(fi, col, tipo, lbl, cls) {
+  const g = rutGlifo(fi)[1], sa = tipo === 'sa', co = tipo === 'co', L = String(lbl || '');
+  const badge = co ? `<rect x="17" y="17" width="14" height="14" rx="3" fill="#fff" stroke="${col}" stroke-width="1.8"/>`
+    : `<circle cx="24" cy="24" r="7.2" fill="#fff" stroke="${col}" stroke-width="1.8"${sa ? ' stroke-dasharray="2.4 1.6"' : ''}/>`;
+  return `<span class="${cls || ''}"><svg width="34" height="34" viewBox="0 0 33 33" aria-hidden="true"><circle class="sh" cx="14" cy="14" r="12.6" fill="${col}" stroke="#fff" stroke-width="2"/>`
+    + `<g fill="#fff" transform="translate(5 5) scale(.75)">${g}</g>${badge}<text x="24" y="24.6" text-anchor="middle" dominant-baseline="middle" font-family="Montserrat,sans-serif" font-weight="800" font-size="${L.length > 1 ? 7.5 : 8.5}" fill="${col}">${L}</text></svg></span>`;
+}
+const rutFormaMini = (fi, col) => `<svg class="rut-fm" width="18" height="18" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="13" fill="${col}"/><g fill="#fff" transform="translate(5 5) scale(.75)">${rutGlifo(fi)[1]}</g></svg>`;
 const rutCoord = (s) => { const m = String(s || '').split(/[,;\s]+/).map(Number).filter(v => isFinite(v) && v !== 0); if (m.length < 2) return null;
   let [la, lo] = m; if (Math.abs(la) > Math.abs(lo)) [la, lo] = [lo, la]; return la > -19 && la < -0.5 && lo > -82 && lo < -68 ? [la, lo] : null; };
 const rutAj = (p) => (AJ.ruteo || {})[p.os];
@@ -3605,6 +3640,7 @@ async function abrirRuteo() {
     ov.innerHTML = `<div class="rut-cab"><div class="rut-tt"><h2 id="rut-t">Ruteo de pendientes</h2><p class="sub" id="rut-sub"></p></div>
         <div class="rut-ctl"><label>Día <select id="rut-dia" class="sel"></select></label>
           <span class="rut-tipos" role="group" aria-label="Tipo de agenda">${RUT_TIPOS.map(([k, t]) => `<label class="rut-chk"><input type="checkbox" data-rut-tipo="${k}" checked> ${t}</label>`).join('')}</span><label class="rut-chk"><input type="checkbox" id="rut-areas" checked> Áreas de planos</label><label class="rut-chk"><input type="checkbox" id="rut-rutas" checked> Ruta por técnico</label>
+          <span class="rut-modo" role="group" aria-label="Color de los AB en el mapa">Color <button type="button" class="chip" data-rut-modo="ec" aria-pressed="true">Por EECC</button><button type="button" class="chip" data-rut-modo="tec" aria-pressed="false">Por técnico</button></span>
           <button type="button" class="btn-out" id="rut-cerrar">✕ Cerrar</button></div>
         <div class="rut-ecs"><span class="seg-t">EECC</span><span id="rut-ec" class="chips"></span></div></div>
       <div class="rut-cuerpo"><div id="rut-mapa" class="rut-mapa" aria-label="Mapa de los AB pendientes"></div>
@@ -3640,18 +3676,26 @@ function pintarRuteo() {
   const B = rutBase(), hoy = rutHoy(), P0 = B.filter(p => rutDiaOk(p, RUT.dia, hoy));
   const cE = {}; P0.forEach(p => { const e = rutEc(p); cE[e] = (cE[e] || 0) + 1; });
   [...RUT.ec].forEach(e => { if (!cE[e]) RUT.ec.delete(e); });
-  $('rut-ec').innerHTML = `<button type="button" class="chip" data-rut-ec="" aria-pressed="${!RUT.ec.size}">Todas</button>` + Object.keys(cE).sort().map(e => `<button type="button" class="chip" data-rut-ec="${esc(e)}" aria-pressed="${RUT.ec.has(e)}">${esc(e)} (${cE[e]})</button>`).join('');
+  // Color: «Por EECC» (cada EECC un color) o «Por técnico». Automático: por EECC con varias EECC, por técnico con una sola elegida
+  const ecCol = {}, ecFm = {}; let ci = 0; Object.keys(cE).sort().forEach(e => { const na = /POR ASIGNAR/i.test(e); ecFm[e] = na ? -1 : ci; ecCol[e] = na ? '#8A8FA3' : RUT_COL_EC[ci++ % RUT_COL_EC.length]; });
+  const modo = RUT.modo === 'auto' ? (RUT.ec.size === 1 ? 'tec' : 'ec') : RUT.modo;
+  RUT.modoEf = modo;
+  const TXT_EC = { ag: 'Agenda (● pastilla)', co: 'Coordinada (■ pastilla)', sa: 'Sin agenda (S)' };
+  document.querySelectorAll('[data-rut-tipo]').forEach(i => { const k = i.dataset.rutTipo, t = i.parentElement.lastChild; if (t && t.nodeType === 3) t.textContent = ' ' + (modo === 'ec' ? TXT_EC[k] : (RUT_TIPOS.find(x => x[0] === k) || [])[1]); });
+  document.querySelectorAll('[data-rut-modo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rutModo === modo)));
+  const dotEc = (e) => modo === 'ec' ? rutFormaMini(ecFm[e] ?? 0, ecCol[e] || '#8A8FA3') : '';
+  $('rut-ec').innerHTML = `<button type="button" class="chip" data-rut-ec="" aria-pressed="${!RUT.ec.size}">Todas</button>` + Object.keys(cE).sort().map(e => `<button type="button" class="chip" data-rut-ec="${esc(e)}" aria-pressed="${RUT.ec.has(e)}">${dotEc(e)}${esc(e)} (${cE[e]})</button>`).join('');
   const P = P0.filter(p => !RUT.ec.size || RUT.ec.has(rutEc(p)));
   // Técnicos: color por técnico, agrupados por EECC
   const T = new Map(); P.forEach(p => { const k = rutEc(p) + '|' + rutTec(p); if (!T.has(k)) T.set(k, { k, ec: rutEc(p), tec: rutTec(p), L: [] }); T.get(k).L.push(p); });
   const tecs = [...T.values()].sort((a, b) => a.ec.localeCompare(b.ec) || (a.tec === 'SIN TÉCNICO') - (b.tec === 'SIN TÉCNICO') || a.tec.localeCompare(b.tec));
-  tecs.forEach((t, i) => { t.col = t.tec === 'SIN TÉCNICO' ? '#8A8FA3' : RUT_COL[i % RUT_COL.length]; t.L.sort((a, b) => rutIni(a) - rutIni(b)); t.pts = t.L.map(p => rutCoord(p.co)).filter(Boolean); });
+  tecs.forEach((t, i) => { t.col = modo === 'ec' ? (ecCol[t.ec] || '#8A8FA3') : t.tec === 'SIN TÉCNICO' ? '#8A8FA3' : RUT_COL[i % RUT_COL.length]; t.L.sort((a, b) => rutIni(a) - rutIni(b)); t.pts = t.L.map(p => rutCoord(p.co)).filter(Boolean); });
   const sinCo = P.filter(p => !rutCoord(p.co)).length;
   const diaTxt = ($('rut-dia').selectedOptions[0] || {}).textContent || '';
   $('rut-sub').textContent = `${P.length} AB · ${tecs.filter(t => t.tec !== 'SIN TÉCNICO').length} técnicos · ${diaTxt.replace(/\s*\(\d+\)$/, '')}${sinCo ? ` · ${sinCo} sin coordenadas (no salen en el mapa)` : ''} · aplica los segmentadores de la pestaña`;
   // Leyenda por EECC
   const porE = {}; tecs.forEach(t => (porE[t.ec] || (porE[t.ec] = [])).push(t));
-  $('rut-ley').innerHTML = `<h3 class="rut-h">Técnicos por EECC</h3>` + (Object.keys(porE).map(e => `<div class="rut-eg"><div class="rut-eh"><b>${esc(e)}</b><span>${porE[e].filter(t => t.tec !== 'SIN TÉCNICO').length} téc. · ${porE[e].reduce((a, t) => a + t.L.length, 0)} AB</span></div>`
+  $('rut-ley').innerHTML = `<h3 class="rut-h">Técnicos por EECC</h3>` + (Object.keys(porE).map(e => `<div class="rut-eg"><div class="rut-eh"><b>${dotEc(e)}${esc(e)}</b><span>${porE[e].filter(t => t.tec !== 'SIN TÉCNICO').length} téc. · ${porE[e].reduce((a, t) => a + t.L.length, 0)} AB</span></div>`
     + porE[e].map(t => `<div class="rut-tr${RUT.ocultos.has(t.k) ? ' off' : ''}"><input type="checkbox" data-rut-ver="${esc(t.k)}" ${RUT.ocultos.has(t.k) ? '' : 'checked'} aria-label="Mostrar ${esc(t.tec)}"><i style="background:${t.col}"></i><button type="button" class="lnk" data-rut-tec="${esc(t.k)}" title="Ver sus AB en el mapa">${esc(tecCorto(t.tec) || t.tec)}</button><span>${t.L.slice(0, 8).map(p => `<b class="rut-mini t-${rutTipo(p)}" style="border-color:${t.col}">${rutLbl(p)}</b>`).join('')}${t.L.length > 8 ? `<small class="rut-mas">+${t.L.length - 8}</small>` : ''}</span></div>`).join('') + '</div>').join('') || '<p class="nota">No hay AB pendientes para este día con estos filtros.</p>');
   RUT.T = T;
   if (!RUT.mapa) return;
@@ -3662,7 +3706,9 @@ function pintarRuteo() {
       Object.values(pd).forEach(v => { if (v.length > 1) L.polyline(v, { color: t.col, weight: 3, opacity: .75, dashArray: '7 6' }).addTo(RUT.capa); }); }
     t.L.forEach(p => { const c = rutCoord(p.co); if (!c || RUT.tOff.has(rutTipo(p))) return; todos.push(c);
       const ed = !!rutAj(p), sel = RUT.sel === p.os;
-      const ic = L.divIcon({ className: 'rut-pin', html: `<span class="t-${rutTipo(p)}${sel ? ' sel' : ''}${ed ? ' ed' : ''}" style="--c:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+      const ic = modo === 'ec'   // por EECC: forma + color de la EECC; el relleno dice el tipo de agenda
+        ? L.divIcon({ className: 'rut-pin fx', html: rutPinSvg(ecFm[t.ec] ?? 0, t.col, rutTipo(p), rutLbl(p), `${sel ? 'sel' : ''}${ed ? ' ed' : ''}`), iconSize: [34, 34], iconAnchor: [14, 14] })
+        : L.divIcon({ className: 'rut-pin', html: `<span class="t-${rutTipo(p)}${sel ? ' sel' : ''}${ed ? ' ed' : ''}" style="--c:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
       L.marker(c, { icon: ic, title: `AB ${p.ab}` }).bindTooltip(`<b>AB ${p.ab}</b> · ${esc(rutEc(p))}<br>${esc(tecCorto(rutTec(p)) || rutTec(p))}<br>${esc(conFranja(p) ? p.fr : EST_TXT[estAg(p)])}${p.fp ? ' · ' + fIso(p.fp) : ''}`).on('click', () => rutElegir(p.os)).addTo(RUT.capa); }); });
   if (todos.length && !RUT.ajustado) { RUT.mapa.fitBounds(todos, { padding: [40, 40], maxZoom: 14 }); RUT.ajustado = true; }
   rutFicha();
@@ -3675,7 +3721,7 @@ function rutTecnicos() {   // técnicos conocidos del mes (pendientes, liquidada
 }
 function rutFicha() {
   const f = $('rut-ficha'), p = RUT.sel && penUni().find(x => x.os === RUT.sel);
-  if (!p) { f.innerHTML = `<p class="nota rut-ayuda">Haz clic en un AB del mapa (o en un técnico de la lista) para ver su detalle y, si hace falta, cambiar su técnico o su agenda. Forma: ● agenda · ■ coordinada · ○ sin agenda; número = inicio de la franja.</p>`; return; }
+  if (!p) { f.innerHTML = `<p class="nota rut-ayuda">Haz clic en un AB del mapa (o en un técnico de la lista) para ver su detalle y, si hace falta, cambiar su técnico o su agenda. ${RUT.modoEf === 'ec' ? 'Color «Por EECC»: cada EECC tiene su ícono y su color (ver los botones de arriba); la pastilla de la esquina lleva el inicio de la franja: redonda = agenda · cuadrada = coordinada · S punteada = sin agenda' : 'Forma: ● agenda · ■ coordinada · ○ sin agenda'}; número = inicio de la franja.</p>`; return; }
   const a = rutAj(p), tecs = rutTecnicos(), ecs = [...new Set(tecs.map(t => t[1]).concat((AJ.eeccs || []), [p.ec]).filter(Boolean))].sort();
   const porE = {}; tecs.forEach(([t, e]) => (porE[e] || (porE[e] = [])).push(t));
   f.innerHTML = `<div class="rut-fc"><div class="rut-fh"><b>AB ${p.ab}</b><span>OS ${p.os}</span><button type="button" class="lnk" data-rut-x aria-label="Cerrar detalle">✕</button></div>
@@ -3701,6 +3747,7 @@ document.addEventListener('click', async (e) => {
   if (e.target.closest('#pen-ruteo')) { abrirRuteo(); return; }
   if (!e.target.closest('#rut')) return;
   if (e.target.closest('#rut-cerrar')) { cerrarRuteo(); return; }
+  const bm = e.target.closest('[data-rut-modo]'); if (bm) { RUT.modo = bm.dataset.rutModo; pintarRuteo(); return; }
   const be = e.target.closest('[data-rut-ec]'); if (be) { const v = be.dataset.rutEc; if (!v) RUT.ec.clear(); else RUT.ec.has(v) ? RUT.ec.delete(v) : RUT.ec.add(v); RUT.ajustado = false; pintarRuteo(); return; }
   const bt = e.target.closest('[data-rut-tec]'); if (bt) { const t = RUT.T && RUT.T.get(bt.dataset.rutTec); const pts = t ? t.L.map(p => rutCoord(p.co)).filter(Boolean) : []; if (pts.length && RUT.mapa) RUT.mapa.fitBounds(pts, { padding: [60, 60], maxZoom: 15 }); if (t && t.L[0]) { RUT.sel = t.L[0].os; pintarRuteo(); } return; }
   if (e.target.closest('[data-rut-x]')) { RUT.sel = null; pintarRuteo(); return; }
