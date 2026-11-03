@@ -282,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--solo-descargar", type=Path, help="solo descargar el reporte del periodo a esta ruta y terminar")
     ap.add_argument("--corte", help="hora (ISO, UTC) en que se pidió el reporte: se usa como corte y como «actualizado»")
     ap.add_argument("--solo-mes-actual", action="store_true",
-                    help="con --solo-descargar: pide solo el mes en curso (descarga rápida, ~la mitad del tiempo)")
+                    help="con --solo-descargar: pide solo los últimos 45 días (descarga rápida)")
     ap.add_argument("--base", type=Path, nargs="*", default=[],
                     help="reporte(s) completo(s) anteriores: se leen primero y las órdenes de --excel los reemplazan")
     ap.add_argument("--parche", type=Path, nargs="*", default=[],
@@ -317,8 +317,10 @@ def main(argv: list[str] | None = None) -> int:
         hoy = datetime.now(LIMA).date()
         d0, d1 = periodo(hoy)
         if args.solo_mes_actual:
-            d0 = hoy.replace(day=1)  # rápida: el mes anterior se toma de la última descarga completa
-            print(f"Descarga RÁPIDA (solo mes en curso): {d0:%d/%m/%Y}–{d1:%d/%m/%Y}", flush=True)
+            # rápida: los últimos 45 días (cubre los pendientes vivos aunque sean del mes anterior); lo más viejo
+            # del periodo se toma de la última descarga completa.
+            d0 = max(hoy - timedelta(days=45), d0)
+            print(f"Descarga RÁPIDA (últimos 45 días): {d0:%d/%m/%Y}–{d1:%d/%m/%Y}", flush=True)
         t0 = time.time()
         try:
             # Se descarga en una carpeta aparte: así el procesador nunca ve archivos a medio bajar.

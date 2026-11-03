@@ -65,6 +65,9 @@ jobs:
           SCORDSOFT_USUARIO: ${{ secrets.SCORDSOFT_USUARIO }}
           SCORDSOFT_CLAVE: ${{ secrets.SCORDSOFT_CLAVE }}
           SCORDSOFT_TOTP_SECRETO: ${{ secrets.SCORDSOFT_TOTP_SECRETO }}
+          SCORDSOFT2_USUARIO: ${{ secrets.SCORDSOFT2_USUARIO }}
+          SCORDSOFT2_CLAVE: ${{ secrets.SCORDSOFT2_CLAVE }}
+          SCORDSOFT2_TOTP_SECRETO: ${{ secrets.SCORDSOFT2_TOTP_SECRETO }}
           SCORDSOFT_SEL_USUARIO: ${{ vars.SCORDSOFT_SEL_USUARIO }}
           SCORDSOFT_SEL_CLAVE: ${{ vars.SCORDSOFT_SEL_CLAVE }}
           SCORDSOFT_SEL_INGRESAR: ${{ vars.SCORDSOFT_SEL_INGRESAR }}
@@ -86,30 +89,35 @@ jobs:
           # se salta). Los reportes se procesan de a uno y en orden; si se juntan dos, solo se procesa el más nuevo.
           set -u
           COLA=cola; mkdir -p "$COLA"; rm -f "$COLA"/*
+          # La última descarga COMPLETA se guarda con el estado del robot (caché de GitHub): así un turno nuevo arranca
+          # de frente con la rápida y no depende de la descarga grande.
+          BASE=.estado/base; mkdir -p "$BASE"
           ini_turno=$(date +%s); fin=$(( ini_turno + 320*60 ))   # ya no se piden reportes después de ~5 h 20 min
-          en_horario() {   # 8:00–23:59 y la de las 0:00 (hasta 0:15 si GitHub se atrasó)
+          en_horario() {   # 8:00–23:59, la de las 0:00 (hasta 0:15 si GitHub se atrasó) y la completa de las 6:00
             local h m; h=$((10#$(TZ=America/Lima date +%H))); m=$((10#$(TZ=America/Lima date +%M)))
-            [ "$h" -ge 8 ] || { [ "$h" -eq 0 ] && [ "$m" -lt 15 ]; }
+            [ "$h" -ge 8 ] || { [ "$h" -eq 0 ] && [ "$m" -lt 15 ]; } || { [ "$h" -eq 6 ] && [ "$m" -lt 10 ]; }
+          }
+          hora_completa() {   # la descarga COMPLETA (mes anterior + mes en curso) va a las 6:00, 12:00 y 17:00
+            local h m; h=$((10#$(TZ=America/Lima date +%H))); m=$((10#$(TZ=America/Lima date +%M)))
+            { [ "$h" -eq 6 ] || [ "$h" -eq 12 ] || [ "$h" -eq 17 ]; } && [ "$m" -lt 10 ]
           }
           mes_lima() { TZ=America/Lima date +%Y-%m; }
-          base_vigente() {   # carpeta de la última descarga completa, si es de este mes y aún vigente:
-            # menos de 115 min (completa cada 2 h) o, del día 1 al 5 del mes, menos de 55 min (completa cada hora:
-            # a inicio de mes quedan muchos pendientes del mes anterior). La completa tarda más de 20 min y atrasaba la siguiente.
-            local b lim; b=$(ls -d "$COLA"/base/*/ 2>/dev/null | sort | tail -1 || true)
-            if [ "$((10#$(TZ=America/Lima date +%d)))" -le 5 ]; then lim=55; else lim=115; fi
+          base_vigente() {   # carpeta de la última descarga completa, si es de este mes y de las últimas 14 h
+            # (la rápida trae los últimos 45 días: la completa solo hace falta para lo más viejo del mes anterior)
+            local b lim=840; b=$(ls -d "$BASE"/*/ 2>/dev/null | sort | tail -1 || true)
             [ -n "$b" ] && [ "$(cat "$b/periodo" 2>/dev/null)" = "$(mes_lima)" ] \
               && [ $(( $(date +%s) - $(cat "$b/ts" 2>/dev/null || echo 0) )) -lt $((lim*60)) ] && echo "${b%/}"
           }
-          ultima_base() { local b; b=$(ls -d "$COLA"/base/*/ 2>/dev/null | sort | tail -1 || true); [ -n "$b" ] && echo "${b%/}"; }
+          ultima_base() { local b; b=$(ls -d "$BASE"/*/ 2>/dev/null | sort | tail -1 || true); [ -n "$b" ] && echo "${b%/}"; }
           descargar() {   # $1 = marca, $2 = hora ISO del pedido, $3 = hh:mm, $4 = completa|rapida, $5 = epoch del pedido
             set -o pipefail
             local extra=""; [ "$4" = rapida ] && extra="--solo-mes-actual"
             if python -u -m sync.main --solo-descargar "$COLA/$1.tmp.xlsx" $extra 2>&1 | sed -u "s/^/[descarga $3] /"; then
               if [ "$4" = completa ]; then   # se guarda como base para las rápidas de la próxima hora
-                snap="$COLA/base/$1"; mkdir -p "$snap"; cp "$COLA/$1.tmp.xlsx" "$snap/0.xlsx"
+                snap="$BASE/$1"; mkdir -p "$snap"; cp "$COLA/$1.tmp.xlsx" "$snap/0.xlsx"
                 for p in "$COLA/partes/$1"_*.xlsx; do [ -e "$p" ] && cp "$p" "$snap/"; done
                 mes_lima > "$snap/periodo"; echo "$5" > "$snap/ts"
-                ls -d "$COLA"/base/*/ | sort | head -n -2 | xargs -r rm -rf   # se guardan solo las 2 últimas
+                ls -d "$BASE"/*/ | sort | head -n -2 | xargs -r rm -rf   # se guardan solo las 2 últimas
               else
                 b=$(ultima_base || true); echo "$b" > "$COLA/$1.base"
               fi
@@ -163,7 +171,7 @@ jobs:
                 # por más de 9 min (estaría por llegar: el exprés no la debe atrasar).
                 exp=${exp%/}; me=$(basename "$exp")
                 for viejo in $(ls -d "$COLA"/exp/[0-9]*/ 2>/dev/null | sort | head -n -1); do rm -rf "$viejo"; done
-                if [ -e "$COLA/descargando" ] && [ $(( $(date +%s) - $(stat -c %Y "$COLA/descargando") )) -gt 540 ]; then sleep 10; continue; fi
+                if [ -e "$COLA/descargando" ] && [ $(( $(date +%s) - $(stat -c %Y "$COLA/descargando") )) -gt 240 ]; then sleep 10; continue; fi
                 if [ ! "$me" \> "$(cat "$COLA/ult/marca")" ]; then rm -rf "$exp"; continue; fi   # más viejo que la última principal
                 corte=$(cat "$exp/corte"); h=$(TZ=America/Lima date -d "$corte" +%H:%M)
                 echo "::group::Exprés $(TZ=America/Lima date -d "$corte" '+%d/%m %H:%M') (hora de Lima) · procesando"
@@ -174,7 +182,8 @@ jobs:
               else sleep 10; fi
             done
           }
-          expres() {   # ROBOT EXPRÉS: cada 5 min (menos en :00, :20 y :40) trae lo de hoy en ~2 min, en otra sesión.
+          expres() {   # ROBOT EXPRÉS (2.º usuario de ScordSoft): en :05, :15, :25… trae lo de hoy en ~2 min.
+            # Usa OTRO usuario: ScordSoft guarda un solo archivo de reporte por usuario y con el mismo se cruzaban.
             # Si falla 2 veces seguidas (o no puede iniciar sesión) se apaga en este turno; el robot principal sigue igual.
             local fallas=0 log
             mkdir -p "$COLA/exp"
@@ -183,12 +192,13 @@ jobs:
               sleep $(( prox - ahora ))
               [ -e "$COLA/FIN" ] || [ -e "$COLA/ABORTAR" ] && break
               m=$((10#$(TZ=America/Lima date +%M))); hh=$((10#$(TZ=America/Lima date +%H)))
-              [ $((m % 20)) -eq 0 ] && continue          # esas marcas son del robot principal
+              [ $((m % 10)) -eq 0 ] && continue          # :00, :10, :20… son del robot principal
               [ "$hh" -ge 8 ] || continue                 # 8:05 a 23:55
               [ -e "$COLA/ult/lista" ] || continue        # aún no hay una actualización principal de base
               marca=$(date +%Y%m%d%H%M%S); corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00); hm=$(TZ=America/Lima date +%H:%M)
               d="$COLA/exp_tmp/$marca"; mkdir -p "$d"; log="$d.log"
-              if timeout 480 python -u -m sync.main --solo-descargar-expres "$d" > "$log" 2>&1; then
+              if SCORDSOFT_USUARIO="$SCORDSOFT2_USUARIO" SCORDSOFT_CLAVE="$SCORDSOFT2_CLAVE" SCORDSOFT_TOTP_SECRETO="$SCORDSOFT2_TOTP_SECRETO" \
+                 timeout 480 python -u -m sync.main --solo-descargar-expres "$d" > "$log" 2>&1; then
                 sed "s/^/[exprés $hm] /" "$log"; echo "$corte" > "$d/corte"; mv "$d" "$COLA/exp/$marca"; fallas=0
               else
                 sed "s/^/[exprés $hm] /" "$log"; rm -rf "$d"; fallas=$((fallas+1))
@@ -199,9 +209,10 @@ jobs:
             done
           }
           procesador & pid_proc=$!
-          # EXPRÉS DESACTIVADO: ScordSoft guarda un solo archivo de reporte por usuario; con dos descargas a la vez
-          # (exprés + principal, mismo usuario) una se llevaba el archivo de la otra y el portal recibió datos cruzados.
+          # El exprés solo corre con un SEGUNDO usuario de ScordSoft (secreto SCORDSOFT2_USUARIO); sin él queda apagado.
           pid_exp=""
+          if [ -n "$SCORDSOFT2_USUARIO" ] && [ "$SCORDSOFT2_USUARIO" != "$SCORDSOFT_USUARIO" ]; then expres & pid_exp=$!
+          else echo "Exprés apagado: falta un segundo usuario de ScordSoft (SCORDSOFT2_USUARIO)."; fi
           # Comentarios de las EECC («Mis pendientes») → ScordSoft (Agendamiento de Ordenes · ING. VISITA): mira Supabase
           # cada minuto y solo abre ScordSoft cuando hay alguno por escribir. Corre aparte: no frena las descargas.
           ( python -u -m sync.comentarios_scord --vigilar 325 2>&1 | sed -u "s/^/[comentarios] /" ) & pid_com=$!
@@ -220,14 +231,14 @@ jobs:
                   [ "$errores" -ge 3 ] && { echo "3 descargas fallidas seguidas: se corta el turno."; break; }
                 fi
                 marca=$(date +%Y%m%d%H%M%S); corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00); hm=$(TZ=America/Lima date +%H:%M)
-                if [ -n "$(base_vigente || true)" ]; then tipo=rapida; else tipo=completa; fi
+                if [ -n "$(base_vigente || true)" ] && ! hora_completa; then tipo=rapida; else tipo=completa; fi
                 echo "$hm: se pide el reporte a ScordSoft ($tipo)."
                 touch "$COLA/descargando"; descargar "$marca" "$corte" "$hm" "$tipo" "$(date +%s)" & pid_desc=$!
               fi
               [ "$h" -eq 0 ] && { echo "Última actualización del día (0:00) pedida."; break; }
             fi   # fuera de horario: el turno espera dormido (y al final encadena el siguiente) hasta las 8:00
-            # Siguiente marca :00, :20 o :40 (exacta: se mide desde el reloj, no desde que terminó la anterior)
-            ahora=$(date +%s); prox=$(( (ahora/1200 + 1) * 1200 ))
+            # Siguiente marca :00, :10, :20… (exacta: se mide desde el reloj, no desde que terminó la anterior)
+            ahora=$(date +%s); prox=$(( (ahora/600 + 1) * 600 ))
             [ "$prox" -ge "$fin" ] && break
             sleep $(( prox - ahora ))
           done
