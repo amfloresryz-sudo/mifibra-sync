@@ -6,9 +6,9 @@ python -u -m sync.main --solo-descargar-expres r/exp || exit 1
 E=$(date +%s)
 python -u -m sync.main --excel r/rap.xlsx --sin-subir 2>&1 | grep -E "órdenes en el reporte|\[tiempo\]" > r/t1.txt
 P1=$(date +%s)
-python -u -m sync.main --base r/rap.xlsx --parche r/exp/*.xlsx --sin-subir 2>&1 | grep -E "Exprés|órdenes en el reporte|\[tiempo\]" > r/t2.txt
+python -u -m sync.main --base r/rap.xlsx --parche r/exp/*.xlsx --sin-subir 2>&1 | grep -E "Exprés|ERROR|Error|Traceback|órdenes en el reporte|\[tiempo\]" > r/t2.txt
 P2=$(date +%s)
-python -u -m sync.main --base r/rap.xlsx --parche r/exp/*.xlsx --sin-subir 2>&1 | grep -E "\[tiempo\]" > r/t3.txt
+python -u -m sync.main --base r/rap.xlsx --parche r/exp/*.xlsx --sin-subir 2>&1 | grep -E "Exprés|ERROR|Error|\[tiempo\]" > r/t3.txt
 P3=$(date +%s)
 python - <<PY
 import json, os, requests
