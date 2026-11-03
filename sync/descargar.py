@@ -144,12 +144,9 @@ def _un_reporte(page, contexto, base: str, destino: Path, desde: date, hasta: da
     for intento in range(3):
         _generar(page, contexto, base, destino, desde, hasta, filial, por, diagnostico, espera_max_s, avisos, usados)
         if filial.upper() == "TODAS":
-            traidas = _filiales_del_excel(destino)
-            if len(traidas) > 1 or intento == 2:  # trae varias filiales (o ya no queda reintento)
-                return destino
-            print(f"  El archivo trae solo {', '.join(traidas) or 'nada'}; se vuelve a pedir ({intento + 1}/3)…", flush=True)
-            time.sleep(10)
-            continue
+            # Si «SELECCIONE» devolvió una sola filial no se vuelve a pedir (cada intento tardaba hasta 15 min y
+            # ScordSoft devolvía lo mismo): se acepta y quien llama pide las demás filiales por separado.
+            return destino
         recibido = _filial_del_excel(destino)
         if recibido in (None, filial.upper()):
             return destino
