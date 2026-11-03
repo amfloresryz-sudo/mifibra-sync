@@ -417,7 +417,25 @@ def main(argv: list[str] | None = None) -> int:
 
         # ---------------- 3. Tableros e indicadores (en memoria)
         df = pd.DataFrame(filas)
+        # PROTECCIÓN: si el reporte llegó sin el mes anterior (p. ej. ScordSoft devolvió solo el mes en curso), no se
+        # borra nada de la base ni se tocan los tableros del mes anterior: solo se actualiza el mes en curso.
+        ant_incompleto = False
+        try:
+            reg = pd.to_datetime(df["fecha_registro"], utc=True, errors="coerce").dt.tz_convert(LIMA)
+            ini_mes = pd.Timestamp(ahora.date().replace(day=1)).tz_localize(LIMA)
+            n_ant = int(((reg >= pd.Timestamp(desde).tz_localize(LIMA)) & (reg < ini_mes)).sum())
+            n_act = int((reg >= ini_mes).sum())
+            ant_incompleto = n_ant < 0.3 * n_act
+            if ant_incompleto:
+                print(f"AVISO: el reporte trae solo {n_ant} órdenes del mes anterior frente a {n_act} del mes en curso: "
+                      "no se borra nada ni se tocan los tableros del mes anterior.", flush=True)
+        except Exception as e:  # noqa: BLE001
+            print(f"Aviso: no se pudo revisar el mes anterior: {e}", flush=True)
         tableros = calcular_tableros(df, ahora, inicio, links_st)
+        if ant_incompleto:
+            sufijo = f":{_fin_mes_anterior(ahora.date()):%Y-%m}"
+            for k in [k for k in tableros if k.endswith(sufijo)]:
+                tableros.pop(k)
         t_tab = time.time()
         print(f"[tiempo] tableros: {t_tab - t_proc:.0f} s ({len(tableros)} tableros)", flush=True)
 
@@ -444,8 +462,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Aviso: no se calcularon los cambios de agenda: {e}", flush=True)
         total = subir.upsert_ordenes(filas, estado, cajas_ok=indice_cajas is not None)
         print(f"{total} órdenes escritas en Supabase.", flush=True)
-        completo = all(por_filial.get(f, 0) > 0 for f in FILIALES)
-        borradas = subir.borrar_ausentes(set(filas_por_id), estado, desde.isoformat(), completo)
+        completo = all(por_filial.get(f, 0) > 0 for f in FILIALES) and not ant_incompleto
+        borradas = 0 if ant_incompleto else subir.borrar_ausentes(set(filas_por_id), estado, desde.isoformat(), completo)
         if borradas:
             print(f"{borradas} órdenes que ya no están en el reporte se borraron de la base.", flush=True)
         estado["arranque"] = False
@@ -458,7 +476,7 @@ def main(argv: list[str] | None = None) -> int:
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
         print(f"[tiempo] guardado: {time.time() - t_tab:.0f} s · total {time.time() - t_ini:.0f} s", flush=True)
-        subir.registrar_corrida("periodo", total, True, f"{'exprés · ' if args.parche and not args.excel else ''}ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros",
+        subir.registrar_corrida("periodo", total, True, f"{'exprés · ' if args.parche and not args.excel else ''}{'SIN MES ANTERIOR · ' if ant_incompleto else ''}ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros",
                                 inicio, _ahora())
         return 0
     except Exception as e:  # noqa: BLE001 - se registra el fallo y el job termina en rojo para que llegue el aviso
