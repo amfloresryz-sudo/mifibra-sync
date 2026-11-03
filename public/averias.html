@@ -592,7 +592,7 @@ function prepararDatos() {
   document.getElementById('nom-filial').textContent = esCombo(fil) ? MFF.txt(fil) : fil.charAt(0) + fil.slice(1).toLowerCase();
   document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && !pt ? 'visible' : 'hidden';
   ZORD.splice(0, ZORD.length, ...(pt ? [...new Set([...Object.values(D.zonas || {}), ...(D.sel || [])])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial  // ocupa su lugar para que Filial no se mueva
-  document.getElementById('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 20 min.`;
+  document.getElementById('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 5 min.`;
   aplicarAjCien();
 }
 /* El resultado corregido por el master reemplaza al del robot (k0 guarda lo calculado) */

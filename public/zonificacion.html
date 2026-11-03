@@ -276,7 +276,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 </style>
 </head>
 <body>
-<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: catálogo de planos (hoja ZONA de DATOS_TEC, Lima) + planos de las órdenes del periodo · se actualiza con el robot cada 20 minutos</span></div></div>
+<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: catálogo de planos (hoja ZONA de DATOS_TEC, Lima) + planos de las órdenes del periodo · se actualiza con el robot cada 5 minutos</span></div></div>
 
 <header class="cab"><div class="w">
   <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
@@ -479,7 +479,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       + X.E.map(e => `<tr><td><b>${esc(e.ec)}</b></td><td><span class="zbs">${zonasB(e)}</span></td><td>${num(e.dis.size)}</td><td>${num(e.pl)}</td><td>${num(e.pen, 'pen-n')}</td><td class="pm">${prom(e.ing)}</td><td class="pm">${prom(e.liq)}</td><td>${e.rut ?? '—'}</td><td>${e.tec ? f1(e.tec) : '—'}</td><td class="${e.asis == null ? '' : e.asis >= .9 ? 'equi' : e.asis >= .75 ? '' : 'falta'}">${pc(e.asis)}</td><td>${f1(e.prod)}</td></tr>`).join('')
       + `</tbody><tfoot><tr><td>Total</td><td></td><td></td><td>${n(T.pl)}</td><td>${n(T.pen)}</td><td class="pm">${prom(T.ing)}</td><td class="pm">${prom(T.liq)}</td><td>${n(T.rut)}</td><td>${f1(T.tec)}</td><td>${pc(X.asisM)}</td><td>${f1(X.prodM)}</td></tr></tfoot>`;
   }
-  // ----- Reasignación de AB del día (Lima, instalaciones): datos del tablero de Instalaciones que el robot actualiza cada 20 min -----
+  // ----- Reasignación de AB del día (Lima, instalaciones): datos del tablero de Instalaciones que el robot actualiza cada 5 min -----
   // AB en riesgo: sin técnico, técnico con más AB de los que alcanza a hacer hoy (capacidad por técnico) o franja vencida sin inicio.
   // A cada uno se le busca el técnico más cercano de OTRA EECC que todavía tenga espacio hoy (por las coordenadas de sus AB del día
   // y de lo que ya liquidó), dentro del radio elegido. Si no hay nadie cerca con espacio, queda como «sin opción cercana».

@@ -1545,7 +1545,7 @@ function prepararDatos() {
   $('grupo-ec').hidden = provTodas();
   $('grupo-fil').style.gridColumn = fil === 'LIMA' ? '' : '1 / -1';   // con provincias la fila de filiales va a lo ancho   // EECC: Lima o una filial de provincia (en Provincias › Todas se ve por filial)
   ZORD.splice(0, ZORD.length, ...(provTodas() ? [...new Set([...Object.values(D.zonas || {}), ...(D.sel || [])])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
-  $('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 20 min.`;
+  $('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 5 min.`;
   const opDias = DIAS.slice().reverse().map(d => `<option value="${d}">${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
   $('co-dia').innerHTML = opDias; $('av-dia').innerHTML = opDias;
   // Pendientes › Agendas del día: siempre los días del mes en curso (no depende del periodo)
@@ -2427,7 +2427,7 @@ function verCambios(os, fi) {
       ${c.por ? `<div class="mo"><i>Nota de la edición en el portal</i>${c.mot ? esc(c.mot) : 'Sin nota.'}</div>`
         : `<div class="mo"><i>Motivo · observación de la asignación en ScordSoft${c.usr ? ` (${esc(c.usr)})` : ''}</i>${c.mot ? esc(c.mot) : 'ScordSoft no registró observación en la asignación.'}</div>
            ${c.obs ? `<div class="mo"><i>Último comentario del técnico (OBS VISITA TÉCNICO)</i>${obsCompleta(c.obs)}</div>` : ''}`}
-    </div>`).join('')}</div><p class="fi-nota">El robot compara la agenda de cada OS en cada actualización (cada 20 min): si cambió la fecha o la franja la marca con ↻ durante el día. Los teléfonos se ocultan.</p>`;
+    </div>`).join('')}</div><p class="fi-nota">El robot compara la agenda de cada OS en cada actualización (cada 5 min): si cambió la fecha o la franja la marca con ↻ durante el día. Los teléfonos se ocultan.</p>`;
   abrirFichaModal(`AB ${x.ab} · cambios de agenda de hoy`, `OS ${x.os} · ${x.ec || '—'} · ${x.tec || 'sin técnico'} · agenda actual: ${x.fp ? fIso(x.fp) : 'sin fecha'} ${x.fr || ''}`, html);
 }
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-cfr]'); if (b) { e.stopPropagation(); verCambios(b.dataset.cfr, b.dataset.fi); } }, true);
