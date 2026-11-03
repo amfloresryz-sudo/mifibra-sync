@@ -130,6 +130,26 @@ def _leer(clave: str):
         return None
 
 
+def _por_portal(lote: list) -> list:
+    """Respaldo: pide las velocidades a la función del portal en Vercel (otra red), firmada con la clave de Supabase."""
+    import hashlib
+    import hmac
+    import os
+    import requests
+    k = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not k:
+        return [None] * len(lote)
+    dia = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    firma = hmac.new(k.encode(), f"speedtest-vel:{dia}".encode(), hashlib.sha256).hexdigest()
+    url = os.environ.get("PORTAL_URL", "https://mifibra-sync.vercel.app").rstrip("/") + "/api/speedtest?accion=vel"
+    try:
+        r = requests.post(url, json={"claves": lote}, headers={"x-robot-firma": firma}, timeout=30)
+        d = r.json().get("r", {}) if r.status_code == 200 else {}
+    except Exception:  # noqa: BLE001
+        d = {}
+    return [d.get(c) for c in lote]
+
+
 def velocidades(tab: dict, cache: dict, limite: int = 300, segundos: int = 90) -> None:
     """Completa cada prueba del tablero con su velocidad: fila[12] = [[quién, bajada, subida, estado], …] (estado: v/b/n/p).
     Lee primero lo más reciente; lo ya leído queda en la caché (estado del robot) y no se vuelve a pedir."""
@@ -139,18 +159,23 @@ def velocidades(tab: dict, cache: dict, limite: int = 300, segundos: int = 90) -
         for clave, _ in (f[12] if len(f) > 12 else []):
             if clave not in cache and clave not in falta:
                 falta.append(clave)
-    leidos, t0 = 0, time.time()
+    leidos, t0, via = 0, time.time(), "directo"
     if falta:
         with ThreadPoolExecutor(max_workers=8) as ex:
             for i in range(0, min(len(falta), limite), 40):
                 if time.time() - t0 > segundos:
                     break
                 lote = falta[i:i + 40]
-                for clave, v in zip(lote, ex.map(_leer, lote)):
+                res = list(ex.map(_leer, lote)) if via == "directo" else _por_portal(lote)
+                if via == "directo" and all(v is None for v in res):   # speedtest.net no responde a GitHub: se pasa al portal (Vercel)
+                    via = "portal"
+                    res = _por_portal(lote)
+                for clave, v in zip(lote, res):
                     if v is not None:
                         cache[clave] = v
                         leidos += 1
-        print(f"  Speed Test: {leidos} velocidades nuevas leídas de speedtest.net · {max(0, len(falta) - leidos)} pendientes.", flush=True)
+        print(f"  Speed Test: {leidos} velocidades nuevas leídas de speedtest.net ({'desde el robot' if via == 'directo' else 'vía el portal'}) · "
+              f"{max(0, len(falta) - leidos)} pendientes.", flush=True)
     for f in filas:
         if len(f) <= 12:
             continue
