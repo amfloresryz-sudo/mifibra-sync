@@ -55,6 +55,10 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .titular h2 em { font-style: normal; color: var(--magenta); }
 .ctx { color: var(--fg-3); font-size: 14px; padding-top: 6px; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+/* con velocidad: los 7 indicadores en una sola línea (en pantallas angostas pasan a 4 y a 2 por fila) */
+.kpis.k7 { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; } .kpis.k7 .kpi { padding: 12px 13px; gap: 6px; }
+.kpis.k7 .l { font-size: 10.5px; letter-spacing: .4px; min-height: 2.6em; } .kpis.k7 .kv { font-size: 28px; } .kpis.k7 .s { font-size: 11.5px; line-height: 1.4; }
+@media (max-width: 1350px) { .kpis.k7 { grid-template-columns: repeat(4, minmax(0, 1fr)); } } @media (max-width: 700px) { .kpis.k7 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kpi { border: 1px solid var(--borde); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
 .kpi .l { font: 700 12px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
 .kpi .kv { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -137,6 +141,20 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .mini { display: inline-flex; align-items: center; gap: 8px; } .mini .p { width: 70px; height: 6px; border-radius: 3px; background: var(--pista); } .mini .p i { display: block; height: 100%; background: var(--magenta); border-radius: 3px; min-width: 2px; }
 .tenue { color: var(--fg-4); } .alerta { color: var(--magenta-txt); font-weight: 700; }
 .nota { font-size: 13px; color: var(--fg-4); margin: 0; }
+/* «Qué pasó con cada 100 instalaciones»: barra 100% apilada por filial / EECC (válidas · cliente bajo el mínimo · solo técnico · pendiente · sin ST) */
+.q100-ley { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--fg-3); }
+.q100-ley i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.q100 { display: grid; grid-template-columns: minmax(130px, 210px) 1fr 70px; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 10px; cursor: pointer; }
+.q100 + .q100 { border-top: 1px solid var(--borde); } .q100:hover, .q100:focus-visible { background: var(--rosa); outline: none; }
+.q100.tot { cursor: default; background: var(--pista); font-weight: 700; } .q100.tot:hover { background: var(--pista); }
+.q100 .nom b { display: block; font-size: 14px; font-weight: 700; line-height: 1.2; } .q100 .nom small { font-size: 12px; color: var(--fg-3); }
+.q100 .bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; background: var(--pista); }
+.q100 .bar span { display: grid; place-items: center; font: 700 11px var(--f-disp); color: #fff; min-width: 0; overflow: hidden; white-space: nowrap; }
+.q100 .pct { text-align: right; font: 800 16px var(--f-disp); color: var(--magenta); font-variant-numeric: tabular-nums; }
+.qv { background: var(--magenta); } .qb { background: var(--rosa-2); color: var(--magenta-txt) !important; } .qt { background: var(--fg-3); } .qp { background: var(--borde-2); color: var(--fg-2) !important; }
+.qs { background: repeating-linear-gradient(45deg, var(--gris-bg), var(--gris-bg) 4px, var(--pista) 4px, var(--pista) 8px); color: var(--fg-3) !important; }
+@media (max-width: 640px) { .q100 { grid-template-columns: 1fr 60px; } .q100 .bar { grid-column: 1 / -1; grid-row: 2; } }
+
 .flot { position: fixed; z-index: 50; background: var(--fg); color: var(--sup); font-size: 13px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; pointer-events: none; max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
 .ejemplo { background: var(--magenta); color: #fff; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 10px; letter-spacing: .5px; }
 .aviso b { font-weight: 700; }
@@ -207,7 +225,15 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   <div id="vista" hidden style="display:flex;flex-direction:column;gap:22px">
   <section class="sec" aria-labelledby="t-tit">
     <div class="titular"><h2 id="t-tit"></h2><span class="ctx" id="ctx"></span></div>
+    <p class="sub" id="t-sub" style="margin-top:-10px"></p>
     <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section class="sec" aria-labelledby="t-q100" id="sec-q100" hidden>
+    <div class="sec-cab"><div><h3 id="t-q100">Qué pasó con cada 100 instalaciones</h3><p class="sub" id="q100-sub"></p></div></div>
+    <div class="q100-ley"><span><i class="qv"></i><b>Válidas</b> · cliente + enlace + mínimo del plan</span><span><i class="qb"></i>Cliente, bajo el mínimo</span><span><i class="qt"></i>Solo equipo del técnico</span><span><i class="qp"></i>Velocidad aún pendiente</span><span><i class="qs"></i>Sin ST registrado</span></div>
+    <div id="g-q100"></div>
+    <p class="nota">Cada instalación cuenta una vez aunque tenga varias pruebas. Válida = tiene al menos una prueba hecha en el equipo del cliente (etiqueta del enlace) que llega al mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps y 1.200 Mbps en planes mayores. La velocidad la lee el robot en speedtest.net. No certificable = la prueba no es de la red Mi Fibra, es de más de 3 días antes o después de la instalación o el enlace no existe.</p>
   </section>
 
   <section class="sec" aria-labelledby="t-evo">
@@ -238,9 +264,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   <section class="sec" aria-labelledby="t-ec">
     <div class="sec-cab"><div><h3 id="t-ec">Desglose por empresa colaboradora</h3><p class="sub">Haz clic en una fila para ver sus técnicos y en un número para ver sus AB.</p></div>
       <div class="pen-acc"><button type="button" class="btn-out" data-xls="tb-ec" data-nom="speedtest-eecc">Descargar Excel</button></div></div>
-    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
+    <div class="scroll"><table id="tb-ec"><thead><tr><th>Empresa colaboradora</th><th>Instal.</th><th>Con medición</th><th>Cobertura</th><th>Válidas</th><th>Pruebas</th><th>Dispositivo del cliente</th><th>Del técnico</th><th>Enlaces repetidos</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
     <p class="nota" id="ec-fil"></p>
-    <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Del cliente = el enlace dice test/prueba cliente (o del cliente, abonado, CL); del técnico = test velocidad técnico, técnico, TEC; sin etiqueta (aunque haya 2 o más enlaces) = del técnico · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba.</p>
+    <p class="nota">Cobertura = instalaciones con al menos una prueba válida ÷ instalaciones · Del cliente = el enlace dice test/prueba cliente (o del cliente, abonado, CL); del técnico = test velocidad técnico, técnico, TEC; sin etiqueta (aunque haya 2 o más enlaces) = del técnico · un enlace repetido (en varios AB o dos veces en el mismo) no cuenta como prueba · Válidas = instalaciones con una prueba del cliente que llega al mínimo del plan (600 Mbps hasta 1.000; 1.200 Mbps en planes mayores).</p>
   </section>
 
   <section class="sec" aria-labelledby="t-det">
@@ -299,7 +325,15 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   // pn = plan contratado tal como viene en la tarifa («500 Mbps», «2000 Mbps»…); si el tablero aún no lo trae, se usa el rango
   const O = D.o.map((x, i) => ({ i, f: D.f[x[0]], d: x[1], e: D.e[x[2]], t: D.k[x[3]], p: x[4], ab: x[5], os: x[6], c: x[7], tn: x[8], s: x[9], r: x[10], pn: D.pn && x[11] != null ? D.pn[x[11]] : PLANES[x[4]] }));
   // Enlaces sin etiqueta (aunque sean 2 o más) cuentan como prueba del técnico: ya no hay «Sin identificar»
-  O.forEach(o => { o.tn += o.s; o.s = 0; o.pr = o.c + o.tn; });
+  O.forEach(o => { o.sid = o.s; o.tn += o.s; o.s = 0; o.pr = o.c + o.tn;
+    // Velocidad de cada prueba (el robot la lee en speedtest.net): [quién C/T/«», bajada, subida, estado v/b/n/p]
+    const P = Array.isArray(D.o[o.i][12]) ? D.o[o.i][12].filter(p => Array.isArray(p) && p.length >= 4) : [], cnt = (f) => P.filter(f).length;
+    o.vel = P.length > 0; o.pv = cnt(p => p[3] === 'v'); o.pbj = cnt(p => p[3] === 'b'); o.pnc = cnt(p => p[3] === 'n'); o.ppe = cnt(p => p[3] === 'p');
+    o.cv = cnt(p => p[0] === 'C' && p[3] === 'v'); o.cpe = cnt(p => p[0] === 'C' && p[3] === 'p');
+    o.bmax = P.reduce((m, p) => p[1] != null && p[1] > m ? p[1] : m, 0);
+    o.k = !o.pr ? 'sin' : !o.c ? 'tec' : o.cv ? 'v' : o.cpe ? 'pe' : 'cb'; });   // grupo de la instalación
+  const HAY_VEL = O.some(o => o.vel);
+  const K_TXT = { v: 'Válida', cb: 'Cliente, bajo el mínimo', tec: 'Solo equipo del técnico', pe: 'Velocidad pendiente', sin: 'Sin ST registrado' };
   const act = D.actualizado ? new Date(D.actualizado) : null;
   $('corte').innerHTML = `Instalaciones del <b>${dmy(O.length ? O.reduce((a, o) => o.d < a ? o.d : a, O[0].d) : '')}</b> al <b>${O.length ? dmy(O.reduce((a, o) => o.d > a ? o.d : a, O[0].d)) : '—'}</b>${act ? ` · actualizado ${act.toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}`;
 
@@ -334,23 +368,37 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) ver(el, el.dataset.tip); });
   document.addEventListener('focusout', () => { flot.hidden = true; });
 
-  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0 }; L.forEach(o => { if (o.pr) a.med++; a.pr += o.pr; a.c += o.c; a.tn += o.tn; a.s += o.s; a.r += o.r; }); return a; };
+  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0, sid: 0, cli: 0, v: 0, cb: 0, tec: 0, pe: 0, sin: 0, pv: 0, pbj: 0, pnc: 0, ppe: 0 };
+    L.forEach(o => { a.sid += o.sid || 0; if (o.c > 0) a.cli++; a[o.k]++; a.pv += o.pv; a.pbj += o.pbj; a.pnc += o.pnc; a.ppe += o.ppe; });
+    L.forEach(o => { if (o.pr) a.med++; a.pr += o.pr; a.c += o.c; a.tn += o.tn; a.s += o.s; a.r += o.r; }); return a; };
   let tab = 'sin', L = [], abiertos = new Set();
 
   function pintar() {
     L = O.filter(o => sel(o));
     const a = sum(L), pCli = a.pr ? a.c / a.pr * 100 : 0, pMed = a.ins ? a.med / a.ins * 100 : 0;
     const quien = F.filial ? `En ${fTxt()}` : `En las ${filiales.length} filiales`;
-    $('t-tit').innerHTML = a.pr ? `${quien}, <em>${pc(pCli)}</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.` : `${quien} no hay pruebas registradas con estos filtros.`;
+    const pVal = a.ins ? a.v / a.ins * 100 : 0, pCliI = a.ins ? a.cli / a.ins * 100 : 0, pMv = a.pv + a.pbj + a.pnc ? a.pv / (a.pv + a.pbj + a.pnc) * 100 : 0;
+    if (HAY_VEL) {   // como el control de provincias: por instalación (cada una cuenta una vez)
+      $('t-tit').innerHTML = a.ins ? `${quien}, de cada 100 instalaciones <em>${Math.round(pVal)}</em> tienen una medición válida.` : `${quien} no hay instalaciones con estos filtros.`;
+      $('t-sub').textContent = a.ins ? `${n(a.v)} de ${n(a.ins)} instalaciones se midieron en el equipo del cliente y llegaron al mínimo del plan · ${pc(pCli)} de las pruebas se hizo en el equipo del cliente; el resto, con el del técnico.${a.pe ? ` · ${n(a.pe)} instalaciones con la velocidad aún por leer.` : ''}` : '';
+    } else {
+      $('t-tit').innerHTML = a.pr ? `${quien}, <em>${pc(pCli)}</em> de las pruebas se hace en el equipo del cliente; el resto, con el del técnico.` : `${quien} no hay pruebas registradas con estos filtros.`;
+      $('t-sub').textContent = '';
+    }
     const per = F.desde || F.hasta ? (F.desde === F.hasta ? dmy(F.desde) : `${F.desde ? dmy(F.desde) : 'inicio'} al ${F.hasta ? dmy(F.hasta) : 'hoy'}`) : F.mes ? mesTxt(F.mes) : meses.length ? `${mesTxt(meses[0])} a ${mesTxt(meses[meses.length - 1]).toLowerCase()}` : '';
     pintarEvo();
     $('ctx').textContent = `${per} · ${fTxt() || 'Todas las filiales'} · ${eset().length ? 'EECC ' + eset().join(' + ') : 'Todas las EECC'}`;
     const nRep = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
+    $('kpis').classList.toggle('k7', HAY_VEL);
     $('kpis').innerHTML = `
       <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span><span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
       <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv"><button type="button" class="nb kvb" data-lista="med|" title="Ver las instalaciones con medición">${pc(pMed)}</button></span><div class="medidor" role="img" aria-label="${pc(pMed)} con medición"><i style="width:${pMed}%"></i></div><span class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> de ${n(a.ins)} instalaciones</span></div>
-      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver los AB con prueba en el dispositivo del cliente">${pc(pCli)}</button></span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, objetivo ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Objetivo ${OBJ_CLI}%"></em></div><span class="s"><b>Objetivo ${OBJ_CLI}%</b> · <button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> del cliente · <button type="button" class="nb" data-lista="g-tec|kpi|">${n(a.tn + a.s)}</button> del equipo del técnico${a.s ? ` (<button type="button" class="nb" data-lista="g-sid|kpi|">${n(a.s)}</button> sin identificar)` : ''}</span></div>
+      ${HAY_VEL ? `<div class="kpi"><span class="l">En equipo del cliente</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver las instalaciones con prueba del cliente">${pc(pCliI)}</button></span><div class="medidor" role="img" aria-label="${pc(pCliI)} con prueba del cliente"><i style="width:${pCliI}%"></i></div><span class="s">${n(a.cli)} de ${n(a.ins)} instalaciones con al menos una prueba en el equipo del cliente</span></div>
+      <div class="kpi"><span class="l">Instalaciones válidas</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-val|kpi|" title="Ver las instalaciones válidas">${pc(pVal)}</button></span><div class="medidor mg" role="img" aria-label="${pc(pVal)} válidas"><i style="width:${pVal}%"></i></div><span class="s"><b>${n(a.v)}</b> · cliente + enlace + mínimo del plan · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> del cliente bajo el mínimo${a.pe ? ` · ${n(a.pe)} con velocidad pendiente` : ''}</span></div>` : ''}
+      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver los AB con prueba en el dispositivo del cliente">${pc(pCli)}</button></span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, objetivo ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Objetivo ${OBJ_CLI}%"></em></div><span class="s"><b>Objetivo ${OBJ_CLI}%</b> · <button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> del cliente · <button type="button" class="nb" data-lista="g-tec|kpi|">${n(a.tn + a.s)}</button> del equipo del técnico${a.sid ? ` (<button type="button" class="nb" data-lista="g-sid|kpi|">${n(a.sid)}</button> sin título)` : ''}</span></div>
+      ${HAY_VEL ? `<div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-pv|kpi|" title="Ver los AB con pruebas válidas para el plan">${pc(pMv)}</button></span><div class="medidor" role="img" aria-label="${pc(pMv)} de las pruebas llegan al mínimo"><i style="width:${pMv}%"></i></div><span class="s">${n(a.pbj + a.pnc)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó el mínimo · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables${a.ppe ? ` · ${n(a.ppe)} pruebas con velocidad pendiente` : ''}</span></div>` : ''}
       <div class="kpi"><span class="l">Enlaces repetidos</span><span class="kv"><button type="button" class="nb kvb" data-ir-rep="1" title="Ver el detalle de los enlaces repetidos">${n(nRep)}</button></span><span class="s"><button type="button" class="nb" data-ir-rep="1">${n(a.r)}</button> veces en <button type="button" class="nb" data-lista="rep|">${n(L.filter(o => o.r).length)} AB</button> · no cuentan como prueba</span></div>`;
+    pintarQ100();
     // Columnas por mes (sin el filtro de mes)
     const LM = O.filter(o => sel(o, 'mes')), porMes = meses.map(m => [m, sum(LM.filter(o => o.d.startsWith(m)))]);
     const max = Math.max(1, ...porMes.map(([, s]) => s.ins)), alto = 190;
@@ -379,15 +427,33 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     // barra del % cliente a escala de la EECC con el % más alto (la más llena = la mejor)
     const maxCli = Math.max(0, ...Object.values(porEc).map(Lx => { const t = sum(Lx); return t.pr ? t.c / t.pr : 0; }));
     filaEc = (nom, s, cls, attrs = '', g = '') => fila(nom, s, cls, attrs, g);
-    const fila = (nom, s, cls, attrs = '', g = '') => `<tr class="${cls}"${attrs}><td>${esc(nom)}</td><td>${nb(s.ins, g, 'g-todo')}</td><td>${nb(s.med, g, 'g-med')}</td><td class="tenue">${pc(s.ins ? s.med / s.ins * 100 : 0)}</td><td>${nb(s.pr, g, 'g-med')}</td>
+    const fila = (nom, s, cls, attrs = '', g = '') => `<tr class="${cls}"${attrs}><td>${esc(nom)}</td><td>${nb(s.ins, g, 'g-todo')}</td><td>${nb(s.med, g, 'g-med')}</td><td class="tenue">${pc(s.ins ? s.med / s.ins * 100 : 0)}</td><td>${HAY_VEL ? `${nb(s.v, g, 'g-val')} <span class="tenue">${pc(s.ins ? s.v / s.ins * 100 : 0)}</span>` : '—'}</td><td>${nb(s.pr, g, 'g-med')}</td>
       <td><span class="mini"><span class="p"><i style="width:${s.pr && maxCli ? Math.min(100, s.c / s.pr / maxCli * 100) : 0}%"></i></span>${s.c ? `<button type="button" class="nb" data-lista="g-cli|${esc(g)}" title="${n(s.c)} de ${n(s.pr)} pruebas en el equipo del cliente">${n(s.c)}</button>` : '0'}<span class="tenue" style="min-width:48px;text-align:right">${pc(s.pr ? s.c / s.pr * 100 : 0)}</span></span></td><td class="tenue">${nb(s.tn + s.s, g, 'g-tec')}</td><td class="${s.r ? 'alerta' : 'tenue'}">${nb(s.r, g, 'g-rep')}</td></tr>`;
     $('tb-ec').tBodies[0].innerHTML = Object.keys(porEc).sort((x, y) => porEc[y].length - porEc[x].length).map(ec => {
       const ab = abiertos.has(ec), s = sum(porEc[ec]);
       let h = fila(ec, s, 'ec', ` tabindex="0" aria-expanded="${ab}" data-ec="${esc(ec)}" data-n="${porEc[ec].length}"`, 'ec|' + ec);
       if (ab) { const porT = {}; porEc[ec].forEach(o => { (porT[o.t] = porT[o.t] || []).push(o); });
         h += Object.keys(porT).sort((x, y) => porT[y].length - porT[x].length).map(t => fila(t, sum(porT[t]), 'tec', '', 'tec|' + ec + '|' + t)).join(''); }
-      return h; }).join('') || '<tr><td colspan="8" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
+      return h; }).join('') || '<tr><td colspan="9" class="vacio">Sin instalaciones con estos filtros.</td></tr>';
     filtrarEc(); pintarRanking(); pintarDetalle();
+  }
+  // ----- Qué pasó con cada 100 instalaciones: por filial (o por EECC con una filial elegida), sin el filtro de filial -----
+  function pintarQ100() {
+    $('sec-q100').hidden = !HAY_VEL; if (!HAY_VEL) return;
+    const porEcF = fset().length === 1, LF = porEcF ? L : O.filter(o => sel(o, 'filial')), clave = (o) => porEcF ? o.e : o.f;
+    const G = {}; LF.forEach(o => { (G[clave(o)] = G[clave(o)] || []).push(o); });
+    const filas = Object.entries(G).map(([k, X]) => [k, sum(X)]).filter(([, s]) => s.ins >= (porEcF ? 2 : 1)).sort((x, y) => y[1].v / y[1].ins - x[1].v / x[1].ins || y[1].ins - x[1].ins);
+    // cada tramo abre sus AB: q|grupo|filial o EECC (vacío = total)
+    let kAct = '';
+    const seg = (cls, v, t, s, g) => v ? `<span class="${cls}" style="width:${v / s.ins * 100}%;cursor:pointer" role="button" tabindex="0" data-lista="q|${g}|${porEcF ? 'ec' : 'fil'}|${esc(kAct)}" title="${t}: ${n(v)} (${pc(v / s.ins * 100)}) · clic para ver los AB">${v / s.ins >= .08 ? Math.round(v / s.ins * 100) : ''}</span>` : '';
+    const fila = (k, s, tot) => { kAct = tot ? '' : k; return `<div class="q100${tot ? ' tot' : ''}"${tot ? '' : ` tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(k)}"`} data-tip="<b>${esc(k)}</b><br>${n(s.ins)} instalaciones<br>${n(s.v)} válidas (${pc(s.v / s.ins * 100)})<br>${n(s.cb)} del cliente bajo el mínimo<br>${n(s.tec)} solo con el equipo del técnico${s.pe ? `<br>${n(s.pe)} con velocidad pendiente` : ''}<br>${n(s.sin)} sin ST registrado">
+      <span class="nom"><b>${esc(k)}</b><small>${n(s.ins)} instalaciones</small></span>
+      <span class="bar">${seg('qv', s.v, 'Válidas', s, 'v')}${seg('qb', s.cb, 'Cliente, bajo el mínimo', s, 'cb')}${seg('qt', s.tec, 'Solo equipo del técnico', s, 'tec')}${seg('qp', s.pe, 'Velocidad pendiente', s, 'pe')}${seg('qs', s.sin, 'Sin ST registrado', s, 'sin')}</span>
+      <span class="pct">${Math.round(s.v / s.ins * 100)}<small style="font-size:11px;color:var(--fg-4);font-weight:600"> /100</small></span></div>`; };
+    const tot = sum(LF);
+    $('t-q100').textContent = porEcF ? `Qué pasó con cada 100 instalaciones · EECC de ${F.filial}` : 'Qué pasó con cada 100 instalaciones · por filial';
+    $('q100-sub').textContent = `${$('ctx').textContent} · ordenado por más válidas · clic en una ${porEcF ? 'EECC' : 'filial'} para ver sus AB con medición.`;
+    $('g-q100').innerHTML = filas.length ? filas.map(([k, s]) => fila(k, s)).join('') + (filas.length > 1 ? fila(porEcF ? `Total ${F.filial}` : 'Total', tot, true) : '') : '<p class="vacio">Sin instalaciones con estos filtros.</p>';
   }
   // ----- Evolución diaria: barras = instalaciones liquidadas del día · línea = % de pruebas hechas en el equipo del cliente -----
   // Periodo: el rango de fechas elegido (si abarca 2 días o más); si no, el mes elegido, el mes del día elegido o el último mes con datos.
@@ -405,10 +471,11 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     evoDias = diasEntre(ini, fin).map(d => [d, sum(porD[d] || [])]);
     const tot = sum(base);
     $('evo-sub').innerHTML = `${dmy(ini)} al ${dmy(fin)} · ${n(tot.ins)} instalaciones · ${n(tot.c)} de ${n(tot.pr)} pruebas en el equipo del cliente (${pc(tot.pr ? tot.c / tot.pr * 100 : 0)}) · clic en un día para ver sus AB.`;
-    const W = Math.max(320, box.clientWidth || 900), mob = W < 640, H = mob ? 240 : 290, ml = 34, mr = 40, mt = 26, mb = 34, cw = W - ml - mr, ch = H - mt - mb, nd = evoDias.length, paso = cw / Math.max(1, nd);
+    const W = Math.max(320, box.clientWidth || 900), mob = W < 640, nd0 = Math.max(1, (evoDias || []).length), rot = (W - 74) / nd0 < 34;   // fecha de cada día: inclinada si no entra derecha
+    const H = (mob ? 240 : 290) + (rot ? 18 : 0), ml = 34, mr = 40, mt = 26, mb = rot ? 52 : 34, cw = W - ml - mr, ch = H - mt - mb, nd = evoDias.length, paso = cw / Math.max(1, nd);
     const maxI = Math.max(1, ...evoDias.map(([, s]) => s.ins)), tic = maxI <= 5 ? 1 : maxI <= 12 ? 2 : maxI <= 30 ? 5 : maxI <= 60 ? 10 : maxI <= 150 ? 25 : 50, topI = Math.ceil(maxI / tic) * tic;
     const yI = v => mt + ch - v / topI * ch, yP = v => mt + ch - v / 100 * ch, xC = k => ml + paso * k + paso / 2, bw = Math.max(3, Math.min(34, paso * .62));
-    const cada = Math.ceil(nd / (mob ? 8 : 16)), etqPct = paso >= (mob ? 30 : 24);
+    const cada = paso >= 13 ? 1 : 2, etqPct = paso >= (mob ? 30 : 24);   // fecha diaria (cada 2 días solo si no hay espacio)
     let g = '';
     for (let v = 0; v <= topI; v += tic) g += `<line class="grid" x1="${ml}" x2="${ml + cw}" y1="${yI(v)}" y2="${yI(v)}"/><text x="${ml - 6}" y="${yI(v) + 4}" text-anchor="end">${n(v)}</text>`;
     [0, 50, 100].forEach(v => { g += `<text x="${ml + cw + 6}" y="${yP(v) + 4}">${v}%</text>`; });
@@ -419,7 +486,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     evoDias.forEach(([, s], k) => { if (s.pr) tramo.push(`${xC(k).toFixed(1)},${yP(s.c / s.pr * 100).toFixed(1)}`); else cerrar(); }); cerrar();
     g += `<path class="ln" d="${camino}"/>`;
     g += evoDias.map(([, s], k) => { if (!s.pr) return ''; const v = s.c / s.pr * 100, x = xC(k), y = yP(v); return `<circle class="pt${v >= OBJ_CLI ? ' ok' : ''}" cx="${x}" cy="${y}" r="${mob ? 3.2 : 4}"/>${etqPct ? `<text class="pv" x="${x}" y="${y - 9}" text-anchor="middle">${Math.round(v)}%</text>` : ''}`; }).join('');
-    g += evoDias.map(([d], k) => k % cada ? '' : `<text x="${xC(k)}" y="${H - mb + 16}" text-anchor="middle">${d.slice(8, 10)}/${d.slice(5, 7)}</text>`).join('');
+    g += evoDias.map(([d], k) => k % cada ? '' : rot ? `<text x="${xC(k)}" y="${H - mb + 12}" text-anchor="end" font-size="10.5" transform="rotate(-55 ${xC(k)} ${H - mb + 12})">${d.slice(8, 10)}/${d.slice(5, 7)}</text>` : `<text x="${xC(k)}" y="${H - mb + 16}" text-anchor="middle">${d.slice(8, 10)}/${d.slice(5, 7)}</text>`).join('');
     g += evoDias.map(([d, s], k) => `<rect class="hit" tabindex="0" role="button" aria-label="${dmy(d)}: ${s.ins} instalaciones" data-lista="dia|${d}" x="${ml + paso * k}" y="${mt - 18}" width="${paso}" height="${ch + 18}" rx="4" data-tip="<b>${DSEM[new Date(d + 'T12:00:00Z').getUTCDay()]} ${dmy(d)}</b><br>${n(s.ins)} instalaciones liquidadas<br>${n(s.med)} con medición · ${n(s.pr)} pruebas<br>${s.pr ? `<b>${n(s.c)}</b> del cliente (${pc(s.c / s.pr * 100)}) · ${n(s.tn + s.s)} del técnico` : 'sin pruebas registradas'}"/>`).join('');
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Evolución diaria de instalaciones y % de pruebas del cliente">${g}</svg>`;
   }
@@ -591,10 +658,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('modal-tit').textContent = tit; $('modal-sub').textContent = `${n(Ls.length)} AB · ${sub}`; $('modal-extra').innerHTML = extraHtml; $('modal-aviso').textContent = '';
     $('modal-cuerpo').innerHTML = '<p class="vacio">Cargando los datos de las OS…</p>'; $('modal').hidden = false; $('modal-cerrar').focus();
     try { await traerExtra(Ls); if (turno !== listaTurno) return; } catch { if (turno !== listaTurno) return; $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudieron traer F. Recep, distrito y estado; se muestra lo que hay.'; }
-    modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Pr. cliente', 'Pr. técnico', 'Repetidos'];
+    modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Pr. cliente', 'Pr. técnico', 'Repetidos', 'Resultado', 'Bajada máx. (Mbps)'];
     FC.modal = {}; ORD.modal = null;
     modalObjs = Ls;
-    modalFilasAll = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', o.pn, o.c, o.tn + o.s, o.r]; });
+    modalFilasAll = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', o.pn, o.c, o.tn + o.s, o.r, HAY_VEL ? K_TXT[o.k] : '—', o.bmax || '—']; });
     pintarModal();
     modalNom = tit.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
@@ -612,7 +679,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('modal-xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
     try { await excel(modalCab, modalFilas, `speedtest-${modalNom}-${hoyTxt()}.xlsx`); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = `Excel descargado con ${n(modalFilas.length)} filas.`; }
     catch { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudo generar el Excel.'; } finally { b.disabled = false; } });
-  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Sin identificar', o => o.s > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
+  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas no certificables', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
   function abrirLista(clave) {
     const [q, ...r] = clave.split('|'), v = r.join('|'), per = $('ctx').textContent;
     if (q === 'url') { const R = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i])), ix]).filter(([, ix]) => ix.length).sort((a, b) => b[2].length - a[2].length), [url, , todo] = R[+v] || []; if (!url) return;
@@ -621,6 +688,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (q === 'ab') { const o = O[+v], urls = D.rep.filter(([, ix]) => ix.includes(o.i)).map(([u]) => u);
       return listaAB(`AB ${o.ab}`, `OS ${o.os} · ${o.e} · sin prueba válida`, [o], urls.length ? `<p class="nota" style="margin-bottom:4px">Enlaces repetidos de este AB (no cuentan como prueba) y dónde más aparecen:</p><ul class="urls">${urls.map(u => { const ix = D.rep.find(([x]) => x === u)[1], otros = [...new Set(ix)].filter(i => i !== o.i), mismo = ix.filter(i => i === o.i).length > 1;
         return `<li><a class="lnk" href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a><div class="rep-en">${mismo ? '<span>2 veces en esta misma OS</span>' : ''}${otros.map(i => `<button type="button" class="nb" data-lista="ab|${i}" title="Ver el AB ${O[i].ab}">AB ${O[i].ab}</button> <small>OS ${O[i].os} · ${dmy(O[i].d)} · ${esc(O[i].f)} · ${esc(O[i].e)} · ${esc(O[i].t)}</small>`).join('<br>')}</div></li>`; }).join('')}</ul>` : '<p class="nota">Este AB no tiene ningún enlace de Speedtest en «Observaciones Tecnico».</p>'); }
+    if (q === 'q') { const [g, tipo, k] = v.split('|'), base = !k ? (fset().length === 1 ? L : O.filter(o => sel(o, 'filial'))) : tipo === 'ec' ? L.filter(o => o.e === k) : O.filter(o => sel(o, 'filial') && o.f === k);
+      return listaAB(`${k || 'Total'} · ${K_TXT[g]}`, per, base.filter(o => o.k === g)); }
     if (q === 'mes') return listaAB(`Instalaciones de ${mesTxt(v)}`, `${fTxt() || 'todas las filiales'}`, O.filter(o => sel(o, 'mes') && o.d.startsWith(v)));
     if (q === 'fil') return listaAB(`${v} · AB con medición`, per, O.filter(o => sel(o, 'filial') && o.f === v && o.pr > 0));
     if (q === 'ec') return listaAB(`${v} · AB con medición`, per, L.filter(o => o.e === v && o.pr > 0));
@@ -637,7 +706,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-lista]'); if (b) { e.stopPropagation(); abrirLista(b.dataset.lista); } }, true);
   document.addEventListener('click', (e) => { if (!e.target.closest('[data-ir-rep]')) return; const b = document.querySelector('.tabs-st [data-tab="rep"]'); b.click(); $('t-det').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista], .hb2[data-lista], .hit[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
+  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista], .hb2[data-lista], .hit[data-lista], .q100[data-lista], .q100 .bar span[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
 
   // ----- Excel -----
   const libs = {};
