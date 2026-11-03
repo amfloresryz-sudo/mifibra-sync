@@ -348,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.excel or args.base or args.parche:
             # Primero la base completa (mes anterior + mes en curso de hace un rato) y después el reporte nuevo:
             # cada orden queda con su versión más reciente.
-            archivos = [*args.base, *args.excel]
+            archivos = [*args.base, *(args.excel or [])]
         else:
             from .descargar import descargar_reportes
 
