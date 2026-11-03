@@ -285,7 +285,30 @@ def main(argv: list[str] | None = None) -> int:
                     help="con --solo-descargar: pide solo el mes en curso (descarga rápida, ~la mitad del tiempo)")
     ap.add_argument("--base", type=Path, nargs="*", default=[],
                     help="reporte(s) completo(s) anteriores: se leen primero y las órdenes de --excel los reemplazan")
+    ap.add_argument("--parche", type=Path, nargs="*", default=[],
+                    help="reportes EXPRÉS (hoy por ejecución + registro de 2 días): se aplican al final; de los que no "
+                         "están en la base solo entran los registrados dentro del periodo")
+    ap.add_argument("--solo-descargar-expres", type=Path,
+                    help="solo descargar los reportes EXPRÉS (chicos, ~2 min) a esta carpeta y terminar")
     args = ap.parse_args(argv)
+
+    if args.solo_descargar_expres:
+        # Robot EXPRÉS: entre las actualizaciones normales trae lo que cambió hoy (lo liquidado hoy por fecha de
+        # ejecución y lo registrado en los últimos 2 días). Si falla, el robot principal sigue igual.
+        from .descargar import descargar_reportes
+
+        hoy = datetime.now(LIMA).date()
+        d = args.solo_descargar_expres
+        d.mkdir(parents=True, exist_ok=True)
+        t0 = time.time()
+        try:
+            descargar_reportes([(d / "ejec.xlsx", hoy, hoy, "TODAS", "ejecucion"),
+                                (d / "reg.xlsx", hoy - timedelta(days=2), hoy, "TODAS", "registro")], espera_max_s=300)
+        except Exception as e:  # noqa: BLE001
+            print(f"ERROR en la descarga exprés: {e}", file=sys.stderr, flush=True)
+            return 1
+        print(f"[tiempo] descarga exprés: {time.time() - t0:.0f} s", flush=True)
+        return 0
 
     if args.solo_descargar:
         # Turno en paralelo: la descarga (lo más lento, ~14 min) corre mientras se procesa el reporte anterior.
@@ -322,10 +345,10 @@ def main(argv: list[str] | None = None) -> int:
     total = 0
     try:
         # ---------------- 1. Descarga (un solo reporte)
-        if args.excel:
+        if args.excel or args.base or args.parche:
             # Primero la base completa (mes anterior + mes en curso de hace un rato) y después el reporte nuevo:
             # cada orden queda con su versión más reciente.
-            archivos = [*args.base, *args.excel]
+            archivos = [*args.base, *(args.excel or [])]
         else:
             from .descargar import descargar_reportes
 
@@ -360,6 +383,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Aviso: no se leyó la observación de asignación: {e}", flush=True)
             for fila in procesar.a_filas(df0, inicio, indice_cajas):
                 filas_por_id[fila["id_os"]] = fila
+        if args.parche:   # exprés: lo más nuevo pisa a la base; nunca entran órdenes de fuera del periodo
+            ini_per = pd.Timestamp(desde).tz_localize(LIMA)
+            nuevas = cambiadas = 0
+            for archivo in args.parche:
+                df0 = procesar.leer_excel(archivo)
+                try:
+                    links_st.update(procesar.speedtest_por_os(df0))
+                    asignacion.update(procesar.asignacion_por_os(df0))
+                except Exception as e:  # noqa: BLE001
+                    print(f"Aviso: exprés sin enlaces/asignación: {e}", flush=True)
+                for fila in procesar.a_filas(df0, inicio, indice_cajas):
+                    k = fila["id_os"]
+                    if k not in filas_por_id:
+                        r = pd.to_datetime(fila.get("fecha_registro"), utc=True, errors="coerce")
+                        if pd.isna(r) or r.tz_convert(LIMA) < ini_per:
+                            continue
+                        nuevas += 1
+                    elif filas_por_id[k].get("estado_os") != fila.get("estado_os"):
+                        cambiadas += 1
+                    filas_por_id[k] = fila
+            print(f"Exprés: {nuevas} órdenes nuevas y {cambiadas} que cambiaron de estado respecto de la base.", flush=True)
         filas = list(filas_por_id.values())
         if not filas:
             raise RuntimeError("El reporte llegó vacío.")
@@ -414,7 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
         print(f"[tiempo] guardado: {time.time() - t_tab:.0f} s · total {time.time() - t_ini:.0f} s", flush=True)
-        subir.registrar_corrida("periodo", total, True, f"ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros",
+        subir.registrar_corrida("periodo", total, True, f"{'exprés · ' if args.parche and not args.excel else ''}ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros",
                                 inicio, _ahora())
         return 0
     except Exception as e:  # noqa: BLE001 - se registra el fallo y el job termina en rojo para que llegue el aviso
