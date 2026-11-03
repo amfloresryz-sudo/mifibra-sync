@@ -199,7 +199,9 @@ jobs:
             done
           }
           procesador & pid_proc=$!
-          expres & pid_exp=$!
+          # EXPRÉS DESACTIVADO: ScordSoft guarda un solo archivo de reporte por usuario; con dos descargas a la vez
+          # (exprés + principal, mismo usuario) una se llevaba el archivo de la otra y el portal recibió datos cruzados.
+          pid_exp=""
           # Comentarios de las EECC («Mis pendientes») → ScordSoft (Agendamiento de Ordenes · ING. VISITA): mira Supabase
           # cada minuto y solo abre ScordSoft cuando hay alguno por escribir. Corre aparte: no frena las descargas.
           ( python -u -m sync.comentarios_scord --vigilar 325 2>&1 | sed -u "s/^/[comentarios] /" ) & pid_com=$!
@@ -232,7 +234,7 @@ jobs:
           # Cierre: se espera la descarga en curso, se procesa lo que quede y termina el procesador.
           [ -n "$pid_desc" ] && { wait "$pid_desc" || true; }
           touch "$COLA/FIN"; wait "$pid_proc" || true
-          kill "$pid_com" "$pid_exp" 2>/dev/null || true
+          kill "$pid_com" ${pid_exp:+"$pid_exp"} 2>/dev/null || true
           [ -e "$COLA/ABORTAR" ] && exit 1
           [ "$errores" -ge 3 ] && exit 1
           exit 0
