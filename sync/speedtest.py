@@ -20,7 +20,7 @@ import re
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
@@ -150,15 +150,20 @@ def _por_portal(lote: list) -> list:
     return [d.get(c) for c in lote]
 
 
-def velocidades(tab: dict, cache: dict, limite: int = 300, segundos: int = 90) -> None:
+def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) -> None:
     """Completa cada prueba del tablero con su velocidad: fila[12] = [[quién, bajada, subida, estado], …] (estado: v/b/n/p).
-    Lee primero lo más reciente; lo ya leído queda en la caché (estado del robot) y no se vuelve a pedir."""
+    Primero el mes en curso (del día más nuevo al más antiguo) y después los meses anteriores; lo ya leído queda en la
+    caché (estado del robot + copia en Supabase) y no se vuelve a pedir."""
     filas = tab.get("o") or []
-    falta = []
-    for f in sorted(filas, key=lambda x: x[1], reverse=True):
+    mes = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-5))).strftime("%Y-%m")
+    falta, vistos, mes_claves = [], set(), set()
+    for f in sorted(filas, key=lambda x: (x[1][:7] == mes, x[1]), reverse=True):
         for clave, _ in (f[12] if len(f) > 12 else []):
-            if clave not in cache and clave not in falta:
+            if clave not in cache and clave not in vistos:
+                vistos.add(clave)
                 falta.append(clave)
+                if f[1][:7] == mes:
+                    mes_claves.add(clave)
     leidos, t0, via = 0, time.time(), "directo"
     if falta:
         with ThreadPoolExecutor(max_workers=8) as ex:
@@ -174,8 +179,9 @@ def velocidades(tab: dict, cache: dict, limite: int = 300, segundos: int = 90) -
                     if v is not None:
                         cache[clave] = v
                         leidos += 1
+        del_mes = sum(1 for c in falta if c not in cache and c in mes_claves)
         print(f"  Speed Test: {leidos} velocidades nuevas leídas de speedtest.net ({'desde el robot' if via == 'directo' else 'vía el portal'}) · "
-              f"{max(0, len(falta) - leidos)} pendientes.", flush=True)
+              f"{max(0, len(falta) - leidos)} pendientes ({del_mes} del mes en curso).", flush=True)
     for f in filas:
         if len(f) <= 12:
             continue

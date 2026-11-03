@@ -484,10 +484,19 @@ def main(argv: list[str] | None = None) -> int:
             _bolsa_inicial(tableros, estado, ahora)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se guardó la bolsa inicial del día: {e}", flush=True)
-        try:   # velocidad de cada prueba de Speed Test (speedtest.net), con caché en el estado del robot
+        try:   # velocidad de cada prueba de Speed Test (speedtest.net): lo leído queda guardado en Supabase y no se pierde
             if "speedtest" in tableros:
                 from . import speedtest as _st
-                _st.velocidades(tableros["speedtest"], estado.setdefault("stv", {}))
+                stv = estado.setdefault("stv", {})
+                turno = os.environ.get("GITHUB_RUN_ID", "local")
+                if estado.get("stv_turno") != turno:   # una vez por turno: se suman las lecturas ya guardadas en Supabase
+                    n0 = len(stv)
+                    for k, v in (subir.leer_tablero("speedtest_vel").get("v") or {}).items():
+                        stv.setdefault(k, v)
+                    estado["stv_turno"] = turno
+                    print(f"  Speed Test: {len(stv) - n0} velocidades recuperadas de Supabase ({len(stv)} en total).", flush=True)
+                _st.velocidades(tableros["speedtest"], stv)
+                tableros["speedtest_vel"] = {"v": stv}   # copia permanente (el portal no la lee; solo el robot)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se leyeron las velocidades de Speed Test: {e}", flush=True)
         try:   # cambios de agenda del día (fecha o franja) respecto de la actualización anterior

@@ -208,6 +208,13 @@ def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str) 
     return n
 
 
+def leer_tablero(clave: str) -> dict:
+    """Datos de un tablero guardado en Supabase ({} si no existe)."""
+    r = _pedir("GET", _url("tableros") + f"?select=datos&clave=eq.{clave}", f"Lectura del tablero {clave}", headers=_cabeceras())
+    d = r.json()
+    return (d[0].get("datos") or {}) if d else {}
+
+
 def registrar_corrida(modo: str, filas: int | None, ok: bool, mensaje: str, inicio: str, fin: str) -> None:
     _pedir("POST", _url("sincronizaciones"), "Registro de corrida",
            json={"modo": modo, "filas": filas, "ok": ok, "mensaje": mensaje[:2000], "inicio": inicio, "fin": fin},
