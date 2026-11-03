@@ -325,7 +325,11 @@ def main(argv: list[str] | None = None) -> int:
             # Si ScordSoft entrega solo LIMA, las demás filiales llegan en archivos extra: van a «partes/<marca>_N.xlsx»
             # y el procesador los junta con el principal.
             carpeta = Path(tempfile.mkdtemp(prefix="scordsoft_"))
-            r = descargar_reportes([(carpeta / "reporte.xlsx", d0, d1, "TODAS", "registro")], espera_max_s=1800)
+            # Por filial (LIMA primero): reportes chicos que ScordSoft arma rápido; si una filial falla, las demás
+            # llegan igual (sin esa filial no se borra nada y sus tableros quedan como estaban).
+            orden = ["LIMA"] + [f for f in FILIALES if f != "LIMA"]
+            r = descargar_reportes([(carpeta / ("reporte.xlsx" if i == 0 else f"f{i}.xlsx"), d0, d1, f, "registro")
+                                    for i, f in enumerate(orden)], espera_max_s=900)
             partes = args.solo_descargar.parent / "partes"
             marca = args.solo_descargar.name.split(".")[0]
             for i, extra in enumerate(r[1:]):
