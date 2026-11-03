@@ -142,16 +142,64 @@ jobs:
                   fi
                   echo "Actualización RÁPIDA: mes en curso nuevo + mes anterior de la completa de las $(TZ=America/Lima date -d "@$(cat "$snap/ts")" +%H:%M)."
                 fi
-                if python -u -m sync.main --excel "$ultimo" $partes ${base_arch:+--base $base_arch} --corte "$corte" 2>&1 | sed -u "s/^/[proceso $h] /"; then fallas=0
+                marca_p=$(basename "${ultimo%.xlsx}"); parche=""
+                # Si ya se aplicó un exprés MÁS NUEVO que este reporte, se vuelve a aplicar: así el portal nunca retrocede.
+                if [ -e "$COLA/ult_exp/marca" ] && [ "$(cat "$COLA/ult_exp/marca")" \> "$marca_p" ]; then
+                  parche=$(ls "$COLA"/ult_exp/*.xlsx 2>/dev/null || true)
+                  [ -n "$parche" ] && echo "Se aplica encima el exprés de las $(TZ=America/Lima date -d "$(cat "$COLA/ult_exp/corte")" +%H:%M) (más nuevo que este reporte)."
+                fi
+                if python -u -m sync.main --excel "$ultimo" $partes ${base_arch:+--base $base_arch} ${parche:+--parche $parche} --corte "$corte" 2>&1 | sed -u "s/^/[proceso $h] /"; then
+                  fallas=0
+                  # Se guarda como base del exprés: la base de la rápida (si la hubo) + este reporte y sus partes.
+                  rm -rf "$COLA/ult"; mkdir -p "$COLA/ult"; mv "$ultimo" $partes "$COLA/ult/"
+                  { for f in $base_arch; do echo "$f"; done; ls "$COLA"/ult/*.xlsx; } > "$COLA/ult/lista"; echo "$marca_p" > "$COLA/ult/marca"
                 else fallas=$((fallas+1)); echo "El procesamiento falló ($fallas seguidas)."; fi
                 echo "::endgroup::"
                 rm -f "$ultimo" "${ultimo%.xlsx}.corte" "${ultimo%.xlsx}.base" $partes
                 [ "$fallas" -ge 3 ] && { echo "3 fallas seguidas al procesar: se corta el turno."; touch "$COLA/ABORTAR"; break; }
               elif [ -e "$COLA/FIN" ]; then break
+              elif exp=$(ls -d "$COLA"/exp/[0-9]*/ 2>/dev/null | sort | tail -1) && [ -n "$exp" ] && [ -e "$COLA/ult/lista" ]; then
+                # EXPRÉS: solo cuando no hay reporte principal esperando, y nunca si la descarga principal ya va
+                # por más de 9 min (estaría por llegar: el exprés no la debe atrasar).
+                exp=${exp%/}; me=$(basename "$exp")
+                for viejo in $(ls -d "$COLA"/exp/[0-9]*/ 2>/dev/null | sort | head -n -1); do rm -rf "$viejo"; done
+                if [ -e "$COLA/descargando" ] && [ $(( $(date +%s) - $(stat -c %Y "$COLA/descargando") )) -gt 540 ]; then sleep 10; continue; fi
+                if [ ! "$me" \> "$(cat "$COLA/ult/marca")" ]; then rm -rf "$exp"; continue; fi   # más viejo que la última principal
+                corte=$(cat "$exp/corte"); h=$(TZ=America/Lima date -d "$corte" +%H:%M)
+                echo "::group::Exprés $(TZ=America/Lima date -d "$corte" '+%d/%m %H:%M') (hora de Lima) · procesando"
+                if python -u -m sync.main --base $(cat "$COLA/ult/lista") --parche "$exp"/*.xlsx --corte "$corte" 2>&1 | sed -u "s/^/[exprés proceso $h] /"; then
+                  rm -rf "$COLA/ult_exp"; mv "$exp" "$COLA/ult_exp"; echo "$me" > "$COLA/ult_exp/marca"
+                else echo "El exprés de las $h no se pudo procesar (el robot principal sigue igual)."; rm -rf "$exp"; fi
+                echo "::endgroup::"
               else sleep 10; fi
             done
           }
+          expres() {   # ROBOT EXPRÉS: cada 5 min (menos en :00, :20 y :40) trae lo de hoy en ~2 min, en otra sesión.
+            # Si falla 2 veces seguidas (o no puede iniciar sesión) se apaga en este turno; el robot principal sigue igual.
+            local fallas=0 log
+            mkdir -p "$COLA/exp"
+            while :; do
+              ahora=$(date +%s); prox=$(( (ahora/300 + 1) * 300 )); [ "$prox" -ge "$fin" ] && break
+              sleep $(( prox - ahora ))
+              [ -e "$COLA/FIN" ] || [ -e "$COLA/ABORTAR" ] && break
+              m=$((10#$(TZ=America/Lima date +%M))); hh=$((10#$(TZ=America/Lima date +%H)))
+              [ $((m % 20)) -eq 0 ] && continue          # esas marcas son del robot principal
+              [ "$hh" -ge 8 ] || continue                 # 8:05 a 23:55
+              [ -e "$COLA/ult/lista" ] || continue        # aún no hay una actualización principal de base
+              marca=$(date +%Y%m%d%H%M%S); corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00); hm=$(TZ=America/Lima date +%H:%M)
+              d="$COLA/exp_tmp/$marca"; mkdir -p "$d"; log="$d.log"
+              if timeout 480 python -u -m sync.main --solo-descargar-expres "$d" > "$log" 2>&1; then
+                sed "s/^/[exprés $hm] /" "$log"; echo "$corte" > "$d/corte"; mv "$d" "$COLA/exp/$marca"; fallas=0
+              else
+                sed "s/^/[exprés $hm] /" "$log"; rm -rf "$d"; fallas=$((fallas+1))
+                if grep -q "iniciar sesión" "$log"; then echo "[exprés] no pudo iniciar sesión: se apaga en este turno para no bloquear la cuenta."; break; fi
+                [ "$fallas" -ge 2 ] && { echo "[exprés] 2 fallas seguidas: se apaga en este turno (el robot principal sigue)."; break; }
+              fi
+              rm -f "$log"
+            done
+          }
           procesador & pid_proc=$!
+          expres & pid_exp=$!
           # Comentarios de las EECC («Mis pendientes») → ScordSoft (Agendamiento de Ordenes · ING. VISITA): mira Supabase
           # cada minuto y solo abre ScordSoft cuando hay alguno por escribir. Corre aparte: no frena las descargas.
           ( python -u -m sync.comentarios_scord --vigilar 325 2>&1 | sed -u "s/^/[comentarios] /" ) & pid_com=$!
@@ -184,7 +232,7 @@ jobs:
           # Cierre: se espera la descarga en curso, se procesa lo que quede y termina el procesador.
           [ -n "$pid_desc" ] && { wait "$pid_desc" || true; }
           touch "$COLA/FIN"; wait "$pid_proc" || true
-          kill "$pid_com" 2>/dev/null || true
+          kill "$pid_com" "$pid_exp" 2>/dev/null || true
           [ -e "$COLA/ABORTAR" ] && exit 1
           [ "$errores" -ge 3 ] && exit 1
           exit 0
