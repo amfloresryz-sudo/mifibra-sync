@@ -3985,10 +3985,20 @@ async function traerAsistencia() {
   asiEn = Date.now(); return ASI;
 }
 const asiNorm = (e) => { const k = String(e || '').toUpperCase().trim(); return String(((AJ && AJ.nombres) || {})[k] || k).toUpperCase().trim(); };
+/* Observados hoy (Ritmo del día): las observadas viven en su propio tablero (/api/observadas), no en el de Instalaciones.
+   El técnico de cada observada es el escrito entre %…% en su comentario (el robot lo toma del último %nombre%) y su EECC la de ese técnico. */
+let OBSH = null, obsHEn = 0, obsHFil = '';
+async function traerObsHoy() {
+  const f = filialSel(); if (OBSH && obsHFil === f && Date.now() - obsHEn < 120e3) return OBSH;
+  try { const r = await fetch('/api/observadas?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); OBSH = r.ok ? ((await r.json()).obs || []) : []; }
+  catch { OBSH = OBSH || []; }
+  obsHEn = Date.now(); obsHFil = f; return OBSH;
+}
+const tecNk = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s*,\s*/g, ', ').replace(/\s+/g, ' ').trim();
 async function pintarRitAsis() {
   const box = $('rit-asis'); if (!box) return;
   if (provTodas()) { box.innerHTML = ''; return; }
-  const A = await traerAsistencia(), hoy = hoyIso(), dH = D.dias, hmA = (iso) => iso ? new Date(iso).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }) : '';
+  const [A, OBS] = await Promise.all([traerAsistencia(), traerObsHoy()]), hoy = hoyIso(), dH = D.dias, hmA = (iso) => iso ? new Date(iso).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }) : '';
   const asis = {}; Object.entries(A.ec || {}).forEach(([e, v]) => { asis[asiNorm(e)] = { ...v, set: new Set((v.tecs || []).map(t => String(t).toUpperCase().trim())) }; });
   // Actividad de hoy por técnico (con los filtros de la cabecera menos la EECC, para el resumen)
   const okSinEc = (x) => msOk(seg, x.seg) && okCn(x) && msOk(zona, x.z);
@@ -4001,13 +4011,14 @@ async function pintarRitAsis() {
   const rf = RF[D.filial || 'LIMA'] || {}, rfDe = (e) => { const k = Object.keys(rf).find(x => asiNorm(x) === e); return k != null ? rf[k] : null; };
   const chip = (tec, cls, txt) => `<span class="ra-chip ${cls}" title="${esc(tec)} · ${esc(txt)}"><b>${esc(tecCorto(tec) || tec)}</b><small>${esc(txt)}</small></span>`;
   const sel = [...ecSel].map(asiNorm);
-  const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy o con un AB iniciado hoy</p></div>
+  const cab = `<div class="sec-cab" style="margin-top:6px"><div><h3 class="ra-h">Asistencia de rutas · hoy</h3><p class="sub">La marca cada EECC en su portal (Mis pendientes) y se borra sola a la medianoche · trabajando = con alta hoy, con un AB iniciado hoy o con una observada hoy (técnico del %nombre% del comentario)</p></div>
     <div class="pen-acc no-img"><button type="button" class="btn-out" data-img="rit-asis" data-nom="asistencia-rutas">Copiar imagen</button></div></div><p class="pen-aviso no-img" id="aviso-rit-asis" role="status" aria-live="polite"></p>`;
   if (sel.length) {
     // Bolsa de cada técnico: todos sus AB pendientes asignados (con los filtros de la cabecera), sus altas de hoy y observados de hoy
     const bolsa = {}; D.pend.filter(okSinEc).forEach(p => { const k = String(p.tec || '').toUpperCase().trim(); if (k) (bolsa[k] || (bolsa[k] = [])).push(p); });
     const altasHoy = {}; D.liq.filter(x => x.d === dH && okSinEc(x)).forEach(x => { const k = String(x.tec || '').toUpperCase().trim(); if (k) (altasHoy[k] || (altasHoy[k] = [])).push(x); });
-    const obsHoy = {}; (D.obs || []).filter(o => o.f === hoy && !o.rc && okSinEc(o)).forEach(o => { const k = String(o.tec || '').toUpperCase().trim(); if (k) (obsHoy[k] || (obsHoy[k] = [])).push(o); });
+    // Observados hoy: fecha de observación = hoy · técnico = el del comentario (%nombre%), comparado sin tildes ni espacios de más
+    const obsHoy = {}; (OBS || []).filter(o => o.f === hoy && !o.rc && okSinEc(o)).forEach(o => { const k = tecNk(o.tec); if (k) (obsHoy[k] || (obsHoy[k] = [])).push(o); });
     // Base inicial congelada (la misma del Avance): foto al iniciar el día sin las AG futuras
     const BIa = baseInicial(hoy), baseTec = {}, baseEc = {};
     BIa.filas.filter(okSinEc).forEach(x => { const e = asiNorm(x.ec || 'POR ASIGNAR'), k = String(x.tec || '').toUpperCase().trim(); baseEc[e] = (baseEc[e] || 0) + 1; if (k) baseTec[k] = (baseTec[k] || 0) + 1; });
@@ -4032,7 +4043,7 @@ async function pintarRitAsis() {
     const finOk = (x) => frSolo(x) && (!raAg.size || raAg.has('fin'));
     const GT = { ab: 0, tec: 0 };
     const filaTec = (k, nombre, grupo, tt) => { const B = (bolsa[k] || []).filter(frOk).sort((a, b) => ORDc[cat(a)] - ORDc[cat(b)] || String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr)));
-      const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const ob = obsHoy[k] || [], [ce, se] = estado(T[k]);
+      const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const ob = obsHoy[tecNk(k)] || []; let [ce, se] = estado(T[k]); if (ob.length && !trabajando(T[k])) se = `${ob.length} observada${ob.length === 1 ? '' : 's'} hoy`;
       const al = (altasHoy[k] || []).filter(finOk).sort((a, b) => String(a.hi).localeCompare(String(b.hi))), ds = al.map(durAlta).filter(v => v != null), pr = prom(ds), bi = baseTec[k] || 0;
       if (tt) { tt.n++; tt.bi += bi; tt.al += al.length; tt.ob += ob.length; tt.b += B.length; tt.ds.push(...ds); ['cur', 'esp', 'ret', 'atr', 'fut', 'sa'].forEach(x => { tt[x] += c[x] || 0; }); }
       const v = (x, cls = '') => `<td${x && cls ? ` class="${cls}"` : ''}>${x || '<span class="cero">·</span>'}</td>`;
@@ -4077,14 +4088,17 @@ async function pintarRitAsis() {
     box.innerHTML = cab + `<div class="ra-segs">${agChips}${frChips}</div>` + ley + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
       const delEc = Object.values(T).filter(o => o.ec === e).map(o => String(o.tec).toUpperCase().trim());
       const deBolsa = Object.keys(bolsa).filter(k => bolsa[k].some(p => asiNorm(p.ec) === e));
-      const sinA = [...new Set([...delEc, ...deBolsa])].filter(k => !(a && a.set.has(k)));
-      const sinTrab = sinA.filter(k => trabajando(T[k])), sinHoy = sinA.filter(k => !trabajando(T[k]) && (bolsa[k] || []).some(p => ['esp', 'ret'].includes(cat(p))));
-      const nom = (k) => (T[k] && T[k].tec) || ((bolsa[k] || [])[0] || {}).tec || k;
-      const enCampo = conA.filter(t => trabajando(T[t])).length, r = rfDe(e);
-      const filtro2 = raFr.size || raAg.size, tieneAlg = (k) => (bolsa[k] || []).some(frOk) || (altasHoy[k] || []).some(finOk);
+      // Técnicos con observadas hoy (técnico y EECC del %nombre% del comentario): también cuentan como trabajando
+      const deObs = Object.values(obsHoy).flat().filter(o => asiNorm(o.ec) === e).map(o => String(o.tec || '').toUpperCase().trim()).filter(Boolean);
+      const obsDe = (k) => obsHoy[tecNk(k)] || [], trab = (k) => trabajando(T[k]) || obsDe(k).length > 0;
+      const sinA = [...new Set([...delEc, ...deBolsa, ...deObs])].filter(k => !(a && [...a.set].some(t => tecNk(t) === tecNk(k))));
+      const sinTrab = sinA.filter(trab), sinHoy = sinA.filter(k => !trab(k) && (bolsa[k] || []).some(p => ['esp', 'ret'].includes(cat(p))));
+      const nom = (k) => (T[k] && T[k].tec) || ((bolsa[k] || [])[0] || {}).tec || (obsDe(k)[0] || {}).tec || k;
+      const enCampo = conA.filter(trab).length, r = rfDe(e);
+      const filtro2 = raFr.size || raAg.size, tieneAlg = (k) => (bolsa[k] || []).some(frOk) || (altasHoy[k] || []).some(finOk) || obsDe(k).length > 0;
       const conAf = filtro2 ? conA.filter(tieneAlg) : conA, sinTrabF = filtro2 ? sinTrab.filter(tieneAlg) : sinTrab, sinHoyF = filtro2 ? sinHoy.filter(tieneAlg) : sinHoy;
       const tt = { n: 0, bi: 0, al: 0, ob: 0, b: 0, ds: [], cur: 0, esp: 0, ret: 0, atr: 0, fut: 0, sa: 0 };
-      const filas = [...conAf.sort((x, y) => (trabajando(T[y]) ? 1 : 0) - (trabajando(T[x]) ? 1 : 0) || (bolsa[y] || []).length - (bolsa[x] || []).length).map(k => filaTec(k, nom(k), 'si', tt)),
+      const filas = [...conAf.sort((x, y) => (trab(y) ? 1 : 0) - (trab(x) ? 1 : 0) || (bolsa[y] || []).length - (bolsa[x] || []).length).map(k => filaTec(k, nom(k), 'si', tt)),
         sinTrabF.length ? `<tr class="ra-sep"><td colspan="${NC}">⚠ Sin asistencia pero trabajando (${sinTrabF.length})</td></tr>` + sinTrabF.map(k => filaTec(k, nom(k), 'x', tt)).join('') : '',
         sinHoyF.length ? `<tr class="ra-sep ra-sep2"><td colspan="${NC}">Sin asistencia con AB para hoy (${sinHoyF.length}) · revisar si salen a campo o reasignar</td></tr>` + sinHoyF.map(k => filaTec(k, nom(k), 'y', tt)).join('') : ''].join('');
       GT.ab += tt.b; GT.tec += tt.n;
