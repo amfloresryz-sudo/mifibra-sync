@@ -276,7 +276,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 </style>
 </head>
 <body>
-<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: catálogo de planos (hoja ZONA de DATOS_TEC, Lima) + planos de las órdenes del periodo · se actualiza con el robot cada 5 minutos</span></div></div>
+<div class="aviso"><div class="w"><span id="corte">Cargando…</span><span>Fuente: catálogo de planos (hoja ZONA de DATOS_TEC, Lima) + planos de las órdenes del periodo · se actualiza con el robot cada 10 minutos</span></div></div>
 
 <header class="cab"><div class="w">
   <a class="marca" href="/#inicio">mifibra<small>OPERACIONES</small></a>
@@ -479,7 +479,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       + X.E.map(e => `<tr><td><b>${esc(e.ec)}</b></td><td><span class="zbs">${zonasB(e)}</span></td><td>${num(e.dis.size)}</td><td>${num(e.pl)}</td><td>${num(e.pen, 'pen-n')}</td><td class="pm">${prom(e.ing)}</td><td class="pm">${prom(e.liq)}</td><td>${e.rut ?? '—'}</td><td>${e.tec ? f1(e.tec) : '—'}</td><td class="${e.asis == null ? '' : e.asis >= .9 ? 'equi' : e.asis >= .75 ? '' : 'falta'}">${pc(e.asis)}</td><td>${f1(e.prod)}</td></tr>`).join('')
       + `</tbody><tfoot><tr><td>Total</td><td></td><td></td><td>${n(T.pl)}</td><td>${n(T.pen)}</td><td class="pm">${prom(T.ing)}</td><td class="pm">${prom(T.liq)}</td><td>${n(T.rut)}</td><td>${f1(T.tec)}</td><td>${pc(X.asisM)}</td><td>${f1(X.prodM)}</td></tr></tfoot>`;
   }
-  // ----- Reasignación de AB del día (Lima, instalaciones): datos del tablero de Instalaciones que el robot actualiza cada 5 min -----
+  // ----- Reasignación de AB del día (Lima, instalaciones): datos del tablero de Instalaciones que el robot actualiza cada 10 min -----
   // AB en riesgo: sin técnico, técnico con más AB de los que alcanza a hacer hoy (capacidad por técnico) o franja vencida sin inicio.
   // A cada uno se le busca el técnico más cercano de OTRA EECC que todavía tenga espacio hoy (por las coordenadas de sus AB del día
   // y de lo que ya liquidó), dentro del radio elegido. Si no hay nadie cerca con espacio, queda como «sin opción cercana».
@@ -551,7 +551,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     if (RA.err || !RA.D) { $('ra-sub').textContent = RA.err || 'Cargando los AB del día…'; return; }
     const X = calcRA(); RA.X = X;
     const act = RA.D.actualizado ? new Date(RA.D.actualizado) : null;
-    $('ra-vivo').innerHTML = `Datos de las <b>${(RA.D.corte || '').slice(11, 16)}</b> · se actualiza solo cada 5 min`;
+    $('ra-vivo').innerHTML = `Datos de las <b>${(RA.D.corte || '').slice(11, 16)}</b> · se actualiza solo cada 10 min`;
     $('ra-sub').innerHTML = `Lima · ${dmy(X.hoy)} · <b>${n(X.P.filter(x => x.fp === X.hoy).length)}</b> AB programados hoy aún pendientes y <b>${n(X.Lq.length)}</b> ya liquidados · técnicos con ruta: <b>${n(new Set([...X.TEC.values()].map(t => t.k)).size)}</b> · se sugiere pasar cada AB en riesgo al técnico más cercano de otra EECC que tenga espacio hoy`;
     // Segmentadores
     const cN = {}, cE = {}; X.riesgo.forEach(r => { cN[r.niv] = (cN[r.niv] || 0) + 1; if (!r.a) cN.X = (cN.X || 0) + 1; const e = r.ec || 'SIN EECC'; cE[e] = (cE[e] || 0) + 1; });

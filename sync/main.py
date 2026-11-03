@@ -56,6 +56,28 @@ def _fin_mes_anterior(hoy: date) -> datetime:
     return datetime.combine(hoy.replace(day=1) - timedelta(days=1), datetime.min.time()).replace(hour=23, minute=59)
 
 
+def _cada_hora(nombre: str, funcion, *a):
+    """Resultado guardado en disco (junto al estado del robot) y reutilizado por 1 hora: los mapas de cajas y de áreas
+    casi no cambian y bajarlos en cada actualización tomaba tiempo. Si la función devuelve None no se guarda."""
+    import pickle
+    ruta = ESTADO.parent / f"cache_{nombre}.pkl"
+    try:
+        if ruta.exists() and time.time() - ruta.stat().st_mtime < 3600:
+            with open(ruta, "rb") as f:
+                return pickle.load(f)
+    except Exception:  # noqa: BLE001 - copia dañada: se vuelve a calcular
+        pass
+    r = funcion(*a)
+    if r is not None:
+        try:
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+            with open(ruta, "wb") as f:
+                pickle.dump(r, f)
+        except Exception:  # noqa: BLE001
+            pass
+    return r
+
+
 def _cols(df: pd.DataFrame, columnas: str, extra: tuple[str, ...] = ()) -> pd.DataFrame:
     """Subconjunto con las columnas que antes se pedían a la base (las que falten se agregan vacías)."""
     nombres = [*extra, *columnas.split(",")]
@@ -261,7 +283,7 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
         print(f"Aviso: no se calculó el tablero de Speed Test: {e}", flush=True)
     try:  # Áreas de los planos (Google My Maps) para el mapa de Ruteo de Pendientes
         from . import areas
-        ar = areas.cargar(actualizado)
+        ar = _cada_hora("areas", areas.cargar, actualizado)
         if ar is not None:
             tableros["areas"] = ar
     except Exception as e:  # noqa: BLE001
@@ -368,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from . import cajas
 
-            indice_cajas = cajas.cargar()
+            indice_cajas = _cada_hora("cajas", cajas.cargar)
             if indice_cajas:
                 print(f"Cajas de planta cargadas: {indice_cajas.n}.", flush=True)
         except Exception as e:  # noqa: BLE001 - sin mapas se conservan las cajas ya guardadas

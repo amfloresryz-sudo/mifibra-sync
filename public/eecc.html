@@ -559,7 +559,7 @@ async function cargar() {
     D = await api('pendientes'); D.vivienda = D.vivienda || {}; if (!asisCambio) cargarAsis();
     $('quien').innerHTML = `<b>${esc(D.eecc)}</b><br>${esc(U.n || U.u || '')}`;
     $('tit').textContent = `Mis pendientes · ${D.eecc}`;
-    $('sub').textContent = `Instalaciones y misceláneos registrados (pendientes) de tu EECC · actualizado ${fHora(D.actualizado)} · se actualiza cada 5 minutos`;
+    $('sub').textContent = `Instalaciones y misceláneos registrados (pendientes) de tu EECC · actualizado ${fHora(D.actualizado)} · se actualiza cada 10 minutos`;
     const dis = [...new Set(D.pend.map(p => p.di).filter(Boolean))].sort();
     $('f-di').innerHTML = '<option value="">Todos los distritos</option>' + dis.map(d => `<option${d === F.di ? ' selected' : ''}>${esc(d)}</option>`).join('');
     const fils = [...new Set(D.pend.map(p => p.filial))].sort();

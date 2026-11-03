@@ -498,15 +498,29 @@ const CACHE = (() => {
 const reciente = (x) => x && x.actualizado && Date.now() - new Date(x.actualizado).getTime() < 36 * 3600e3;
 const MFF = window.MFF, esCombo = (f) => MFF.esCombo(f), filTxt = (f) => esCombo(f) ? MFF.txt(f) : (f || 'LIMA');
 const SOLO_UNA = 'Con varias filiales elegidas no se puede editar: elige una sola filial (o Provincias) para hacer este cambio.';
-async function traer(f = filialSel()) {
+async function traer(f = filialSel(), v = '') {
   // Varias filiales: se trae el tablero de cada una y se juntan (se analiza por filial, como Provincias)
-  if (esCombo(f)) { const j = await MFF.traerVarias(f, x => '/api/averias?filial=' + encodeURIComponent(x), { arrZ: { alta: 1 } }); CACHE.set('averias:' + f, j); return j; }
-  const r = await fetch('/api/averias?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } });
+  if (esCombo(f)) { const j = await MFF.traerVarias(f, x => '/api/averias?filial=' + encodeURIComponent(x) + (v ? '&v=' + encodeURIComponent(v) : ''), { arrZ: { alta: 1 } }); CACHE.set('averias:' + f, j); return j; }
+  const r = await fetch('/api/averias?filial=' + encodeURIComponent(f) + (v ? '&v=' + encodeURIComponent(v) : ''), { headers: { 'x-portal-token': tokenPortal() } });
   if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
   CACHE.set('averias:' + f, j);
   return j;
+}
+/* ¿Hay datos nuevos? Consulta liviana (solo la hora) que se hace cada minuto; el tablero completo se baja solo si cambió. */
+let ultHora = null, ultHoraF = null, vueltasHora = 0;
+async function hayNuevo(api) {
+  const f = filialSel();
+  if (ultHoraF !== f) { ultHora = null; ultHoraF = f; }
+  let h = null;
+  try { const x = esCombo(f) ? MFF.partes(f)[0] : f; const r = await fetch('/api/' + api + '?solo=hora&filial=' + encodeURIComponent(x), { headers: { 'x-portal-token': tokenPortal() } }); if (r.ok) h = (await r.json()).actualizado || null; } catch { /* se usa el plan B */ }
+  let nuevo;
+  if (!h) nuevo = (++vueltasHora % 5 === 0);                       // sin respuesta: el tablero completo cada 5 min, como antes
+  else if (ultHora === null) nuevo = !esCombo(f) && DC && h !== DC.actualizado;
+  else nuevo = h !== ultHora;
+  if (h) ultHora = h;
+  return { nuevo, h };
 }
 let D, frescoP = null;
 const enCache = tokenPortal() ? await CACHE.get('averias:' + filialSel()) : null;
@@ -592,7 +606,7 @@ function prepararDatos() {
   document.getElementById('nom-filial').textContent = esCombo(fil) ? MFF.txt(fil) : fil.charAt(0) + fil.slice(1).toLowerCase();
   document.getElementById('grupo-zona').style.visibility = Object.keys(D.zonas || {}).length && !pt ? 'visible' : 'hidden';
   ZORD.splice(0, ZORD.length, ...(pt ? [...new Set([...Object.values(D.zonas || {}), ...(D.sel || [])])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial  // ocupa su lugar para que Filial no se mueva
-  document.getElementById('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 5 min.`;
+  document.getElementById('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · servicio técnico con lugar RED CLIENTE · TC = motivo “TC…” · se actualiza solo cada 10 min.`;
   aplicarAjCien();
 }
 /* El resultado corregido por el master reemplaza al del robot (k0 guarda lo calculado) */
@@ -1603,8 +1617,8 @@ $('cargando').hidden = true; if (tab === 'panel') { $('v-panel').hidden = false;
 /* Recarga los datos cada 5 minutos sin perder la pestaña ni los filtros. */
 setInterval(async () => {
   if (document.hidden || !$('modal').hidden) return;
-  try { const nuevo = await traer(); if (nuevo.actualizado === DC.actualizado) return; DC = nuevo; repintarPer(); } catch { /* se reintenta en la próxima vuelta */ }
-}, 5 * 60 * 1000);
+  try { const hn = await hayNuevo('averias'); if (!hn.nuevo) return; const nuevo = await traer(filialSel(), hn.h || ''); if (nuevo.actualizado === DC.actualizado) return; DC = nuevo; repintarPer(); } catch { /* se reintenta en la próxima vuelta */ }
+}, 60 * 1000);   // revisa cada minuto (consulta liviana); baja el tablero solo si hay datos nuevos
 const repintar = () => { pintarLiq(); pintarCien(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repintar);
 new MutationObserver(repintar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });

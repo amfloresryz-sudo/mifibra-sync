@@ -1232,15 +1232,30 @@ const MFF = window.MFF;
 const esCombo = (f) => MFF.esCombo(f);
 const filTxt = (f) => esCombo(f) ? MFF.txt(f) : (f || 'LIMA');
 const SOLO_UNA = 'Con varias filiales elegidas no se puede editar: elige una sola filial (o Provincias) para hacer este cambio.';
-async function traer(f = filialSel()) {
+async function traer(f = filialSel(), v = '') {
   // Varias filiales: se trae el tablero de cada una y se juntan (se analiza por filial, como Provincias)
-  if (esCombo(f)) { const j = await MFF.traerVarias(f, x => '/api/instalaciones?filial=' + encodeURIComponent(x), { fiKey: 'fi' }); CACHE.set('instalaciones:' + f, j); return j; }
-  const r = await fetch('/api/instalaciones?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } });
+  if (esCombo(f)) { const j = await MFF.traerVarias(f, x => '/api/instalaciones?filial=' + encodeURIComponent(x) + (v ? '&v=' + encodeURIComponent(v) : ''), { fiKey: 'fi' }); CACHE.set('instalaciones:' + f, j); return j; }
+  // &v=<hora>: cuando se sabe que hay datos nuevos se pide con la hora en la dirección, así el caché del servidor no devuelve lo anterior
+  const r = await fetch('/api/instalaciones?filial=' + encodeURIComponent(f) + (v ? '&v=' + encodeURIComponent(v) : ''), { headers: { 'x-portal-token': tokenPortal() } });
   if (r.status === 401) { location.href = '/'; throw new Error('Sin acceso'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
   CACHE.set('instalaciones:' + f, j);
   return j;
+}
+/* ¿Hay datos nuevos? Consulta liviana (solo la hora) que se hace cada minuto; el tablero completo se baja solo si cambió. */
+let ultHora = null, ultHoraF = null, vueltasHora = 0;
+async function hayNuevo(api) {
+  const f = filialSel();
+  if (ultHoraF !== f) { ultHora = null; ultHoraF = f; }
+  let h = null;
+  try { const x = esCombo(f) ? MFF.partes(f)[0] : f; const r = await fetch('/api/' + api + '?solo=hora&filial=' + encodeURIComponent(x), { headers: { 'x-portal-token': tokenPortal() } }); if (r.ok) h = (await r.json()).actualizado || null; } catch { /* se usa el plan B */ }
+  let nuevo;
+  if (!h) nuevo = (++vueltasHora % 5 === 0);                       // sin respuesta: el tablero completo cada 5 min, como antes
+  else if (ultHora === null) nuevo = !esCombo(f) && DC && h !== DC.actualizado;
+  else nuevo = h !== ultHora;
+  if (h) ultHora = h;
+  return { nuevo, h };
 }
 /* Ajustes que operaciones edita en el portal (metas, nombres de EECC, gestores y rutas del día) */
 const AJ_VACIO = () => ({ metas: {}, metasCn: {}, nombres: {}, gestores: {}, rutas: {}, agendas: {}, tecnicos: {}, eeccs: [], responsables: {} });
@@ -1545,7 +1560,7 @@ function prepararDatos() {
   $('grupo-ec').hidden = provTodas();
   $('grupo-fil').style.gridColumn = fil === 'LIMA' ? '' : '1 / -1';   // con provincias la fila de filiales va a lo ancho   // EECC: Lima o una filial de provincia (en Provincias › Todas se ve por filial)
   ZORD.splice(0, ZORD.length, ...(provTodas() ? [...new Set([...Object.values(D.zonas || {}), ...(D.sel || [])])].sort((a, b) => (b === 'LIMA') - (a === 'LIMA') || a.localeCompare(b)) : ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM']));   // en Provincias la «zona» es la filial
-  $('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 5 min.`;
+  $('estado-datos').textContent = `${filTxt(fil)} · datos de ScordSoft actualizados al ${txt} · INSTALACION SERVICIO del servicio INTERNET (una OS por alta) · se actualiza solo cada 10 min.`;
   const opDias = DIAS.slice().reverse().map(d => `<option value="${d}">${diaInfo(d).wd} ${fDia(d)}</option>`).join('');
   $('co-dia').innerHTML = opDias; $('av-dia').innerHTML = opDias;
   // Pendientes › Agendas del día: siempre los días del mes en curso (no depende del periodo)
@@ -2427,7 +2442,7 @@ function verCambios(os, fi) {
       ${c.por ? `<div class="mo"><i>Nota de la edición en el portal</i>${c.mot ? esc(c.mot) : 'Sin nota.'}</div>`
         : `<div class="mo"><i>Motivo · observación de la asignación en ScordSoft${c.usr ? ` (${esc(c.usr)})` : ''}</i>${c.mot ? esc(c.mot) : 'ScordSoft no registró observación en la asignación.'}</div>
            ${c.obs ? `<div class="mo"><i>Último comentario del técnico (OBS VISITA TÉCNICO)</i>${obsCompleta(c.obs)}</div>` : ''}`}
-    </div>`).join('')}</div><p class="fi-nota">El robot compara la agenda de cada OS en cada actualización (cada 5 min): si cambió la fecha o la franja la marca con ↻ durante el día. Los teléfonos se ocultan.</p>`;
+    </div>`).join('')}</div><p class="fi-nota">El robot compara la agenda de cada OS en cada actualización (cada 10 min): si cambió la fecha o la franja la marca con ↻ durante el día. Los teléfonos se ocultan.</p>`;
   abrirFichaModal(`AB ${x.ab} · cambios de agenda de hoy`, `OS ${x.os} · ${x.ec || '—'} · ${x.tec || 'sin técnico'} · agenda actual: ${x.fp ? fIso(x.fp) : 'sin fecha'} ${x.fr || ''}`, html);
 }
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-cfr]'); if (b) { e.stopPropagation(); verCambios(b.dataset.cfr, b.dataset.fi); } }, true);
@@ -4183,8 +4198,8 @@ $('filial').addEventListener('change', async (e) => {
 setInterval(async () => {
   if (document.hidden || !$('modal').hidden) return;
   if (document.activeElement && document.activeElement.matches('.in-ruta')) return;
-  try { const antesAj = JSON.stringify(AJ); await traerAjustes(D.filial || filialSel()); const nuevo = await traer(); if (nuevo.actualizado === DC.actualizado) { if (JSON.stringify(AJ) !== antesAj) { aplicarAjustes(); pintarFiltros(); pintarTodo(); } return; } const dc = diaCo, da = diaAv; DC = nuevo; vistaPeriodo(); prepararDatos(); pintarPer(); diaCo = Math.min(dc, D.dias); diaAv = Math.min(da, D.dias); pintarFiltros(); pintarTodo(); } catch { /* reintenta luego */ }
-}, 5 * 60 * 1000);
+  try { const antesAj = JSON.stringify(AJ); await traerAjustes(D.filial || filialSel()); const hn = await hayNuevo('instalaciones'); const nuevo = hn.nuevo ? await traer(filialSel(), hn.h || '') : DC; if (nuevo.actualizado === DC.actualizado) { if (JSON.stringify(AJ) !== antesAj) { aplicarAjustes(); pintarFiltros(); pintarTodo(); } return; } const dc = diaCo, da = diaAv; DC = nuevo; vistaPeriodo(); prepararDatos(); pintarPer(); diaCo = Math.min(dc, D.dias); diaAv = Math.min(da, D.dias); pintarFiltros(); pintarTodo(); } catch { /* reintenta luego */ }
+}, 60 * 1000);   // revisa cada minuto (consulta liviana); baja el tablero solo si hay datos nuevos
 // Cambios de agendas y ajustes hechos por otros: se reflejan en línea (revisión cada 20 s).
 setInterval(async () => {
   if (document.hidden || !$('modal').hidden) return;

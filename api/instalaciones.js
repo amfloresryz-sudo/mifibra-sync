@@ -8,8 +8,14 @@ module.exports = async (req, res) => {
   const filial = filialDe(req);
   try {
     // ?mes=AAAA-MM: tablero de un mes cerrado (el robot guarda el mes anterior); sin mes = mes en curso.
-    const mes = new URL(req.url, 'http://x').searchParams.get('mes') || '';
+    const sp = new URL(req.url, 'http://x').searchParams;
+    const mes = sp.get('mes') || '';
     const clave = 'instalaciones:' + filial + (/^\d{4}-\d{2}$/.test(mes) ? ':' + mes : '');
+    // ?solo=hora: solo la hora de los datos (consulta liviana que el portal hace cada minuto para saber si hay algo nuevo)
+    if (sp.get('solo') === 'hora') {
+      const { datos } = await consultar(`tableros?select=actualizado&clave=eq.${encodeURIComponent(clave)}`);
+      return responder(res, 200, { actualizado: datos[0]?.actualizado || null }, 10);
+    }
     const { datos } = await consultar(`tableros?select=datos,actualizado&clave=eq.${encodeURIComponent(clave)}`);
     if (!datos.length) return responder(res, 404, { error: `Aún no hay datos de instalaciones para la filial ${filial}.` });
     responder(res, 200, { ...datos[0].datos, filial, actualizado: datos[0].actualizado }, 60);
