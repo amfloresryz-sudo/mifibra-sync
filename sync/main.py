@@ -456,6 +456,12 @@ def main(argv: list[str] | None = None) -> int:
             _bolsa_inicial(tableros, estado, ahora)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se guardó la bolsa inicial del día: {e}", flush=True)
+        try:   # velocidad de cada prueba de Speed Test (speedtest.net), con caché en el estado del robot
+            if "speedtest" in tableros:
+                from . import speedtest as _st
+                _st.velocidades(tableros["speedtest"], estado.setdefault("stv", {}))
+        except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
+            print(f"Aviso: no se leyeron las velocidades de Speed Test: {e}", flush=True)
         try:   # cambios de agenda del día (fecha o franja) respecto de la actualización anterior
             _cambios_agenda(tableros, estado, ahora, asignacion)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
