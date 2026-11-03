@@ -7,11 +7,21 @@ from sync.procesar import leer
 
 hoy = datetime.now(timezone(timedelta(hours=-5))).date()
 info = {"inicio": datetime.now(timezone.utc).isoformat(), "pruebas": []}
-pedidos = [(Path("x/ejec_hoy.xlsx"), hoy, hoy, "TODAS", "ejecucion"),
-           (Path("x/reg_2d.xlsx"), hoy - timedelta(days=2), hoy, "TODAS", "registro")]
+ini_mes = hoy.replace(day=1); ini_ant = (ini_mes - timedelta(days=1)).replace(day=1)
+import calendar; fin_mes = hoy.replace(day=calendar.monthrange(hoy.year, hoy.month)[1])
+pedidos = [(Path("x/rapida.xlsx"), ini_mes, fin_mes, "TODAS", "registro"),
+           (Path("x/completa.xlsx"), ini_ant, fin_mes, "TODAS", "registro")]
 t0 = time.time()
 try:
-    rutas = descargar_reportes(pedidos, espera_max_s=600)
+    import sync.descargar as dd
+    rutas = []
+    for ped in pedidos:
+        t1 = time.time()
+        try:
+            rutas += dd.descargar_reportes([ped], espera_max_s=1500)
+            info.setdefault("t", {})[ped[0].name] = round(time.time() - t1)
+        except Exception as e:
+            info.setdefault("t", {})[ped[0].name] = f"FALLO en {round(time.time()-t1)} s: {e}"[:300]
     info["total_s"] = round(time.time() - t0)
 except Exception as e:
     info["error"] = f"{type(e).__name__}: {e}"[:400]; rutas = []
@@ -19,10 +29,7 @@ for r in rutas:
     d = {"archivo": r.name, "kb": r.stat().st_size // 1024}
     try:
         df = leer(r, header=5)
-        d["filas"] = len(df); d["cols"] = [str(c) for c in df.columns][:80]
-        for c in df.columns:
-            if "estado" in str(c).lower() or "tipo" in str(c).lower():
-                d.setdefault("vc", {})[str(c)] = {str(k): int(v) for k, v in df[c].astype(str).value_counts().head(15).items()}
+        d["filas"] = len(df)
     except Exception as e:
         d["err_leer"] = str(e)[:200]
     info["pruebas"].append(d)
