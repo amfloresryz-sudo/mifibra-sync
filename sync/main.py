@@ -56,6 +56,17 @@ def _fin_mes_anterior(hoy: date) -> datetime:
     return datetime.combine(hoy.replace(day=1) - timedelta(days=1), datetime.min.time()).replace(hour=23, minute=59)
 
 
+def _tiempos(corte: str | None, t_ini: float, t_proc: float, t_tab: float) -> str:
+    """Cuánto tomó cada parte de la actualización (queda en el registro de sincronizaciones para medir y mejorar)."""
+    try:
+        espera = t_ini - datetime.fromisoformat(corte).timestamp() if corte else 0
+    except Exception:  # noqa: BLE001
+        espera = 0
+    ahora = time.time()
+    return (f"t: descarga+cola {espera:.0f}s, lectura {t_proc - t_ini:.0f}s, tableros {t_tab - t_proc:.0f}s, "
+            f"guardado {ahora - t_tab:.0f}s")
+
+
 def _filas_base(archivo: Path, df0: pd.DataFrame, inicio: str, cajas) -> list[dict]:
     """Filas ya limpias de un reporte de la BASE (la última completa), guardadas al lado: la base se reutiliza en cada
     rápida y limpiarla de nuevo tomaba ~1 min. Se rehace si cambió el índice de cajas."""
@@ -555,7 +566,7 @@ def main(argv: list[str] | None = None) -> int:
         subir.guardar_estado(ESTADO, estado)
         print(f"{n_tab} de {len(tableros)} tableros cambiaron y se guardaron.", flush=True)
         print(f"[tiempo] guardado: {time.time() - t_tab:.0f} s · total {time.time() - t_ini:.0f} s", flush=True)
-        subir.registrar_corrida("periodo", total, True, f"{'exprés · ' if args.parche and not args.excel else ''}{'SIN MES ANTERIOR · ' if ant_incompleto else ''}ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros",
+        subir.registrar_corrida("periodo", total, True, f"{'exprés · ' if args.parche and not args.excel else ''}{'SIN MES ANTERIOR · ' if ant_incompleto else ''}ok · {len(filas)} en reporte · {borradas} borradas · {n_tab} tableros · {_tiempos(args.corte, t_ini, t_proc, t_tab)}",
                                 inicio, _ahora())
         return 0
     except Exception as e:  # noqa: BLE001 - se registra el fallo y el job termina en rojo para que llegue el aviso
