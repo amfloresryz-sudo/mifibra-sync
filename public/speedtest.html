@@ -59,6 +59,27 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .kpis.k7 { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; } .kpis.k7 .kpi { padding: 12px 13px; gap: 6px; }
 .kpis.k7 .l { font-size: 10.5px; letter-spacing: .4px; min-height: 2.6em; } .kpis.k7 .kv { font-size: 28px; } .kpis.k7 .s { font-size: 11.5px; line-height: 1.4; }
 @media (max-width: 1350px) { .kpis.k7 { grid-template-columns: repeat(4, minmax(0, 1fr)); } } @media (max-width: 700px) { .kpis.k7 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.k4 { display: grid; grid-template-columns: 1.55fr repeat(6, minmax(0, 1fr)); gap: 10px; } .k4[hidden], .kpis[hidden] { display: none; }
+@media (max-width: 1250px) { .k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } .k4c.hero { grid-column: span 2; } } @media (max-width: 640px) { .k4 { grid-template-columns: 1fr; } .k4c.hero { grid-column: auto; } }
+.k4c { border: 1px solid var(--borde); border-radius: 14px; padding: 13px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--sup); min-width: 0; }
+.k4c .t { font-size: 13px; font-weight: 600; color: var(--fg-2); line-height: 1.25; } .k4c.hero .t { font-weight: 800; color: var(--fg); }
+.k4c .k4h { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; min-height: 3.8em; }
+.k4c .chip-d { background: var(--gris-bg, #F1F2F4); color: var(--fg-2); font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.k4c .big2 { font-size: 28px; font-weight: 800; color: var(--fg); text-decoration: none; text-align: left; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.k4c .big2.mg { color: var(--magenta); } .k4c .s { font-size: 11.5px; color: var(--fg-3); line-height: 1.45; margin: 0; }
+.k4c .estado { align-self: flex-start; font-size: 12.5px; font-weight: 700; padding: 4px 12px; border-radius: 999px; } .k4c .estado.no { background: var(--rosa-2); color: var(--magenta-txt); } .k4c .estado.ok { background: var(--ok-bg); color: var(--ok); }
+.k4c .fila { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.k4c .big { font-size: 38px; font-weight: 800; color: var(--magenta); text-decoration: none; line-height: 1; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.k4c .vs { display: flex; flex-direction: column; } .k4c .vs b { font-size: 14px; color: var(--fg); } .k4c .vs span { font-size: 11.5px; color: var(--fg-3); }
+.k4c .regla { padding: 10px 4px 0; } .k4c .pista { position: relative; height: 8px; border-radius: 4px; background: var(--pista); }
+.k4c .pista i { position: absolute; top: 0; height: 100%; background: var(--magenta); border-radius: 4px; } .k4c .pista em { position: absolute; top: -6px; width: 3px; height: 20px; margin-left: -1px; background: var(--fg); border-radius: 2px; }
+.k4c .pista b { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--magenta); border: 2px solid var(--sup); box-shadow: 0 0 0 1px var(--magenta); }
+.k4c .esc { position: relative; display: block; height: 18px; margin-top: 8px; font-size: 11.5px; color: var(--fg-4); } .k4c .esc i { position: absolute; font-style: normal; } .k4c .esc i:first-child { left: 0; } .k4c .esc i:last-child { right: 0; } .k4c .esc i:nth-child(2) { transform: translateX(-50%); } .k4c .esc b { color: var(--fg); }
+.chispa { margin-top: auto; padding-top: 8px; } .chispa .u { display: block; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--fg-4); margin-bottom: 4px; }
+.chispa svg { width: 100%; height: 46px; display: block; } .chispa .l { fill: none; stroke: var(--fg-4); stroke-width: 2; vector-effect: non-scaling-stroke; } .chispa .a { fill: var(--pista); opacity: .7; }
+.chispa .m { stroke: var(--fg-2); stroke-width: 1.5; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; } .chispa .p { fill: var(--magenta); stroke: var(--sup); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.chispa .x { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--fg-4); } .chispa .x i { font-style: normal; }
+.kpis.k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 700px) { .kpis.k3 { grid-template-columns: 1fr; } }
 .kpi { border: 1px solid var(--borde); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
 .kpi .l { font: 700 12px var(--f-disp); text-transform: uppercase; letter-spacing: .6px; color: var(--fg-3); }
 .kpi .kv { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -235,6 +256,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   <section class="sec" aria-labelledby="t-tit">
     <div class="titular"><h2 id="t-tit"></h2><span class="ctx" id="ctx"></span></div>
     <p class="sub" id="t-sub" style="margin-top:-10px"></p>
+    <div class="k4" id="k4" hidden></div>
     <div class="kpis" id="kpis"></div>
   </section>
 
@@ -385,6 +407,51 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     L.forEach(o => { if (o.pr) a.med++; a.pr += o.pr; a.c += o.c; a.tn += o.tn; a.s += o.s; a.r += o.r; }); return a; };
   let tab = 'sin', L = [], abiertos = new Set();
 
+  // Tarjetas del control: Pruebas en el equipo del cliente · Instalaciones del mes · Con medición · Mediciones válidas
+  function chispa(vals, labels, meta) {   // mini gráfico de los últimos meses (último punto en fucsia; meta punteada)
+    const W = 260, H = 64, pad = 6, v = vals.map(x => x == null ? null : x), ok = v.filter(x => x != null);
+    if (ok.length < 1) return '';
+    let lo = Math.min(...ok, meta ?? Infinity), hi = Math.max(...ok, meta ?? -Infinity); if (hi - lo < 1) { hi += 1; lo -= 1; }
+    const X = (i) => v.length === 1 ? W / 2 : pad + i * (W - 2 * pad) / (v.length - 1), Y = (x) => H - pad - (x - lo) / (hi - lo) * (H - 2 * pad);
+    const pts = v.map((x, i) => x == null ? null : [X(i), Y(x)]).filter(Boolean), last = pts[pts.length - 1];
+    return `<div class="chispa"><span class="u">Últimos ${labels.length} ${labels.length === 1 ? 'mes' : 'meses'}</span><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+      ${meta != null ? `<line x1="0" x2="${W}" y1="${Y(meta)}" y2="${Y(meta)}" class="m"/>` : ''}
+      ${pts.length > 1 ? `<polygon class="a" points="${pts[0][0]},${H} ${pts.map(p => p.join(',')).join(' ')} ${last[0]},${H}"/><polyline class="l" points="${pts.map(p => p.join(',')).join(' ')}"/>` : ''}
+      <circle cx="${last[0]}" cy="${last[1]}" r="4" class="p"/></svg><span class="x"><i>${labels[0]}</i><i>${labels[labels.length - 1]}</i></span></div>`;
+  }
+  function pintarK4(a, b, mAntTxt, pMed, pCli, pMv, pCliI, pVal, nRep, nRepAb) {
+    const fin = F.mes || (F.hasta || '').slice(0, 7) || meses[meses.length - 1] || '', ult = meses.filter(m => m <= fin).slice(-5);
+    const LM = O.filter(o => sel(o, 'mes') && sel(o, 'fecha')), S = ult.map(m => sum(LM.filter(o => o.d.startsWith(m))));
+    const lab = ult.map(m => MESES[+m.slice(5, 7) - 1].slice(0, 3)), pp = (x) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(1).replace('.', ',')} pp`;
+    const ant = (f) => b ? f(b) : null, chip = (t, cls = '') => `<span class="chip-d ${cls}">${t}</span>`;
+    const dMed = ant(x => x.ins ? x.med / x.ins * 100 : null), dCli = ant(x => x.pr ? x.c / x.pr * 100 : null), dMv = ant(x => x.pv + x.pbj + x.pnc ? x.pv / (x.pv + x.pbj + x.pnc) * 100 : null);
+    const enMeta = pCli >= OBJ_CLI, nv = a.pbj + a.pnc;
+    const titMes = F.mes && !F.desde && !F.hasta ? `Instalaciones de ${MESES[+F.mes.slice(5, 7) - 1]}` : 'Instalaciones del periodo';
+    $('k4').innerHTML = `
+      <div class="k4c hero"><span class="t">Pruebas en el equipo del cliente</span><span class="estado ${enMeta ? 'ok' : 'no'}">${enMeta ? 'En meta' : 'Fuera de meta'}</span>
+        <div class="fila"><button type="button" class="nb big" data-lista="g-cli|kpi|" title="Ver los AB con prueba del cliente">${pc(pCli)}</button>
+          <div class="vs"><b>${a.pr ? pp(pCli - OBJ_CLI) : '—'}</b><span>vs meta</span></div>${dCli != null ? `<div class="vs"><b>${pp(pCli - dCli)}</b><span>vs ${mAntTxt}</span></div>` : ''}</div>
+        <div class="regla"><div class="pista"><i style="left:${Math.min(pCli, OBJ_CLI)}%;width:${Math.abs(OBJ_CLI - pCli)}%"></i><em style="left:${OBJ_CLI}%"></em><b style="left:${pCli}%"></b></div><span class="esc"><i>0</i><i style="left:${OBJ_CLI}%"><b>meta ${OBJ_CLI}%</b></i><i>100</i></span></div>
+        <p class="s"><button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> de ${n(a.pr)} pruebas se hicieron con el equipo del cliente.</p></div>
+      <div class="k4c"><div class="k4h"><span class="t">${titMes}</span>${b ? chip(`${a.ins - b.ins >= 0 ? '+' : '−'}${n(Math.abs(a.ins - b.ins))}`) : ''}</div>
+        <button type="button" class="nb big2" data-lista="todo|">${n(a.ins)}</button>
+        <p class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> con medición · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medir</p>${chispa(S.map(x => x.ins), lab)}</div>
+      <div class="k4c"><div class="k4h"><span class="t">Instalaciones con medición</span>${dMed != null ? chip(pp(pMed - dMed)) : ''}</div>
+        <button type="button" class="nb big2" data-lista="med|">${pc(pMed)}</button>
+        <p class="s">${n(a.med)} de ${n(a.ins)} · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> pendientes de medir · meta ${OBJ_MED}%</p>${chispa(S.map(x => x.ins ? x.med / x.ins * 100 : null), lab, OBJ_MED)}</div>
+      <div class="k4c"><div class="k4h"><span class="t">Mediciones válidas para el plan</span>${dMv != null ? chip(pp(pMv - dMv)) : ''}</div>
+        <button type="button" class="nb big2" data-lista="g-pv|kpi|">${pc(pMv)}</button>
+        <p class="s">${n(nv)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables · <span title="Necesita la velocidad del enlace del equipo (dato de Ookla, no público)">s/d por equipo</span>${a.ppe ? ` · ${n(a.ppe)} pendientes` : ''}</p>${chispa(S.map(x => x.pv + x.pbj + x.pnc ? x.pv / (x.pv + x.pbj + x.pnc) * 100 : null), lab, 100)}</div>
+      <div class="k4c"><div class="k4h"><span class="t">En equipo del cliente</span>${b && b.ins ? chip(pp(pCliI - b.cli / b.ins * 100)) : ''}</div>
+        <button type="button" class="nb big2" data-lista="g-cli|kpi|">${pc(pCliI)}</button>
+        <p class="s">${n(a.cli)} de ${n(a.ins)} instalaciones con al menos una prueba del cliente</p>${chispa(S.map(x => x.ins ? x.cli / x.ins * 100 : null), lab)}</div>
+      <div class="k4c"><div class="k4h"><span class="t">Instalaciones válidas</span>${b && b.ins ? chip(pp(pVal - b.v / b.ins * 100)) : ''}</div>
+        <button type="button" class="nb big2 mg" data-lista="g-val|kpi|">${pc(pVal)}</button>
+        <p class="s"><b>${n(a.v)}</b> cliente + mínimo del plan · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> del cliente bajo el mínimo</p>${chispa(S.map(x => x.ins ? x.v / x.ins * 100 : null), lab)}</div>
+      <div class="k4c"><div class="k4h"><span class="t">Enlaces repetidos</span></div>
+        <button type="button" class="nb big2" data-ir-rep="1">${n(nRep)}</button>
+        <p class="s"><button type="button" class="nb" data-ir-rep="1">${n(a.r)}</button> veces en <button type="button" class="nb" data-lista="rep|">${n(nRepAb)} AB</button> · no cuentan como prueba</p></div>`;
+  }
   function pintar() {
     L = O.filter(o => sel(o));
     const a = sum(L), pCli = a.pr ? a.c / a.pr * 100 : 0, pMed = a.ins ? a.med / a.ins * 100 : 0;
@@ -410,14 +477,16 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const dnum = (v, ant) => { if (!b) return ''; const d = v - ant; return `<span class="dl ${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '+' : '−'}${n(Math.abs(d))} vs ${mAntTxt}</span>`; };
     const pct = (x, y) => y ? x / y * 100 : null;
     const vsMeta = (v, meta) => `<span class="dl ${v >= meta ? 'up' : 'dn'}">${v >= meta ? '+' : '−'}${Math.abs(v - meta).toFixed(1).replace('.', ',')} pp vs meta</span>`;
-    $('kpis').classList.toggle('k7', HAY_VEL);
-    $('kpis').innerHTML = `
+    // Los 4 indicadores del Control Operativo SpeedTest (como su tablero): arriba, con meta, vs mes anterior y últimos 5 meses
+    $('k4').hidden = !HAY_VEL; if (HAY_VEL) pintarK4(a, b, mAntTxt, pMed, pCli, pMv, pCliI, pVal, nRep, L.filter(o => o.r).length);
+    $('kpis').hidden = HAY_VEL;   // con velocidad, todo va en la fila de tarjetas (#k4)
+    $('kpis').innerHTML = (HAY_VEL ? '' : `
       <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span>${b ? `<span class="dls">${dnum(a.ins, b.ins)}</span>` : ''}<span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
-      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv"><button type="button" class="nb kvb" data-lista="med|" title="Ver las instalaciones con medición">${pc(pMed)}</button></span><span class="dls">${dpp(pMed, x => pct(x.med, x.ins))}</span><div class="medidor obj" role="img" aria-label="${pc(pMed)} con medición, meta ${OBJ_MED}%"><i style="width:${pMed}%"></i><em style="left:calc(${OBJ_MED}% - 2px)" title="Meta ${OBJ_MED}%"></em></div><span class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> de ${n(a.ins)} instalaciones · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medir · <b>meta ${OBJ_MED}%</b></span></div>
+      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv"><button type="button" class="nb kvb" data-lista="med|" title="Ver las instalaciones con medición">${pc(pMed)}</button></span><span class="dls">${dpp(pMed, x => pct(x.med, x.ins))}</span><div class="medidor obj" role="img" aria-label="${pc(pMed)} con medición, meta ${OBJ_MED}%"><i style="width:${pMed}%"></i><em style="left:calc(${OBJ_MED}% - 2px)" title="Meta ${OBJ_MED}%"></em></div><span class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> de ${n(a.ins)} instalaciones · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medir · <b>meta ${OBJ_MED}%</b></span></div>`) + `
       ${HAY_VEL ? `<div class="kpi"><span class="l">En equipo del cliente</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver las instalaciones con prueba del cliente">${pc(pCliI)}</button></span><span class="dls">${dpp(pCliI, x => pct(x.cli, x.ins))}</span><div class="medidor" role="img" aria-label="${pc(pCliI)} con prueba del cliente"><i style="width:${pCliI}%"></i></div><span class="s">${n(a.cli)} de ${n(a.ins)} instalaciones con al menos una prueba en el equipo del cliente</span></div>
       <div class="kpi"><span class="l">Instalaciones válidas</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-val|kpi|" title="Ver las instalaciones válidas">${pc(pVal)}</button></span><span class="dls">${dpp(pVal, x => pct(x.v, x.ins))}</span><div class="medidor mg" role="img" aria-label="${pc(pVal)} válidas"><i style="width:${pVal}%"></i></div><span class="s"><b>${n(a.v)}</b> · cliente + enlace + mínimo del plan · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> del cliente bajo el mínimo${a.pe ? ` · ${n(a.pe)} con velocidad pendiente` : ''}</span></div>` : ''}
-      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver los AB con prueba en el dispositivo del cliente">${pc(pCli)}</button></span><span class="dls">${a.pr ? vsMeta(pCli, OBJ_CLI) : ''}${dpp(pCli, x => pct(x.c, x.pr))}</span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, meta ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Meta ${OBJ_CLI}%"></em></div><span class="s"><b>Meta ${OBJ_CLI}%</b> · <button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> del cliente · <button type="button" class="nb" data-lista="g-tec|kpi|">${n(a.tn + a.s)}</button> del equipo del técnico${a.sid ? ` (<button type="button" class="nb" data-lista="g-sid|kpi|">${n(a.sid)}</button> sin título)` : ''}</span></div>
-      ${HAY_VEL ? `<div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-pv|kpi|" title="Ver los AB con pruebas válidas para el plan">${pc(pMv)}</button></span><span class="dls">${dpp(pMv, x => pct(x.pv, x.pv + x.pbj + x.pnc))}</span><div class="medidor" role="img" aria-label="${pc(pMv)} de las pruebas llegan al mínimo"><i style="width:${pMv}%"></i></div><span class="s">${n(a.pbj + a.pnc)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó el mínimo · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables (cliente bajo el mínimo, otra red o sin velocidad)${a.ppe ? ` · ${n(a.ppe)} pruebas con velocidad pendiente` : ''}</span></div>` : ''}
+      ` + (HAY_VEL ? '' : `<div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver los AB con prueba en el dispositivo del cliente">${pc(pCli)}</button></span><span class="dls">${a.pr ? vsMeta(pCli, OBJ_CLI) : ''}${dpp(pCli, x => pct(x.c, x.pr))}</span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, meta ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Meta ${OBJ_CLI}%"></em></div><span class="s"><b>Meta ${OBJ_CLI}%</b> · <button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> del cliente · <button type="button" class="nb" data-lista="g-tec|kpi|">${n(a.tn + a.s)}</button> del equipo del técnico${a.sid ? ` (<button type="button" class="nb" data-lista="g-sid|kpi|">${n(a.sid)}</button> sin título)` : ''}</span></div>`) + `
+      ${HAY_VEL && false ? `<div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-pv|kpi|" title="Ver los AB con pruebas válidas para el plan">${pc(pMv)}</button></span><span class="dls">${dpp(pMv, x => pct(x.pv, x.pv + x.pbj + x.pnc))}</span><div class="medidor" role="img" aria-label="${pc(pMv)} de las pruebas llegan al mínimo"><i style="width:${pMv}%"></i></div><span class="s">${n(a.pbj + a.pnc)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó el mínimo · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables (cliente bajo el mínimo, otra red o sin velocidad)${a.ppe ? ` · ${n(a.ppe)} pruebas con velocidad pendiente` : ''}</span></div>` : ''}
       <div class="kpi"><span class="l">Enlaces repetidos</span><span class="kv"><button type="button" class="nb kvb" data-ir-rep="1" title="Ver el detalle de los enlaces repetidos">${n(nRep)}</button></span><span class="s"><button type="button" class="nb" data-ir-rep="1">${n(a.r)}</button> veces en <button type="button" class="nb" data-lista="rep|">${n(L.filter(o => o.r).length)} AB</button> · no cuentan como prueba</span></div>`;
     pintarQ100();
     // Columnas por mes (sin el filtro de mes)
