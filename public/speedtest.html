@@ -188,6 +188,12 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .modal-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; } .modal-cab h3 { margin: 0; font: 800 20px var(--f-disp); } .modal-cab p { margin: 4px 0 0; color: var(--fg-3); font-size: 14px; }
 .btn-x { border: 1px solid var(--borde-2); background: var(--sup); color: var(--fg); border-radius: 50%; width: 38px; height: 38px; font-size: 20px; cursor: pointer; }
 .modal { width: min(1500px, 100%); } .modal .lista { max-height: 62vh; }
+/* Lista de AB: todo en una línea, sin scroll lateral (textos largos se cortan con «…» y se ven completos al pasar el mouse) */
+.modal .det { min-width: 0; width: 100%; } .modal .det td, .modal .det th { white-space: nowrap; }
+.modal .det td { font-size: 12px !important; padding: 7px 4px !important; } .modal .det th { padding: 8px 4px !important; letter-spacing: 0 !important; font-size: 10px !important; }
+.modal .det td.corta { max-width: 8vw; overflow: hidden; text-overflow: ellipsis; } .modal .det td.c6 { max-width: 7vw; } .modal .det td.c7 { max-width: 11vw; } .modal .det td.c13 { max-width: 7vw; }
+.modal .det td.t-pr { font-variant-numeric: tabular-nums; } .modal .det td.t-pr i { color: var(--fg-4); font-style: normal; margin: 0 3px; }
+.pr-ok { color: var(--ok, #12805c); font-weight: 700; } .pr-mal { color: var(--mal, #c62828); font-weight: 700; } .pr-nd { color: var(--fg-4, #888); }
 .modal table { min-width: 0; width: 100%; } .modal th, .modal td { padding: 9px 6px; } .modal td { font-size: 13px; } .modal th { font-size: 10.5px; letter-spacing: .3px; }
 .b-est { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; background: var(--gris-bg); color: var(--fg-2); } .b-est.D { background: var(--ok-bg); color: var(--ok); } .b-est.O { background: #FFF4DB; color: #8A5300; } .b-est.A { background: var(--mal-bg); color: var(--mal); }
 .urls { margin: 0; padding-left: 18px; font-size: 13px; word-break: break-all; } .urls li { margin: 2px 0; }
@@ -655,21 +661,32 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   async function listaAB(tit, sub, LL, extraHtml = '') {
     const turno = ++listaTurno;   // si se abre otra lista antes de que llegue la respuesta, esta ya no pinta
     const Ls = [...LL].sort((x, y) => y.d.localeCompare(x.d) || x.f.localeCompare(y.f));
-    $('modal-tit').textContent = tit; $('modal-sub').textContent = `${n(Ls.length)} AB · ${sub}`; $('modal-extra').innerHTML = extraHtml; $('modal-aviso').textContent = '';
+    $('modal-tit').textContent = tit; $('modal-sub').textContent = `${n(Ls.length)} AB · ${sub} · Tests en Mbps: ✓ válida para el plan · ✗ bajo el mínimo · s/v sin velocidad`; $('modal-extra').innerHTML = extraHtml; $('modal-aviso').textContent = '';
     $('modal-cuerpo').innerHTML = '<p class="vacio">Cargando los datos de las OS…</p>'; $('modal').hidden = false; $('modal-cerrar').focus();
     try { await traerExtra(Ls); if (turno !== listaTurno) return; } catch { if (turno !== listaTurno) return; $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudieron traer F. Recep, distrito y estado; se muestra lo que hay.'; }
-    modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Pr. cliente', 'Pr. técnico', 'Repetidos', 'Resultado', 'Bajada máx. (Mbps)'];
+    modalCab = ['Filial', 'AB', 'OS', 'F. Recep', 'F. atención', 'Distrito', 'EECC', 'Técnico', 'Estado OS', 'Plan', 'Test técnico', 'Test cliente', 'Rep.', 'Resultado'];
     FC.modal = {}; ORD.modal = null;
     modalObjs = Ls;
-    modalFilasAll = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', o.pn, o.c, o.tn + o.s, o.r, HAY_VEL ? K_TXT[o.k] : '—', o.bmax || '—']; });
+    modalFilasAll = Ls.map(o => { const x = extraOs.get(o.f + '|' + o.os) || {}; return [o.f, o.ab, o.os, fh(x.fecha_registro), dmy(o.d), x.distrito || '—', o.e, o.t, x.estado_os || '—', o.pn, testsTxt(o, false), testsTxt(o, true), o.r, HAY_VEL ? K_TXT[o.k] : '—']; });
     pintarModal();
     modalNom = tit.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+  // Pruebas de cada AB por quién la hizo: «948 ✓ · 1188 ✗» (✓ válida para el plan, ✗ bajo el mínimo, s/v sin velocidad, pend. aún no leída)
+  function testsTxt(o, cli) {
+    const P = (Array.isArray(D.o[o.i][12]) ? D.o[o.i][12] : []).filter(p => Array.isArray(p) && p.length >= 4 && (p[0] === 'C') === cli);
+    const cant = cli ? o.c : o.tn + o.s;
+    if (!P.length) return cant ? `${cant} sin dato` : '—';
+    return P.map(p => p[1] != null ? `${p[1]} ${p[3] === 'v' ? '✓' : p[3] === 'b' ? '✗' : 's/v'}` : (p[3] === 'p' ? 'pend.' : 's/v')).join(' · ');
+  }
+  function celTests(v) {
+    if (v === '—') return '<td class="tenue">—</td>';
+    return `<td class="t-pr">${String(v).split(' · ').map(t => `<span class="${/✓/.test(t) ? 'pr-ok' : /✗/.test(t) ? 'pr-mal' : 'pr-nd'}">${esc(t)}</span>`).join('<i>·</i>')}</td>`;
   }
   function pintarModal() {
     modalIdx = modalFilasAll.map((f, k) => k).filter(k => okFila(modalFilasAll[k], 'modal'));
     if (ORD.modal) modalIdx.sort((a, b) => cmpOrd(modalFilasAll[a][ORD.modal.c], modalFilasAll[b][ORD.modal.c], ORD.modal.d) || a - b); modalFilas = modalIdx.map(k => modalFilasAll[k]);
     const nfm = Object.keys(FC.modal).length; if (nfm || $('modal-fil-q')) $('modal-aviso').innerHTML = nfm ? `${n(modalFilas.length)} de ${n(modalFilasAll.length)} AB con ${nfm} filtro${nfm > 1 ? 's' : ''} de columna · <button type="button" class="nb" id="modal-fil-q">quitar</button>` : '';
-    $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map((c, i) => thF(c, i, 'modal')).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map((f, r) => { const o = modalObjs[modalIdx[r]]; return `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : (j === 1 && modalObjs.length > 1) || (j === 12 && v > 0) ? `<td><button type="button" class="nb" data-lista="ab|${o.i}" title="${j === 12 ? 'Ver sus enlaces repetidos y dónde se repiten' : 'Ver el detalle del AB'}">${esc(v)}</button></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
+    $('modal-cuerpo').innerHTML = `<table class="det"><thead><tr>${modalCab.map((c, i) => thF(c, i, 'modal')).join('')}</tr></thead><tbody>${modalFilas.slice(0, 1500).map((f, r) => { const o = modalObjs[modalIdx[r]]; return `<tr>${f.map((v, j) => j === 8 ? `<td><span class="b-est ${EST[v] || ''}">${esc(v)}</span></td>` : j === 10 || j === 11 ? celTests(v) : j === 5 || j === 6 || j === 7 || j === 13 ? `<td class="corta c${j}" title="${esc(v)}">${esc(v)}</td>` : (j === 1 && modalObjs.length > 1) || (j === 12 && v > 0) ? `<td><button type="button" class="nb" data-lista="ab|${o.i}" title="${j === 12 ? 'Ver sus enlaces repetidos y dónde se repiten' : 'Ver el detalle del AB'}">${esc(v)}</button></td>` : `<td>${esc(v)}</td>`).join('')}</tr>`; }).join('') || `<tr><td colspan="${modalCab.length}" class="vacio">Sin AB.</td></tr>`}</tbody></table>`
       + (modalFilas.length > 1500 ? '<p class="nota" style="padding:10px">Se muestran 1.500; el Excel trae todos.</p>' : '');
       }
   const cerrarModal = () => { $('modal').hidden = true; };
