@@ -968,7 +968,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <button type="button" role="tab" id="tab-coord" aria-controls="v-coord" aria-selected="false" data-t="coord">Coordinaciones</button>
     <button type="button" role="tab" id="tab-avance" aria-controls="v-avance" aria-selected="false" data-t="avance">Avance</button>
     <button type="button" role="tab" id="tab-avt" aria-controls="v-avt" aria-selected="false" data-t="avt">Avance total</button>
-    <button type="button" role="tab" id="tab-ritmo" aria-controls="v-ritmo" aria-selected="false" data-t="ritmo">Ritmo del día</button>
+    <button type="button" role="tab" id="tab-ritmo" aria-controls="v-ritmo" aria-selected="false" data-t="ritmo" hidden>Ritmo del día</button>
   </div>
 </div></section>
 
@@ -3999,6 +3999,16 @@ async function traerAsistencia() {
   catch { ASI = ASI || { ec: {} }; }
   asiEn = Date.now(); return ASI;
 }
+/* Ritmo del día solo se muestra si alguna EECC de la filial elegida marcó hoy asistencia (con al menos una ruta) en su portal. */
+async function revisarRitmo() {
+  const btn = $('tab-ritmo'); if (!btn || !D) return;
+  let A; try { A = await traerAsistencia(); } catch { return; }
+  const ecF = new Set([...(D.pend || []), ...(D.liq || [])].map(x => asiNorm(x.ec)).filter(Boolean));
+  const hay = Object.entries((A && A.ec) || {}).some(([e, v]) => ((v && v.tecs) || []).length && ecF.has(asiNorm(e)));
+  btn.hidden = !hay;
+  if (!hay && tab === 'ritmo') { const p = document.querySelector('#tabs [data-t="panel"]'); if (p) p.click(); }
+}
+setInterval(() => { if (!document.hidden) revisarRitmo(); }, 2 * 60e3);
 const asiNorm = (e) => { const k = String(e || '').toUpperCase().trim(); return String(((AJ && AJ.nombres) || {})[k] || k).toUpperCase().trim(); };
 /* Observados hoy (Ritmo del día): las observadas viven en su propio tablero (/api/observadas), no en el de Instalaciones.
    El técnico de cada observada es el escrito entre %…% en su comentario (el robot lo toma del último %nombre%) y su EECC la de ese técnico. */
@@ -4150,7 +4160,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-ra
   if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarRitAsis(); });
 const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); } };
 const tabSucia = new Set();
-function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); pintarCinta(); }
+function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); pintarCinta(); revisarRitmo(); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
 /* ---------- Periodo: selector de mes, semanas y desde/hasta ---------- */
 const MESES_C = (iso) => { const [y, m] = iso.split('-').map(Number); const t = MESES_L[m - 1]; return t.charAt(0).toUpperCase() + t.slice(1) + ' ' + y; };
