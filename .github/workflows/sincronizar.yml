@@ -112,7 +112,8 @@ jobs:
           descargar() {   # $1 = marca, $2 = hora ISO del pedido, $3 = hh:mm, $4 = completa|rapida, $5 = epoch del pedido
             set -o pipefail
             local extra=""; [ "$4" = rapida ] && extra="--solo-mes-actual"
-            if python -u -m sync.main --solo-descargar "$COLA/$1.tmp.xlsx" $extra 2>&1 | sed -u "s/^/[descarga $3] /"; then
+            # Tope de 30 min por descarga: si ScordSoft se cuelga, se corta y se pide de nuevo en la siguiente marca.
+            if timeout 1800 python -u -m sync.main --solo-descargar "$COLA/$1.tmp.xlsx" $extra 2>&1 | sed -u "s/^/[descarga $3] /" | tee "$COLA/$1.log"; then
               if [ "$4" = completa ]; then   # se guarda como base para las rápidas de la próxima hora
                 snap="$BASE/$1"; mkdir -p "$snap"; cp "$COLA/$1.tmp.xlsx" "$snap/0.xlsx"
                 for p in "$COLA/partes/$1"_*.xlsx; do [ -e "$p" ] && cp "$p" "$snap/"; done
@@ -123,9 +124,11 @@ jobs:
               fi
               mv "$COLA/$1.tmp.xlsx" "$COLA/$1.xlsx"; echo "$2" > "$COLA/$1.corte"; echo 0 > "$COLA/ult_descarga"
             else
-              rm -f "$COLA/$1.tmp.xlsx" "$COLA/partes/$1"_*.xlsx "$COLA/$1".ejec*.xlsx; echo 1 > "$COLA/ult_descarga"
+              rm -f "$COLA/$1.tmp.xlsx" "$COLA/partes/$1"_*.xlsx "$COLA/$1".ejec*.xlsx
+              # 2 = no pudo iniciar sesión (clave cambiada o cuenta frenada): no se reintenta seguido para no bloquearla
+              if grep -q "iniciar sesión" "$COLA/$1.log" 2>/dev/null; then echo 2 > "$COLA/ult_descarga"; else echo 1 > "$COLA/ult_descarga"; fi
             fi
-            rm -f "$COLA/descargando"
+            rm -f "$COLA/descargando" "$COLA/$1.log"
           }
           procesador() {   # procesa los reportes descargados, de a uno; termina cuando ve la marca FIN y no queda nada
             set -o pipefail
@@ -218,7 +221,7 @@ jobs:
           # Comentarios de las EECC («Mis pendientes») → ScordSoft (Agendamiento de Ordenes · ING. VISITA): mira Supabase
           # cada minuto y solo abre ScordSoft cuando hay alguno por escribir. Corre aparte: no frena las descargas.
           ( python -u -m sync.comentarios_scord --vigilar 325 2>&1 | sed -u "s/^/[comentarios] /" ) & pid_com=$!
-          pid_desc=""; errores=0
+          pid_desc=""; errores=0; pausa_hasta=0
           while :; do
             [ -e "$COLA/ABORTAR" ] && break
             ahora=$(date +%s); [ "$ahora" -ge "$fin" ] && break
@@ -228,9 +231,17 @@ jobs:
                 echo "$(TZ=America/Lima date +%H:%M): la descarga anterior sigue en curso; esta marca se salta."
               else
                 if [ -n "$pid_desc" ]; then
-                  wait "$pid_desc" || true
-                  if [ "$(cat "$COLA/ult_descarga" 2>/dev/null || echo 1)" = "0" ]; then errores=0; else errores=$((errores+1)); echo "La descarga falló ($errores seguidas)."; fi
-                  [ "$errores" -ge 3 ] && { echo "3 descargas fallidas seguidas: se corta el turno."; break; }
+                  wait "$pid_desc" || true; pid_desc=""
+                  ud=$(cat "$COLA/ult_descarga" 2>/dev/null || echo 1)
+                  if [ "$ud" = "0" ]; then errores=0
+                  elif [ "$ud" = "2" ]; then
+                    pausa_hasta=$(( $(date +%s) + 3600 ))
+                    echo "No se pudo iniciar sesión en ScordSoft: se espera 1 hora antes de volver a intentar (para no bloquear la cuenta). Revisa la clave del robot."
+                  else errores=$((errores+1)); echo "La descarga falló ($errores seguidas): se vuelve a pedir en la siguiente marca."; fi
+                fi
+                if [ "$(date +%s)" -lt "$pausa_hasta" ]; then
+                  echo "$(TZ=America/Lima date +%H:%M): en pausa por el inicio de sesión fallido; esta marca se salta."
+                  ahora=$(date +%s); prox=$(( (ahora/600 + 1) * 600 )); [ "$prox" -ge "$fin" ] && break; sleep $(( prox - ahora )); continue
                 fi
                 marca=$(date +%Y%m%d%H%M%S); corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00); hm=$(TZ=America/Lima date +%H:%M)
                 if [ -n "$(base_vigente || true)" ] && ! hora_completa; then tipo=rapida; else tipo=completa; fi
@@ -249,7 +260,6 @@ jobs:
           touch "$COLA/FIN"; wait "$pid_proc" || true
           kill "$pid_com" ${pid_exp:+"$pid_exp"} 2>/dev/null || true
           [ -e "$COLA/ABORTAR" ] && exit 1
-          [ "$errores" -ge 3 ] && exit 1
           exit 0
 
       # Cadena: cada turno lanza el siguiente (queda en cola y arranca apenas este termina). Así no depende

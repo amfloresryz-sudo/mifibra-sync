@@ -137,12 +137,37 @@ def _leer_filiales(ruta: Path) -> set[str]:
         return set()
 
 
+def _fechas_fuera(ruta: Path, desde: date, hasta: date) -> float | None:
+    """Parte de las órdenes del Excel con fecha de registro FUERA del rango pedido (0 = todo bien). Si ScordSoft
+    entregó el archivo de otro pedido (mismo usuario usado a la vez en otra sesión) aquí se nota. None = no se pudo leer."""
+    try:
+        import pandas as pd
+        from .procesar import leer
+
+        df = leer(ruta, header=5, usecols=lambda c: str(c).strip() == "F. Recep.")
+        f = pd.to_datetime(df.iloc[:, 0], dayfirst=True, errors="coerce").dropna()
+        if f.empty:
+            return None
+        fuera = (f.dt.date < desde) | (f.dt.date > hasta)
+        return float(fuera.mean())
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _un_reporte(page, contexto, base: str, destino: Path, desde: date, hasta: date, filial: str, por: str,
                 diagnostico: Path, espera_max_s: int, avisos: list[str], usados: set[str]) -> Path:
     """Genera y descarga un reporte en una sesión ya iniciada. Reintenta si ScordSoft entrega el archivo
     de otra filial (pasa cuando el enlace del reporte anterior aún está en pantalla)."""
     for intento in range(3):
         _generar(page, contexto, base, destino, desde, hasta, filial, por, diagnostico, espera_max_s, avisos, usados)
+        if por == "registro":   # el archivo debe ser del rango pedido: si no, es de otro pedido y se descarta
+            fuera = _fechas_fuera(destino, desde, hasta)
+            if fuera is not None and fuera > 0.01:
+                print(f"  El archivo no es del rango pedido ({fuera:.0%} de órdenes fuera de {desde:%d/%m}–{hasta:%d/%m}); "
+                      f"se vuelve a pedir ({intento + 1}/3)…", flush=True)
+                recibido = "otro rango"
+                time.sleep(10)
+                continue
         if filial.upper() == "TODAS":
             # Si «SELECCIONE» devolvió una sola filial no se vuelve a pedir (cada intento tardaba hasta 15 min y
             # ScordSoft devolvía lo mismo): se acepta y quien llama pide las demás filiales por separado.

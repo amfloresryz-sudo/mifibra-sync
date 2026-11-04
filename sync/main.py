@@ -56,6 +56,32 @@ def _fin_mes_anterior(hoy: date) -> datetime:
     return datetime.combine(hoy.replace(day=1) - timedelta(days=1), datetime.min.time()).replace(hour=23, minute=59)
 
 
+def _filas_base(archivo: Path, df0: pd.DataFrame, inicio: str, cajas) -> list[dict]:
+    """Filas ya limpias de un reporte de la BASE (la última completa), guardadas al lado: la base se reutiliza en cada
+    rápida y limpiarla de nuevo tomaba ~1 min. Se rehace si cambió el índice de cajas."""
+    import pickle
+    firma = getattr(cajas, "n", None)
+    ruta = archivo.with_name(archivo.name + ".filas.pkl")
+    try:
+        if ruta.exists():
+            with open(ruta, "rb") as f:
+                guardado = pickle.load(f)
+            if guardado.get("firma") == firma:
+                filas = guardado["filas"]
+                for x in filas:
+                    x["sincronizado_en"] = inicio
+                return filas
+    except Exception:  # noqa: BLE001 - copia dañada: se vuelve a limpiar
+        pass
+    filas = procesar.a_filas(df0, inicio, cajas)
+    try:
+        with open(ruta, "wb") as f:
+            pickle.dump({"firma": firma, "filas": filas}, f, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception:  # noqa: BLE001
+        pass
+    return filas
+
+
 def _cada_hora(nombre: str, funcion, *a):
     """Resultado guardado en disco (junto al estado del robot) y reutilizado por 1 hora: los mapas de cajas y de áreas
     casi no cambian y bajarlos en cada actualización tomaba tiempo. Si la función devuelve None no se guarda."""
@@ -419,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
                 asignacion.update(procesar.asignacion_por_os(df0))
             except Exception as e:  # noqa: BLE001 - el motivo de los cambios de agenda nunca detiene la corrida
                 print(f"Aviso: no se leyó la observación de asignación: {e}", flush=True)
-            for fila in procesar.a_filas(df0, inicio, indice_cajas):
+            for fila in _filas_base(archivo, df0, inicio, indice_cajas) if archivo in base else procesar.a_filas(df0, inicio, indice_cajas):
                 filas_por_id[fila["id_os"]] = fila
         if args.parche:   # exprés: lo más nuevo pisa a la base; nunca entran órdenes de fuera del periodo
             ini_per = pd.Timestamp(desde).tz_localize(LIMA)
