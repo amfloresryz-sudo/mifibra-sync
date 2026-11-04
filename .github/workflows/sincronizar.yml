@@ -123,7 +123,7 @@ jobs:
               fi
               mv "$COLA/$1.tmp.xlsx" "$COLA/$1.xlsx"; echo "$2" > "$COLA/$1.corte"; echo 0 > "$COLA/ult_descarga"
             else
-              rm -f "$COLA/$1.tmp.xlsx" "$COLA/partes/$1"_*.xlsx; echo 1 > "$COLA/ult_descarga"
+              rm -f "$COLA/$1.tmp.xlsx" "$COLA/partes/$1"_*.xlsx "$COLA/$1".ejec*.xlsx; echo 1 > "$COLA/ult_descarga"
             fi
             rm -f "$COLA/descargando"
           }
@@ -135,7 +135,7 @@ jobs:
               ultimo=$(ls "$COLA"/*.xlsx 2>/dev/null | grep -E '/[0-9]{14}\.xlsx$' | sort | tail -1 || true)
               if [ -n "$ultimo" ]; then
                 for viejo in $(ls "$COLA"/*.xlsx 2>/dev/null | grep -E '/[0-9]{14}\.xlsx$' | sort | head -n -1); do
-                  echo "Se salta el reporte $(basename "$viejo") (ya hay uno más nuevo)."; rm -f "$viejo" "${viejo%.xlsx}.corte" "${viejo%.xlsx}.base" "$COLA/partes/$(basename "${viejo%.xlsx}")"_*.xlsx
+                  echo "Se salta el reporte $(basename "$viejo") (ya hay uno más nuevo)."; rm -f "$viejo" "${viejo%.xlsx}.corte" "${viejo%.xlsx}.base" "${viejo%.xlsx}".ejec*.xlsx "$COLA/partes/$(basename "${viejo%.xlsx}")"_*.xlsx
                 done
                 corte=$(cat "${ultimo%.xlsx}.corte"); h=$(TZ=America/Lima date -d "$corte" +%H:%M)
                 echo "::group::Actualización $(TZ=America/Lima date -d "$corte" '+%d/%m %H:%M') (hora de Lima) · procesando"
@@ -151,11 +151,13 @@ jobs:
                   echo "Actualización RÁPIDA: mes en curso nuevo + mes anterior de la completa de las $(TZ=America/Lima date -d "@$(cat "$snap/ts")" +%H:%M)."
                 fi
                 marca_p=$(basename "${ultimo%.xlsx}"); parche=""
+                ejec=$(ls "${ultimo%.xlsx}".ejec*.xlsx 2>/dev/null || true)   # rápida: lo ejecutado hoy, encima como parche
                 # Si ya se aplicó un exprés MÁS NUEVO que este reporte, se vuelve a aplicar: así el portal nunca retrocede.
                 if [ -e "$COLA/ult_exp/marca" ] && [ "$(cat "$COLA/ult_exp/marca")" \> "$marca_p" ]; then
                   parche=$(ls "$COLA"/ult_exp/*.xlsx 2>/dev/null || true)
                   [ -n "$parche" ] && echo "Se aplica encima el exprés de las $(TZ=America/Lima date -d "$(cat "$COLA/ult_exp/corte")" +%H:%M) (más nuevo que este reporte)."
                 fi
+                parche=$(echo $parche $ejec)
                 if python -u -m sync.main --excel "$ultimo" $partes ${base_arch:+--base $base_arch} ${parche:+--parche $parche} --corte "$corte" 2>&1 | sed -u "s/^/[proceso $h] /"; then
                   fallas=0
                   # Se guarda como base del exprés: la base de la rápida (si la hubo) + este reporte y sus partes.
@@ -163,7 +165,7 @@ jobs:
                   { for f in $base_arch; do echo "$f"; done; ls "$COLA"/ult/*.xlsx; } > "$COLA/ult/lista"; echo "$marca_p" > "$COLA/ult/marca"
                 else fallas=$((fallas+1)); echo "El procesamiento falló ($fallas seguidas)."; fi
                 echo "::endgroup::"
-                rm -f "$ultimo" "${ultimo%.xlsx}.corte" "${ultimo%.xlsx}.base" $partes
+                rm -f "$ultimo" "${ultimo%.xlsx}.corte" "${ultimo%.xlsx}.base" $partes $ejec
                 [ "$fallas" -ge 3 ] && { echo "3 fallas seguidas al procesar: se corta el turno."; touch "$COLA/ABORTAR"; break; }
               elif [ -e "$COLA/FIN" ]; then break
               elif exp=$(ls -d "$COLA"/exp/[0-9]*/ 2>/dev/null | sort | tail -1) && [ -n "$exp" ] && [ -e "$COLA/ult/lista" ]; then

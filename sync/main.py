@@ -304,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--solo-descargar", type=Path, help="solo descargar el reporte del periodo a esta ruta y terminar")
     ap.add_argument("--corte", help="hora (ISO, UTC) en que se pidió el reporte: se usa como corte y como «actualizado»")
     ap.add_argument("--solo-mes-actual", action="store_true",
-                    help="con --solo-descargar: pide solo los últimos 45 días (descarga rápida)")
+                    help="con --solo-descargar: descarga RÁPIDA (mes en curso + lo ejecutado hoy)")
     ap.add_argument("--base", type=Path, nargs="*", default=[],
                     help="reporte(s) completo(s) anteriores: se leen primero y las órdenes de --excel los reemplazan")
     ap.add_argument("--parche", type=Path, nargs="*", default=[],
@@ -338,28 +338,38 @@ def main(argv: list[str] | None = None) -> int:
 
         hoy = datetime.now(LIMA).date()
         d0, d1 = periodo(hoy)
-        if args.solo_mes_actual:
-            # rápida: los últimos 45 días (cubre los pendientes vivos aunque sean del mes anterior); lo más viejo
-            # del periodo se toma de la última descarga completa.
-            d0 = max(hoy - timedelta(days=45), d0)
-            print(f"Descarga RÁPIDA (últimos 45 días): {d0:%d/%m/%Y}–{d1:%d/%m/%Y}", flush=True)
         t0 = time.time()
         try:
             # Se descarga en una carpeta aparte: así el procesador nunca ve archivos a medio bajar.
-            # Si ScordSoft entrega solo LIMA, las demás filiales llegan en archivos extra: van a «partes/<marca>_N.xlsx»
-            # y el procesador los junta con el principal.
             carpeta = Path(tempfile.mkdtemp(prefix="scordsoft_"))
-            # Por filial (LIMA primero): reportes chicos que ScordSoft arma rápido; si una filial falla, las demás
-            # llegan igual (sin esa filial no se borra nada y sus tableros quedan como estaban).
-            orden = ["LIMA"] + [f for f in FILIALES if f != "LIMA"]
-            r = descargar_reportes([(carpeta / ("reporte.xlsx" if i == 0 else f"f{i}.xlsx"), d0, d1, f, "registro")
-                                    for i, f in enumerate(orden)], espera_max_s=900)
+            if args.solo_mes_actual:
+                # RÁPIDA: el mes en curso (todas las filiales juntas) + lo EJECUTADO HOY (cualquier fecha de registro,
+                # así lo liquidado hoy de un AB del mes anterior también se ve). El mes anterior completo viene de la
+                # última descarga completa: la data siempre tiene los 2 meses.
+                d0 = hoy.replace(day=1)
+                print(f"Descarga RÁPIDA: mes en curso {d0:%d/%m/%Y}–{d1:%d/%m/%Y} + lo ejecutado hoy", flush=True)
+                pedidos = [(carpeta / "reporte.xlsx", d0, d1, "TODAS", "registro"),
+                           (carpeta / "ejec.xlsx", hoy, hoy, "TODAS", "ejecucion")]
+            else:
+                # COMPLETA (mes anterior + mes en curso) por filial, LIMA primero: ScordSoft arma rápido los reportes
+                # chicos y una filial lenta no frena a las demás (sin esa filial no se borra nada).
+                orden = ["LIMA"] + [f for f in FILIALES if f != "LIMA"]
+                pedidos = [(carpeta / ("reporte.xlsx" if i == 0 else f"f{i}.xlsx"), d0, d1, f, "registro")
+                           for i, f in enumerate(orden)]
+            # Si «todas las filiales» llega con una sola, las demás se piden aparte (archivos <nombre>_N.xlsx).
+            r = descargar_reportes(pedidos, espera_max_s=900)
+            ejec = [x for x in r if x.name.startswith("ejec")]
+            prin = [x for x in r if not x.name.startswith("ejec")]
+            if not prin:
+                raise RuntimeError("No llegó el reporte principal.")
             partes = args.solo_descargar.parent / "partes"
             marca = args.solo_descargar.name.split(".")[0]
-            for i, extra in enumerate(r[1:]):
+            for i, extra in enumerate(prin[1:]):
                 partes.mkdir(exist_ok=True)
                 shutil.move(str(extra), str(partes / f"{marca}_{i}.xlsx"))
-            shutil.move(str(r[0]), str(args.solo_descargar))
+            for i, e in enumerate(ejec):   # lo ejecutado hoy va aparte: se aplica encima como parche
+                shutil.move(str(e), str(args.solo_descargar.parent / f"{marca}.ejec{i}.xlsx"))
+            shutil.move(str(prin[0]), str(args.solo_descargar))
         except Exception as e:  # noqa: BLE001
             print(f"ERROR en la descarga: {e}", file=sys.stderr, flush=True)
             return 1
