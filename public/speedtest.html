@@ -64,6 +64,9 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 .kpi .kv { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .kpi .kv.mg { color: var(--magenta); }
 .kpi .s { font-size: 13px; color: var(--fg-3); line-height: 1.45; }
+.kpi .dls { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: -4px; } .kpi .dls:empty { display: none; }
+.kpi .dl { font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--gris-bg, #F1F2F4); color: var(--fg-3); white-space: nowrap; }
+.kpi .dl.up { background: var(--ok-bg); color: var(--ok); } .kpi .dl.dn { background: var(--mal-bg); color: var(--mal); }
 .medidor { height: 8px; border-radius: 4px; background: var(--pista); overflow: hidden; }
 .medidor i { display: block; height: 100%; border-radius: 4px; background: var(--fg-2); }
 .medidor.mg i { background: var(--magenta); }
@@ -239,12 +242,12 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="sec-cab"><div><h3 id="t-q100">Qué pasó con cada 100 instalaciones</h3><p class="sub" id="q100-sub"></p></div></div>
     <div class="q100-ley"><span><i class="qv"></i><b>Válidas</b> · cliente + enlace + mínimo del plan</span><span><i class="qb"></i>Cliente, bajo el mínimo</span><span><i class="qt"></i>Solo equipo del técnico</span><span><i class="qp"></i>Velocidad aún pendiente</span><span><i class="qs"></i>Sin ST registrado</span></div>
     <div id="g-q100"></div>
-    <p class="nota">Cada instalación cuenta una vez aunque tenga varias pruebas. Válida = tiene al menos una prueba hecha en el equipo del cliente (etiqueta del enlace) que llega al mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps y 1.200 Mbps en planes mayores. La velocidad la lee el robot en speedtest.net. No certificable = la prueba no es de la red Mi Fibra, es de más de 3 días antes o después de la instalación o el enlace no existe.</p>
+    <p class="nota">Cada instalación cuenta una vez aunque tenga varias pruebas. Válida = tiene al menos una prueba hecha en el equipo del cliente (etiqueta del enlace) que llega al mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps y 1.200 Mbps en planes mayores. La velocidad la lee el robot en speedtest.net. Prueba válida = llega al mínimo del plan; solo cuenta si se hizo en el equipo del cliente. No certificable = prueba del cliente bajo el mínimo (su equipo no reporta la velocidad del enlace), prueba que no es de la red Mi Fibra o enlace sin velocidad pública. La prueba debe ser de máximo 1 día respecto de la atención y un mismo N.º citado en varias órdenes no cuenta. Meta: 60% de las pruebas en el equipo del cliente y 100% de instalaciones con medición.</p>
   </section>
 
   <section class="sec" aria-labelledby="t-evo">
     <div class="sec-cab"><div><h3 id="t-evo">Evolución diaria · pruebas en el dispositivo del cliente</h3><p class="sub" id="evo-sub"></p></div>
-      <div class="evo-ley"><span><i class="b"></i>Instalaciones liquidadas</span><span><i class="l"></i>% pruebas del cliente</span><span><i class="o"></i>Objetivo 60%</span></div></div>
+      <div class="evo-ley"><span><i class="b"></i>Instalaciones liquidadas</span><span><i class="l"></i>% pruebas del cliente</span><span><i class="o"></i>Meta 60%</span></div></div>
     <div id="g-evo"></div>
   </section>
 
@@ -305,7 +308,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const mesTxt = (ym) => `${MESES[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
   const dmy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
-  const OBJ_CLI = 60;   // objetivo: % de pruebas hechas en el dispositivo del cliente
+  const OBJ_CLI = 60;   // meta: % de pruebas hechas en el equipo del cliente
+  const OBJ_MED = 100;  // meta: instalaciones con medición registrada
   const PLANES = ['Hasta 1.000 Mbps', 'Más de 1.000 Mbps', 'Sin plan identificado'];
   const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
 
@@ -334,7 +338,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   O.forEach(o => { o.sid = o.s; o.tn += o.s; o.s = 0; o.pr = o.c + o.tn;
     // Velocidad de cada prueba (el robot la lee en speedtest.net): [quién C/T/«», bajada, subida, estado v/b/n/p]
     const P = Array.isArray(D.o[o.i][12]) ? D.o[o.i][12].filter(p => Array.isArray(p) && p.length >= 4) : [], cnt = (f) => P.filter(f).length;
-    o.vel = P.length > 0; o.pv = cnt(p => p[3] === 'v'); o.pbj = cnt(p => p[3] === 'b'); o.pnc = cnt(p => p[3] === 'n'); o.ppe = cnt(p => p[3] === 'p');
+    // Como el control de provincias: bajo el mínimo en el equipo del CLIENTE = no certificable (no reporta la velocidad de su enlace);
+    // en el del técnico = la red no entregó.
+    o.vel = P.length > 0; o.pv = cnt(p => p[3] === 'v'); o.pbj = cnt(p => p[3] === 'b' && p[0] !== 'C'); o.pnc = cnt(p => p[3] === 'n' || (p[3] === 'b' && p[0] === 'C')); o.ppe = cnt(p => p[3] === 'p');
     o.cv = cnt(p => p[0] === 'C' && p[3] === 'v'); o.cpe = cnt(p => p[0] === 'C' && p[3] === 'p');
     o.bmax = P.reduce((m, p) => p[1] != null && p[1] > m ? p[1] : m, 0);
     o.k = !o.pr ? 'sin' : !o.c ? 'tec' : o.cv ? 'v' : o.cpe ? 'pe' : 'cb'; });   // grupo de la instalación
@@ -395,14 +401,23 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     pintarEvo();
     $('ctx').textContent = `${per} · ${fTxt() || 'Todas las filiales'} · ${eset().length ? 'EECC ' + eset().join(' + ') : 'Todas las EECC'}`;
     const nRep = D.rep.filter(([, idx]) => idx.some(i => sel(O[i]))).length;
+    // «vs mes anterior»: solo con un mes elegido (mismos filtros, mes previo)
+    let b = null, mAnt = '';
+    if (F.mes && !F.desde && !F.hasta) { const [y, m] = F.mes.split('-').map(Number); mAnt = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+      const LA = O.filter(o => sel(o, 'mes') && o.d.startsWith(mAnt)); if (LA.length) b = sum(LA); }
+    const mAntTxt = mAnt ? MESES[+mAnt.slice(5, 7) - 1].slice(0, 3) : '';
+    const dpp = (v, f) => { if (!b) return ''; const ant = f(b); if (ant == null) return ''; const d = v - ant; return `<span class="dl ${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '+' : '−'}${Math.abs(d).toFixed(1).replace('.', ',')} pp vs ${mAntTxt}</span>`; };
+    const dnum = (v, ant) => { if (!b) return ''; const d = v - ant; return `<span class="dl ${d >= 0 ? 'up' : 'dn'}">${d >= 0 ? '+' : '−'}${n(Math.abs(d))} vs ${mAntTxt}</span>`; };
+    const pct = (x, y) => y ? x / y * 100 : null;
+    const vsMeta = (v, meta) => `<span class="dl ${v >= meta ? 'up' : 'dn'}">${v >= meta ? '+' : '−'}${Math.abs(v - meta).toFixed(1).replace('.', ',')} pp vs meta</span>`;
     $('kpis').classList.toggle('k7', HAY_VEL);
     $('kpis').innerHTML = `
-      <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span><span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
-      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv"><button type="button" class="nb kvb" data-lista="med|" title="Ver las instalaciones con medición">${pc(pMed)}</button></span><div class="medidor" role="img" aria-label="${pc(pMed)} con medición"><i style="width:${pMed}%"></i></div><span class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> de ${n(a.ins)} instalaciones</span></div>
-      ${HAY_VEL ? `<div class="kpi"><span class="l">En equipo del cliente</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver las instalaciones con prueba del cliente">${pc(pCliI)}</button></span><div class="medidor" role="img" aria-label="${pc(pCliI)} con prueba del cliente"><i style="width:${pCliI}%"></i></div><span class="s">${n(a.cli)} de ${n(a.ins)} instalaciones con al menos una prueba en el equipo del cliente</span></div>
-      <div class="kpi"><span class="l">Instalaciones válidas</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-val|kpi|" title="Ver las instalaciones válidas">${pc(pVal)}</button></span><div class="medidor mg" role="img" aria-label="${pc(pVal)} válidas"><i style="width:${pVal}%"></i></div><span class="s"><b>${n(a.v)}</b> · cliente + enlace + mínimo del plan · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> del cliente bajo el mínimo${a.pe ? ` · ${n(a.pe)} con velocidad pendiente` : ''}</span></div>` : ''}
-      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver los AB con prueba en el dispositivo del cliente">${pc(pCli)}</button></span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, objetivo ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Objetivo ${OBJ_CLI}%"></em></div><span class="s"><b>Objetivo ${OBJ_CLI}%</b> · <button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> del cliente · <button type="button" class="nb" data-lista="g-tec|kpi|">${n(a.tn + a.s)}</button> del equipo del técnico${a.sid ? ` (<button type="button" class="nb" data-lista="g-sid|kpi|">${n(a.sid)}</button> sin título)` : ''}</span></div>
-      ${HAY_VEL ? `<div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-pv|kpi|" title="Ver los AB con pruebas válidas para el plan">${pc(pMv)}</button></span><div class="medidor" role="img" aria-label="${pc(pMv)} de las pruebas llegan al mínimo"><i style="width:${pMv}%"></i></div><span class="s">${n(a.pbj + a.pnc)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó el mínimo · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables${a.ppe ? ` · ${n(a.ppe)} pruebas con velocidad pendiente` : ''}</span></div>` : ''}
+      <div class="kpi"><span class="l">Instalaciones del periodo</span><span class="kv"><button type="button" class="nb" data-lista="todo|" style="text-decoration:none;color:inherit">${n(a.ins)}</button></span>${b ? `<span class="dls">${dnum(a.ins, b.ins)}</span>` : ''}<span class="s"><button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medición registrada</span></div>
+      <div class="kpi"><span class="l">Instalaciones con medición registrada</span><span class="kv"><button type="button" class="nb kvb" data-lista="med|" title="Ver las instalaciones con medición">${pc(pMed)}</button></span><span class="dls">${dpp(pMed, x => pct(x.med, x.ins))}</span><div class="medidor obj" role="img" aria-label="${pc(pMed)} con medición, meta ${OBJ_MED}%"><i style="width:${pMed}%"></i><em style="left:calc(${OBJ_MED}% - 2px)" title="Meta ${OBJ_MED}%"></em></div><span class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> de ${n(a.ins)} instalaciones · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medir · <b>meta ${OBJ_MED}%</b></span></div>
+      ${HAY_VEL ? `<div class="kpi"><span class="l">En equipo del cliente</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver las instalaciones con prueba del cliente">${pc(pCliI)}</button></span><span class="dls">${dpp(pCliI, x => pct(x.cli, x.ins))}</span><div class="medidor" role="img" aria-label="${pc(pCliI)} con prueba del cliente"><i style="width:${pCliI}%"></i></div><span class="s">${n(a.cli)} de ${n(a.ins)} instalaciones con al menos una prueba en el equipo del cliente</span></div>
+      <div class="kpi"><span class="l">Instalaciones válidas</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-val|kpi|" title="Ver las instalaciones válidas">${pc(pVal)}</button></span><span class="dls">${dpp(pVal, x => pct(x.v, x.ins))}</span><div class="medidor mg" role="img" aria-label="${pc(pVal)} válidas"><i style="width:${pVal}%"></i></div><span class="s"><b>${n(a.v)}</b> · cliente + enlace + mínimo del plan · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> del cliente bajo el mínimo${a.pe ? ` · ${n(a.pe)} con velocidad pendiente` : ''}</span></div>` : ''}
+      <div class="kpi"><span class="l">Pruebas en dispositivo del cliente</span><span class="kv mg"><button type="button" class="nb kvb" data-lista="g-cli|kpi|" title="Ver los AB con prueba en el dispositivo del cliente">${pc(pCli)}</button></span><span class="dls">${a.pr ? vsMeta(pCli, OBJ_CLI) : ''}${dpp(pCli, x => pct(x.c, x.pr))}</span><div class="medidor mg obj" role="img" aria-label="${pc(pCli)} en dispositivo del cliente, meta ${OBJ_CLI}%"><i style="width:${pCli}%"></i><em style="left:${OBJ_CLI}%" title="Meta ${OBJ_CLI}%"></em></div><span class="s"><b>Meta ${OBJ_CLI}%</b> · <button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> del cliente · <button type="button" class="nb" data-lista="g-tec|kpi|">${n(a.tn + a.s)}</button> del equipo del técnico${a.sid ? ` (<button type="button" class="nb" data-lista="g-sid|kpi|">${n(a.sid)}</button> sin título)` : ''}</span></div>
+      ${HAY_VEL ? `<div class="kpi"><span class="l">Mediciones válidas para el plan</span><span class="kv"><button type="button" class="nb kvb" data-lista="g-pv|kpi|" title="Ver los AB con pruebas válidas para el plan">${pc(pMv)}</button></span><span class="dls">${dpp(pMv, x => pct(x.pv, x.pv + x.pbj + x.pnc))}</span><div class="medidor" role="img" aria-label="${pc(pMv)} de las pruebas llegan al mínimo"><i style="width:${pMv}%"></i></div><span class="s">${n(a.pbj + a.pnc)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó el mínimo · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables (cliente bajo el mínimo, otra red o sin velocidad)${a.ppe ? ` · ${n(a.ppe)} pruebas con velocidad pendiente` : ''}</span></div>` : ''}
       <div class="kpi"><span class="l">Enlaces repetidos</span><span class="kv"><button type="button" class="nb kvb" data-ir-rep="1" title="Ver el detalle de los enlaces repetidos">${n(nRep)}</button></span><span class="s"><button type="button" class="nb" data-ir-rep="1">${n(a.r)}</button> veces en <button type="button" class="nb" data-lista="rep|">${n(L.filter(o => o.r).length)} AB</button> · no cuentan como prueba</span></div>`;
     pintarQ100();
     // Columnas por mes (sin el filtro de mes)
@@ -420,10 +435,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('t-fil').textContent = porEcF ? `Pruebas en dispositivo del cliente, por EECC de ${F.filial}` : 'Pruebas en dispositivo del cliente, por filial';
     $('fil-sub').textContent = `Solo se listan ${porEcF ? 'EECC' : 'filiales'} con 5 o más pruebas registradas · clic en una barra para ver sus AB con medición.`;
     // Diseño: posición · nombre con «X de Y pruebas» · barra (con línea del promedio) · % ; sobre el promedio en fucsia, debajo en rosado
-    // Objetivo: 60% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
+    // Meta: 60% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
     const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.pr ? tG.c / tG.pr * 100 : 0;
-    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw l"></i><b>Objetivo ${pc(OBJ_CLI)}</b></span><span><i class="sw a"></i>Cumple</span><span><i class="sw b"></i>No cumple</span><span>Total ${pc(prom)} (${n(tG.c)} de ${n(tG.pr)}) · ${n(porFil.filter(x => x[1] >= OBJ_CLI).length)} de ${n(porFil.length)} cumplen</span></div>`
-      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CLI ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas · objetivo ${pc(OBJ_CLI)}${v >= OBJ_CLI ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.pr * OBJ_CLI / 100) - s.c)} pruebas del cliente)`}">
+    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw l"></i><b>Meta ${pc(OBJ_CLI)}</b></span><span><i class="sw a"></i>Cumple</span><span><i class="sw b"></i>No cumple</span><span>Total ${pc(prom)} (${n(tG.c)} de ${n(tG.pr)}) · ${n(porFil.filter(x => x[1] >= OBJ_CLI).length)} de ${n(porFil.length)} cumplen</span></div>`
+      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CLI ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas · meta ${pc(OBJ_CLI)}${v >= OBJ_CLI ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.pr * OBJ_CLI / 100) - s.c)} pruebas del cliente)`}">
         <span class="pos">${k + 1}</span><span class="nom"><b>${esc(f)}</b><small>${n(s.c)} de ${n(s.pr)} pruebas</small></span>
         <span class="tr"><i style="width:${Math.min(100, v)}%"></i><em style="left:${OBJ_CLI}%"></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin pruebas con estos filtros.</p>';
     // Tabla por EECC
