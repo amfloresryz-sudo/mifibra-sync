@@ -544,8 +544,12 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  Speed Test: {len(stv) - n0} velocidades recuperadas de Supabase ({len(stv)} en total).", flush=True)
                 _st.velocidades(tableros["speedtest"], stv)
                 tableros["speedtest_vel"] = {"v": stv}   # copia permanente (el portal no la lee; solo el robot)
+                # enlaces de cada instalación «FILIAL|OS» → [día, [[enlace, título]]] (para reportes; el portal no la lee)
+                tableros["speedtest_enlaces"] = {"o": tableros["speedtest"].pop("_enlaces", {})}
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se leyeron las velocidades de Speed Test: {e}", flush=True)
+        if "speedtest" in tableros:
+            tableros["speedtest"].pop("_enlaces", None)   # nunca va al portal
         try:   # cambios de agenda del día (fecha o franja) respecto de la actualización anterior
             _cambios_agenda(tableros, estado, ahora, asignacion)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida

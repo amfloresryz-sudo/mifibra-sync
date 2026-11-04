@@ -75,7 +75,9 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         tec = _txt(r.tecnico_ejecutor) or "SIN TÉCNICO"
         ec = _contrata(r.contrata) or _contrata(tec_contrata.get(tec)) or "SIN EECC"
         ls = links.get(ido, [])
-        validos = [l for l in ls if veces[l[0]] == 1]
+        # Quién hizo la prueba (regla de operaciones, 04/11/2026): manda el título que el técnico escribe antes del enlace;
+        # sin título, el tipo de enlace: «my-result» = técnico, cualquier otro enlace = cliente.
+        validos = [[l[0], l[1], l[2] or ("T" if "my-result" in str(l[0]) else "C")] for l in ls if veces[l[0]] == 1]
         n_rep = len(ls) - len(validos)
         etiquetados = any(l[2] for l in validos)
         cli = sum(1 for l in validos if l[2] == "C")
@@ -188,6 +190,13 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     Primero el mes en curso (del día más nuevo al más antiguo) y después los meses anteriores; lo ya leído queda en la
     caché (estado del robot + copia en Supabase) y no se vuelve a pedir."""
     filas = tab.get("o") or []
+    # Copia de los enlaces de cada instalación (para revisar tipos de enlace por día y filial; el portal no la lee).
+    fil0 = tab.get("f") or []
+    enlaces = {}
+    for f in filas:
+        if len(f) > 12 and f[12]:
+            enlaces[f"{fil0[f[0]] if f[0] < len(fil0) else ''}|{f[6]}"] = [f[1], [[c, q] for c, q in f[12]]]
+    tab["_enlaces"] = enlaces
     ref = _referencia()
     fil = tab.get("f") or []
     en_ref = lambda f: f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}" in ref
