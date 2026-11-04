@@ -109,7 +109,9 @@ def _api(clave: str) -> str | None:
 
 
 def _leer(clave: str):
-    """[bajada Mbps, subida Mbps, red Mi Fibra 1/0, fecha epoch] · [-1] si el enlace no existe · None si no se pudo leer (se reintenta)."""
+    """[bajada Mbps, subida Mbps, red Mi Fibra 1/0, fecha epoch, conexión, modo, ping, ping reposo, ping bajando, ping subiendo,
+    servidor, patrocinador] (todo lo público de la prueba; conexión w=Wi-Fi e=cable c=celular, modo m=multi s=una) ·
+    [-1] si el enlace no existe · None si no se pudo leer (se reintenta)."""
     import requests
     url = _api(clave)
     if not url:
@@ -125,9 +127,26 @@ def _leer(clave: str):
     try:
         j = r.json()
         isp = f"{j.get('isp_name') or ''} {j.get('display_provider_name') or ''}".lower()
-        return [round((j.get("download") or 0) / 1000), round((j.get("upload") or 0) / 1000), 1 if "fibra" in isp else 0, int(j.get("date") or 0)]
+        return _todo(j)
     except Exception:  # noqa: BLE001
         return None
+
+
+def _num(x):
+    try:
+        return round(float(x), 1)
+    except (TypeError, ValueError):
+        return None
+
+
+def _todo(j: dict) -> list:
+    """Todos los datos públicos de una prueba de speedtest.net (los mismos que muestra su página)."""
+    isp = f"{j.get('isp_name') or ''} {j.get('display_provider_name') or ''}".lower()
+    icono = {"wireless": "w", "ethernet": "e", "cell": "c", "cellular": "c"}.get(str(j.get("connection_icon") or "").lower(), str(j.get("connection_icon") or "")[:8])
+    modo = {"multi": "m", "single": "s"}.get(str(j.get("connection_mode") or "").lower(), "")
+    return [round((j.get("download") or 0) / 1000), round((j.get("upload") or 0) / 1000), 1 if "fibra" in isp else 0, int(j.get("date") or 0),
+            icono, modo, _num(j.get("latency")), _num(j.get("idle_latency")), _num(j.get("download_latency")), _num(j.get("upload_latency")),
+            str(j.get("server_name") or "")[:40], str(j.get("sponsor_name") or "")[:40]]
 
 
 def _por_portal(lote: list) -> list:
@@ -174,7 +193,13 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     en_ref = lambda f: f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}" in ref
     mes = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-5))).strftime("%Y-%m")
     falta, vistos, mes_claves = [], set(), set()
+    completar = []   # ya leídas antes solo con velocidad: se vuelven a pedir una vez para guardar todos sus datos públicos
     for f in sorted(filas, key=lambda x: (x[1][:7] == mes, x[1]), reverse=True):
+        for clave, _ in (f[12] if len(f) > 12 else []):
+            v = cache.get(clave)
+            if v and v[0] >= 0 and len(v) == 4 and clave not in vistos:
+                vistos.add(clave)
+                completar.append(clave)
         if en_ref(f):   # ya viene en un archivo de control: no hace falta leerla en speedtest.net
             continue
         for clave, _ in (f[12] if len(f) > 12 else []):
@@ -183,18 +208,23 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                 falta.append(clave)
                 if f[1][:7] == mes:
                     mes_claves.add(clave)
-    leidos, fallas, t0, via = 0, 0, time.time(), "directo"
-    if falta:
+    leidos, fallas, completadas, t0, via = 0, 0, 0, time.time(), "directo"
+    if falta or completar:
         objetivo = falta[:limite]
+        objetivo += completar[:max(0, limite - len(objetivo))]   # primero lo nuevo; con lo que sobra, se completan las ya leídas
+        nuevas = set(falta)
 
         def anotar(lote, res):
-            nonlocal leidos, fallas
+            nonlocal leidos, fallas, completadas
             for clave, v in zip(lote, res):
-                if v is not None:
+                if v is None:
+                    fallas += 1
+                elif clave in nuevas:
                     cache[clave] = v
                     leidos += 1
-                else:
-                    fallas += 1
+                elif v[0] >= 0:   # ya leída: solo se reemplaza si trae los datos completos (nunca se pierde la velocidad)
+                    cache[clave] = v
+                    completadas += 1
 
         with ThreadPoolExecutor(max_workers=8) as ex:
             i = 0
@@ -216,7 +246,8 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                     i += 48
         del_mes = sum(1 for c in falta if c not in cache and c in mes_claves)
         print(f"  Speed Test: {leidos} velocidades nuevas leídas de speedtest.net ({'desde el robot' if via == 'directo' else 'vía el portal'}) · "
-              f"{fallas} sin respuesta (se reintentan) · {max(0, len(falta) - leidos)} pendientes ({del_mes} del mes en curso).", flush=True)
+              f"{fallas} sin respuesta (se reintentan) · {max(0, len(falta) - leidos)} pendientes ({del_mes} del mes en curso) · "
+              f"{completadas} ya leídas completadas con todos sus datos ({max(0, len(completar) - completadas)} por completar).", flush=True)
     n_ref = 0
     for f in filas:
         if len(f) <= 12:
