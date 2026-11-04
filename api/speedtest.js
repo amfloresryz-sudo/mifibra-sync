@@ -20,7 +20,11 @@ async function leerVel(clave) {   // igual que el robot: /api/result/… de spee
     const r = await fetch('https://www.speedtest.net/api/' + m[1], { signal: ctl.signal, headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' } });
     if (r.status === 404) return [-1]; if (!r.ok) return null;
     const j = await r.json(), isp = `${j.isp_name || ''} ${j.display_provider_name || ''}`.toLowerCase();
-    return [Math.round((j.download || 0) / 1000), Math.round((j.upload || 0) / 1000), isp.includes('fibra') ? 1 : 0, +j.date || 0];
+    // Todo lo público de la prueba (lo mismo que muestra su página): conexión w=Wi-Fi e=cable c=celular, modo m=multi s=una, pings, servidor
+    const ic = { wireless: 'w', ethernet: 'e', cell: 'c', cellular: 'c' }[String(j.connection_icon || '').toLowerCase()] ?? String(j.connection_icon || '').slice(0, 8);
+    const md = { multi: 'm', single: 's' }[String(j.connection_mode || '').toLowerCase()] || '', nm = (x) => (x == null || isNaN(+x) ? null : Math.round(+x * 10) / 10);
+    return [Math.round((j.download || 0) / 1000), Math.round((j.upload || 0) / 1000), isp.includes('fibra') ? 1 : 0, +j.date || 0,
+      ic, md, nm(j.latency), nm(j.idle_latency), nm(j.download_latency), nm(j.upload_latency), String(j.server_name || '').slice(0, 40), String(j.sponsor_name || '').slice(0, 40)];
   } catch { return null; } finally { clearTimeout(t); }
 }
 async function cuerpo(req) { if (req.body && typeof req.body === 'object') return req.body; let s = ''; for await (const c of req) { s += c; if (s.length > 20000) break; } return JSON.parse(s || '{}'); }
