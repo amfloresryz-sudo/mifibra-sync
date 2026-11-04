@@ -102,10 +102,26 @@ _UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.
        "Accept": "application/json"}
 
 
+def _canon(clave: str) -> str | None:
+    """Forma que entiende la API de speedtest.net: speedtest.net/result/<número>.
+    El número se busca en todo el enlace, venga como result/d/123, result/i/123, my-result/a/123, a/123, con «.png»
+    o con texto pegado («123test», «123%7c», un segundo enlace detrás…). Antes result/d/123 daba «no existe».
+    Los de código largo (my-result/d/<uuid>) son resultados PRIVADOS de la app de escritorio: speedtest.net responde
+    «Result not found» sin iniciar sesión, así que no tienen velocidad pública → «uuid:…» (no se piden)."""
+    c = str(clave).replace(".png", "")
+    m = re.search(r"(?:result|a)/(?:[a-z]/)?(\d{7,12})", c)
+    if m:
+        return f"speedtest.net/result/{m.group(1)}"
+    m = re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", c)
+    if m:
+        return f"uuid:{m.group(0)}"
+    return None
+
+
 def _api(clave: str) -> str | None:
-    """speedtest.net/result/123 · /result/d/uuid · /my-result/d/uuid → https://www.speedtest.net/api/result/…"""
-    m = re.match(r"speedtest\.net/(?:my-)?(result/[a-z0-9/_-]+)$", clave)
-    return f"https://www.speedtest.net/api/{m.group(1)}" if m else None
+    """Enlace de la prueba → https://www.speedtest.net/api/result/…"""
+    c = _canon(clave)
+    return f"https://www.speedtest.net/api/{c[len('speedtest.net/'):]}" if c and c.startswith("speedtest.net/") else None
 
 
 def _leer(clave: str):
@@ -113,13 +129,13 @@ def _leer(clave: str):
     import requests
     url = _api(clave)
     if not url:
-        return [-1]
+        return [-1, 2]
     try:
         r = requests.get(url, headers=_UA, timeout=8)
     except Exception:  # noqa: BLE001
         return None
     if r.status_code == 404:
-        return [-1]
+        return [-1, 2]   # 2 = revisado con la lectura corregida (no se vuelve a pedir)
     if r.status_code != 200:
         return None
     try:
@@ -142,12 +158,21 @@ def _por_portal(lote: list) -> list:
     dia = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     firma = hmac.new(k.encode(), f"speedtest-vel:{dia}".encode(), hashlib.sha256).hexdigest()
     url = os.environ.get("PORTAL_URL", "https://mifibra-sync.vercel.app").rstrip("/") + "/api/speedtest?accion=vel"
-    try:
-        r = requests.post(url, json={"claves": lote}, headers={"x-robot-firma": firma}, timeout=20)
-        d = r.json().get("r", {}) if r.status_code == 200 else {}
-    except Exception:  # noqa: BLE001
-        d = {}
-    return [d.get(c) for c in lote]
+    canon = [_canon(c) for c in lote]   # al portal se le manda la forma que entiende (result/<número>)
+    canon = [c if c and c.startswith("speedtest.net/") else None for c in canon]   # privados/rotos: no se piden
+    pedir = sorted({c for c in canon if c})
+    d = {}
+    if pedir:
+        try:
+            r = requests.post(url, json={"claves": pedir}, headers={"x-robot-firma": firma}, timeout=20)
+            d = r.json().get("r", {}) if r.status_code == 200 else {}
+        except Exception:  # noqa: BLE001
+            d = {}
+    out = []
+    for c in canon:
+        v = d.get(c) if c else [-1]
+        out.append([-1, 2] if (v is not None and v[0] < 0) else v)
+    return out
 
 
 def _referencia() -> tuple[dict, list]:
@@ -170,8 +195,9 @@ def _referencia() -> tuple[dict, list]:
 
 def _grupo(clave: str) -> str:
     """Tipo de número de resultado de Speedtest: sus 2 primeras cifras y su largo (91/9 = app del técnico, 19/11 = web…)."""
-    m = re.search(r"(\d+)$", str(clave))
-    if not m or "/d/" in str(clave):
+    c = _canon(clave) if "speedtest.net" in str(clave) else str(clave)
+    m = re.search(r"/(\d+)$", "/" + str(c or "").replace("speedtest.net/result/", ""))
+    if not m:
         return "d"
     return f"{m.group(1)[:2]}/{len(m.group(1))}"
 
@@ -201,7 +227,7 @@ class _Patrones:
             quien = {str(p[4]): p[0] for p in ref[k] if len(p) > 4}
             hay_a = any(_grupo(c) == "91/9" for c, _ in f[12])
             for c, q in f[12]:
-                m = re.search(r"(\d+)$", str(c))
+                m = re.search(r"/(\d+)$", _canon(c) or "")
                 if m and m.group(1) in quien:
                     self.t[("t", _grupo(c), q, hay_a)][quien[m.group(1)]] += 1
                     self.t[("t", _grupo(c), q)][quien[m.group(1)]] += 1
@@ -221,6 +247,10 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     Primero el mes en curso (del día más nuevo al más antiguo) y después los meses anteriores; lo ya leído queda en la
     caché (estado del robot + copia en Supabase) y no se vuelve a pedir."""
     filas = tab.get("o") or []
+    # Enlaces que antes se leyeron mal como «no existe» (result/d/123, my-result/a/123, ….png): se vuelven a pedir una vez.
+    for k in [k for k, v in cache.items() if v and v[0] < 0 and len(v) == 1 and (_canon(k) or "").startswith("speedtest.net/")
+              and _canon(k) != k]:
+        del cache[k]
     ref, pruebas_ref = _referencia()
     fil = tab.get("f") or []
     en_ref = lambda f: f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}" in ref
