@@ -143,11 +143,25 @@ def _por_portal(lote: list) -> list:
     firma = hmac.new(k.encode(), f"speedtest-vel:{dia}".encode(), hashlib.sha256).hexdigest()
     url = os.environ.get("PORTAL_URL", "https://mifibra-sync.vercel.app").rstrip("/") + "/api/speedtest?accion=vel"
     try:
-        r = requests.post(url, json={"claves": lote}, headers={"x-robot-firma": firma}, timeout=30)
+        r = requests.post(url, json={"claves": lote}, headers={"x-robot-firma": firma}, timeout=20)
         d = r.json().get("r", {}) if r.status_code == 200 else {}
     except Exception:  # noqa: BLE001
         d = {}
     return [d.get(c) for c in lote]
+
+
+def _referencia() -> dict:
+    """Archivos de control de Speed Test (sync/ref/speedtest_*.json): «FILIAL|N.º OS» → [[quién C/T, bajada, subida, estado v/b/n]].
+    Vienen del control operativo (el quién sale de Ookla, más confiable que el título del enlace); si una OS está aquí, manda."""
+    import json
+    from pathlib import Path
+    ref = {}
+    for p in sorted((Path(__file__).parent / "ref").glob("speedtest_*.json")):
+        try:
+            ref.update(json.loads(p.read_text(encoding="utf-8")).get("o") or {})
+        except Exception as e:  # noqa: BLE001
+            print(f"Aviso: no se pudo leer {p.name}: {e}", flush=True)
+    return ref
 
 
 def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) -> None:
@@ -155,38 +169,67 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     Primero el mes en curso (del día más nuevo al más antiguo) y después los meses anteriores; lo ya leído queda en la
     caché (estado del robot + copia en Supabase) y no se vuelve a pedir."""
     filas = tab.get("o") or []
+    ref = _referencia()
+    fil = tab.get("f") or []
+    en_ref = lambda f: f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}" in ref
     mes = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=-5))).strftime("%Y-%m")
     falta, vistos, mes_claves = [], set(), set()
     for f in sorted(filas, key=lambda x: (x[1][:7] == mes, x[1]), reverse=True):
+        if en_ref(f):   # ya viene en un archivo de control: no hace falta leerla en speedtest.net
+            continue
         for clave, _ in (f[12] if len(f) > 12 else []):
             if clave not in cache and clave not in vistos:
                 vistos.add(clave)
                 falta.append(clave)
                 if f[1][:7] == mes:
                     mes_claves.add(clave)
-    leidos, t0, via = 0, time.time(), "directo"
+    leidos, fallas, t0, via = 0, 0, time.time(), "directo"
     if falta:
+        objetivo = falta[:limite]
+
+        def anotar(lote, res):
+            nonlocal leidos, fallas
+            for clave, v in zip(lote, res):
+                if v is not None:
+                    cache[clave] = v
+                    leidos += 1
+                else:
+                    fallas += 1
+
         with ThreadPoolExecutor(max_workers=8) as ex:
-            for i in range(0, min(len(falta), limite), 40):
-                if time.time() - t0 > segundos:
-                    break
-                lote = falta[i:i + 40]
-                res = list(ex.map(_leer, lote)) if via == "directo" else _por_portal(lote)
-                if via == "directo" and all(v is None for v in res):   # speedtest.net no responde a GitHub: se pasa al portal (Vercel)
-                    via = "portal"
-                    res = _por_portal(lote)
-                for clave, v in zip(lote, res):
-                    if v is not None:
-                        cache[clave] = v
-                        leidos += 1
+            i = 0
+            while i < len(objetivo) and time.time() - t0 <= segundos:
+                if via == "directo":
+                    lote = objetivo[i:i + 40]
+                    res = list(ex.map(_leer, lote))
+                    if all(v is None for v in res):   # speedtest.net no responde a GitHub: se pasa al portal (Vercel)
+                        via = "portal"
+                        continue                      # el mismo lote se pide al portal
+                    anotar(lote, res)
+                    i += 40
+                else:
+                    # Portal: pedidos chicos (8 enlaces = una sola vuelta en Vercel, ~2–7 s) y 6 pedidos a la vez.
+                    # Los pedidos grandes (40) pasaban el tiempo máximo de la función y volvían vacíos.
+                    lotes = [objetivo[j:j + 8] for j in range(i, min(i + 48, len(objetivo)), 8)]
+                    for lote, res in zip(lotes, ex.map(_por_portal, lotes)):
+                        anotar(lote, res)
+                    i += 48
         del_mes = sum(1 for c in falta if c not in cache and c in mes_claves)
         print(f"  Speed Test: {leidos} velocidades nuevas leídas de speedtest.net ({'desde el robot' if via == 'directo' else 'vía el portal'}) · "
-              f"{max(0, len(falta) - leidos)} pendientes ({del_mes} del mes en curso).", flush=True)
+              f"{fallas} sin respuesta (se reintentan) · {max(0, len(falta) - leidos)} pendientes ({del_mes} del mes en curso).", flush=True)
+    n_ref = 0
     for f in filas:
         if len(f) <= 12:
             continue
+        clave_ref = f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}"
+        if clave_ref in ref:   # el archivo de control manda: sus pruebas, quién la hizo (dato de Ookla) y su resultado
+            P = ref[clave_ref]
+            f[7], f[8], f[9] = sum(1 for p in P if p[0] == "C"), sum(1 for p in P if p[0] != "C"), 0
+            f[12] = [list(p) for p in P]
+            n_ref += 1
+            continue
         minimo = 1200 if f[4] == 1 else 600
-        dia = datetime.strptime(f[1], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() + 5 * 3600
+        dia = datetime.strptime(f[1], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() + 5 * 3600   # 00:00 de Lima
         out = []
         for clave, q in f[12]:
             v = cache.get(clave)
@@ -195,8 +238,15 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
             elif v[0] < 0:
                 out.append([q, None, None, "n"])
             else:
-                lejos = v[3] and abs(v[3] - dia) > 3 * 86400 + 86400
-                e = "n" if (not v[2] or lejos) else ("v" if v[0] >= minimo else "b")
+                # Regla del control de provincias: la prueba vale solo si es de máximo 1 día respecto de la atención
+                # (del día anterior al siguiente); si no, no suma en ningún cálculo.
+                if v[3] and not (dia - 86400 <= v[3] < dia + 2 * 86400):
+                    i = 7 if q == "C" else 9 if not q else 8
+                    f[i] = max(0, f[i] - 1)
+                    continue
+                e = "n" if not v[2] else ("v" if v[0] >= minimo else "b")
                 out.append([q, v[0], v[1], e])
         f[12] = out
+    if ref:
+        print(f"  Speed Test: {n_ref} instalaciones tomadas de los archivos de control (sync/ref).", flush=True)
     tab["cols"][-1] = "pruebas"
