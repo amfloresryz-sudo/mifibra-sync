@@ -196,8 +196,8 @@ module.exports = async (req, res) => {
         if (a) cien[os] = { ...a, por: 'master' }; else delete cien[os];
         nuevo = { ...previo, cien: podarCien(cien) };
       } else if (accion === 'compromiso') {
-        // Compromiso de recuperación de una EECC para un día (Control EECC): solo Instalaciones de Lima; texto vacío = lo borra.
-        if (modulo !== 'instalaciones' || filial !== 'LIMA') return responder(res, 400, { error: 'Control EECC es solo para Lima.' });
+        // Compromiso de recuperación de una EECC para un día (Control EECC): Instalaciones de Lima o provincias; texto vacío = lo borra.
+        if (modulo !== 'instalaciones') return responder(res, 400, { error: 'Control EECC es solo para Instalaciones.' });
         const fecha = String(cuerpo?.fecha || ''), ec = texto(cuerpo?.ec, 80), t = texto(cuerpo?.texto, 200);
         if (!esFecha(fecha) || !ec) return responder(res, 400, { error: 'Falta la fecha o la EECC.' });
         const comp = podarCompromisos(previo.compromisos), dia = { ...(comp[fecha] || {}) }, u = req.usuario || {};
