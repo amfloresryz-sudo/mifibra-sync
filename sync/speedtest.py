@@ -123,14 +123,19 @@ def _tipo_enlace(clave: str) -> str:
     return "x"
 
 
-SIN_PUBLICO = {"m", "u", "x"}   # speedtest.net responde «Resultado no encontrado»: no se piden
+SIN_PUBLICO = {"x"}   # enlace cortado o incompleto: no se puede pedir (my-result/d/código y result/d/código sí se leen)
 
 
 def _api(clave: str) -> str | None:
     """Enlace con número (result/123, result/d/123, result/i/123, my-result/a/123, ….png) → https://www.speedtest.net/api/result/123.
     En el navegador esos enlaces sí muestran la prueba; antes result/d/123 se pedía mal y quedaba como «no encontrado»."""
-    m = re.search(r"(?:result|a)/(?:[a-z]/)?(\d{6,})", str(clave).replace(".png", ""))
-    return f"https://www.speedtest.net/api/result/{m.group(1)}" if m else None
+    c = str(clave).replace(".png", "")
+    m = re.search(r"(?:result|a)/(?:[a-z]/)?(\d{6,})", c)
+    if m:
+        return f"https://www.speedtest.net/api/result/{m.group(1)}"
+    # App de escritorio con código (my-result/d/… y result/d/…): speedtest.net sí los muestra en /api/result/d/código
+    u = re.search(r"result/d/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", c)
+    return f"https://www.speedtest.net/api/result/d/{u.group(1)}" if u else None
 
 
 def _leer(clave: str):
@@ -186,7 +191,7 @@ def _por_portal(lote: list) -> list:
     dia = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     firma = hmac.new(k.encode(), f"speedtest-vel:{dia}".encode(), hashlib.sha256).hexdigest()
     url = os.environ.get("PORTAL_URL", "https://mifibra-sync.vercel.app").rstrip("/") + "/api/speedtest?accion=vel"
-    canon = {c: (f"speedtest.net/result/{_api(c).rsplit('/', 1)[1]}" if _api(c) else None) for c in lote}   # forma que entiende el portal
+    canon = {c: ("speedtest.net/" + _api(c).split("/api/", 1)[1] if _api(c) else None) for c in lote}   # forma que entiende el portal
     pedir = sorted({v for v in canon.values() if v})
     try:
         r = requests.post(url, json={"claves": pedir}, headers={"x-robot-firma": firma}, timeout=20) if pedir else None
@@ -215,8 +220,9 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     Primero el mes en curso (del día más nuevo al más antiguo) y después los meses anteriores; lo ya leído queda en la
     caché (estado del robot + copia en Supabase) y no se vuelve a pedir."""
     filas = tab.get("o") or []
-    # Enlaces con número que antes se leyeron mal como «no existe» (result/d/123, my-result/a/123, ….png): se piden otra vez, una vez.
-    for k in [k for k, v in cache.items() if v and v[0] < 0 and len(v) == 1 and _api(k) and not re.search(r"result/\d{6,}$", k)]:
+    # Enlaces que antes se dieron por «no existe» sin pedirlos bien (result/d/123, my-result/a/123, ….png, my-result/d/código):
+    # se piden otra vez, una sola vez (lo que speedtest.net confirma que no existe queda como [-2] y ya no se repite).
+    for k in [k for k, v in cache.items() if v == [-1] and _api(k) and not re.search(r"result/\d{6,}$", k)]:
         del cache[k]
     # Copia de los enlaces de cada instalación (para revisar tipos de enlace por día y filial; el portal no la lee).
     fil0 = tab.get("f") or []
@@ -257,7 +263,7 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                 if v is None:
                     fallas += 1
                 elif clave in nuevas:
-                    cache[clave] = v
+                    cache[clave] = [-2] if v[0] < 0 else v   # [-2] = confirmado que no existe (no se vuelve a pedir)
                     leidos += 1
                 elif v[0] >= 0:   # ya leída: solo se reemplaza si trae los datos completos (nunca se pierde la velocidad)
                     cache[clave] = v
