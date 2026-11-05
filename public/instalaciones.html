@@ -932,6 +932,23 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .cs-tab.marcar td.nc { border-left: 3px solid #D7263D !important; border-right: 3px solid #D7263D !important; }
 .cs-tab.marcar tfoot td.nc { border-bottom: 3px solid #D7263D !important; }
 .cs-tab.marcar tr.fila-nc .ec-nc, .cs-tab.marcar td.nc-si button, .cs-tab.marcar td.nc-si > span { background: #FFF200; color: #1F2937; padding: 1px 4px; border-radius: 2px; }
+/* Control EECC (solo Lima): avance por corte con semáforo y scorecard del mes */
+#v-ctrl .sec[hidden] { display: none; }
+.ce-p { display: inline-block; padding: 3px 10px; border-radius: 999px; font: 700 12.5px var(--f-disp); white-space: nowrap; background: var(--gris-bg); color: var(--fg-2); }
+.ce-p.ok { background: var(--ok-bg); color: var(--ok); } .ce-p.mid { background: var(--mid-bg); color: var(--mid); } .ce-p.mal { background: var(--mal-bg); color: var(--mal); }
+.ce-p.mas { background: var(--rosa); color: var(--magenta-txt); } .ce-p.na { background: transparent; color: var(--fg-4); font-weight: 600; }
+.ce-bar { position: relative; height: 10px; min-width: 140px; background: var(--gris-bg); border-radius: 5px; }
+.ce-bar b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; }
+.ce-bar i { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--fg); }
+.ce-tec-falta { color: #C2410C; font-weight: 700; }
+.ce-dec { display: flex; flex-wrap: wrap; gap: 8px; }
+.ce-comp { display: flex; flex-direction: column; gap: 10px; }
+.ce-comp h3 { margin: 6px 0 0; font: 700 16px var(--f-disp); }
+.ce-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 14px; border-radius: 12px; background: var(--mal-bg); }
+.ce-item.ok { background: var(--gris-bg); }
+.ce-item b { font-family: var(--f-disp); min-width: 190px; }
+.ce-item input { flex: 1 1 320px; min-width: 0; font: inherit; padding: 9px 12px; border: 1px solid var(--borde-2); border-radius: 10px; background: var(--sup); color: var(--fg); }
+.ce-item small { flex-basis: 100%; color: var(--fg-3); }
 </style>
 </head>
 <body>
@@ -969,6 +986,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <button type="button" role="tab" id="tab-avance" aria-controls="v-avance" aria-selected="false" data-t="avance">Avance</button>
     <button type="button" role="tab" id="tab-avt" aria-controls="v-avt" aria-selected="false" data-t="avt">Avance total</button>
     <button type="button" role="tab" id="tab-ritmo" aria-controls="v-ritmo" aria-selected="false" data-t="ritmo" hidden>Ritmo del día</button>
+    <button type="button" role="tab" id="tab-ctrl" aria-controls="v-ctrl" aria-selected="false" data-t="ctrl" hidden>Control EECC</button>
   </div>
 </div></section>
 
@@ -1193,6 +1211,29 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
         <div class="scroll" id="avt-mat"></div>
       </div>
       <p class="nota">Universo: todas las órdenes con Estado OS DESCARGADA hechas por técnicos de EECC (contrata EECC), por F. Atenc., de cualquier tipo de orden · columnas = tipo de orden y servicio · toca una EECC (▸) para ver sus técnicos · Prom./téc. = órdenes ÷ técnicos con al menos una orden en el periodo · los filtros de Segmento, Canal y Zona de la cabecera no aplican aquí (estas órdenes no traen ese dato).</p>
+    </section>
+  </div>
+
+  <!-- CONTROL EECC (solo Lima) -->
+  <div role="tabpanel" id="v-ctrl" aria-labelledby="tab-ctrl" hidden style="flex-direction:column;gap:22px">
+    <div class="segs" role="group" aria-label="Vista de Control EECC" id="ce-vistas">
+      <button type="button" class="chip" data-ce="hoy" aria-pressed="true">Avance del día por corte</button>
+      <button type="button" class="chip" data-ce="mes" aria-pressed="false">Scorecard del mes</button>
+    </div>
+    <section class="sec" id="sec-ce-hoy" aria-labelledby="t-ce-hoy">
+      <div class="sec-cab"><div><h2 id="t-ce-hoy">Avance por corte: ¿cada EECC va al ritmo de su objetivo?</h2><p class="sub" id="ce-hoy-sub"></p></div>
+        <div class="pen-acc"><button type="button" class="btn-out" data-img="sec-ce-hoy" data-nom="control-eecc-cortes">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-ce-hoy" data-nom="control-eecc-cortes">Descargar Excel</button></div></div>
+      <div class="kpis" id="ce-hoy-kpis"></div>
+      <div class="scroll" id="ce-hoy-tab"></div>
+      <p class="nota" id="ce-hoy-nota"></p>
+      <div id="ce-comp" class="ce-comp"></div>
+    </section>
+    <section class="sec" id="sec-ce-mes" aria-labelledby="t-ce-mes" hidden>
+      <div class="sec-cab"><div><h2 id="t-ce-mes">Scorecard de EECC — <span class="mes-anio"></span></h2><p class="sub" id="ce-mes-sub"></p></div>
+        <div class="pen-acc"><button type="button" class="btn-out" data-img="sec-ce-mes" data-nom="scorecard-eecc">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-ce-mes" data-nom="scorecard-eecc">Descargar Excel</button></div></div>
+      <div class="scroll" id="ce-mes-tab"></div>
+      <div class="ce-dec no-img"><span class="ce-p mas">90 a 100 · Más carga</span><span class="ce-p">80 a 89 · Mantener</span><span class="ce-p mid">70 a 79 · Plan de acción</span><span class="ce-p mal">Menos de 70 · Reducir zona</span></div>
+      <p class="nota" id="ce-mes-nota"></p>
     </section>
   </div>
 </div></main>
@@ -1591,7 +1632,7 @@ $('eecs').addEventListener('click', (e) => { const b = e.target.closest('[data-e
 $('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; seg = msTog(seg, b.dataset.s); pintarFiltros(); pintarTodo(); });
 $('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = msTog(canal, b.dataset.cn); CFG = cfgDe(); pintarFiltros(); pintarTodo(); });
 $('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = msTog(zona, b.dataset.z); pintarFiltros(); pintarTodo(); });
-const VISTAS = ['panel','ingresos','pendientes','coord','avance','avt','ritmo'];
+const VISTAS = ['panel','ingresos','pendientes','coord','avance','avt','ritmo','ctrl'];
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]'); if (!b) return; tab = b.dataset.t;
   document.querySelectorAll('#tabs [role="tab"]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
@@ -4158,9 +4199,130 @@ async function pintarRitAsis() {
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-ra-fr], [data-ra-ag]'); if (!b) return;
   const S = b.dataset.raFr != null ? raFr : raAg, v = b.dataset.raFr != null ? b.dataset.raFr : b.dataset.raAg;
   if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarRitAsis(); });
-const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); } };
+/* ---------- CONTROL EECC (solo Lima) ----------
+   Avance del día por corte: el objetivo de cada EECC es el mismo de Avance (OBJ_PCT % de su base inicial) y cada corte
+   cuenta sus instalaciones DESCARGADA con hora de fin (o de inicio si no trae fin) hasta esa hora.
+   Scorecard del mes: cumplimiento del objetivo diario, de agendas, asistencia de rutas, productividad y pendientes +48 h.
+   Compromiso de recuperación: nota del día por EECC, guardada en ajustes (instalaciones:LIMA › compromisos). */
+let ceVista = 'hoy';
+const CE_CORTES = [[11 * 60, '11 am', 30], [14 * 60, '2 pm', 60], [17 * 60, '5 pm', 85]];
+const CE_PESOS = [['cum', 30], ['agd', 25], ['asi', 15], ['prod', 15], ['dis', 15]];
+const CE_EST = { ok: 'En meta', mid: 'Atención', mal: 'Rojo' };
+const ceEsLima = () => !esCombo((D && D.filial) || filialSel()) && ((D && D.filial) || filialSel()) === 'LIMA';
+const ceExcluir = (ec) => !ec || /^(POR ASIGNAR|SIN EECC|SUPERVISOR)$/.test(ec);
+const ceMin = (h) => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? +m[1] * 60 + +m[2] : null; };
+const ceEstado = (p, esp) => p == null ? null : p >= esp ? 'ok' : p >= esp - 10 ? 'mid' : 'mal';
+const limaHoy = () => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }); } catch { return ''; } };
+/* Minuto del día hasta donde hay datos: la hora del corte del robot si el tablero es de hoy; si es un día cerrado, todo el día. */
+const ceAhora = () => { const c = String(D.corte || ''); return c.slice(0, 10) === hoyIso() && hoyIso() === limaHoy() ? (ceMin(c.slice(11, 16)) ?? 1440) : 1440; };
+function revisarCtrl() {
+  const btn = $('tab-ctrl'); if (!btn) return;
+  btn.hidden = !ceEsLima();
+  if (btn.hidden && tab === 'ctrl') { const p = document.querySelector('#tabs [data-t="panel"]'); if (p) p.click(); }
+}
+/* Rutas del día de una EECC: rutas fijas («Rutas por EECC») o, sin fijas, las declaradas a mano ese día (igual que Avance) */
+function ceRutas(iso) {
+  const fijas = RF[D.filial || 'LIMA'] || {}, hay = Object.keys(fijas).length > 0, RD = AJ.rutas[iso] || {};
+  return (k) => hay ? (fijas[String(k).toUpperCase()] ?? null) : (RD[k] ?? null);
+}
+/* Objetivo de cada EECC para un día (mismo cálculo que Avance) */
+function ceObjetivos(iso) {
+  const o = {}; baseInicial(iso).filas.forEach(x => { if (ok(x)) o[x.ec] = (o[x.ec] || 0) + 1; });
+  Object.keys(o).forEach(k => { o[k] = Math.round(o[k] * OBJ_PCT / 100); });
+  return o;
+}
+function pintarCtrl() {
+  document.querySelectorAll('#ce-vistas [data-ce]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ce === ceVista)));
+  $('sec-ce-hoy').hidden = ceVista !== 'hoy'; $('sec-ce-mes').hidden = ceVista !== 'mes';
+  if (!ceEsLima()) { $('ce-hoy-tab').innerHTML = '<p class="nota">Control EECC está disponible solo para Lima.</p>'; return; }
+  ceVista === 'hoy' ? pintarCtrlHoy() : pintarCtrlMes();
+}
+function pintarCtrlHoy() {
+  const dia = D.dias, iso = isoDia(dia), ahora = ceAhora(), Ld = D.liq.filter(x => ok(x) && x.d === dia);
+  const OBJ = ceObjetivos(iso), rutaDe = ceRutas(iso), E = {};
+  const e0 = (k) => E[k] || (E[k] = { liq: 0, tec: new Set(), c: CE_CORTES.map(() => 0) });
+  Object.keys(OBJ).forEach(k => { if (!ceExcluir(k)) e0(k); });
+  Ld.forEach(x => { if (ceExcluir(x.ec)) return; const e = e0(x.ec), m = ceMin(x.hf) ?? ceMin(x.hi);
+    e.liq++; if (x.tec) e.tec.add(x.tec); CE_CORTES.forEach(([h], i) => { if (m != null && m <= h) e.c[i]++; }); });
+  const pasado = CE_CORTES.filter(([h]) => ahora >= h), cAct = pasado[pasado.length - 1] || null;
+  const espAhora = ahora >= 1440 ? 100 : cAct ? cAct[2] : null, cTxt = ahora >= 1440 ? 'cierre del día' : cAct ? cAct[1] : 'antes del primer corte';
+  const filas = Object.keys(E).map(k => { const e = E[k], o = OBJ[k] || 0, p = o ? e.liq / o * 100 : null, r = rutaDe(k);
+    return { k, e, o, p, r, est: o ? ceEstado(p, espAhora ?? 0) : null }; })
+    .filter(f => f.o || f.e.liq).sort((a, b) => (a.p ?? 999) - (b.p ?? 999) || b.o - a.o);
+  if (espAhora == null) filas.forEach(f => { f.est = null; });
+  const T = filas.reduce((a, f) => { a.o += f.o; a.l += f.e.liq; a.t += f.e.tec.size; if (f.r != null) { a.r += f.r; a.cr = true; a.fa += Math.max(0, f.r - f.e.tec.size); } return a; }, { o: 0, l: 0, t: 0, r: 0, fa: 0, cr: false });
+  const rojas = filas.filter(f => f.est === 'mal'), pT = T.o ? T.l / T.o * 100 : null;
+  $('ce-hoy-sub').textContent = `${diaInfo(dia).wd} ${fDia(dia)} · ${ahora < 1440 ? `datos de las ${String(D.corte || '').slice(11, 16)} · último corte: ${cTxt}` : 'día cerrado'} · objetivo = ${dec(OBJ_PCT, 0)}% de la base inicial, el mismo de Avance`;
+  $('ce-hoy-kpis').innerHTML = kpi('Objetivo del día', n(T.o), 'suma de los objetivos por EECC') +
+    kpi('Liquidadas', `<button type="button" class="clic" data-ch="liq" data-d="${dia}" data-k="ALL" style="all:unset;cursor:pointer">${n(T.l)}</button>`, pT == null ? '' : `${dec(pT, 0)}% del objetivo${espAhora != null && espAhora < 100 ? ` · esperado ${espAhora}% a las ${cAct[1]}` : ''}`, 'acento') +
+    kpi('Técnicos en campo', T.cr ? `${n(T.t)} / ${n(T.r)}` : n(T.t), T.cr ? `${n(T.fa)} faltas frente a las rutas` : 'sin rutas declaradas', !T.cr ? '' : T.fa === 0 ? 'ok' : T.fa / Math.max(1, T.r) <= .1 ? 'mid' : 'mal') +
+    kpi('EECC en rojo', espAhora == null ? '—' : n(rojas.length), espAhora == null ? 'el semáforo empieza a las 11 am' : rojas.length ? 'llamar y pedir recuperación' : 'ninguna', espAhora == null ? '' : rojas.length ? 'mal' : 'ok');
+  const celC = (f, i) => { const [h, , esp] = CE_CORTES[i]; if (ahora < h) return '<td><span class="ce-p na" title="Aún no llega este corte">—</span></td>';
+    const v = f.e.c[i], p = f.o ? v / f.o * 100 : null, s = ceEstado(p, esp);
+    return `<td data-v="${p ?? -1}"><span class="ce-p ${s || 'na'}" title="${p == null ? 'Sin objetivo' : `${dec(p, 0)}% del objetivo · esperado ${esp}%`}">${v}${p == null ? '' : ' · ' + dec(p, 0) + '%'}</span></td>`; };
+  const marca = espAhora != null && espAhora < 100 ? `<i style="left:${espAhora}%" aria-hidden="true"></i>` : '';
+  const col = (s) => `var(--${s === 'ok' ? 'ok' : s === 'mid' ? 'mid' : s === 'mal' ? 'mal' : 'gris'})`;
+  $('ce-hoy-tab').innerHTML = `<table class="mat ord tabla-ajuste" id="tb-ce-hoy"><thead><tr><th>EECC</th><th title="Técnicos que liquidaron hoy / rutas declaradas">Téc. / rutas</th><th>Objetivo</th>${CE_CORTES.map(([, t, esp]) => `<th title="Liquidadas hasta las ${t} · se espera ${esp}% del objetivo">${t} · ${esp}%</th>`).join('')}<th>Liquidadas</th><th>Avance vs objetivo</th><th>Falta</th><th>Estado</th></tr></thead><tbody>
+    ${filas.map(f => `<tr><td>${esc(f.k)}</td><td class="${f.r != null && f.e.tec.size < f.r ? 'ce-tec-falta' : ''}" title="${f.r != null && f.e.tec.size < f.r ? (f.r - f.e.tec.size) + ' rutas no salieron' : ''}">${f.e.tec.size}${f.r != null ? ' / ' + f.r : ''}</td><td>${f.o || '·'}</td>${CE_CORTES.map((_, i) => celC(f, i)).join('')}<td class="t-col"><button type="button" class="clic" data-ch="liq" data-d="${dia}" data-k="EC:${esc(f.k)}" style="all:unset;cursor:pointer;font-weight:700">${f.e.liq}</button></td><td data-v="${f.p ?? -1}"><div class="ce-bar" title="${f.p == null ? 'Sin objetivo' : dec(f.p, 0) + '% del objetivo'}"><b style="width:${Math.min(100, f.p || 0).toFixed(1)}%;background:${col(f.est)}"></b>${marca}</div></td><td>${f.o ? Math.max(0, f.o - f.e.liq) : '·'}</td><td>${f.est ? `<span class="ce-p ${f.est}">${CE_EST[f.est]}</span>` : '<span class="ce-p na">—</span>'}</td></tr>`).join('') || '<tr><td colspan="10">Sin datos de hoy.</td></tr>'}</tbody>
+    <tfoot><tr><td>Total</td><td>${n(T.t)}${T.cr ? ' / ' + n(T.r) : ''}</td><td>${n(T.o)}</td>${CE_CORTES.map(([h], i) => { if (ahora < h) return '<td>—</td>'; const v = filas.reduce((a, f) => a + f.e.c[i], 0); return `<td>${n(v)}${T.o ? ' · ' + dec(v / T.o * 100, 0) + '%' : ''}</td>`; }).join('')}<td>${n(T.l)}</td><td>${pT == null ? '—' : dec(pT, 0) + '%'}</td><td>${n(Math.max(0, T.o - T.l))}</td><td></td></tr></tfoot></table>`;
+  prepararOrden($('tb-ce-hoy'));
+  $('ce-hoy-nota').textContent = `Cada corte = instalaciones DESCARGADA de la EECC con hora de fin hasta esa hora ÷ su objetivo del día · semáforo: En meta si llega al % esperado del corte, Atención hasta 10 puntos debajo, Rojo más abajo · la línea negra de la barra marca el % esperado en el corte actual · técnicos en naranja = salieron menos que las rutas declaradas · clic en Liquidadas para ver los AB · las EECC se ordenan de menor a mayor avance · POR ASIGNAR no entra.`;
+  // Compromisos de recuperación: las EECC en rojo y las que ya tienen nota hoy
+  const C = (AJ.compromisos || {})[iso] || {}, conNota = filas.filter(f => f.est === 'mal' || C[f.k]);
+  $('ce-comp').innerHTML = !conNota.length ? '' : `<h3>Compromiso de recuperación</h3>${conNota.map(f => { const c = C[f.k];
+    return `<div class="ce-item${f.est === 'mal' ? '' : ' ok'}"><b>${esc(f.k)} · ${f.p == null ? '—' : dec(f.p, 0) + '%'} al corte</b><input type="text" maxlength="200" data-ce-nota="${esc(f.k)}" value="${esc(c ? c.t : '')}" placeholder="Qué se comprometió a recuperar y hasta qué hora" aria-label="Compromiso de ${esc(f.k)}"><button type="button" class="btn-out" data-ce-guardar="${esc(f.k)}">Guardar</button>${c ? `<small>Guardado por ${esc(c.por || '—')} a las ${esc(String(c.en || '').slice(11, 16))}</small>` : ''}</div>`; }).join('')}<p class="nota" id="ce-comp-est" role="status" aria-live="polite">La nota queda guardada del día y la ve todo el equipo (útil para la reunión semanal).</p>`;
+}
+function pintarCtrlMes() {
+  const hoyL = limaHoy(), ult = hoyIso() === hoyL ? D.dias - 1 : D.dias;   // el día en curso no cuenta hasta que cierre
+  const obj = Number(CFG.obj_tecnico) || 3, S = {};
+  const s0 = (k) => S[k] || (S[k] = { dias: 0, cumple: 0, si: 0, nc: 0, r: 0, rt: 0, liq: 0, tecDia: 0, pend: 0, p48: 0 });
+  for (let d = 1; d <= ult; d++) {
+    const iso = isoDia(d), O = ceObjetivos(iso), rutaDe = ceRutas(iso), fin = diaInfo(d).fin, L = {}, TC = {};
+    D.liq.forEach(x => { if (x.d !== d || !ok(x) || ceExcluir(x.ec)) return; L[x.ec] = (L[x.ec] || 0) + 1; if (x.tec) (TC[x.ec] || (TC[x.ec] = new Set())).add(x.tec); });
+    new Set([...Object.keys(O), ...Object.keys(L)]).forEach(k => { if (ceExcluir(k)) return; const s = s0(k), o = O[k] || 0, l = L[k] || 0, t = TC[k] ? TC[k].size : 0;
+      if (o && (l || !fin)) { s.dias++; if (l >= o) s.cumple++; }
+      s.liq += l; s.tecDia += t;
+      const r = (AJ.rutas[iso] || {})[k] ?? (fin ? null : rutaDe(k)); if (r) { s.r += r; s.rt += Math.min(t, r); } });
+  }
+  D.prog.forEach(p => { if (!ok(p) || ceExcluir(p.ec)) return; const s = s0(p.ec); if (p.k === 'si') s.si++; else if (p.k === 'no' || p.k === 'tarde') s.nc++; });
+  const corteMs = D.corte ? msIso(String(D.corte).slice(0, 19)) : Date.now();
+  D.pend.forEach(p => { if (!ok(p) || ceExcluir(p.ec)) return; const s = s0(p.ec); s.pend++; if (p.rec && corteMs - msIso(p.rec) > 48 * 3600e3) s.p48++; });
+  const clamp = (v) => Math.max(0, Math.min(100, v));
+  const filas = Object.keys(S).map(k => { const s = S[k];
+    const m = { cum: s.dias ? s.cumple / s.dias * 100 : null, agd: s.si + s.nc ? s.si / (s.si + s.nc) * 100 : null, asi: s.r ? s.rt / s.r * 100 : null,
+      prod: s.tecDia ? s.liq / s.tecDia : null, dis: s.pend ? s.p48 / s.pend * 100 : null };
+    const pts = { cum: m.cum, agd: m.agd, asi: m.asi, prod: m.prod == null ? null : clamp(m.prod / obj * 100), dis: m.dis == null ? null : clamp(100 - m.dis * 2) };
+    // Si a una EECC le falta un indicador (p. ej. sin rutas declaradas), el puntaje se reparte entre los que sí tiene
+    const usa = CE_PESOS.filter(([c]) => pts[c] != null), w = usa.reduce((a, [, p]) => a + p, 0);
+    const score = w ? usa.reduce((a, [c, p]) => a + clamp(pts[c]) * p, 0) / w : null;
+    return { k, s, m, score, falta: CE_PESOS.filter(([c]) => pts[c] == null).length }; })
+    .filter(f => f.s.dias || f.s.liq || f.s.pend).sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  const dec2 = (s) => s == null ? null : s >= 90 ? ['mas', 'Más carga'] : s >= 80 ? ['', 'Mantener'] : s >= 70 ? ['mid', 'Plan de acción'] : ['mal', 'Reducir zona'];
+  const colS = (s) => s == null ? 'var(--gris)' : s >= 90 ? 'var(--magenta)' : s >= 80 ? 'var(--gris)' : s >= 70 ? 'var(--mid)' : 'var(--mal)';
+  const pc = (v) => v == null ? '—' : dec(v, 0) + '%';
+  $('ce-mes-sub').textContent = `Días cerrados: 1 al ${ult} · puntaje de 0 a 100 · el ranking decide la carga del mes siguiente`;
+  $('ce-mes-tab').innerHTML = `<table class="mat ord tabla-ajuste" id="tb-ce-mes"><thead><tr><th>#</th><th>EECC</th><th title="Días que llegó a su objetivo del día ÷ días con objetivo">Cumpl. objetivo diario · 30%</th><th title="Agendas y coordinadas atendidas a tiempo ÷ (a tiempo + incumplidas + tarde)">Cumpl. agendas · 25%</th><th title="Técnicos en campo ÷ rutas declaradas, por día">Asistencia rutas · 15%</th><th title="Liquidadas ÷ técnico por día, frente al objetivo por técnico (${dec(obj)})">Productividad · 15%</th><th title="Pendientes de hoy con más de 48 h desde la recepción (menos es mejor)">Pend. +48 h · 15%</th><th>Puntaje</th><th>Decisión</th></tr></thead><tbody>
+    ${filas.map((f, i) => { const dd = dec2(f.score); return `<tr><td>${i + 1}</td><td>${esc(f.k)}</td><td data-v="${f.m.cum ?? -1}" title="${f.s.cumple} de ${f.s.dias} días">${pc(f.m.cum)}</td><td data-v="${f.m.agd ?? -1}" title="${f.s.si} a tiempo de ${f.s.si + f.s.nc}">${pc(f.m.agd)}</td><td data-v="${f.m.asi ?? -1}">${pc(f.m.asi)}</td><td data-v="${f.m.prod ?? -1}">${dec(f.m.prod)}</td><td data-v="${f.m.dis ?? -1}" title="${f.s.p48} de ${f.s.pend} pendientes">${pc(f.m.dis)}</td><td data-v="${f.score ?? -1}"><div class="barra-pct"><i><b style="width:${(f.score || 0).toFixed(1)}%;background:${colS(f.score)}"></b></i><span>${f.score == null ? '—' : dec(f.score, 0)}</span></div></td><td>${dd ? `<span class="ce-p ${dd[0]}">${dd[1]}</span>` : '—'}${f.falta ? ` <small title="Sin dato en ${f.falta} indicador(es): su peso se reparte entre los demás">*</small>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="9">Aún no hay días cerrados en el mes.</td></tr>'}</tbody></table>`;
+  prepararOrden($('tb-ce-mes'));
+  $('ce-mes-nota').textContent = `Cumpl. objetivo diario = días que la EECC llegó a su objetivo de Avance (${dec(OBJ_PCT, 0)}% de su base inicial) ÷ días con objetivo; los domingos sin liquidaciones no cuentan · Cumpl. agendas = agendas y coordinadas atendidas a tiempo, igual que Coordinaciones · Asistencia rutas = técnicos que liquidaron ÷ rutas declaradas · Productividad = liquidadas ÷ técnicos por día; da 100 puntos al llegar a ${dec(obj)} · Pend. +48 h = pendientes actuales con más de 48 h desde la recepción (cada punto % resta 2) · * = le falta un indicador y su peso se reparte entre los demás · respetan los filtros de Segmento, Canal y Zona de la cabecera · POR ASIGNAR no entra.`;
+}
+$('ce-vistas').addEventListener('click', (e) => { const b = e.target.closest('[data-ce]'); if (!b) return; ceVista = b.dataset.ce; pintarCtrl(); });
+$('ce-comp').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-ce-guardar]'); if (!b) return;
+  const ec = b.dataset.ceGuardar, inp = [...document.querySelectorAll('[data-ce-nota]')].find(x => x.dataset.ceNota === ec), est = $('ce-comp-est');
+  b.disabled = true; if (est) { est.style.color = ''; est.textContent = 'Guardando…'; }
+  try {
+    const r = await fetch(urlAj('LIMA') + '&accion=compromiso', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() },
+      body: JSON.stringify({ fecha: isoDia(D.dias), ec, texto: inp ? inp.value : '' }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
+    AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true; CACHE.set('aj:LIMA', AJ);
+    pintarCtrlHoy(); const est2 = $('ce-comp-est'); if (est2) { est2.style.color = 'var(--ok)'; est2.textContent = `Compromiso de ${ec} guardado.`; }
+  } catch (err) { b.disabled = false; if (est) { est.style.color = 'var(--mal)'; est.textContent = err.message; } }
+});
+const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); }, ctrl: () => pintarCtrl() };
 const tabSucia = new Set();
-function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); pintarTabSiSucia(tab); pintarCinta(); revisarRitmo(); }
+function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); revisarCtrl(); pintarTabSiSucia(tab); pintarCinta(); revisarRitmo(); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
 /* ---------- Periodo: selector de mes, semanas y desde/hasta ---------- */
 const MESES_C = (iso) => { const [y, m] = iso.split('-').map(Number); const t = MESES_L[m - 1]; return t.charAt(0).toUpperCase() + t.slice(1) + ' ' + y; };

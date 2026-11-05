@@ -98,6 +98,17 @@ function limpiarResponsables(r, libre = false) {
   return o;
 }
 
+// Compromisos de recuperación (Instalaciones › Control EECC, solo Lima): { "AAAA-MM-DD": { EECC: { t, por, en } } }. Últimos 45 días.
+function podarCompromisos(c) {
+  const o = {};
+  Object.keys(c && typeof c === 'object' ? c : {}).filter(esFecha).sort().slice(-45).forEach((f) => {
+    const dia = {};
+    Object.entries(c[f] || {}).slice(0, 100).forEach(([ec, v]) => { const k = texto(ec, 80), t = texto(v && v.t, 200); if (k && t) dia[k] = { t, por: texto(v.por, 80), en: texto(v.en, 30) }; });
+    if (Object.keys(dia).length) o[f] = dia;
+  });
+  return o;
+}
+
 const PROV7 = ['ANCASH', 'AREQUIPA', 'CAJAMARCA', 'HUANUCO', 'LA LIBERTAD', 'LAMBAYEQUE', 'PIURA'];
 // sync = { DISTRITO: FILIAL } de los distritos de la ventana. Solo se tocan esos distritos y ese mes en la otra vista.
 async function sincronizarLS(filial, mes, valores, sync, actualizado) {
@@ -184,6 +195,15 @@ module.exports = async (req, res) => {
         const cien = { ...(previo.cien || {}) };
         if (a) cien[os] = { ...a, por: 'master' }; else delete cien[os];
         nuevo = { ...previo, cien: podarCien(cien) };
+      } else if (accion === 'compromiso') {
+        // Compromiso de recuperación de una EECC para un día (Control EECC): solo Instalaciones de Lima; texto vacío = lo borra.
+        if (modulo !== 'instalaciones' || filial !== 'LIMA') return responder(res, 400, { error: 'Control EECC es solo para Lima.' });
+        const fecha = String(cuerpo?.fecha || ''), ec = texto(cuerpo?.ec, 80), t = texto(cuerpo?.texto, 200);
+        if (!esFecha(fecha) || !ec) return responder(res, 400, { error: 'Falta la fecha o la EECC.' });
+        const comp = podarCompromisos(previo.compromisos), dia = { ...(comp[fecha] || {}) }, u = req.usuario || {};
+        if (t) dia[ec] = { t, por: texto(u.n || u.u || 'portal', 80), en: new Date().toLocaleString('sv-SE', { timeZone: 'America/Lima' }).replace(' ', 'T') }; else delete dia[ec];
+        if (Object.keys(dia).length) comp[fecha] = dia; else delete comp[fecha];
+        nuevo = { ...previo, compromisos: podarCompromisos(comp) };
       } else if (accion === 'ls') {
         // Líneas en servicio por mes y distrito (Averías › Panel): reemplaza la lista completa de la filial.
         nuevo = { ...previo, ls: limpiarLS(cuerpo?.ls) };
@@ -208,7 +228,7 @@ module.exports = async (req, res) => {
         nuevo = { ...previo, tecnicos: limpiarTecnicos(cuerpo?.tecnicos), eeccs: limpiarEeccs(cuerpo?.eeccs) };
       } else {
         // Metas, nombres, gestores y rutas; agendas, resultados de 100 min y técnicos guardados se conservan tal cual.
-        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {},  responsables: limpiarResponsables(previo.responsables, modulo === 'averias'), ruteo: podarRuteo(previo.ruteo) };
+        nuevo = { ...limpiar(cuerpo), agendas: podarAgendas(previo.agendas), cien: podarCien(previo.cien), tecnicos: limpiarTecnicos(previo.tecnicos), eeccs: limpiarEeccs(previo.eeccs), ls: limpiarLS(previo.ls), obsMetas: previo.obsMetas || {},  responsables: limpiarResponsables(previo.responsables, modulo === 'averias'), ruteo: podarRuteo(previo.ruteo), ...(previo.compromisos ? { compromisos: podarCompromisos(previo.compromisos) } : {}) };
       }
       const actualizado = new Date().toISOString();
       await guardar('ajustes', [{ clave, datos: nuevo, actualizado }], 'clave');
