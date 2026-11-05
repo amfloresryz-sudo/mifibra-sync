@@ -3946,7 +3946,11 @@ function pintarRitmo() {
   const LM = D.liq.filter(ok), L = LM.filter(x => x.d === dH), P = D.pend.filter(ok);
   const habiles = []; for (let d = 1; d < dH; d++) if (!diaInfo(d).fin) habiles.push(d);
   const nHab = (() => { let c = 0; const ult = new Date(D.anio, D.mes, 0).getDate(); for (let d = 1; d <= ult; d++) if (!diaInfo(d).fin) c++; return c; })();
-  const metaDia = CFG.meta_mes ? Math.round(CFG.meta_mes / nHab) : null;
+  // Con filtros (segmento, canal, zona o EECC) la meta del día es la parte de la meta que le toca a lo filtrado,
+  // según su peso en las altas de los días hábiles del mes; sin filtros, la meta completa de la filial.
+  const filtrado = LM.length !== D.liq.length, hTot = D.liq.filter(x => habiles.includes(x.d)).length;
+  const parte = filtrado ? (hTot ? LM.filter(x => habiles.includes(x.d)).length / hTot : 0) : 1;
+  const metaDia = CFG.meta_mes ? Math.round(CFG.meta_mes / nHab * parte) : null;
   // Promedio de los días hábiles del mes: altas del día completo y altas hechas hasta cada minuto
   const prom = (lista, hasta) => habiles.length ? lista.filter(x => habiles.includes(x.d) && (hasta == null || (tFin(x) ?? 0) <= hasta)).length / habiles.length : 0;
   // ---- filas (zona o EECC)
@@ -3978,7 +3982,7 @@ function pintarRitmo() {
   const tecs = Object.values(T), nTarde = tecs.filter(tarde).length, nSin = tecs.filter(sinIni).length, nUna = tecs.filter(una).length;
   const sinAsig = P.filter(p => p.ec === 'POR ASIGNAR').length, manT = Object.values(R).reduce((a, r) => a + r.man, 0);
   const cls = (v, m) => m == null ? '' : v >= m ? 'ok' : v >= m * 0.85 ? 'mid' : 'mal';
-  $('rit-sub').textContent = `${diaInfo(dH).wd} ${fDia(dH)} · corte ${minHm(ahora)} · comparado con el promedio de ${habiles.length} días hábiles del mes`;
+  $('rit-sub').textContent = `${diaInfo(dH).wd} ${fDia(dH)} · corte ${minHm(ahora)} · comparado con el promedio de ${habiles.length} días hábiles del mes${filtrado ? ` · solo lo filtrado: meta del día = ${dec(parte * 100, 0)}% de la meta de la filial (su peso en las altas del mes)` : ''}`;
   $('rit-kpis').innerHTML =
     kpi('Altas hoy', n(altas), `a esta hora el mes promedia ${dec(pAhora, 0)}`, cls(altas, pAhora * 1.05)) +
     kpi('Proyección del día', n(proy), metaDia ? `meta del día ${n(metaDia)} (${pct(proy, metaDia, 0)})` : 'sin meta', cls(proy, metaDia)) +
@@ -4040,14 +4044,16 @@ async function traerAsistencia() {
   catch { ASI = ASI || { ec: {} }; }
   asiEn = Date.now(); return ASI;
 }
-/* Ritmo del día solo se muestra si alguna EECC de la filial elegida marcó hoy asistencia (con al menos una ruta) en su portal. */
+/* Ritmo del día: en provincias (cada filial y Provincias) se muestra siempre; en Lima o con varias filiales marcadas,
+   solo si alguna EECC de la filial elegida marcó hoy asistencia (con al menos una ruta) en su portal. */
 async function revisarRitmo() {
   const btn = $('tab-ritmo'); if (!btn || !D) return;
   let A; try { A = await traerAsistencia(); } catch { return; }
   const ecF = new Set([...(D.pend || []), ...(D.liq || [])].map(x => asiNorm(x.ec)).filter(Boolean));
   const hay = Object.entries((A && A.ec) || {}).some(([e, v]) => ((v && v.tecs) || []).length && ecF.has(asiNorm(e)));
-  btn.hidden = !hay;
-  if (!hay && tab === 'ritmo') { const p = document.querySelector('#tabs [data-t="panel"]'); if (p) p.click(); }
+  const fR = D.filial || filialSel(), prov = fR !== 'LIMA' && !esCombo(fR);
+  btn.hidden = !(hay || prov);
+  if (btn.hidden && tab === 'ritmo') { const p = document.querySelector('#tabs [data-t="panel"]'); if (p) p.click(); }
 }
 setInterval(() => { if (!document.hidden) revisarRitmo(); }, 2 * 60e3);
 const asiNorm = (e) => { const k = String(e || '').toUpperCase().trim(); return String(((AJ && AJ.nombres) || {})[k] || k).toUpperCase().trim(); };
