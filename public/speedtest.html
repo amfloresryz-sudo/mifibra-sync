@@ -264,7 +264,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     <div class="sec-cab"><div><h3 id="t-q100">Qué pasó con cada 100 instalaciones</h3><p class="sub" id="q100-sub"></p></div></div>
     <div class="q100-ley"><span><i class="qv"></i><b>Válidas</b> · cliente + enlace + mínimo del plan</span><span><i class="qb"></i>Cliente, bajo el mínimo</span><span><i class="qt"></i>Solo equipo del técnico</span><span><i class="qp"></i>Velocidad aún pendiente</span><span><i class="qs"></i>Sin ST registrado</span></div>
     <div id="g-q100"></div>
-    <p class="nota">Cada instalación cuenta una vez aunque tenga varias pruebas. Válida = tiene al menos una prueba hecha en el equipo del cliente (etiqueta del enlace) que llega al mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps y 1.200 Mbps en planes mayores. La velocidad la lee el robot en speedtest.net. Prueba válida = llega al mínimo del plan; solo cuenta si se hizo en el equipo del cliente. No certificable = prueba del cliente bajo el mínimo (su equipo no reporta la velocidad del enlace), prueba que no es de la red Mi Fibra o enlace sin velocidad pública. La prueba debe ser de máximo 1 día respecto de la atención y un mismo N.º citado en varias órdenes no cuenta. Meta: 60% de las pruebas en el equipo del cliente y 100% de instalaciones con medición.</p>
+    <p class="nota">Cada instalación cuenta una vez aunque tenga varias pruebas. Válida = tiene al menos una prueba hecha en el equipo del cliente (etiqueta del enlace) que llega al mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps y 1.200 Mbps en planes mayores. La velocidad la lee el robot en speedtest.net. Prueba válida = llega al mínimo del plan; solo cuenta si se hizo en el equipo del cliente. Mediciones válidas para el plan = solo pruebas del cliente: 600 Mbps de bajada en planes de hasta 1.000 Mbps y 1.200 Mbps en planes mayores (1250, 1500, 2000, 5000…); las del técnico no cuentan. Sin velocidad = enlace privado o cortado, o prueba de otra red. La prueba debe ser de máximo 1 día respecto de la atención y un mismo N.º citado en varias órdenes no cuenta. Meta: 60% de las pruebas en el equipo del cliente y 100% de instalaciones con medición.</p>
   </section>
 
   <section class="sec" aria-labelledby="t-evo">
@@ -360,9 +360,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   O.forEach(o => { o.sid = o.s; o.tn += o.s; o.s = 0; o.pr = o.c + o.tn;
     // Velocidad de cada prueba (el robot la lee en speedtest.net): [quién C/T/«», bajada, subida, estado v/b/n/p]
     const P = Array.isArray(D.o[o.i][12]) ? D.o[o.i][12].filter(p => Array.isArray(p) && p.length >= 4) : [], cnt = (f) => P.filter(f).length;
-    // Como el control de provincias: bajo el mínimo en el equipo del CLIENTE = no certificable (no reporta la velocidad de su enlace);
-    // en el del técnico = la red no entregó.
-    o.vel = P.length > 0; o.pv = cnt(p => p[3] === 'v'); o.pbj = cnt(p => p[3] === 'b' && p[0] !== 'C'); o.pnc = cnt(p => p[3] === 'n' || (p[3] === 'b' && p[0] === 'C')); o.ppe = cnt(p => p[3] === 'p');
+    // Mediciones: solo las pruebas del CLIENTE, según su plan (600 Mbps hasta 1.000; 1.200 Mbps en planes mayores).
+    // pv = llega al mínimo · pbj = bajo el mínimo del plan · pnc = sin velocidad pública u otra red · ppe = velocidad aún por leer
+    const PC = P.filter(p => p[0] === 'C'), cc = (f) => PC.filter(f).length;
+    o.vel = P.length > 0; o.pv = cc(p => p[3] === 'v'); o.pbj = cc(p => p[3] === 'b'); o.pnc = cc(p => p[3] === 'n'); o.ppe = cc(p => p[3] === 'p');
     o.cv = cnt(p => p[0] === 'C' && p[3] === 'v'); o.cpe = cnt(p => p[0] === 'C' && p[3] === 'p');
     o.bmax = P.reduce((m, p) => p[1] != null && p[1] > m ? p[1] : m, 0);
     o.k = !o.pr ? 'sin' : !o.c ? 'tec' : o.cv ? 'v' : o.cpe ? 'pe' : 'cb'; });   // grupo de la instalación
@@ -439,9 +440,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <div class="k4c"><div class="k4h"><span class="t">Instalaciones con medición</span>${dMed != null ? chip(pp(pMed - dMed)) : ''}</div>
         <button type="button" class="nb big2" data-lista="med|">${pc(pMed)}</button>
         <p class="s">${n(a.med)} de ${n(a.ins)} · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> pendientes de medir · meta ${OBJ_MED}%</p>${chispa(S.map(x => x.ins ? x.med / x.ins * 100 : null), lab, OBJ_MED)}</div>
-      <div class="k4c"><div class="k4h"><span class="t">Mediciones válidas para el plan</span>${dMv != null ? chip(pp(pMv - dMv)) : ''}</div>
+      <div class="k4c"><div class="k4h"><span class="t" title="Solo pruebas hechas en el equipo del cliente: 600 Mbps de bajada en planes de hasta 1.000 Mbps; 1.200 Mbps en planes mayores">Mediciones válidas para el plan</span>${dMv != null ? chip(pp(pMv - dMv)) : ''}</div>
         <button type="button" class="nb big2" data-lista="g-pv|kpi|">${pc(pMv)}</button>
-        <p class="s">${n(nv)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> la red no entregó · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> no certificables · <span title="Necesita la velocidad del enlace del equipo (dato de Ookla, no público)">s/d por equipo</span>${a.ppe ? ` · ${n(a.ppe)} pendientes` : ''}</p>${chispa(S.map(x => x.pv + x.pbj + x.pnc ? x.pv / (x.pv + x.pbj + x.pnc) * 100 : null), lab, 100)}</div>
+        <p class="s">${n(nv)} no válidas: <button type="button" class="nb" data-lista="g-pbj|kpi|">${n(a.pbj)}</button> bajo el mínimo del plan · <button type="button" class="nb" data-lista="g-pnc|kpi|">${n(a.pnc)}</button> sin velocidad u otra red${a.ppe ? ` · ${n(a.ppe)} pendientes` : ''} · solo pruebas del cliente</p>${chispa(S.map(x => x.pv + x.pbj + x.pnc ? x.pv / (x.pv + x.pbj + x.pnc) * 100 : null), lab, 100)}</div>
       <div class="k4c"><div class="k4h"><span class="t">En equipo del cliente</span>${b && b.ins ? chip(pp(pCliI - b.cli / b.ins * 100)) : ''}</div>
         <button type="button" class="nb big2" data-lista="g-cli|kpi|">${pc(pCliI)}</button>
         <p class="s">${n(a.cli)} de ${n(a.ins)} instalaciones con al menos una prueba del cliente</p>${chispa(S.map(x => x.ins ? x.cli / x.ins * 100 : null), lab)}</div>
@@ -780,7 +781,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('modal-xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
     try { await excel(modalCab, modalFilas, `speedtest-${modalNom}-${hoyTxt()}.xlsx`); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = `Excel descargado con ${n(modalFilas.length)} filas.`; }
     catch { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudo generar el Excel.'; } finally { b.disabled = false; } });
-  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas no certificables', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
+  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas del cliente válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas del cliente bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas del cliente sin velocidad u otra red', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
   function abrirLista(clave) {
     const [q, ...r] = clave.split('|'), v = r.join('|'), per = $('ctx').textContent;
     if (q === 'url') { const R = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i])), ix]).filter(([, ix]) => ix.length).sort((a, b) => b[2].length - a[2].length), [url, , todo] = R[+v] || []; if (!url) return;
