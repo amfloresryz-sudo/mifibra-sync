@@ -801,6 +801,8 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .fcol { margin-left: 4px; width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 6px; border: 1px solid transparent; background: none; color: var(--magenta-txt); cursor: pointer; vertical-align: middle; padding: 0; }
 .fcol svg { width: 12px; height: 12px; } .fcol:hover, .fcol:focus-visible { border-color: var(--magenta); }
 .fcol.on { background: var(--magenta); color: #FFFFFF; }
+#tb-av thead th .fcol { width: 18px; height: 18px; margin-left: 2px; } #tb-av thead th .fcol svg { width: 10px; height: 10px; }
+#tb-av tfoot tr.tf-filt td { background: color-mix(in srgb, var(--magenta) 12%, transparent); font-weight: 700; }
 .fpop { position: absolute; z-index: 60; width: 270px; background: var(--sup); color: var(--fg); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.18); padding: 12px; font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 500; }
 .fpop input[type=search] { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--borde-2); border-radius: 8px; font: inherit; background: var(--sup); color: var(--fg); }
 .fpop .fl { max-height: 260px; overflow: auto; margin: 8px 0; border-top: 1px solid var(--borde); border-bottom: 1px solid var(--borde); padding: 4px 0; }
@@ -2265,10 +2267,64 @@ function abrirFiltroCol(btn) {
   q.focus();
 }
 document.addEventListener('click', (e) => {
+  const g = e.target.closest('.fcol.fgen'); if (g) { e.stopPropagation(); abrirFiltroTabla(g); return; }
   const b = e.target.closest('.fcol'); if (b) { e.stopPropagation(); abrirFiltroCol(b); return; }
   if (e.target.closest('#fcol-limpiar')) { Object.keys(colFil).forEach(k => delete colFil[k]); cerrarFiltroCol(); pintarPendientes(); return; }
   if (!e.target.closest('.fpop')) cerrarFiltroCol();
 }, true);
+/* ---------- Filtro en los encabezados de una tabla ya armada (Avance por EECC): como el autofiltro de Excel ----------
+   Filtra las filas del cuerpo por el texto de cada celda; con filtros activos agrega la fila «Total filtrado». */
+const TF = {};   // id de la tabla -> { columna: Set de textos permitidos }
+const txtCelda = (td) => (td ? td.querySelector('input') ? (td.querySelector('input').value || td.querySelector('input').placeholder || '—') : td.textContent : '').replace(/\s+/g, ' ').trim() || '·';
+const numCelda = (t) => { const m = String(t).replace(/\./g, '').replace(',', '.').match(/[-+]?\d+(?:\.\d+)?/); return m ? +m[0] : null; };
+function filtrosTabla(tb) {
+  if (!tb) return; const F = TF[tb.id] || (TF[tb.id] = {});
+  [...filaCab(tb)].forEach((th, i) => { let b = th.querySelector('.fcol.fgen');
+    if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'fcol fgen'; b.dataset.tb = tb.id; b.dataset.fcol = i;
+      b.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2h14l-5.5 6.5V14l-3-1.5v-4z"/></svg>'; th.appendChild(b); }
+    const on = !!F[i]; b.classList.toggle('on', on); b.setAttribute('aria-label', `Filtrar ${th.firstChild ? th.firstChild.textContent.trim() : 'columna'}${on ? ' (filtro activo)' : ''}`); b.title = on ? 'Filtro activo · clic para cambiarlo' : 'Filtrar esta columna'; });
+  const filas = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1), act = Object.entries(F);
+  filas.forEach(r => { r.hidden = !act.every(([c, S]) => S.has(txtCelda(r.cells[c]))); });
+  // Total de lo filtrado: suma de las columnas de cantidades; productividad = liquidadas / técnicos; % avance = liquidadas / objetivo
+  const viejo = tb.tFoot && tb.tFoot.querySelector('.tf-filt'); if (viejo) viejo.remove();
+  if (act.length && tb.tFoot) {
+    const cab = [...filaCab(tb)].map(th => (th.firstChild ? th.firstChild.textContent : th.textContent).trim().toUpperCase()), vis = filas.filter(r => !r.hidden);
+    const col = (t) => cab.findIndex(h => h.startsWith(t)), suma = (c) => vis.reduce((a, r) => a + (numCelda(txtCelda(r.cells[c])) || 0), 0);
+    const iL = col('LIQUIDADAS'), iT = col('TÉCNICOS'), iO = col('OBJETIVO');
+    const celdas = cab.map((h, c) => { if (c === 0) return `<td>Total filtrado (${vis.length})</td>`;
+      if (h.startsWith('PRODUCTIVIDAD')) { const t = iT >= 0 ? suma(iT) : 0; return `<td>${t ? dec(suma(iL) / t) : '—'}</td>`; }
+      if (h.startsWith('% AVANCE')) { const o = iO >= 0 ? suma(iO) : 0; return `<td>${o ? Math.round(suma(iL) / o * 100) + '%' : '—'}</td>`; }
+      return `<td>${n(suma(c))}</td>`; });
+    const tr = document.createElement('tr'); tr.className = 'tf-filt'; tr.innerHTML = celdas.join(''); tb.tFoot.insertBefore(tr, tb.tFoot.firstChild);
+  }
+}
+function abrirFiltroTabla(btn) {
+  const tb = $(btn.dataset.tb), c = +btn.dataset.fcol, F = TF[tb.id] || (TF[tb.id] = {}), abierto = document.querySelector('.fpop');
+  if (abierto) { const mismo = abierto._col === 'g' + tb.id + c; cerrarFiltroCol(); if (mismo) return; }
+  const filas = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1 && Object.entries(F).every(([k, S]) => +k === c || S.has(txtCelda(r.cells[k]))));
+  const cnt = new Map(); filas.forEach(r => { const t = txtCelda(r.cells[c]); cnt.set(t, (cnt.get(t) || 0) + 1); });
+  const vals = [...cnt.entries()].sort((a, b) => { const x = numCelda(a[0]), y = numCelda(b[0]); return x != null && y != null ? x - y : a[0].localeCompare(b[0], 'es', { numeric: true }); });
+  const sel = F[c] ? new Set(F[c]) : new Set(vals.map(v => v[0]));
+  const pop = document.createElement('div'); pop.className = 'fpop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Filtro de columna'); pop._col = 'g' + tb.id + c; pop._btn = btn;
+  pop.innerHTML = `<input type="search" placeholder="Buscar valor" aria-label="Buscar valor"><div class="fl"></div>
+    <div class="fb"><button type="button" class="btn-out" data-f="limpiar">Quitar filtro</button><button type="button" class="btn-sec" data-f="ok" style="background:var(--magenta);color:#fff;border-color:var(--magenta)">Aplicar</button></div>`;
+  const lista = pop.querySelector('.fl'), q = pop.querySelector('input');
+  const visibles = () => { const t = q.value.trim().toUpperCase(); return vals.filter(v => !t || v[0].toUpperCase().includes(t)); };
+  const pinta = () => { const vis = visibles(), todos = vis.length && vis.every(v => sel.has(v[0]));
+    lista.innerHTML = vis.length ? `<label class="todo"><input type="checkbox" data-todo ${todos ? 'checked' : ''}>(Seleccionar todo${q.value.trim() ? ' lo buscado' : ''})</label>`
+      + vis.map(([v, k]) => `<label><input type="checkbox" value="${esc(v)}" ${sel.has(v) ? 'checked' : ''}>${esc(v)}<small>${k}</small></label>`).join('') : '<p class="nota">Sin valores</p>'; };
+  pinta();
+  q.addEventListener('input', pinta);
+  lista.addEventListener('change', (e) => { const i = e.target; if (i.dataset.todo !== undefined) visibles().forEach(v => i.checked ? sel.add(v[0]) : sel.delete(v[0])); else i.checked ? sel.add(i.value) : sel.delete(i.value); pinta(); });
+  pop.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return;
+    if (b.dataset.f === 'limpiar' || sel.size === vals.length) delete F[c]; else F[c] = sel;
+    cerrarFiltroCol(); filtrosTabla(tb); });
+  pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); cerrarFiltroCol(); } });
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth;
+  pop.style.top = (r.bottom + window.scrollY + 6) + 'px'; pop.style.left = Math.max(8, Math.min(r.left + window.scrollX - 10, window.scrollX + document.documentElement.clientWidth - w - 8)) + 'px';
+  q.focus();
+}
 const isoDia = (d) => `${D.anio}-${String(D.mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 const sumaDia = (iso, k) => { const t = new Date(iso + 'T12:00:00'); t.setDate(t.getDate() + k); return t.toISOString().slice(0, 10); };
 $('pen-desde').addEventListener('change', (e) => { filtro.desde = e.target.value; pintarPendientes(); });
@@ -3248,7 +3304,7 @@ function pintarAvance() {
     ${rk.map(k => `<tr><td>${esc(k)}</td>${filaAv(k, ecs[k])}</tr>`).join('')}</tbody><tfoot><tr><td>Total</td>${filaAv(null, T)}</tr>${(() => { const pc = (a, b) => b ? Math.round(a / b * 100) + '%' : '—', fT = Math.max(0, objT - Ld.length);
       // Fila %: técnicos y faltas sobre las rutas declaradas; cada parte de la bolsa sobre la bolsa; liquidadas y falta sobre el objetivo
       return `<tr class="av-pct"><td>%</td><td class="sep">${conR ? '100%' : '—'}</td><td class="pc-mal">${conR ? pc(faltasT, rutasT) : '—'}</td><td class="pc-ok">${conR ? pc(tecs.size, rutasT) : '—'}</td><td>${T.bolsa ? '100%' : '—'}</td><td class="bf">${pc(T.fut, T.bolsa)}</td><td class="bm">${pc(T.m24, T.bolsa)}</td><td class="bh">${pc(T.hoy, T.bolsa)}</td><td class="av-prog">${pc(T.prog, T.bolsa)}</td><td class="av-ini">${iniT ? '100%' : '—'}</td><td>${pc(objT, iniT)}</td><td class="av-liq">${pc(Ld.length, objT)}</td><td class="av-falta">${pc(fT, objT)}</td><td></td><td></td></tr>`; })()}</tfoot></table>`;
-  prepararOrden($('tb-av'));
+  prepararOrden($('tb-av')); filtrosTabla($('tb-av'));
   $('av-nota').innerHTML = `<p class="nota">AG futuras = agendas o coordinadas de días posteriores; desde las 17:30 las de mañana ya no cuentan como futuras y pasan a la bolsa trabajable (más de 24 h o ingresaron hoy). Rutas declaradas = técnicos que la EECC debía tener en campo ese día (salen de «Rutas por EECC», que edita el usuario master; si la filial no tiene rutas cargadas, se escriben aquí o en Pendientes › Agendas del día) · Faltas = rutas declaradas − técnicos en campo · Bolsa pendientes = altas REGISTRADA de la EECC hoy = AG futuras + Más de 24 h + Ingresaron hoy + Programadas del día (cada AB cuenta en un solo grupo: primero si tiene agenda o coordinada para el día elegido, luego si la tiene para un día posterior, luego por su F. Recep: de hoy o de días anteriores) · Base inicial = pendientes de la EECC al iniciar el día menos las AG/CO futuras (foto que el robot toma a las 0:00, congelada; si ese día no tiene foto, se estima) · Objetivo = ${dec(OBJ_PCT, 0)}% de la base inicial, redondeado y fijo todo el día (botón «% Objetivo», clave master) · Liquidadas frente al objetivo: ✔ 90 % o más · ! del 50 % a menos del 90 % · ✖ menos del 50 % · Falta para objetivo: rojo = lo que falta, verde = llegó (0) o lo pasó (+).</p><p class="config" style="margin:6px 0 0">Configurable: objetivo por técnico (${obj}) y meta del mes${CFG.meta_mes ? ` (${n(CFG.meta_mes)})` : ''}. Rutas planificadas y faltas no vienen de ScordSoft.`;
   pintarConsolidado(L);
 }
