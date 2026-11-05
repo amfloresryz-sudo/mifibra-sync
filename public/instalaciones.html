@@ -4241,17 +4241,18 @@ function pintarCtrlHoy() {
   const dia = D.dias, iso = isoDia(dia), ahora = ceAhora(), Ld = D.liq.filter(x => ok(x) && x.d === dia);
   const OBJ = ceObjetivos(iso), rutaDe = ceRutas(iso), E = {};
   const e0 = (k) => E[k] || (E[k] = { liq: 0, tec: new Set(), c: CE_CORTES.map(() => 0) });
-  Object.keys(OBJ).forEach(k => { if (!ceExcluir(k)) e0(k); });
-  Ld.forEach(x => { if (ceExcluir(x.ec)) return; const e = e0(x.ec), m = ceMin(x.hf) ?? ceMin(x.hi);
+  Object.keys(OBJ).forEach(k => e0(k));   // todas, como en Avance (POR ASIGNAR suma al objetivo pero no tiene semáforo)
+  Ld.forEach(x => { const e = e0(x.ec), m = ceMin(x.hf) ?? ceMin(x.hi);
     e.liq++; if (x.tec) e.tec.add(x.tec); CE_CORTES.forEach(([h], i) => { if (m != null && m <= h) e.c[i]++; }); });
   const pasado = CE_CORTES.filter(([h]) => ahora >= h), cAct = pasado[pasado.length - 1] || null;
   const espAhora = ahora >= 1440 ? 100 : cAct ? cAct[2] : null, cTxt = ahora >= 1440 ? 'cierre del día' : cAct ? cAct[1] : 'antes del primer corte';
   const filas = Object.keys(E).map(k => { const e = E[k], o = OBJ[k] || 0, p = o ? e.liq / o * 100 : null, r = rutaDe(k);
-    return { k, e, o, p, r, est: o ? ceEstado(p, espAhora ?? 0) : null }; })
-    .filter(f => f.o || f.e.liq).sort((a, b) => (a.p ?? 999) - (b.p ?? 999) || b.o - a.o);
+    const sin = ceExcluir(k);
+    return { k, e, o, p, r, sin, est: o && !sin ? ceEstado(p, espAhora ?? 0) : null }; })
+    .filter(f => f.o || f.e.liq).sort((a, b) => a.sin - b.sin || (a.p ?? 999) - (b.p ?? 999) || b.o - a.o);
   if (espAhora == null) filas.forEach(f => { f.est = null; });
   const T = filas.reduce((a, f) => { a.o += f.o; a.l += f.e.liq; a.t += f.e.tec.size; if (f.r != null) { a.r += f.r; a.cr = true; a.fa += Math.max(0, f.r - f.e.tec.size); } return a; }, { o: 0, l: 0, t: 0, r: 0, fa: 0, cr: false });
-  const rojas = filas.filter(f => f.est === 'mal'), pT = T.o ? T.l / T.o * 100 : null;
+  const rojas = filas.filter(f => f.est === 'mal'), lTope = filas.reduce((a, f) => a + (f.o ? Math.min(f.e.liq, f.o) : 0), 0), pT = T.o ? Math.min(100, lTope / T.o * 100) : null;   // igual que Avance: cada EECC llega como máximo a su objetivo
   $('ce-hoy-sub').textContent = `${diaInfo(dia).wd} ${fDia(dia)} · ${ahora < 1440 ? `datos de las ${String(D.corte || '').slice(11, 16)} · último corte: ${cTxt}` : 'día cerrado'} · objetivo = ${dec(OBJ_PCT, 0)}% de la base inicial, el mismo de Avance`;
   $('ce-hoy-kpis').innerHTML = kpi('Objetivo del día', n(T.o), 'suma de los objetivos por EECC') +
     kpi('Liquidadas', `<button type="button" class="clic" data-ch="liq" data-d="${dia}" data-k="ALL" style="all:unset;cursor:pointer">${n(T.l)}</button>`, pT == null ? '' : `${dec(pT, 0)}% del objetivo${espAhora != null && espAhora < 100 ? ` · esperado ${espAhora}% a las ${cAct[1]}` : ''}`, 'acento') +
@@ -4266,7 +4267,7 @@ function pintarCtrlHoy() {
     ${filas.map(f => `<tr><td>${esc(f.k)}</td><td class="${f.r != null && f.e.tec.size < f.r ? 'ce-tec-falta' : ''}" title="${f.r != null && f.e.tec.size < f.r ? (f.r - f.e.tec.size) + ' rutas no salieron' : ''}">${f.e.tec.size}${f.r != null ? ' / ' + f.r : ''}</td><td>${f.o || '·'}</td>${CE_CORTES.map((_, i) => celC(f, i)).join('')}<td class="t-col"><button type="button" class="clic" data-ch="liq" data-d="${dia}" data-k="EC:${esc(f.k)}" style="all:unset;cursor:pointer;font-weight:700">${f.e.liq}</button></td><td data-v="${f.p ?? -1}"><div class="ce-bar" title="${f.p == null ? 'Sin objetivo' : dec(f.p, 0) + '% del objetivo'}"><b style="width:${Math.min(100, f.p || 0).toFixed(1)}%;background:${col(f.est)}"></b>${marca}</div></td><td>${f.o ? Math.max(0, f.o - f.e.liq) : '·'}</td><td>${f.est ? `<span class="ce-p ${f.est}">${CE_EST[f.est]}</span>` : '<span class="ce-p na">—</span>'}</td></tr>`).join('') || '<tr><td colspan="10">Sin datos de hoy.</td></tr>'}</tbody>
     <tfoot><tr><td>Total</td><td>${n(T.t)}${T.cr ? ' / ' + n(T.r) : ''}</td><td>${n(T.o)}</td>${CE_CORTES.map(([h], i) => { if (ahora < h) return '<td>—</td>'; const v = filas.reduce((a, f) => a + f.e.c[i], 0); return `<td>${n(v)}${T.o ? ' · ' + dec(v / T.o * 100, 0) + '%' : ''}</td>`; }).join('')}<td>${n(T.l)}</td><td>${pT == null ? '—' : dec(pT, 0) + '%'}</td><td>${n(Math.max(0, T.o - T.l))}</td><td></td></tr></tfoot></table>`;
   prepararOrden($('tb-ce-hoy'));
-  $('ce-hoy-nota').textContent = `Cada corte = instalaciones DESCARGADA de la EECC con hora de fin hasta esa hora ÷ su objetivo del día · semáforo: En meta si llega al % esperado del corte, Atención hasta 10 puntos debajo, Rojo más abajo · la línea negra de la barra marca el % esperado en el corte actual · técnicos en naranja = salieron menos que las rutas declaradas · clic en Liquidadas para ver los AB · las EECC se ordenan de menor a mayor avance · POR ASIGNAR no entra.`;
+  $('ce-hoy-nota').textContent = `Cada corte = instalaciones DESCARGADA de la EECC con hora de fin hasta esa hora ÷ su objetivo del día · semáforo: En meta si llega al % esperado del corte, Atención hasta 10 puntos debajo, Rojo más abajo · la línea negra de la barra marca el % esperado en el corte actual · técnicos en naranja = salieron menos que las rutas declaradas · clic en Liquidadas para ver los AB · las EECC se ordenan de menor a mayor avance · POR ASIGNAR suma al objetivo total (igual que Avance) pero no lleva semáforo.`;
   // Compromisos de recuperación: las EECC en rojo y las que ya tienen nota hoy
   const C = (AJ.compromisos || {})[iso] || {}, conNota = filas.filter(f => f.est === 'mal' || C[f.k]);
   $('ce-comp').innerHTML = !conNota.length ? '' : `<h3>Compromiso de recuperación</h3>${conNota.map(f => { const c = C[f.k];
