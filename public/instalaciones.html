@@ -932,7 +932,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
 .cs-tab.marcar td.nc { border-left: 3px solid #D7263D !important; border-right: 3px solid #D7263D !important; }
 .cs-tab.marcar tfoot td.nc { border-bottom: 3px solid #D7263D !important; }
 .cs-tab.marcar tr.fila-nc .ec-nc, .cs-tab.marcar td.nc-si button, .cs-tab.marcar td.nc-si > span { background: #FFF200; color: #1F2937; padding: 1px 4px; border-radius: 2px; }
-/* Control EECC (solo Lima): avance por corte con semáforo y scorecard del mes */
+/* Control EECC (Lima y provincias): avance por corte con semáforo y scorecard del mes */
 #v-ctrl .sec[hidden] { display: none; }
 .ce-p { display: inline-block; padding: 3px 10px; border-radius: 999px; font: 700 12.5px var(--f-disp); white-space: nowrap; background: var(--gris-bg); color: var(--fg-2); }
 .ce-p.ok { background: var(--ok-bg); color: var(--ok); } .ce-p.mid { background: var(--mid-bg); color: var(--mid); } .ce-p.mal { background: var(--mal-bg); color: var(--mal); }
@@ -1214,7 +1214,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     </section>
   </div>
 
-  <!-- CONTROL EECC (solo Lima) -->
+  <!-- CONTROL EECC (Lima y provincias) -->
   <div role="tabpanel" id="v-ctrl" aria-labelledby="tab-ctrl" hidden style="flex-direction:column;gap:22px">
     <div class="segs" role="group" aria-label="Vista de Control EECC" id="ce-vistas">
       <button type="button" class="chip" data-ce="hoy" aria-pressed="true">Avance del día por corte</button>
@@ -4199,16 +4199,16 @@ async function pintarRitAsis() {
 document.addEventListener('click', (e) => { const b = e.target.closest('[data-ra-fr], [data-ra-ag]'); if (!b) return;
   const S = b.dataset.raFr != null ? raFr : raAg, v = b.dataset.raFr != null ? b.dataset.raFr : b.dataset.raAg;
   if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarRitAsis(); });
-/* ---------- CONTROL EECC (solo Lima) ----------
+/* ---------- CONTROL EECC (Lima, cada provincia y Provincias; no en una selección de varias filiales) ----------
    Avance del día por corte: el objetivo de cada EECC es el mismo de Avance (OBJ_PCT % de su base inicial) y cada corte
    cuenta sus instalaciones DESCARGADA con hora de fin (o de inicio si no trae fin) hasta esa hora.
    Scorecard del mes: cumplimiento del objetivo diario, de agendas, asistencia de rutas, productividad y pendientes +48 h.
-   Compromiso de recuperación: nota del día por EECC, guardada en ajustes (instalaciones:LIMA › compromisos). */
+   Compromiso de recuperación: nota del día por EECC, guardada en los ajustes de la filial (instalaciones:<filial> › compromisos). */
 let ceVista = 'hoy';
 const CE_CORTES = [[11 * 60, '11 am', 30], [14 * 60, '2 pm', 60], [17 * 60, '5 pm', 85]];
 const CE_PESOS = [['cum', 30], ['agd', 25], ['asi', 15], ['prod', 15], ['dis', 15]];
 const CE_EST = { ok: 'En meta', mid: 'Atención', mal: 'Rojo' };
-const ceEsLima = () => !esCombo((D && D.filial) || filialSel()) && ((D && D.filial) || filialSel()) === 'LIMA';
+const ceDisponible = () => !esCombo((D && D.filial) || filialSel());
 const ceExcluir = (ec) => !ec || /^(POR ASIGNAR|SIN EECC|SUPERVISOR)$/.test(ec);
 const ceMin = (h) => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? +m[1] * 60 + +m[2] : null; };
 const ceEstado = (p, esp) => p == null ? null : p >= esp ? 'ok' : p >= esp - 10 ? 'mid' : 'mal';
@@ -4217,7 +4217,7 @@ const limaHoy = () => { try { return new Date().toLocaleDateString('en-CA', { ti
 const ceAhora = () => { const c = String(D.corte || ''); return c.slice(0, 10) === hoyIso() && hoyIso() === limaHoy() ? (ceMin(c.slice(11, 16)) ?? 1440) : 1440; };
 function revisarCtrl() {
   const btn = $('tab-ctrl'); if (!btn) return;
-  btn.hidden = !ceEsLima();
+  btn.hidden = !ceDisponible();
   if (btn.hidden && tab === 'ctrl') { const p = document.querySelector('#tabs [data-t="panel"]'); if (p) p.click(); }
 }
 /* Rutas del día de una EECC: rutas fijas («Rutas por EECC») o, sin fijas, las declaradas a mano ese día (igual que Avance) */
@@ -4234,7 +4234,7 @@ function ceObjetivos(iso) {
 function pintarCtrl() {
   document.querySelectorAll('#ce-vistas [data-ce]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ce === ceVista)));
   $('sec-ce-hoy').hidden = ceVista !== 'hoy'; $('sec-ce-mes').hidden = ceVista !== 'mes';
-  if (!ceEsLima()) { $('ce-hoy-tab').innerHTML = '<p class="nota">Control EECC está disponible solo para Lima.</p>'; return; }
+  if (!ceDisponible()) { $('ce-hoy-tab').innerHTML = '<p class="nota">Control EECC no está disponible con varias filiales marcadas: elige una sola filial o Provincias.</p>'; return; }
   ceVista === 'hoy' ? pintarCtrlHoy() : pintarCtrlMes();
 }
 function pintarCtrlHoy() {
@@ -4313,11 +4313,11 @@ $('ce-comp').addEventListener('click', async (e) => {
   const ec = b.dataset.ceGuardar, inp = [...document.querySelectorAll('[data-ce-nota]')].find(x => x.dataset.ceNota === ec), est = $('ce-comp-est');
   b.disabled = true; if (est) { est.style.color = ''; est.textContent = 'Guardando…'; }
   try {
-    const r = await fetch(urlAj('LIMA') + '&accion=compromiso', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() },
+    const fCe = D.filial || 'LIMA', r = await fetch(urlAj(fCe) + '&accion=compromiso', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal() },
       body: JSON.stringify({ fecha: isoDia(D.dias), ec, texto: inp ? inp.value : '' }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(r.status === 401 ? 'Sin permiso: ingresa con la clave del portal.' : (j.error || `Error ${r.status}`));
-    AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true; CACHE.set('aj:LIMA', AJ);
+    AJ = { ...AJ_VACIO(), prov: AJ.prov, ...j }; ajOk = true; CACHE.set('aj:' + fCe, AJ);
     pintarCtrlHoy(); const est2 = $('ce-comp-est'); if (est2) { est2.style.color = 'var(--ok)'; est2.textContent = `Compromiso de ${ec} guardado.`; }
   } catch (err) { b.disabled = false; if (est) { est.style.color = 'var(--mal)'; est.textContent = err.message; } }
 });
