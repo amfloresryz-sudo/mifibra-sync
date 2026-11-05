@@ -420,6 +420,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 
   // Tarjetas del control: Pruebas en el equipo del cliente · Instalaciones del mes · Con medición · Mediciones válidas
   function chispa(vals, labels, meta) {   // mini gráfico de los últimos meses (último punto en fucsia; meta punteada)
+    return '';   // gráfico «Últimos meses» retirado de las tarjetas
     const W = 260, H = 64, pad = 6, v = vals.map(x => x == null ? null : x), ok = v.filter(x => x != null);
     if (ok.length < 1) return '';
     let lo = Math.min(...ok, meta ?? Infinity), hi = Math.max(...ok, meta ?? -Infinity); if (hi - lo < 1) { hi += 1; lo -= 1; }
