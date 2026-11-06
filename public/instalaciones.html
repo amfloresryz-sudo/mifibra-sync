@@ -502,6 +502,9 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .tlb .j { position: absolute; top: 4px; height: 18px; border-radius: 4px; font: 700 10px Montserrat, sans-serif; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
 .tlb .j.d { background: #1F9D61; } .sup-tt tfoot th, .sup-tt tfoot td { background: var(--gris-bg, #F1F2F5); font-weight: 800; border-top: 2px solid var(--borde-2, #D5D8DE); }
 .sup-tt tfoot small { font-weight: 600; } .sup-tt tfoot td.tl-tot { font-size: 12px; color: var(--fg-2, #444); text-align: center; }
+.sup-tt .sa-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:#FFF1E0; color:#9A4A00; font-size:10.5px; font-weight:700; white-space:nowrap; }
+.sup-tt tr.sin-asis td:first-child { box-shadow: inset 3px 0 0 #E8892B; }
+.sup-tt tr.sup-fuera td { background:#FAFAFB; color: var(--fg-3, #666); font-size:12px; padding:8px 10px; }
 .tlb .j.o { background: #D64545; z-index: 2; box-shadow: 0 0 0 2px #fff; top: 1px; height: 24px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: repeating-linear-gradient(45deg, #2F6FD6 0 6px, #5B8EE6 6px 12px); }
 .tlb .j.p { background: #fff; border: 1.5px dashed #6B7280; color: #374151; font-weight: 600; } .tlb .j.p.pi { border-color: #D64545; color: #B42318; background: #FFF5F5; }
 .tlb .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--magenta); }
@@ -4583,7 +4586,7 @@ function pintarSupTec(c) {
   (asisDe(ec) || []).forEach(k => { if (!TT[k]) TT[k] = { nom: k, k, altas: [], bolsa: [], obs: 0, asis: true }; else TT[k].asis = true; });
   // Observadas de hoy (con la hora y el usuario que observó, del reporte de ScordSoft)
   (OBS || []).filter(o => o.f === hoy && !o.rc && (o.ec === ec || TT[tecNk(o.tec)])).forEach(o => { const t = TT[tecNk(o.tec)] || t0(o.tec); if (!t) return; t.obs++; (t.obsL || (t.obsL = [])).push(o); });
-  const L = Object.values(TT).map(t => {
+  let L = Object.values(TT).map(t => {
     const al = t.altas.map(x => ({ a: hmMin(x.hi), b: hmMin(x.hf), x })).filter(j => j.a != null).sort((p, q) => p.a - q.a);
     const cur = t.bolsa.filter(p => p.ini && p.ini.slice(0, 10) === hoy).map(p => ({ a: hmMin(p.ini.slice(11, 16)), p })).filter(j => j.a != null);
     const pendHoy = t.bolsa.filter(p => (p.ini && p.ini.slice(0, 10) === hoy) || (p.fp === hoy && ['AG', 'CO'].includes(tipoProg(p))));
@@ -4592,6 +4595,10 @@ function pintarSupTec(c) {
     const est = cur.length ? ['cur', `Instalando desde ${minHm(Math.min(...cur.map(j => j.a)))}`] : al.length ? (ahoraMin - ult > 90 ? ['fin', `Sin actividad desde ${minHm(ult)}`] : ['esp', 'Entre altas']) : t.asis ? ['sin', 'Sin iniciar'] : ['fin', 'Sin actividad hoy'];
     return { ...t, al, cur, pendHoy, prom, ini: isFinite(ini) ? ini : null, est, ord: { sin: 0, fin: 1, cur: 2, esp: 3 }[est[0]] };
   }).sort((a, b) => a.ord - b.ord || b.pendHoy.length - a.pendHoy.length || a.nom.localeCompare(b.nom));
+  // Con asistencia marcada por la EECC: la lista son sus rutas. Quien no está en la asistencia solo aparece si igual trabajó hoy
+  // (alta, AB en curso u observada) y se marca «Sin asistencia»; los que solo tienen AB en su bolsa van a una nota aparte.
+  const conAsis = (asisDe(ec) || []).length > 0, fuera = conAsis ? L.filter(t => !t.asis && !t.al.length && !t.cur.length && !t.obs) : [];
+  if (conAsis) L = L.filter(t => !fuera.includes(t)).sort((a, b) => (b.asis ? 1 : 0) - (a.asis ? 1 : 0));
   // ---- Resumen gerencial de la EECC (como Ritmo del día) con el comparativo de AYER a esta misma hora ----
   const promM = (L2) => L2.length ? Math.round(L2.reduce((s2, v) => s2 + v, 0) / L2.length) : null;
   const frIni = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? +m[1] * 60 : null; };
@@ -4635,7 +4642,7 @@ function pintarSupTec(c) {
       + t.cur.map(j => `<span class="j c" style="left:${X(j.a)};width:calc(${X(ahoraMin)} - ${X(j.a)})" title="En curso · AB ${j.p.ab} · inició ${minHm(j.a)} · lleva ${durTx(ahoraMin - j.a)}">${minHm(j.a)}</span>`).join('')
       + t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).map(p => { const f = frR(p); if (!f) return ''; return `<span class="j p${f[1] <= ahoraMin ? ' pi' : ''}" style="left:${X(f[0])};width:calc(${X(Math.min(f[1], 1140))} - ${X(f[0])})" title="Pendiente AB ${p.ab} · franja ${esc(p.fr)} · ${f[1] <= ahoraMin ? 'franja vencida' : 'por atender'}">AB ${p.ab}</span>`; }).join('')
       + `<span class="now" style="left:${X(ahoraMin)}" title="Ahora ${minHm(ahoraMin)}"></span>`;
-    return `<tr><td title="${esc(t.nom)}"><b>${esc(tecCorto(t.nom) || t.nom)}</b></td><td><span class="se ${t.est[0]}">${t.est[1]}</span></td><td>${t.al.length}</td><td class="${t.obs ? 'n-mal' : ''}" title="${(t.obsL || []).map(o => 'AB ' + o.ab + ' · ' + o.h + ' · ' + (o.m || '')).join(' | ')}">${t.obs}</td>
+    return `<tr${conAsis && !t.asis ? ' class="sin-asis"' : ''}><td title="${esc(t.nom)}"><b>${esc(tecCorto(t.nom) || t.nom)}</b>${conAsis && !t.asis ? ' <span class="sa-tag" title="No está en la asistencia que marcó la EECC, pero trabajó hoy">Sin asistencia</span>' : ''}</td><td><span class="se ${t.est[0]}">${t.est[1]}</span></td><td>${t.al.length}</td><td class="${t.obs ? 'n-mal' : ''}" title="${(t.obsL || []).map(o => 'AB ' + o.ab + ' · ' + o.h + ' · ' + (o.m || '')).join(' | ')}">${t.obs}</td>
       <td><button type="button" class="vp ${t.pendHoy.length > 2 ? 'am' : ''}" data-sup-tec="${esc(t.k)}" aria-expanded="${ab}">${t.pendHoy.length} <span aria-hidden="true">${ab ? '▴' : '▾'}</span></button></td><td>${t.bolsa.length}</td>
       <td class="${t.ini != null && t.ini > 570 ? 'n-am' : ''}">${t.ini != null ? minHm(t.ini) : '—'}</td><td>${durTx(t.prom)}</td><td class="tl"><div class="tlb">${blq}</div></td></tr>
       ${ab ? `<tr class="pdet"><td colspan="9"><div class="pbox"><b>Pendientes de ${esc(t.nom)}</b> · ${t.pendHoy.length} para hoy · ${t.bolsa.length} en su bolsa
@@ -4645,9 +4652,10 @@ function pintarSupTec(c) {
         ${(t.obsL || []).length ? `<b style="display:block;margin-top:10px">Observadas hoy</b><table class="pt"><thead><tr><th>AB</th><th>OS</th><th>Hora</th><th>Motivo</th><th>Submotivo</th><th>Observó</th></tr></thead><tbody>
           ${t.obsL.slice().sort((a, b) => String(a.h).localeCompare(String(b.h))).map(o => `<tr><td><button type="button" class="clic" data-ficha-ab="${o.os}" style="all:unset;cursor:pointer;font-weight:700">${o.ab}</button></td><td>${o.os}</td><td><b>${esc(o.h || '—')}</b></td><td>${esc(o.m || '—')}</td><td>${esc(o.s || '—')}</td><td>${esc(o.u || '—')}</td></tr>`).join('')}</tbody></table>` : ''}
         </div></td></tr>` : ''}`; }).join('') || '<tr><td colspan="9">Esta EECC no tiene técnicos con actividad o asistencia hoy.</td></tr>';
+  if (fuera.length) $('sup-tec').insertAdjacentHTML('beforeend', `<tr class="sup-fuera"><td colspan="9">No están en la asistencia de hoy y no trabajaron (solo tienen AB en su bolsa): ${fuera.map(t => `<b>${esc(tecCorto(t.nom) || t.nom)}</b> (${t.bolsa.length} AB)`).join(' · ')}</td></tr>`);
   { const sm = (f) => L.reduce((a, t) => a + f(t), 0), dAll = L.flatMap(t => t.al.filter(j => j.b != null && j.b >= j.a).map(j => j.b - j.a)), inis = L.map(t => t.ini).filter(v => v != null), cuenta = (k) => L.filter(t => t.est[0] === k).length;
     const nCur = sm(t => t.cur.length), nPend = sm(t => t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).length);
-    $('sup-tec-tot').innerHTML = L.length ? `<tr><th>Total · ${L.length} técnicos</th><td><small>${[cuenta('cur') && cuenta('cur') + ' instalando', cuenta('esp') && cuenta('esp') + ' entre altas', cuenta('sin') && cuenta('sin') + ' sin iniciar', cuenta('fin') && cuenta('fin') + ' sin actividad'].filter(Boolean).join(' · ') || '—'}</small></td><td>${sm(t => t.al.length)}</td><td class="${sm(t => t.obs) ? 'n-mal' : ''}">${sm(t => t.obs)}</td><td>${sm(t => t.pendHoy.length)}</td><td>${sm(t => t.bolsa.length)}</td><td title="Promedio de la 1.ª alta">${inis.length ? minHm(promM(inis)) : '—'}</td><td title="Promedio de todas las altas descargadas">${durTx(promM(dAll))}</td><td class="tl-tot">${sm(t => t.al.length)} descargadas · ${nCur} en curso · ${sm(t => t.obs)} observadas · ${nPend} por atender</td></tr>` : ''; }
+    $('sup-tec-tot').innerHTML = L.length ? `<tr><th>Total · ${L.length} técnicos${conAsis ? `<small style="display:block;font-weight:600;text-transform:none">${L.filter(t => t.asis).length} con asistencia${L.some(t => !t.asis) ? ' · ' + L.filter(t => !t.asis).length + ' sin asistencia' : ''}</small>` : ''}</th><td><small>${[cuenta('cur') && cuenta('cur') + ' instalando', cuenta('esp') && cuenta('esp') + ' entre altas', cuenta('sin') && cuenta('sin') + ' sin iniciar', cuenta('fin') && cuenta('fin') + ' sin actividad'].filter(Boolean).join(' · ') || '—'}</small></td><td>${sm(t => t.al.length)}</td><td class="${sm(t => t.obs) ? 'n-mal' : ''}">${sm(t => t.obs)}</td><td>${sm(t => t.pendHoy.length)}</td><td>${sm(t => t.bolsa.length)}</td><td title="Promedio de la 1.ª alta">${inis.length ? minHm(promM(inis)) : '—'}</td><td title="Promedio de todas las altas descargadas">${durTx(promM(dAll))}</td><td class="tl-tot">${sm(t => t.al.length)} descargadas · ${nCur} en curso · ${sm(t => t.obs)} observadas · ${nPend} por atender</td></tr>` : ''; }
 }
 document.addEventListener('click', async (e) => {
   const r = e.target.closest('#sup-rank tr[data-ec], [data-sup-ec]'); if (r) { supEc = r.dataset.ec || r.dataset.supEc; supAbiertos.clear(); pintarSup(); if (r.closest('#sup-rank')) $('sup-det').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
