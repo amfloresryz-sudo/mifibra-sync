@@ -450,6 +450,10 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .b.ec { font-weight: 700; } .b.ec-cam { background: #CFE3FF; color: #0B3D91; } .b.ec-sit { background: #C9F2EA; color: #04594A; }
 .b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
 #tb-pend td.td-vis { white-space: normal !important; }
+/* F. Recep: fecha y hora completas arriba y los días debajo (nunca se cortan) */
+#tb-pend td.td-rec { white-space: normal !important; text-overflow: clip; line-height: 1.25; }
+#tb-pend td.td-rec .rec-f { display: block; white-space: nowrap; }
+#tb-pend td.td-rec .b.edad { display: inline-block !important; margin: 3px 0 0 !important; }
 .fi-ec { margin: 0 0 6px; }
 /* Tipo de trabajo: una etiqueta de color por tipo (mismo formato que Gestionado) */
 .b.sg-b2b { background: #FFF1C2; color: #7A5200; } .b.sg-ref { background: #FFE0E0; color: #B42318; } .b.cn-in { background: #DFF5E3; color: #17703F; }
@@ -2140,7 +2144,7 @@ function pintarPendientes0() {
       <td data-v="${visTxtFiltro(p)}" class="td-vis">${visCelda(p)}</td>
       ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
-      <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
+      <td data-v="${msIso(p.rec)}" class="td-rec">${p.rec ? `<span class="rec-f">${fechaHora(p.rec)}</span><span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
   prepararOrden($('tb-pend'));
   cargarComEecc();
   pintarCinta();
