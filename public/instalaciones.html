@@ -501,18 +501,18 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .tlb { position: relative; height: 34px; background: repeating-linear-gradient(90deg, #F3F4F6 0, #F3F4F6 1px, transparent 1px, transparent calc(100% / 11)); border-radius: 6px; }
 .tlb .j { position: absolute; top: 2px; height: 30px; border-radius: 5px; font: 700 10px/1.15 Montserrat, sans-serif; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; padding: 0 3px; box-sizing: border-box; }
 .tlb .j b, .tlb .j small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; } .tlb .j b { font-weight: 800; font-size: 10.5px; } .tlb .j small { font-weight: 600; font-size: 9px; opacity: .95; }
-.tlb .j.d { background: #1F9D61; } .sup-tt tfoot th, .sup-tt tfoot td { background: var(--gris-bg, #F1F2F5); font-weight: 800; border-top: 2px solid var(--borde-2, #D5D8DE); }
+.tlb .j.d { background: #EEF0F4; border: 1px solid #4B5565; color: #2B3240; } .sup-tt tfoot th, .sup-tt tfoot td { background: var(--gris-bg, #F1F2F5); font-weight: 800; border-top: 2px solid var(--borde-2, #D5D8DE); }
 .sup-tt tfoot small { font-weight: 600; white-space: normal; } .sup-tt tfoot td, .sup-tt tfoot th { white-space: normal; } .sup-tt tfoot td.tl-tot { white-space: normal; line-height: 1.35; font-size: 11.5px; color: var(--fg-2, #444); text-align: center; }
 .sup-tt .sa-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:#FFF1E0; color:#9A4A00; font-size:10.5px; font-weight:700; white-space:nowrap; }
 .sup-tt tr.sin-asis td:first-child { box-shadow: inset 3px 0 0 #E8892B; }
 .sup-tt tr.sup-fuera td { background:#FAFAFB; color: var(--fg-3, #666); font-size:12px; padding:8px 10px; }
-.tlb .j.o { background: #D64545; z-index: 2; box-shadow: 0 0 0 2px #fff; top: 4px; height: 26px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: repeating-linear-gradient(45deg, #2F6FD6 0 6px, #5B8EE6 6px 12px); }
-.tlb .j.p { background: #fff; border: 1.5px dashed #6B7280; color: #374151; font-weight: 600; } .tlb .j.p.pi { border-color: #D64545; color: #B42318; background: #FFF5F5; }
+.tlb .j.o { background: var(--mal-bg, #FDECEC); border: 1.5px solid var(--mal, #B42318); color: var(--mal, #B42318); z-index: 2; box-shadow: 0 0 0 2px #fff; top: 4px; height: 26px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: #E3EEFF; border: 1px solid #1A56A8; color: #1A56A8; }
+.tlb .j.p { background: var(--ok-bg, #E6F6EC); border: 1px solid var(--ok, #0F7B45); color: var(--ok, #0F7B45); } .tlb .j.p.pi { background: var(--mal, #B42318); border-color: var(--mal, #B42318); color: #fff; }
 .tlb .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--magenta); }
 .tl-esc { display: flex; justify-content: space-between; font: 600 10px 'DM Sans', sans-serif; color: var(--texto-4); text-transform: none; letter-spacing: 0; margin-top: 3px; }
 .sup-ley { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--texto-2); margin-top: 10px; }
-.sup-ley .lg { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; } .sup-ley .lg.d { background: #1F9D61; } .sup-ley .lg.c { background: #2F6FD6; } .sup-ley .lg.o { background: #D64545; }
-.sup-ley .lg.p { background: #fff; border: 1.5px dashed #6B7280; } .sup-ley .lg.pi { background: #FFF5F5; border: 1.5px dashed #D64545; } .sup-ley .lg.n { background: var(--magenta); width: 3px; }
+.sup-ley .lg { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; } .sup-ley .lg.d { background: #EEF0F4; border: 1px solid #4B5565; } .sup-ley .lg.c { background: #E3EEFF; border: 1px solid #1A56A8; } .sup-ley .lg.o { background: var(--mal-bg, #FDECEC); border: 1.5px solid var(--mal, #B42318); }
+.sup-ley .lg.p { background: var(--ok-bg, #E6F6EC); border: 1px solid var(--ok, #0F7B45); } .sup-ley .lg.pi { background: var(--mal, #B42318); } .sup-ley .lg.n { background: var(--magenta); width: 3px; }
 .vp { font: 700 13px Montserrat, sans-serif; border: 1px solid var(--borde); background: #fff; border-radius: 16px; padding: 3px 10px; cursor: pointer; color: var(--texto); }
 .vp.am { color: #9A5B00; border-color: #F2C46B; } .vp[aria-expanded="true"] { background: var(--rosa); border-color: var(--magenta); color: var(--magenta-oscuro); }
 tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: left; white-space: normal; }
@@ -1284,7 +1284,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <p style="margin:0 0 10px"><button type="button" class="btn-out" id="sup-todos">Ver / ocultar los pendientes de todos</button> <small class="sub">o toca el número de «Pendientes hoy» de un técnico</small></p>
       <div class="sup-dk" id="sup-dk"></div>
       <div class="tabla-scroll"><table class="sup-t sup-tt"><thead><tr><th>Técnico</th><th>Ahora</th><th>Descargadas</th><th>Observadas</th><th>Pendientes hoy</th><th>Bolsa</th><th>1.ª alta inició</th><th>Tiempo prom. por alta</th><th class="tl-h">Altas del día<span class="tl-esc"><span>8h</span><span>10h</span><span>12h</span><span>14h</span><span>16h</span><span>18h</span></span></th></tr></thead><tbody id="sup-tec"></tbody><tfoot id="sup-tec-tot"></tfoot></table></div>
-      <div class="sup-ley"><span><i class="lg d"></i>Descargada</span><span><i class="lg o"></i>Observada (a la hora en que se observó)</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Pendiente de hoy en su franja</span><span><i class="lg pi"></i>Pendiente con franja vencida</span><span><i class="lg n"></i>Ahora</span></div>
+      <div class="sup-ley"><span><i class="lg d"></i>Finalizada (descargada)</span><span><i class="lg o"></i>Observada (a la hora en que se observó)</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Por atender (su franja sigue vigente)</span><span><i class="lg pi"></i>Sin iniciar (su franja ya pasó)</span><span><i class="lg n"></i>Ahora</span></div>
     </section>
     <p class="sub">Reglas: <b>En meta</b> lleva lo esperado a esta hora o más · <b>En riesgo</b> entre 80 % y 99 % de lo esperado · <b>Crítico</b> menos del 80 % de lo esperado o más del 20 % de faltas. Lo esperado = objetivo del día (% del Avance sobre la base inicial) × parte de la jornada 8:00–19:00 que ya pasó.</p>
   </div>
