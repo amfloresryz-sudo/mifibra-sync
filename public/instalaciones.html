@@ -281,6 +281,7 @@ body.rut-on { overflow: hidden; }
 .ra-tb thead th { font: 800 10.5px var(--f-disp); letter-spacing: .3px; text-transform: uppercase; color: var(--magenta-txt); background: var(--rosa); }
 .ra-tb tbody th { text-align: left; font-weight: 800; white-space: nowrap; } .ra-tb tbody th small { display: block; font-weight: 500; font-size: 11px; color: var(--fg-3); margin-left: 16px; }
 .ra-tb td.ra-abs { text-align: left; min-width: 230px; } .ra-tb .cero { color: var(--fg-4); }
+.ra-t { font-weight: 700; } .ra-t.cur { color: #1A56A8; } .ra-t.am { color: #8A5300; } .ra-t.esp { color: var(--ok); } .ra-t.mal { color: var(--mal); } .ra-tb td.ra-tarde b { color: #8A5300; }
 .ra-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--fg-4); }
 .ra-dot.ok-alta { background: var(--ok); } .ra-dot.ok-cur { background: #1A56A8; } .ra-dot.x { background: #D97706; } .ra-dot.y { background: #B42318; }
 .ra-g-x th, .ra-g-x td { background: #FFF7EB; } .ra-g-y th, .ra-g-y td { background: #FDF1F0; }
@@ -4323,14 +4324,23 @@ async function pintarRitAsis() {
     const finOk = (x) => frSolo(x) && (!raAg.size || raAg.has('fin'));
     const GT = { ab: 0, tec: 0 };
     const filaTec = (k, nombre, grupo, tt) => { const B = (bolsa[k] || []).filter(frOk).sort((a, b) => ORDc[cat(a)] - ORDc[cat(b)] || String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr)));
-      const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const ob = obsHoy[tecNk(k)] || []; let [ce, se] = estado(T[k]); if (ob.length && !trabajando(T[k])) se = `${ob.length} observada${ob.length === 1 ? '' : 's'} hoy`;
+      const c = {}; B.forEach(p => { const x = cat(p); c[x] = (c[x] || 0) + 1; }); const ob = obsHoy[tecNk(k)] || []; let [ce] = estado(T[k]);
+      // Debajo del nombre: cuánto lleva en la instalación en curso o, si no está instalando, cuánto lleva sin trabajar (hasta las 19:00 como máximo)
+      const refM = Math.min(ahoraMin, 19 * 60), curP = (bolsa[k] || []).filter(p => p.ini && p.ini.slice(0, 10) === hoy && iniMin(p) != null).sort((a, b) => iniMin(a) - iniMin(b));
+      const alT = altasHoy[k] || [], finU = alT.map(x => hmMin(x.hf)).filter(v => v != null), ultFin = finU.length ? Math.max(...finU) : null;
+      const ini1 = Math.min(...alT.map(x => hmMin(x.hi)).filter(v => v != null), ...curP.map(iniMin)), ini1v = isFinite(ini1) ? ini1 : null;
+      const obTx = ob.length ? ` · ${ob.length} observada${ob.length === 1 ? '' : 's'}` : '';
+      const se = curP.length ? (() => { const m = Math.max(0, ahoraMin - iniMin(curP[0])); return `<span class="ra-t ${m > 180 ? 'am' : 'cur'}">Instalando AB ${curP.map(p => p.ab).join(', ')} · lleva ${durTx(m)}</span>`; })()
+        : ultFin != null ? (() => { const m = Math.max(0, refM - ultFin); return `<span class="ra-t ${m > 90 ? 'mal' : 'esp'}">Sin trabajar hace ${durTx(m)} · desde ${minHm(ultFin)}</span>${obTx}`; })()
+        : ahoraMin > 8 * 60 ? `<span class="ra-t mal">Sin iniciar · ${durTx(refM - 8 * 60)} sin trabajar desde 08:00</span>${obTx}` : `Sin actividad aún${obTx}`;
       const al = (altasHoy[k] || []).filter(finOk).sort((a, b) => String(a.hi).localeCompare(String(b.hi))), ds = al.map(durAlta).filter(v => v != null), pr = prom(ds), bi = baseTec[k] || 0;
-      if (tt) { tt.n++; tt.bi += bi; tt.al += al.length; tt.ob += ob.length; tt.b += B.length; tt.ds.push(...ds); ['cur', 'esp', 'ret', 'atr', 'fut', 'sa'].forEach(x => { tt[x] += c[x] || 0; }); }
+      if (tt) { if (ini1v != null) tt.i1.push(ini1v); tt.n++; tt.bi += bi; tt.al += al.length; tt.ob += ob.length; tt.b += B.length; tt.ds.push(...ds); ['cur', 'esp', 'ret', 'atr', 'fut', 'sa'].forEach(x => { tt[x] += c[x] || 0; }); }
       const v = (x, cls = '') => `<td${x && cls ? ` class="${cls}"` : ''}>${x || '<span class="cero">·</span>'}</td>`;
-      return `<tr class="ra-g-${grupo}"><th scope="row" title="${esc(nombre)}"><span class="ra-dot ${grupo === 'si' ? 'ok-' + ce : grupo}"></span>${esc(tecCorto(nombre) || nombre)}<small>${esc(se)}</small></th>
+      return `<tr class="ra-g-${grupo}"><th scope="row" title="${esc(nombre)}"><span class="ra-dot ${grupo === 'si' ? 'ok-' + ce : grupo}"></span>${esc(tecCorto(nombre) || nombre)}<small>${se}</small></th>
         <td class="ra-bi">${bi || '<span class="cero">0</span>'}</td>${v(al.length, 'ra-fin-n')}<td${ob.length ? ` class="ra-obs" title="Observados hoy: ${ob.map(o => 'AB ' + o.ab + ' · ' + esc(o.m || '')).join(' | ')}"` : ''}>${ob.length ? `<button type="button" class="lnk" data-ficha-ab="${ob[0].os}">${ob.length}</button>` : '<span class="cero">·</span>'}</td>
+        <td class="${ini1v != null && ini1v > 9 * 60 ? 'ra-tarde' : ''}" title="Hora en que inició su primera atención de hoy">${ini1v == null ? '<span class="cero">—</span>' : `<b>${minHm(ini1v)}</b>`}</td>
         <td title="${ds.length ? `Promedio de ${ds.length} alta${ds.length === 1 ? '' : 's'} de hoy (fin − inicio)` : 'Sin altas con inicio y fin hoy'}">${pr == null ? '<span class="cero">—</span>' : `<b>${durTx(pr)}</b>`}</td>
-        ${v(c.cur, 'ra-cur-n')}${v(c.esp, 'ra-esp-n')}${v(c.ret, 'ra-ret-n')}${v(c.atr, 'mal-t')}${v(c.fut)}${v(c.sa)}<td><b>${B.length}</b></td>
+        ${v(c.cur, 'ra-cur-n')}${v(c.esp, 'ra-esp-n')}${v(c.ret, 'ra-ret-n')}${v(c.fut)}${v(c.sa)}<td><b>${B.length}</b></td>
         <td class="ra-abs ra-desc">${al.map(finChip).join('') || '<span class="cero">—</span>'}</td><td class="ra-abs">${B.map(abChip).join('') || '<span class="cero">sin AB pendientes</span>'}</td></tr>`; };
     // Resumen gerencial de una EECC: estados de hoy, horarios reales (inicio de jornada, fin de la última alta) y su cuadro por franja
     const resumen = (e) => { const Pd = Object.values(bolsa).flat().filter(p => asiNorm(p.ec) === e), Ad = Object.values(altasHoy).flat().filter(x => asiNorm(x.ec) === e);
@@ -4364,7 +4374,7 @@ async function pintarRitAsis() {
     const AGS = ['fin', 'cur', 'esp', 'ret', 'atr', 'fut', 'sa'];
     const agChips = `<div class="ra-fr" role="group" aria-label="Estado"><span class="ra-fr-t">Estado</span><button type="button" class="chip" data-ra-ag="" aria-pressed="${!raAg.size}">Todos</button>${AGS.filter(c => agC[c] || raAg.has(c)).map(c => `<button type="button" class="chip" data-ra-ag="${c}" aria-pressed="${raAg.has(c)}">${CATL[c]} <small>${agC[c] || 0}</small></button>`).join('')}</div>`;
     const ley = `<div class="ra-ley">${AGS.map(c => `<span class="ra-ab c-${c}">${c === 'fin' ? '✓ ' : ''}${CAT[c]}</span>`).join('')}<span>· clic en un AB para ver su ficha</span></div>`;
-    const H = ['Técnico', 'Base inicial', 'Finalizados', 'Observados hoy', 'Tiempo prom. por alta', 'En curso', 'En espera', 'Sin iniciar', 'Atrasados', 'Futuros', 'Sin agenda', 'Bolsa', 'AB descargados', 'AB asignados'], NC = H.length;
+    const H = ['Técnico', 'Base inicial', 'Finalizados', 'Observados hoy', '1.ª alta inicio', 'Tiempo prom. por alta', 'En curso', 'En espera', 'Sin iniciar', 'Futuros', 'Sin agenda', 'Bolsa', 'AB descargados', 'AB asignados'], NC = H.length;
     box.innerHTML = cab + `<div class="ra-segs">${agChips}${frChips}</div>` + ley + sel.map(e => { const a = asis[e], conA = a ? [...a.set] : [];
       const delEc = Object.values(T).filter(o => o.ec === e).map(o => String(o.tec).toUpperCase().trim());
       const deBolsa = Object.keys(bolsa).filter(k => bolsa[k].some(p => asiNorm(p.ec) === e));
@@ -4377,7 +4387,7 @@ async function pintarRitAsis() {
       const enCampo = conA.filter(trab).length, r = rfDe(e);
       const filtro2 = raFr.size || raAg.size, tieneAlg = (k) => (bolsa[k] || []).some(frOk) || (altasHoy[k] || []).some(finOk) || obsDe(k).length > 0;
       const conAf = filtro2 ? conA.filter(tieneAlg) : conA, sinTrabF = filtro2 ? sinTrab.filter(tieneAlg) : sinTrab, sinHoyF = filtro2 ? sinHoy.filter(tieneAlg) : sinHoy;
-      const tt = { n: 0, bi: 0, al: 0, ob: 0, b: 0, ds: [], cur: 0, esp: 0, ret: 0, atr: 0, fut: 0, sa: 0 };
+      const tt = { n: 0, bi: 0, al: 0, ob: 0, b: 0, ds: [], i1: [], cur: 0, esp: 0, ret: 0, atr: 0, fut: 0, sa: 0 };
       const filas = [...conAf.sort((x, y) => (trab(y) ? 1 : 0) - (trab(x) ? 1 : 0) || (bolsa[y] || []).length - (bolsa[x] || []).length).map(k => filaTec(k, nom(k), 'si', tt)),
         sinTrabF.length ? `<tr class="ra-sep"><td colspan="${NC}">⚠ Sin asistencia pero trabajando (${sinTrabF.length})</td></tr>` + sinTrabF.map(k => filaTec(k, nom(k), 'x', tt)).join('') : '',
         sinHoyF.length ? `<tr class="ra-sep ra-sep2"><td colspan="${NC}">Sin asistencia con AB para hoy (${sinHoyF.length}) · revisar si salen a campo o reasignar</td></tr>` + sinHoyF.map(k => filaTec(k, nom(k), 'y', tt)).join('') : ''].join('');
@@ -4386,7 +4396,7 @@ async function pintarRitAsis() {
       return `<div class="ra-ec"><div class="ra-eh"><b>${esc(e)}</b>${a ? `<span>Asistencia registrada a las ${hmA(a.en)}${a.por ? ' por ' + esc(a.por) : ''} · <b>${conA.length}</b> rutas${r != null ? ` de ${r} fijas` : ''} · ${enCampo} ya trabajando</span>` : '<span class="ra-no">⚠ No registró asistencia hoy</span>'}</div>
         ${resumen(e)}
         ${filas ? `<div class="scroll"><table class="ra-tb"><thead><tr>${H.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${conAf.length ? `<tr class="ra-sep ra-sep0"><td colspan="${NC}">Con asistencia (${conAf.length}${filtTx})</td></tr>` : ''}${filas}</tbody>
-          <tfoot><tr><th scope="row">Total · ${tt.n} técnicos</th><td class="ra-bi">${tt.bi}</td><td>${tt.al}</td><td>${tt.ob}</td><td>${durTx(prom(tt.ds))}</td><td>${tt.cur}</td><td>${tt.esp}</td><td>${tt.ret}</td><td>${tt.atr}</td><td>${tt.fut}</td><td>${tt.sa}</td><td><b>${tt.b}</b></td><td class="ra-abs"><b>${tt.al} AB</b> descargados hoy</td><td class="ra-abs"><b>${tt.b} AB</b> pendientes en la vista</td></tr></tfoot></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
+          <tfoot><tr><th scope="row">Total · ${tt.n} técnicos</th><td class="ra-bi">${tt.bi}</td><td>${tt.al}</td><td>${tt.ob}</td><td title="Promedio de la 1.ª alta de cada técnico">${tt.i1.length ? minHm(prom(tt.i1)) : '—'}</td><td>${durTx(prom(tt.ds))}</td><td>${tt.cur}</td><td>${tt.esp}</td><td>${tt.ret}</td><td>${tt.fut}</td><td>${tt.sa}</td><td><b>${tt.b}</b></td><td class="ra-abs"><b>${tt.al} AB</b> descargados hoy</td><td class="ra-abs"><b>${tt.b} AB</b> pendientes en la vista</td></tr></tfoot></table></div>` : '<p class="nota">Sin rutas con asistencia ni técnicos trabajando todavía.</p>'}</div>`; }).join('');
     { const el = document.createElement('div'); el.className = 'ra-total'; el.innerHTML = `Total según los filtros: <b>${GT.ab}</b> abonados · <b>${GT.tec}</b> técnicos${sel.length > 1 ? ` · ${sel.length} EECC` : ''}`; box.querySelector('.ra-segs').after(el); }
     return;
   }
