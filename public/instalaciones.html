@@ -1058,7 +1058,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <button type="button" role="tab" id="tab-pendientes" aria-controls="v-pendientes" aria-selected="false" data-t="pendientes">Pendientes <span class="cuenta" id="n-pend"></span></button>
     <button type="button" role="tab" id="tab-coord" aria-controls="v-coord" aria-selected="false" data-t="coord">Coordinaciones</button>
     <button type="button" role="tab" id="tab-avance" aria-controls="v-avance" aria-selected="false" data-t="avance">Avance</button>
-    <button type="button" role="tab" id="tab-sup" aria-controls="v-sup" aria-selected="false" data-t="sup">Supervisión</button>
+    <button type="button" role="tab" id="tab-sup" aria-controls="v-sup" aria-selected="false" data-t="sup" hidden>Supervisión</button>
     <button type="button" role="tab" id="tab-avt" aria-controls="v-avt" aria-selected="false" data-t="avt">Avance total</button>
     <button type="button" role="tab" id="tab-ritmo" aria-controls="v-ritmo" aria-selected="false" data-t="ritmo" hidden>Ritmo del día</button>
     <button type="button" role="tab" id="tab-ctrl" aria-controls="v-ctrl" aria-selected="false" data-t="ctrl" hidden>Control EECC</button>
@@ -4505,11 +4505,14 @@ $('ce-comp').addEventListener('click', async (e) => {
     pintarCtrlHoy(); const est2 = $('ce-comp-est'); if (est2) { est2.style.color = 'var(--ok)'; est2.textContent = `Compromiso de ${ec} guardado.`; }
   } catch (err) { b.disabled = false; if (est) { est.style.color = 'var(--mal)'; est.textContent = err.message; } }
 });
+// Supervisión solo para Lima: en otras filiales la pestaña no aparece
+function revisarSup() { const b = $('tab-sup'); if (!b) return; const ve = filialSel() === 'LIMA'; b.hidden = !ve;
+  if (!ve && tab === 'sup') { const p = document.querySelector('#tabs [data-t="panel"]'); if (p) p.click(); } }
 /* ---------- SUPERVISIÓN: cortes del día, ranking de EECC, alertas para empujar y avance por técnico ---------- */
 let supEc = null, SUP_REF = Date.now(); const supAbiertos = new Set(), SUP_MSG = {}, SUP_EST = { ok: 'En meta', am: 'En riesgo', mal: 'Crítico' }, SUP_COL = { ok: '#0F7B45', am: '#E0A100', mal: '#B42318' };
 const SUP_NO_EC = /POR ASIGNAR|GESTOR|SUPERVISOR/i;
 async function pintarSup() {
-  if (!$('v-sup') || !D) return;
+  if (!$('v-sup') || !D || filialSel() !== 'LIMA') return;
   const hoy = hoyIso(), dH = D.dias, pctS = (x) => x == null ? '—' : Math.round(x * 100) + ' %';
   const [A, OBS] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => [])]); window.__supA = A;
   const esHoyD = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
@@ -4645,7 +4648,7 @@ document.addEventListener('click', async (e) => {
 
 const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); }, ctrl: () => pintarCtrl(), sup: () => pintarSup() };
 const tabSucia = new Set();
-function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); revisarCtrl(); pintarTabSiSucia(tab); pintarCinta(); revisarRitmo(); }
+function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); revisarCtrl(); pintarTabSiSucia(tab); pintarCinta(); revisarRitmo(); revisarSup(); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
 /* ---------- Periodo: selector de mes, semanas y desde/hasta ---------- */
 const MESES_C = (iso) => { const [y, m] = iso.split('-').map(Number); const t = MESES_L[m - 1]; return t.charAt(0).toUpperCase() + t.slice(1) + ' ' + y; };
