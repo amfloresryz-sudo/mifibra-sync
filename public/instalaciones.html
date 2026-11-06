@@ -446,6 +446,10 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
   #tb-pend .b.edad { display: none; }
 }
 .b.v1 { background: #FFE58A; color: #3D2E00; }
+.td-vis { white-space: normal; } .td-vis .b { display: block; width: max-content; max-width: 100%; margin: 2px auto; font-size: 11px; }
+.b.ec { font-weight: 700; } .b.ec-cam { background: #CFE3FF; color: #0B3D91; } .b.ec-sit { background: #C9F2EA; color: #04594A; }
+.b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
+.fi-ec { margin: 0 0 6px; }
 /* Tipo de trabajo: una etiqueta de color por tipo (mismo formato que Gestionado) */
 .b.sg-b2b { background: #FFF1C2; color: #7A5200; } .b.sg-ref { background: #FFE0E0; color: #B42318; } .b.cn-in { background: #DFF5E3; color: #17703F; }
 .b.tt-ins { background: #FFE3F1; color: #A3005A; } .b.tt-tex { background: #EDE7FF; color: #5B2DB8; } .b.tt-tin { background: #DDF3F1; color: #0E6E66; }
@@ -2132,7 +2136,7 @@ function pintarPendientes0() {
       <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}" title="${esc(p.gesM || '')}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
       <td data-v="${p.pc ? 0 : 1}"><span class="b ${p.pc ? 'ges' : 'sag'}"${p.pcF ? ` title="Primer contacto: ${esc(fechaHora(p.pcF.replace(' ', 'T')))}"` : ' title="El comentario no trae #dd/mm/aaaa hh:mm#"'}>${p.pc ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
-      <td data-v="${visI(p) ? (visI(p) === 'VD' ? 3 : visI(p)) : 9}">${visI(p) ? `<span class="b v1" title="Tomado del comentario">${visTxtI(visI(p))}</span>` : '-'}</td>
+      <td data-v="${visI(p) ? (visI(p) === 'VD' ? 3 : visI(p)) : 9}" class="td-vis">${visCelda(p)}</td>
       ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
@@ -2219,12 +2223,26 @@ const RE_VISI = /(?:(PRIMERA|SEGUNDA|[12])\s*(?:ERA|RA|ER|DA|DO|°|º|\.ª|ª)?\
 const visI = (p) => { if (p.vi !== undefined) return p.vi; const L = [...String(p.ovt || p.ov || '').matchAll(RE_VISI)]; const m = L[L.length - 1];
   return p.vi = !m ? null : m[2] ? 'VD' : /^(SEGUNDA|2)$/i.test(m[1]) ? '2' : '1'; };
 const visTxtI = (v) => v === 'VD' ? 'VD' : `${v}° visita`;
+/* Lo último que dice el comentario del técnico sobre la visita (se resalta en la columna Visita): se toma la frase que aparece más al final */
+const EST_CAMPO = [
+  ['camino', /\b(?:TEC(?:NICO)?\.?\s*)?EN\s+(?:CAMINO|RUTA)\b|\bSALIENDO\s+(?:AL|A)\s+(?:PUNTO|DOMICILIO)/gi, 'En camino', 'ec-cam'],
+  ['sitio', /\bEN\s+(?:SITIO|DOMICILIO|PUNTO|PREDIO)\b|\bTEC(?:NICO)?\.?\s+LLEG[OÓ]\b|\bLLEG[OÓ]\s+AL\s+(?:PUNTO|DOMICILIO)/gi, 'En sitio', 'ec-sit'],
+  ['instal', /\bINSTALANDO\b|\bEN\s+(?:PROCESO\s+DE\s+)?INSTALACI[OÓ]N\b|\bTRABAJANDO\b/gi, 'Instalando', 'ec-ins'],
+  ['nocont', /\bNO\s+CONTESTA\b|\bCLIENTE\s+AUSENTE\b|\bNO\s+SE\s+ENCUENTRA\b|\bNO\s+UBICA|\bAPAGADO\b|\bBUZ[OÓ]N\b/gi, 'No contesta', 'ec-noc'],
+  ['reprog', /\bREPROGRAM/gi, 'Reprogramó', 'ec-rep'],
+];
+const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = String(p.ovt || p.ov || ''); let mejor = null;
+  EST_CAMPO.forEach(([k, re, txt, cls]) => { for (const m of t.matchAll(re)) if (!mejor || m.index > mejor.i) mejor = { i: m.index, k, txt, cls }; });
+  return p._ec = mejor; };
+const visCelda = (p) => { const v = visI(p), e = estCampo(p);
+  return (v ? `<span class="b v1" title="Tomado del comentario">${visTxtI(v)}</span>` : '') + (e ? `<span class="b ec ${e.cls}" title="Lo último que dice el comentario del técnico">${e.txt}</span>` : '') || '-'; };
+const visTxtFiltro = (p) => { const v = visI(p), e = estCampo(p); return [v ? visTxtI(v) : '', e ? e.txt : ''].filter(Boolean).join(' · ') || '-'; };
 const COLS_PEND = [
   (p) => { const g = gestorDe(p); return [g, g === 'SIN GESTOR' ? '~' : g]; },
   (p) => [p.z || '—', String(zIdx(p.z)).padStart(3, '0')], (p) => [p.pl || '—'], (p) => [p.di || '—'], (p) => [p.seg || '—'], (p) => [cnCorto(p.cn)], (p) => [String(p.ab), String(p.ab).padStart(9, '0')], (p) => [tipoTr(p)],
   (p) => [p.ec || '—'], (p) => [tecCorto(p.tec) || '—'], (p) => [p.ges ? 'Gestionado' : 'Sin gestión'], (p) => [p.pc ? 'SÍ' : 'NO'],
   (p) => { const e = estAg(p); return [EST_TXT[e], String(EST_V[e])]; },
-  (p) => { const v = visI(p); return v ? [visTxtI(v), String(v === 'VD' ? 3 : v)] : ['-', '9']; },
+  (p) => { const v = visI(p); return [visTxtFiltro(p), (v ? String(v === 'VD' ? 3 : v) : '9') + visTxtFiltro(p)]; },
   (p) => p.fp && estAg(p) !== 'SIN AGENDA' ? [fIso(p.fp), p.fp] : ['—', '~'], (p) => [conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~'],
   (p) => [p.ini ? 'SÍ' : 'NO'], (p) => [p.rec ? fIso(p.rec.slice(0, 10)) : '—', p.rec ? p.rec.slice(0, 10) : '~'] ];
 const colFil = {};   // columna -> Set de valores permitidos
@@ -3427,7 +3445,7 @@ function fichaAB(os) {
     + secF('Planta cercana', c0 ? grilla([['Caja más cercana', `${esc(c0[0])} <small>· ${c0[1]} m</small>`], ['Mapa', esc(corta(c0[2]))], ['Zona de planta (carpeta)', esc(c0[3])],
         ['Cajas a ≤200 m', `<button type="button" class="lnk num" data-cajas="${p.os}">${p.cj.length}${p.cj.length >= 15 ? '+' : ''} cajas</button>`]])
         : '<p class="fi-nota">Sin cajas de planta registradas a 200 m o menos de este AB (o el AB no tiene coordenadas en ScordSoft).</p>')
-    + secF('Comentario del técnico · OBS VISITA TÉCNICO (completo)', (p.ovt || p.ov) ? `<div class="fi-obs">${obsCompleta(p.ovt || p.ov)}${p.ove ? `<small>Última anotación: ${esc(p.ove)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
+    + secF('Comentario del técnico · OBS VISITA TÉCNICO (completo)', (p.ovt || p.ov) ? `${estCampo(p) ? `<p class="fi-ec"><span class="b ec ${estCampo(p).cls}">${estCampo(p).txt}</span> <small>lo último que dice el comentario</small></p>` : ''}<div class="fi-obs">${obsCompleta(p.ovt || p.ov)}${p.ove ? `<small>Última anotación: ${esc(p.ove)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
     + secF('Comentarios de la EECC (Mis pendientes)', '<div id="fi-cec"><p class="fi-nota">Cargando…</p></div>')
     + '<p class="fi-nota">Las observaciones de venta del cliente no se muestran en el portal (datos personales); los teléfonos en la observación del técnico se ocultan.</p>';
   const ge = gestorDe(p);
