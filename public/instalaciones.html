@@ -461,7 +461,9 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sup-k { background: #fff; border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; } .sup-k .l { font: 700 11px Montserrat, sans-serif; letter-spacing: .5px; text-transform: uppercase; color: var(--texto-4); }
 .sup-k .v { font: 800 26px Montserrat, sans-serif; font-variant-numeric: tabular-nums; } .sup-k .s { font-size: 12px; color: var(--texto-4); }
 .sup-k.mal .v { color: #B42318; } .sup-k.am .v { color: #9A5B00; } .sup-k.ok .v { color: #0F7B45; }
-.sup-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sup-grid { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+#v-sup .tabla-scroll { overflow-x: auto; }
+.sup-al { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .sup-h { margin: 0 0 2px; font-size: 17px; }
 .sup-t { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
 .sup-t th { font: 700 10.5px Montserrat, sans-serif; letter-spacing: .4px; text-transform: uppercase; color: var(--magenta-oscuro); background: var(--rosa); padding: 9px 6px; white-space: nowrap; text-align: center; }
@@ -477,7 +479,20 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sal .t { font-weight: 700; } .sal .d { font-size: 12.5px; color: var(--texto-2); margin: 3px 0 8px; }
 .sup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
 .sup-chips .chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
-.sup-dk { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.sup-dk { margin-bottom: 14px; }
+.sup-res-cab { font-size: 13px; color: var(--texto-2); margin-bottom: 8px; } .sup-res-cab b:first-child { font: 800 15px Montserrat, sans-serif; color: var(--texto); margin-right: 6px; }
+.sup-res { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
+@media (max-width: 1750px) { .sup-res { grid-template-columns: 1fr; } }
+.rg-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.rg-k { border: 1px solid var(--borde); border-top: 4px solid #9CA3AF; border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; min-width: 0; }
+.rg-k .l { font: 700 10.5px Montserrat, sans-serif; text-transform: uppercase; letter-spacing: .4px; } .rg-k .v { font: 800 24px Montserrat, sans-serif; font-variant-numeric: tabular-nums; } .rg-k .s { font-size: 11.5px; color: var(--texto-4); } .rg-k .s.cmp { margin-top: 4px; }
+.rg-k.bi { border-top-color: #7C4DCC; } .rg-k.bi .v { color: #5B2DA8; } .rg-k.fin { border-top-color: #374151; } .rg-k.cur { border-top-color: #2F6FD6; } .rg-k.cur .v { color: #1F4E9C; }
+.rg-k.esp { border-top-color: #0F7B45; } .rg-k.esp .v { color: #0F7B45; } .rg-k.ret { border-top-color: #D64545; } .rg-k.ret .v { color: #B42318; } .rg-k.hr { border-top-color: var(--magenta); }
+.rg-fr { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 10px; min-width: 0; } .rg-fr h4 { margin: 2px 0 6px; font: 800 12px Montserrat, sans-serif; text-transform: uppercase; letter-spacing: .5px; color: var(--texto-2); }
+.sup-fr th, .sup-fr td { padding: 6px 5px; font-size: 12.5px; } .sup-fr tbody th { text-align: left; font: 700 13px Montserrat, sans-serif; background: none; color: var(--texto); } .sup-fr td.ret { background: #FDE8E7; color: #B42318; font-weight: 700; }
+.sbar.sm { width: 54px; height: 6px; }
+.vs { display: inline-block; font: 700 11px Montserrat, sans-serif; color: var(--texto-4); white-space: nowrap; } .vs.up { color: #0F7B45; } .vs.dn { color: #B42318; }
+.sup-dk-old { display: none; }
 .sup-dk .dk { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 12px; } .sup-dk .l { font: 700 10.5px Montserrat, sans-serif; text-transform: uppercase; color: var(--texto-4); } .sup-dk .v { font: 800 20px Montserrat, sans-serif; }
 .sup-tt td.tl { padding: 6px 4px; min-width: 420px; }
 .se { display: inline-block; padding: 3px 9px; border-radius: 20px; font: 700 11px Montserrat, sans-serif; }
@@ -495,7 +510,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .vp.am { color: #9A5B00; border-color: #F2C46B; } .vp[aria-expanded="true"] { background: var(--rosa); border-color: var(--magenta); color: var(--magenta-oscuro); }
 tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: left; white-space: normal; }
 .pt { margin-top: 8px; min-width: 700px; border-collapse: collapse; } .pt th { background: #F3F4F6; color: var(--texto-2); font: 700 10px Montserrat, sans-serif; text-transform: uppercase; padding: 6px 8px; } .pt td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; }
-@media (max-width: 1100px) { .sup-grid { grid-template-columns: 1fr; } .sup-kpis, .sup-dk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sup-linea { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .sup-res { grid-template-columns: 1fr; } .sup-grid { grid-template-columns: 1fr; } .sup-kpis, .sup-dk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sup-linea { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* F. Recep en una sola línea: dd/mm hh:mm + días; nunca se corta */
 #tb-pend td.td-rec { text-overflow: clip; }
 #tb-pend td.td-rec .rec-f { white-space: nowrap; }
@@ -1252,7 +1267,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <div class="sup-kpis" id="sup-kpis"></div>
     <div class="sup-grid">
       <section class="sec"><h3 class="sup-h">Ranking de EECC</h3><p class="sub">De la más atrasada a la mejor. La raya negra marca dónde deberían estar a esta hora. Clic en una fila para ver sus técnicos.</p>
-        <div class="tabla-scroll"><table class="sup-t"><thead><tr><th>EECC</th><th>Estado</th><th>Liq. / Obj.</th><th>Avance vs esperado</th><th>Faltan</th><th>Asistencia</th><th>Sin iniciar</th><th>Más de 24 h</th><th>Prod.</th><th>Últimos 7 días</th></tr></thead><tbody id="sup-rank"></tbody></table></div></section>
+        <div class="tabla-scroll"><table class="sup-t"><thead><tr><th>EECC</th><th>Estado</th><th>Liq. / Obj.</th><th>Avance vs esperado</th><th>Faltan</th><th>Asistencia</th><th>Sin iniciar</th><th>Más de 24 h</th><th>Prod.</th><th title="Altas cerradas hasta esta misma hora el día anterior con datos">Ayer a esta hora</th><th>Últimos 7 días</th></tr></thead><tbody id="sup-rank"></tbody></table></div></section>
       <section class="sec"><h3 class="sup-h">Para empujar ahora</h3><p class="sub">Con el mensaje listo para el supervisor de cada EECC.</p><div class="sup-al" id="sup-al"></div></section>
     </div>
     <section class="sec" id="sup-det">
@@ -4495,7 +4510,7 @@ const SUP_NO_EC = /POR ASIGNAR|GESTOR|SUPERVISOR/i;
 async function pintarSup() {
   if (!$('v-sup') || !D) return;
   const hoy = hoyIso(), dH = D.dias, pctS = (x) => x == null ? '—' : Math.round(x * 100) + ' %';
-  const [A, OBS] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => [])]);
+  const [A, OBS] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => [])]); window.__supA = A;
   const esHoyD = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   const ahoraMin = esHoyD ? (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })() : (hmMin((D.corte || '').slice(11, 16)) ?? 19 * 60);
   const frac = Math.max(0, Math.min(1, (ahoraMin - 480) / 660)), refMs = esHoyD ? Date.now() : new Date(D.corte || Date.now()).getTime();
@@ -4516,6 +4531,10 @@ async function pintarSup() {
   const dias = [...new Set(D.liq.map(x => x.d))].filter(d => d < dH).sort((a, b) => a - b).slice(-7);
   dias.forEach(d => { const iso = isoDia(d), ob = {}, lq = {}; baseInicial(iso).filas.forEach(x => { if (ok(x)) ob[x.ec] = (ob[x.ec] || 0) + 1; }); D.liq.forEach(x => { if (x.d === d && ok(x)) lq[x.ec] = (lq[x.ec] || 0) + 1; });
     Object.values(E).forEach(e => { const o = Math.round((ob[e.ec] || 0) * OBJ_PCT / 100); e.hist.push(o ? Math.round((lq[e.ec] || 0) / o * 100) : null); }); });
+  // AYER A LA MISMA HORA: el último día con datos antes de hoy; cuenta solo las altas cerradas hasta esta misma hora
+  const ayer = dias.length ? dias[dias.length - 1] : null, hastaAhora = (x) => { const m = hmMin(x.hf) ?? hmMin(x.hi); return m != null && m <= ahoraMin; };
+  const LA = ayer == null ? [] : D.liq.filter(x => x.d === ayer && ok(x) && hastaAhora(x));
+  LA.forEach(x => { const e = E[x.ec || 'POR ASIGNAR']; if (e) e.ayer = (e.ayer || 0) + 1; });
   const R = Object.values(E).filter(e => !SUP_NO_EC.test(e.ec) && (e.ini || e.liq || e.bolsa)).map(e => {
     const obj = Math.round(e.ini * OBJ_PCT / 100), esp = Math.round(obj * frac), as = asisDe(e.ec), rut = RD[e.ec] ?? (as ? as.length : null);
     const campo = e.tecs.size, fal = rut != null ? Math.max(0, rut - campo) : null, asist = rut ? (rut - fal) / rut : null;
@@ -4523,9 +4542,10 @@ async function pintarSup() {
     const est = !obj ? 'ok' : r < 0.8 || (asist != null && asist < 0.8) ? 'mal' : r < 1 ? 'am' : 'ok';
     return { ...e, obj, esp, rut, fal, asist, sin, r, est, campo, falta: Math.max(0, obj - e.liq), prod: campo ? e.liq / campo : null };
   }).sort((a, b) => ({ mal: 0, am: 1, ok: 2 })[a.est] - ({ mal: 0, am: 1, ok: 2 })[b.est] || a.r - b.r || b.falta - a.falta);
-  const T = R.reduce((a, x) => ({ obj: a.obj + x.obj, liq: a.liq + x.liq, esp: a.esp + x.esp, rut: a.rut + (x.rut || 0), fal: a.fal + (x.fal || 0), sin: a.sin + (x.sin || 0) }), { obj: 0, liq: 0, esp: 0, rut: 0, fal: 0, sin: 0 });
+  const T = R.reduce((a, x) => ({ ay: a.ay + (x.ayer || 0), obj: a.obj + x.obj, liq: a.liq + x.liq, esp: a.esp + x.esp, rut: a.rut + (x.rut || 0), fal: a.fal + (x.fal || 0), sin: a.sin + (x.sin || 0) }), { ay: 0, obj: 0, liq: 0, esp: 0, rut: 0, fal: 0, sin: 0 });
+  const vsAyer = (h, a) => { if (ayer == null) return ''; const d = h - a; return `<span class="vs ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}" title="Ayer (${fIso(isoDia(ayer))}) a esta misma hora: ${a}">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${d > 0 ? '+' : ''}${d} vs ayer</span>`; };
   const rT = T.esp ? T.liq / T.esp : 1, nMal = R.filter(x => x.est === 'mal').length, nAm = R.filter(x => x.est === 'am').length;
-  $('sup-kpis').innerHTML = [['Liquidadas hoy', n(T.liq), `de ${n(T.obj)} del objetivo`, ''], ['Avance', pctS(T.obj ? T.liq / T.obj : null), `esperado a esta hora: ${pctS(frac)}`, rT < 0.8 ? 'mal' : rT < 1 ? 'am' : 'ok'],
+  $('sup-kpis').innerHTML = [['Liquidadas hoy', n(T.liq), `de ${n(T.obj)} del objetivo` + (ayer != null ? `<br>ayer a esta hora: ${n(T.ay)} ${vsAyer(T.liq, T.ay)}` : ''), ''], ['Avance', pctS(T.obj ? T.liq / T.obj : null), `esperado a esta hora: ${pctS(frac)}`, rT < 0.8 ? 'mal' : rT < 1 ? 'am' : 'ok'],
     ['Faltan para objetivo', n(Math.max(0, T.obj - T.liq)), 'altas que faltan hoy', T.obj > T.liq ? 'mal' : 'ok'], ['EECC críticas', nMal, `${nAm} más en riesgo`, nMal ? 'mal' : 'ok'],
     ['Rutas sin iniciar', n(T.sin), 'con asistencia y sin atención hoy', T.sin ? 'am' : 'ok'], ['Asistencia', T.rut ? pctS((T.rut - T.fal) / T.rut) : '—', T.rut ? `${T.fal} faltas de ${T.rut} rutas` : 'sin rutas declaradas', T.rut && (T.rut - T.fal) / T.rut < 0.9 ? 'am' : 'ok']]
     .map(([l, v, s, c]) => `<div class="sup-k ${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
@@ -4535,17 +4555,17 @@ async function pintarSup() {
   $('sup-rank').innerHTML = R.map(x => `<tr data-ec="${esc(x.ec)}" class="${x.ec === supEc ? 'sel' : ''}" title="Ver los técnicos de ${esc(x.ec)}"><td><b>${esc(x.ec)}</b></td><td><span class="sp ${x.est}">${SUP_EST[x.est]}</span></td><td>${x.liq} / ${x.obj}</td>
     <td><span class="sbar" title="${pctS(x.obj ? x.liq / x.obj : null)} del objetivo; esperado ${pctS(frac)}"><i style="width:${x.obj ? Math.min(100, x.liq / x.obj * 100) : 0}%;background:${SUP_COL[x.est]}"></i><b style="left:${frac * 100}%"></b></span> <small>${x.esp ? pctS(x.r) : '—'}</small></td>
     <td class="${x.falta > 10 ? 'n-mal' : ''}">${x.falta}</td><td class="${x.asist != null && x.asist < 0.8 ? 'n-mal' : x.asist != null && x.asist < 0.9 ? 'n-am' : ''}">${pctS(x.asist)}</td><td class="${x.sin ? 'n-am' : ''}">${x.sin ?? '—'}</td>
-    <td class="${x.m24 > 10 ? 'n-mal' : ''}">${x.m24}</td><td>${x.prod == null ? '—' : dec(x.prod, 1)}</td><td>${spark(x.hist, SUP_COL[x.est])}</td></tr>`).join('') || '<tr><td colspan="10">Sin datos del día con estos filtros.</td></tr>';
+    <td class="${x.m24 > 10 ? 'n-mal' : ''}">${x.m24}</td><td>${x.prod == null ? '—' : dec(x.prod, 1)}</td><td>${ayer == null ? '—' : `${x.ayer || 0} ${vsAyer(x.liq, x.ayer || 0)}`}</td><td>${spark(x.hist, SUP_COL[x.est])}</td></tr>`).join('') || '<tr><td colspan="11">Sin datos del día con estos filtros.</td></tr>';
   // alertas con mensaje listo
   $('sup-al').innerHTML = R.filter(x => x.est !== 'ok').map(x => { const mot = [];
     if (x.asist != null && x.asist < 0.8) mot.push(`${x.fal} de ${x.rut} rutas faltaron`); if (x.sin) mot.push(`${x.sin} técnico${x.sin > 1 ? 's' : ''} sin iniciar`); if (x.m24 > 10) mot.push(`${x.m24} AB con más de 24 h`);
     SUP_MSG[x.ec] = `${x.ec} · corte ${minHm(ahoraMin)}\nLlevan ${x.liq} de ${x.obj} (${pctS(x.obj ? x.liq / x.obj : null)}). A esta hora deberían llevar ${x.esp}.\nFaltan ${x.falta} para el objetivo.${mot.length ? '\nDetalle: ' + mot.join(', ') + '.' : ''}\n¿Cuál es su plan para recuperar antes de las 19:00?`;
     return `<div class="sal ${x.est}"><div class="t">${esc(x.ec)} · ${SUP_EST[x.est]}</div><div class="d">Lleva ${x.liq} de ${x.esp} esperadas a esta hora · faltan ${x.falta}${mot.length ? ' · ' + mot.join(' · ') : ''}</div><button type="button" class="btn-out" data-sup-msg="${esc(x.ec)}">Copiar mensaje para el supervisor</button></div>`; }).join('')
     || '<p class="sub">Todas las EECC van en meta a esta hora.</p>';
-  pintarSupTec({ hoy, dH, ahoraMin, Lh, P, OBS, R, asisDe });
+  pintarSupTec({ hoy, dH, ahoraMin, Lh, P, OBS, R, asisDe, ayer, hastaAhora, vsAyer });
 }
 function pintarSupTec(c) {
-  const { hoy, ahoraMin, Lh, P, OBS, R, asisDe } = c, ec = supEc;
+  const { hoy, ahoraMin, Lh, P, OBS, R, asisDe, ayer, hastaAhora, vsAyer } = c, ec = supEc;
   $('sup-ec').innerHTML = R.map(x => `<button type="button" class="chip" aria-pressed="${x.ec === ec}" data-sup-ec="${esc(x.ec)}"><span class="dot" style="background:${SUP_COL[x.est]}"></span>${esc(x.ec)}</button>`).join('');
   if (!ec) { $('sup-tec').innerHTML = ''; $('sup-dk').innerHTML = ''; return; }
   $('sup-det-t').textContent = `Avance por técnico · ${ec}`;
@@ -4565,9 +4585,42 @@ function pintarSupTec(c) {
     const est = cur.length ? ['cur', `Instalando desde ${minHm(Math.min(...cur.map(j => j.a)))}`] : al.length ? (ahoraMin - ult > 90 ? ['fin', `Sin actividad desde ${minHm(ult)}`] : ['esp', 'Entre altas']) : t.asis ? ['sin', 'Sin iniciar'] : ['fin', 'Sin actividad hoy'];
     return { ...t, al, cur, pendHoy, prom, ini: isFinite(ini) ? ini : null, est, ord: { sin: 0, fin: 1, cur: 2, esp: 3 }[est[0]] };
   }).sort((a, b) => a.ord - b.ord || b.pendHoy.length - a.pendHoy.length || a.nom.localeCompare(b.nom));
-  const dsT = L.flatMap(t => t.al.filter(j => j.b != null && j.b >= j.a).map(j => j.b - j.a));
-  $('sup-dk').innerHTML = [['Técnicos', L.length], ['Instalando ahora', L.filter(t => t.est[0] === 'cur').length], ['Sin iniciar', L.filter(t => t.est[0] === 'sin').length], ['Descargadas', L.reduce((s, t) => s + t.al.length, 0)], ['Observadas', L.reduce((s, t) => s + t.obs, 0)], ['Prom. por alta', durTx(dsT.length ? Math.round(dsT.reduce((s, v) => s + v, 0) / dsT.length) : null)]]
-    .map(([l, v]) => `<div class="dk"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+  // ---- Resumen gerencial de la EECC (como Ritmo del día) con el comparativo de AYER a esta misma hora ----
+  const promM = (L2) => L2.length ? Math.round(L2.reduce((s2, v) => s2 + v, 0) / L2.length) : null;
+  const frIni = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? +m[1] * 60 : null; };
+  const catH = (p) => { if (p.ini && p.ini.slice(0, 10) === hoy) return 'cur'; if (p.fp !== hoy || !['AG', 'CO'].includes(tipoProg(p))) return null; const fi = frIni(p); return fi != null && fi <= ahoraMin ? 'ret' : 'esp'; };
+  const Ad = Lh.filter(x => x.ec === ec), Pd = P.filter(p => p.ec === ec), nC = (k) => Pd.filter(p => catH(p) === k).length;
+  const base = baseInicial(hoy).filas.filter(x => ok(x) && x.ec === ec).length;
+  const jornada = (altas, curL) => { const pt = {}; altas.forEach(x => { const o = pt[tecNk(x.tec)] || (pt[tecNk(x.tec)] = { a: null, b: null }); const a1 = hmMin(x.hi), b1 = hmMin(x.hf); if (a1 != null && (o.a == null || a1 < o.a)) o.a = a1; if (b1 != null && (o.b == null || b1 > o.b)) o.b = b1; });
+    (curL || []).forEach(p => { const o = pt[tecNk(p.tec)] || (pt[tecNk(p.tec)] = { a: null, b: null }); const a1 = hmMin((p.ini || '').slice(11, 16)); if (a1 != null && (o.a == null || a1 < o.a)) o.a = a1; });
+    const ds = altas.map(x => { const a1 = hmMin(x.hi), b1 = hmMin(x.hf); return a1 != null && b1 != null && b1 >= a1 ? b1 - a1 : null; }).filter(v => v != null);
+    return { ini: promM(Object.values(pt).map(o => o.a).filter(v => v != null)), fin: promM(Object.values(pt).map(o => o.b).filter(v => v != null)), tpo: promM(ds), tecs: Object.keys(pt).length }; };
+  const JH = jornada(Ad, Pd.filter(p => catH(p) === 'cur')), AA = ayer == null ? [] : D.liq.filter(x => x.d === ayer && ok(x) && x.ec === ec && hastaAhora(x)), JA = jornada(AA);
+  const difMin = (h, a, menosEsMejor = true) => h == null || a == null ? '' : `<span class="vs ${h === a || menosEsMejor == null ? '' : (h < a) === menosEsMejor ? 'up' : 'dn'}">ayer ${minHm(a)}${h !== a ? ` · ${h > a ? '+' : '−'}${Math.abs(h - a)} min` : ''}</span>`;
+  const difDur = (h, a) => h == null || a == null ? '' : `<span class="vs ${h === a ? '' : h < a ? 'up' : 'dn'}">ayer ${durTx(a)}</span>`;
+  const kk = (cls, l, v, s2, cmp = '') => `<div class="rg-k ${cls}"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s2}</span>${cmp ? `<span class="s cmp">${cmp}</span>` : ''}</div>`;
+  const tit = ayer == null ? '' : ` · comparado con ayer (${fIso(isoDia(ayer))}) a las ${minHm(ahoraMin)}`;
+  const cards = kk('bi', 'Base inicial', n(base), 'foto de las 00:00 · sin AG futuras')
+    + kk('fin', 'Finalizados hoy', n(Ad.length), base ? `${pct(Ad.length, base, 0)} de la base` : '', ayer != null ? `ayer a esta hora ${AA.length} ${vsAyer(Ad.length, AA.length)}` : '')
+    + kk('cur', 'En curso', n(nC('cur')), 'iniciados, sin cerrar') + kk('esp', 'En espera', n(nC('esp')), 'AG de hoy, su franja aún no empieza')
+    + kk('ret', 'Sin iniciar', n(nC('ret')), 'su franja ya empezó')
+    + kk('hr', 'Inicio de jornada', minHm(JH.ini), 'promedio, 1.ª atención de cada técnico', difMin(JH.ini, JA.ini))
+    + kk('hr', 'Fin de la última alta', minHm(JH.fin), 'promedio por técnico', difMin(JH.fin, JA.fin, null))
+    + kk('hr', 'Tiempo por alta', durTx(JH.tpo), 'promedio, fin − inicio', difDur(JH.tpo, JA.tpo));
+  // horario por franja (lo del día: altas de hoy + pendientes con AG de hoy), con lo finalizado ayer a esta hora en la misma franja
+  const frK = (x) => conFranja(x) ? x.fr.replace(/\s+/g, ' ').trim() : 'Sin franja', F = {};
+  const f0 = (f) => F[f] || (F[f] = { f, ab: 0, fin: 0, cur: 0, esp: 0, ret: 0, hi: [], hf: [], ay: 0 });
+  Ad.forEach(x => { const o = f0(frK(x)); o.ab++; o.fin++; const a1 = hmMin(x.hi), b1 = hmMin(x.hf); if (a1 != null) o.hi.push(a1); if (b1 != null) o.hf.push(b1); });
+  Pd.forEach(p => { const k2 = catH(p); if (!k2) return; const o = f0(frK(p)); o.ab++; o[k2]++; if (k2 === 'cur') { const a1 = hmMin(p.ini.slice(11, 16)); if (a1 != null) o.hi.push(a1); } });
+  AA.forEach(x => { f0(frK(x)).ay++; });
+  const filasF = Object.values(F).sort((a, b) => (a.f === 'Sin franja') - (b.f === 'Sin franja') || (parseInt(a.f) || 0) - (parseInt(b.f) || 0)).map(o => { const fr = /(\d+)\s*-\s*(\d+)/.exec(o.f), ini = promM(o.hi), fin = promM(o.hf), av = o.ab ? o.fin / o.ab : null;
+    const tarde = fr && ini != null && ini > +fr[1] * 60 + 30, pasa = fr && fin != null && fin > +fr[2] * 60;
+    return `<tr><th>${esc(o.f)}</th><td>${o.ab}</td><td>${o.fin || '·'}</td><td>${o.cur || '·'}</td><td>${o.esp || '·'}</td><td class="${o.ret ? 'ret' : ''}">${o.ret || '·'}</td><td class="${tarde ? 'n-mal' : ''}">${minHm(ini)}</td><td class="${pasa ? 'n-mal' : ''}">${fin == null ? '—' : minHm(fin)}</td><td>${ayer == null ? '—' : o.ay}</td>
+      <td><span class="sbar sm"><i style="width:${(av || 0) * 100}%;background:${av >= .8 ? '#0F7B45' : av >= .5 ? '#E0A100' : '#B42318'}"></i></span> <small>${av == null ? '—' : Math.round(av * 100) + '%'}</small></td></tr>`; }).join('');
+  const asisE = (() => { const e2 = Object.keys((window.__supA || {}).ec || {}).find(x => asiNorm(x) === asiNorm(ec)); return e2 ? window.__supA.ec[e2] : null; })();
+  $('sup-dk').innerHTML = `<div class="sup-res-cab"><b>${esc(ec)}</b> ${asisE ? `Asistencia registrada${asisE.en ? ' a las ' + new Date(asisE.en).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }) : ''}${asisE.por ? ' por ' + esc(asisE.por) : ''} · <b>${(asisE.tecs || []).length}</b> rutas` : 'Sin asistencia registrada hoy'} · <b>${JH.tecs}</b> ya trabajando${tit}</div>
+    <div class="sup-res"><div class="rg-cards">${cards}</div>
+    <div class="rg-fr"><h4>Horario por franja · hoy</h4><div class="tabla-scroll"><table class="sup-t sup-fr"><thead><tr><th>Franja</th><th>AB del día</th><th>Finalizados</th><th>En curso</th><th>En espera</th><th>Sin iniciar</th><th>Inicio real prom.</th><th>Fin real prom.</th><th title="Finalizados ayer en la misma franja hasta esta hora">Ayer a esta hora</th><th>Avance</th></tr></thead><tbody>${filasF || '<tr><td colspan="10">Sin altas ni AG de hoy.</td></tr>'}</tbody></table></div></div></div>`;
   const hrsBolsa = (p) => p.rec ? Math.max(0, Math.round((SUP_REF - new Date(p.rec)) / 36e5)) : null;
   $('sup-tec').innerHTML = L.map(t => { const ab = supAbiertos.has(t.k);
     const blq = t.al.map((j, i) => { const b = j.b ?? j.a + 30; return `<span class="j d" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Alta ${i + 1} · AB ${j.x.ab} · inició ${minHm(j.a)} · terminó ${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${minHm(j.a)}</span>`; }).join('')
