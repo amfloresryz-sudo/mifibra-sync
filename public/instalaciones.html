@@ -2241,7 +2241,8 @@ const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = ultim
   EST_CAMPO.forEach(([k, re, txt, cls]) => { for (const m of t.matchAll(re)) if (!mejor || m.index > mejor.i) mejor = { i: m.index, k, txt, cls }; });
   return p._ec = mejor; };
 /* Una sola etiqueta: lo MÁS ACTUAL del último comentario (la visita o el estado, lo que aparezca más al final de ese comentario) */
-const visUlt = (p) => { if (p._vu !== undefined) return p._vu; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
+// AG futura (agenda para otro día, incluida la de mañana): el comentario es de una visita anterior, no aplica → sin etiqueta
+const visUlt = (p) => { if (p._vu !== undefined) return p._vu; if (['FUTURA', 'MAÑANA'].includes(estAg(p))) return p._vu = null; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
   for (const m of t.matchAll(RE_VISI)) { const v = m[2] ? 'VD' : /^(SEGUNDA|2)$/i.test(m[1]) ? '2' : '1'; if (!mejor || m.index > mejor.i) mejor = { i: m.index, txt: visTxtI(v), cls: 'v1', v }; }
   const e = estCampo(p); if (e && (!mejor || e.i > mejor.i)) mejor = { i: e.i, txt: e.txt, cls: 'ec ' + e.cls };
   return p._vu = mejor; };
