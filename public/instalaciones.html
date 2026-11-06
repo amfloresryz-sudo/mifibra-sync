@@ -450,6 +450,52 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .b.ec { font-weight: 700; } .b.ec-cam { background: #CFE3FF; color: #0B3D91; } .b.ec-sit { background: #C9F2EA; color: #04594A; }
 .b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
 #tb-pend td.td-vis { white-space: normal !important; }
+/* ---------- Supervisión ---------- */
+.sup-hero { background: var(--noche); color: #fff; } .sup-hero h2 { color: #fff; margin: 0; } .sup-hero .sub { color: #C9CAD6; }
+.sup-linea { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.sup-paso { border: 1px solid #34344F; border-radius: 12px; padding: 9px 12px; min-width: 0; }
+.sup-paso .h { font: 700 12px Montserrat, sans-serif; color: #C9CAD6; } .sup-paso .q { font-weight: 700; } .sup-paso .e { font-size: 12px; color: #C9CAD6; }
+.sup-paso.hecho { border-color: #2E7D5B; } .sup-paso.hecho .h::after { content: " · ya pasó"; color: #7DDBA9; }
+.sup-paso.ahora { background: var(--magenta); border-color: var(--magenta); } .sup-paso.ahora .h, .sup-paso.ahora .e { color: #FFE3F2; } .sup-paso.ahora .h::after { content: " · AHORA"; font-weight: 800; }
+.sup-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.sup-k { background: #fff; border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; } .sup-k .l { font: 700 11px Montserrat, sans-serif; letter-spacing: .5px; text-transform: uppercase; color: var(--texto-4); }
+.sup-k .v { font: 800 26px Montserrat, sans-serif; font-variant-numeric: tabular-nums; } .sup-k .s { font-size: 12px; color: var(--texto-4); }
+.sup-k.mal .v { color: #B42318; } .sup-k.am .v { color: #9A5B00; } .sup-k.ok .v { color: #0F7B45; }
+.sup-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sup-h { margin: 0 0 2px; font-size: 17px; }
+.sup-t { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.sup-t th { font: 700 10.5px Montserrat, sans-serif; letter-spacing: .4px; text-transform: uppercase; color: var(--magenta-oscuro); background: var(--rosa); padding: 9px 6px; white-space: nowrap; text-align: center; }
+.sup-t td { padding: 8px 6px; border-bottom: 1px solid var(--borde); text-align: center; white-space: nowrap; }
+.sup-t th:first-child, .sup-t td:first-child { text-align: left; }
+#sup-rank tr { cursor: pointer; } #sup-rank tr:hover td { background: #FFF7FB; } #sup-rank tr.sel td { background: #FFEAF5; }
+.sp { display: inline-block; padding: 3px 10px; border-radius: 20px; font: 700 11.5px Montserrat, sans-serif; } .sp.ok { background: #E3F6EC; color: #0F7B45; } .sp.am { background: #FFF4D6; color: #9A5B00; } .sp.mal { background: #FDE8E7; color: #B42318; }
+.sbar { position: relative; width: 110px; height: 8px; background: #EEF0F3; border-radius: 6px; display: inline-block; vertical-align: middle; }
+.sbar i { position: absolute; inset: 0 auto 0 0; border-radius: 6px; } .sbar b { position: absolute; top: -4px; width: 2px; height: 16px; background: var(--noche); }
+.n-mal { color: #B42318; font-weight: 700; } .n-am { color: #9A5B00; font-weight: 700; }
+.sup-al { display: flex; flex-direction: column; gap: 10px; }
+.sal { border: 1px solid var(--borde); border-left-width: 4px; border-radius: 12px; padding: 10px 12px; } .sal.mal { border-left-color: #B42318; } .sal.am { border-left-color: #E0A100; }
+.sal .t { font-weight: 700; } .sal .d { font-size: 12.5px; color: var(--texto-2); margin: 3px 0 8px; }
+.sup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.sup-chips .chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.sup-dk { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.sup-dk .dk { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 12px; } .sup-dk .l { font: 700 10.5px Montserrat, sans-serif; text-transform: uppercase; color: var(--texto-4); } .sup-dk .v { font: 800 20px Montserrat, sans-serif; }
+.sup-tt td.tl { padding: 6px 4px; min-width: 420px; }
+.se { display: inline-block; padding: 3px 9px; border-radius: 20px; font: 700 11px Montserrat, sans-serif; }
+.se.cur { background: #E6EEFB; color: #1F4E9C; } .se.esp { background: #E3F6EC; color: #0F7B45; } .se.sin { background: #FDE8E7; color: #B42318; } .se.fin { background: #EEF0F3; color: var(--texto-2); }
+.tlb { position: relative; height: 26px; background: repeating-linear-gradient(90deg, #F3F4F6 0, #F3F4F6 1px, transparent 1px, transparent calc(100% / 11)); border-radius: 6px; }
+.tlb .j { position: absolute; top: 4px; height: 18px; border-radius: 4px; font: 700 10px Montserrat, sans-serif; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
+.tlb .j.d { background: #1F9D61; } .tlb .j.c { background: repeating-linear-gradient(45deg, #2F6FD6 0 6px, #5B8EE6 6px 12px); }
+.tlb .j.p { background: #fff; border: 1.5px dashed #6B7280; color: #374151; font-weight: 600; } .tlb .j.p.pi { border-color: #D64545; color: #B42318; background: #FFF5F5; }
+.tlb .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--magenta); }
+.tl-esc { display: flex; justify-content: space-between; font: 600 10px 'DM Sans', sans-serif; color: var(--texto-4); text-transform: none; letter-spacing: 0; margin-top: 3px; }
+.sup-ley { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--texto-2); margin-top: 10px; }
+.sup-ley .lg { display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; } .sup-ley .lg.d { background: #1F9D61; } .sup-ley .lg.c { background: #2F6FD6; }
+.sup-ley .lg.p { background: #fff; border: 1.5px dashed #6B7280; } .sup-ley .lg.pi { background: #FFF5F5; border: 1.5px dashed #D64545; } .sup-ley .lg.n { background: var(--magenta); width: 3px; }
+.vp { font: 700 13px Montserrat, sans-serif; border: 1px solid var(--borde); background: #fff; border-radius: 16px; padding: 3px 10px; cursor: pointer; color: var(--texto); }
+.vp.am { color: #9A5B00; border-color: #F2C46B; } .vp[aria-expanded="true"] { background: var(--rosa); border-color: var(--magenta); color: var(--magenta-oscuro); }
+tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: left; white-space: normal; }
+.pt { margin-top: 8px; min-width: 700px; border-collapse: collapse; } .pt th { background: #F3F4F6; color: var(--texto-2); font: 700 10px Montserrat, sans-serif; text-transform: uppercase; padding: 6px 8px; } .pt td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; }
+@media (max-width: 1100px) { .sup-grid { grid-template-columns: 1fr; } .sup-kpis, .sup-dk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sup-linea { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* F. Recep en una sola línea: dd/mm hh:mm + días; nunca se corta */
 #tb-pend td.td-rec { text-overflow: clip; }
 #tb-pend td.td-rec .rec-f { white-space: nowrap; }
@@ -996,6 +1042,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     <button type="button" role="tab" id="tab-pendientes" aria-controls="v-pendientes" aria-selected="false" data-t="pendientes">Pendientes <span class="cuenta" id="n-pend"></span></button>
     <button type="button" role="tab" id="tab-coord" aria-controls="v-coord" aria-selected="false" data-t="coord">Coordinaciones</button>
     <button type="button" role="tab" id="tab-avance" aria-controls="v-avance" aria-selected="false" data-t="avance">Avance</button>
+    <button type="button" role="tab" id="tab-sup" aria-controls="v-sup" aria-selected="false" data-t="sup">Supervisión</button>
     <button type="button" role="tab" id="tab-avt" aria-controls="v-avt" aria-selected="false" data-t="avt">Avance total</button>
     <button type="button" role="tab" id="tab-ritmo" aria-controls="v-ritmo" aria-selected="false" data-t="ritmo" hidden>Ritmo del día</button>
     <button type="button" role="tab" id="tab-ctrl" aria-controls="v-ctrl" aria-selected="false" data-t="ctrl" hidden>Control EECC</button>
@@ -1193,6 +1240,31 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div class="scroll" id="cons-mat"></div>
       <p class="nota">Días trab. = días con al menos una instalación · Productividad = total ÷ días trabajados.</p>
     </section>
+  </div>
+
+  <!-- SUPERVISIÓN: cortes del día, ranking de EECC, alertas para empujar y avance por técnico -->
+  <div role="tabpanel" id="v-sup" aria-labelledby="tab-sup" hidden style="flex-direction:column;gap:18px">
+    <section class="sec sup-hero" aria-labelledby="t-sup">
+      <h2 id="t-sup">Supervisión de EECC</h2>
+      <p class="sub" id="sup-sub"></p>
+      <div class="sup-linea" id="sup-linea"></div>
+    </section>
+    <div class="sup-kpis" id="sup-kpis"></div>
+    <div class="sup-grid">
+      <section class="sec"><h3 class="sup-h">Ranking de EECC</h3><p class="sub">De la más atrasada a la mejor. La raya negra marca dónde deberían estar a esta hora. Clic en una fila para ver sus técnicos.</p>
+        <div class="tabla-scroll"><table class="sup-t"><thead><tr><th>EECC</th><th>Estado</th><th>Liq. / Obj.</th><th>Avance vs esperado</th><th>Faltan</th><th>Asistencia</th><th>Sin iniciar</th><th>Más de 24 h</th><th>Prod.</th><th>Últimos 7 días</th></tr></thead><tbody id="sup-rank"></tbody></table></div></section>
+      <section class="sec"><h3 class="sup-h">Para empujar ahora</h3><p class="sub">Con el mensaje listo para el supervisor de cada EECC.</p><div class="sup-al" id="sup-al"></div></section>
+    </div>
+    <section class="sec" id="sup-det">
+      <h3 class="sup-h" id="sup-det-t">Avance por técnico</h3>
+      <p class="sub">Elige una EECC. La línea del tiempo muestra cada alta de hoy de 8:00 a 19:00 (inicio, duración y cierre) y sus pendientes del día en su franja.</p>
+      <div class="sup-chips" id="sup-ec" role="group" aria-label="EECC"></div>
+      <p style="margin:0 0 10px"><button type="button" class="btn-out" id="sup-todos">Ver / ocultar los pendientes de todos</button> <small class="sub">o toca el número de «Pendientes hoy» de un técnico</small></p>
+      <div class="sup-dk" id="sup-dk"></div>
+      <div class="tabla-scroll"><table class="sup-t sup-tt"><thead><tr><th>Técnico</th><th>Ahora</th><th>Descargadas</th><th>Observadas</th><th>Pendientes hoy</th><th>Bolsa</th><th>1.ª alta inició</th><th>Tiempo prom. por alta</th><th class="tl-h">Altas del día<span class="tl-esc"><span>8h</span><span>10h</span><span>12h</span><span>14h</span><span>16h</span><span>18h</span></span></th></tr></thead><tbody id="sup-tec"></tbody></table></div>
+      <div class="sup-ley"><span><i class="lg d"></i>Descargada</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Pendiente de hoy en su franja</span><span><i class="lg pi"></i>Pendiente con franja vencida</span><span><i class="lg n"></i>Ahora</span></div>
+    </section>
+    <p class="sub">Reglas: <b>En meta</b> lleva lo esperado a esta hora o más · <b>En riesgo</b> entre 80 % y 99 % de lo esperado · <b>Crítico</b> menos del 80 % de lo esperado o más del 20 % de faltas. Lo esperado = objetivo del día (% del Avance sobre la base inicial) × parte de la jornada 8:00–19:00 que ya pasó.</p>
   </div>
 
   <!-- RITMO DEL DÍA -->
@@ -1644,7 +1716,7 @@ $('eecs').addEventListener('click', (e) => { const b = e.target.closest('[data-e
 $('tipos').addEventListener('click', (e) => { const b = e.target.closest('[data-s]'); if (!b) return; seg = msTog(seg, b.dataset.s); pintarFiltros(); pintarTodo(); });
 $('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b) return; canal = msTog(canal, b.dataset.cn); CFG = cfgDe(); pintarFiltros(); pintarTodo(); });
 $('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (!b) return; zona = msTog(zona, b.dataset.z); pintarFiltros(); pintarTodo(); });
-const VISTAS = ['panel','ingresos','pendientes','coord','avance','avt','ritmo','ctrl'];
+const VISTAS = ['panel','ingresos','pendientes','coord','avance','sup','avt','ritmo','ctrl'];
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-t]'); if (!b) return; tab = b.dataset.t;
   document.querySelectorAll('#tabs [role="tab"]').forEach(x => x.setAttribute('aria-selected', String(x === b)));
@@ -4417,7 +4489,107 @@ $('ce-comp').addEventListener('click', async (e) => {
     pintarCtrlHoy(); const est2 = $('ce-comp-est'); if (est2) { est2.style.color = 'var(--ok)'; est2.textContent = `Compromiso de ${ec} guardado.`; }
   } catch (err) { b.disabled = false; if (est) { est.style.color = 'var(--mal)'; est.textContent = err.message; } }
 });
-const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); }, ctrl: () => pintarCtrl() };
+/* ---------- SUPERVISIÓN: cortes del día, ranking de EECC, alertas para empujar y avance por técnico ---------- */
+let supEc = null, SUP_REF = Date.now(); const supAbiertos = new Set(), SUP_MSG = {}, SUP_EST = { ok: 'En meta', am: 'En riesgo', mal: 'Crítico' }, SUP_COL = { ok: '#0F7B45', am: '#E0A100', mal: '#B42318' };
+const SUP_NO_EC = /POR ASIGNAR|GESTOR|SUPERVISOR/i;
+async function pintarSup() {
+  if (!$('v-sup') || !D) return;
+  const hoy = hoyIso(), dH = D.dias, pctS = (x) => x == null ? '—' : Math.round(x * 100) + ' %';
+  const [A, OBS] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => [])]);
+  const esHoyD = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  const ahoraMin = esHoyD ? (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })() : (hmMin((D.corte || '').slice(11, 16)) ?? 19 * 60);
+  const frac = Math.max(0, Math.min(1, (ahoraMin - 480) / 660)), refMs = esHoyD ? Date.now() : new Date(D.corte || Date.now()).getTime();
+  SUP_REF = refMs;
+  // cortes del día
+  const PASOS = [[480, 540, '8:00 – 9:00', '¿Salió completa?', 'Asistencia y faltas'], [600, 630, '10:00', '¿Todas las rutas iniciaron?', 'Técnicos sin iniciar'], [720, 780, '12:00 – 13:00', '¿Van al ritmo?', 'Avance vs lo esperado'], [900, 960, '15:00 – 16:00', '¿Qué se salva hoy?', 'Hoy + incumplidas + franjas'], [1080, 1140, '18:00 – 19:00', '¿Cumplió y por qué no?', 'Cierre y motivos']];
+  const iA = PASOS.reduce((a, p, i) => ahoraMin >= p[0] ? i : a, -1);
+  $('sup-linea').innerHTML = PASOS.map((p, i) => `<div class="sup-paso ${i < iA ? 'hecho' : i === iA ? 'ahora' : ''}"><div class="h">${p[2]}</div><div class="q">${p[3]}</div><div class="e">${p[4]}</div></div>`).join('');
+  $('sup-sub').innerHTML = `${esc(D.filial || filialSel())} · ${fIso(hoy)} · ${minHm(ahoraMin)} · a esta hora deberían llevar el <b>${pctS(frac)}</b> del objetivo del día (jornada 8:00–19:00)`;
+  // por EECC
+  const Lh = D.liq.filter(x => x.d === dH && ok(x)), P = D.pend.filter(ok), E = {};
+  const e0 = (k) => E[k] || (E[k] = { ec: k, liq: 0, ini: 0, tecs: new Set(), m24: 0, bolsa: 0, hist: [] });
+  Lh.forEach(x => { const e = e0(x.ec || 'POR ASIGNAR'); e.liq++; if (x.tec) e.tecs.add(tecNk(x.tec)); });
+  P.forEach(p => { const e = e0(p.ec || 'POR ASIGNAR'); e.bolsa++; if (p.rec && (refMs - new Date(p.rec)) / 36e5 > 24) e.m24++; if (p.ini && p.ini.slice(0, 10) === hoy && p.tec) e.tecs.add(tecNk(p.tec)); });
+  baseInicial(hoy).filas.forEach(x => { if (ok(x)) e0(x.ec || 'POR ASIGNAR').ini++; });
+  const RD = (AJ.rutas || {})[isoDia(dH)] || {}, asisDe = (k) => { const e = Object.keys(A.ec || {}).find(x => asiNorm(x) === asiNorm(k)); return e ? (A.ec[e].tecs || []).map(tecNk) : null; };
+  // tendencia: cumplimiento de los últimos 7 días (liquidadas ÷ objetivo de ese día)
+  const dias = [...new Set(D.liq.map(x => x.d))].filter(d => d < dH).sort((a, b) => a - b).slice(-7);
+  dias.forEach(d => { const iso = isoDia(d), ob = {}, lq = {}; baseInicial(iso).filas.forEach(x => { if (ok(x)) ob[x.ec] = (ob[x.ec] || 0) + 1; }); D.liq.forEach(x => { if (x.d === d && ok(x)) lq[x.ec] = (lq[x.ec] || 0) + 1; });
+    Object.values(E).forEach(e => { const o = Math.round((ob[e.ec] || 0) * OBJ_PCT / 100); e.hist.push(o ? Math.round((lq[e.ec] || 0) / o * 100) : null); }); });
+  const R = Object.values(E).filter(e => !SUP_NO_EC.test(e.ec) && (e.ini || e.liq || e.bolsa)).map(e => {
+    const obj = Math.round(e.ini * OBJ_PCT / 100), esp = Math.round(obj * frac), as = asisDe(e.ec), rut = RD[e.ec] ?? (as ? as.length : null);
+    const campo = e.tecs.size, fal = rut != null ? Math.max(0, rut - campo) : null, asist = rut ? (rut - fal) / rut : null;
+    const sin = as ? as.filter(t => !e.tecs.has(t)).length : null, r = esp ? e.liq / esp : 1;
+    const est = !obj ? 'ok' : r < 0.8 || (asist != null && asist < 0.8) ? 'mal' : r < 1 ? 'am' : 'ok';
+    return { ...e, obj, esp, rut, fal, asist, sin, r, est, campo, falta: Math.max(0, obj - e.liq), prod: campo ? e.liq / campo : null };
+  }).sort((a, b) => ({ mal: 0, am: 1, ok: 2 })[a.est] - ({ mal: 0, am: 1, ok: 2 })[b.est] || a.r - b.r || b.falta - a.falta);
+  const T = R.reduce((a, x) => ({ obj: a.obj + x.obj, liq: a.liq + x.liq, esp: a.esp + x.esp, rut: a.rut + (x.rut || 0), fal: a.fal + (x.fal || 0), sin: a.sin + (x.sin || 0) }), { obj: 0, liq: 0, esp: 0, rut: 0, fal: 0, sin: 0 });
+  const rT = T.esp ? T.liq / T.esp : 1, nMal = R.filter(x => x.est === 'mal').length, nAm = R.filter(x => x.est === 'am').length;
+  $('sup-kpis').innerHTML = [['Liquidadas hoy', n(T.liq), `de ${n(T.obj)} del objetivo`, ''], ['Avance', pctS(T.obj ? T.liq / T.obj : null), `esperado a esta hora: ${pctS(frac)}`, rT < 0.8 ? 'mal' : rT < 1 ? 'am' : 'ok'],
+    ['Faltan para objetivo', n(Math.max(0, T.obj - T.liq)), 'altas que faltan hoy', T.obj > T.liq ? 'mal' : 'ok'], ['EECC críticas', nMal, `${nAm} más en riesgo`, nMal ? 'mal' : 'ok'],
+    ['Rutas sin iniciar', n(T.sin), 'con asistencia y sin atención hoy', T.sin ? 'am' : 'ok'], ['Asistencia', T.rut ? pctS((T.rut - T.fal) / T.rut) : '—', T.rut ? `${T.fal} faltas de ${T.rut} rutas` : 'sin rutas declaradas', T.rut && (T.rut - T.fal) / T.rut < 0.9 ? 'am' : 'ok']]
+    .map(([l, v, s, c]) => `<div class="sup-k ${c}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
+  const spark = (h, c) => { const v = h.filter(x => x != null); if (v.length < 2) return '<span class="cero">—</span>'; const w = 90, hh = 24, mx = 120, mn = 30, P2 = h.map((x, i) => x == null ? null : [i * (w / (h.length - 1)), hh - (Math.min(mx, Math.max(mn, x)) - mn) / (mx - mn) * hh]).filter(Boolean), y100 = hh - (100 - mn) / (mx - mn) * hh, u = P2[P2.length - 1];
+    return `<svg width="${w}" height="${hh + 2}" viewBox="0 -1 ${w} ${hh + 2}" aria-label="Cumplimiento de los últimos días: ${v.join(', ')} %"><line x1="0" x2="${w}" y1="${y100}" y2="${y100}" stroke="#D1D5DB" stroke-dasharray="3 3"/><polyline fill="none" stroke="${c}" stroke-width="2" points="${P2.map(q => q.join(',')).join(' ')}"/><circle cx="${u[0]}" cy="${u[1]}" r="2.8" fill="${c}"/></svg>`; };
+  if (!supEc || !R.some(x => x.ec === supEc)) supEc = R[0] ? R[0].ec : null;
+  $('sup-rank').innerHTML = R.map(x => `<tr data-ec="${esc(x.ec)}" class="${x.ec === supEc ? 'sel' : ''}" title="Ver los técnicos de ${esc(x.ec)}"><td><b>${esc(x.ec)}</b></td><td><span class="sp ${x.est}">${SUP_EST[x.est]}</span></td><td>${x.liq} / ${x.obj}</td>
+    <td><span class="sbar" title="${pctS(x.obj ? x.liq / x.obj : null)} del objetivo; esperado ${pctS(frac)}"><i style="width:${x.obj ? Math.min(100, x.liq / x.obj * 100) : 0}%;background:${SUP_COL[x.est]}"></i><b style="left:${frac * 100}%"></b></span> <small>${x.esp ? pctS(x.r) : '—'}</small></td>
+    <td class="${x.falta > 10 ? 'n-mal' : ''}">${x.falta}</td><td class="${x.asist != null && x.asist < 0.8 ? 'n-mal' : x.asist != null && x.asist < 0.9 ? 'n-am' : ''}">${pctS(x.asist)}</td><td class="${x.sin ? 'n-am' : ''}">${x.sin ?? '—'}</td>
+    <td class="${x.m24 > 10 ? 'n-mal' : ''}">${x.m24}</td><td>${x.prod == null ? '—' : dec(x.prod, 1)}</td><td>${spark(x.hist, SUP_COL[x.est])}</td></tr>`).join('') || '<tr><td colspan="10">Sin datos del día con estos filtros.</td></tr>';
+  // alertas con mensaje listo
+  $('sup-al').innerHTML = R.filter(x => x.est !== 'ok').map(x => { const mot = [];
+    if (x.asist != null && x.asist < 0.8) mot.push(`${x.fal} de ${x.rut} rutas faltaron`); if (x.sin) mot.push(`${x.sin} técnico${x.sin > 1 ? 's' : ''} sin iniciar`); if (x.m24 > 10) mot.push(`${x.m24} AB con más de 24 h`);
+    SUP_MSG[x.ec] = `${x.ec} · corte ${minHm(ahoraMin)}\nLlevan ${x.liq} de ${x.obj} (${pctS(x.obj ? x.liq / x.obj : null)}). A esta hora deberían llevar ${x.esp}.\nFaltan ${x.falta} para el objetivo.${mot.length ? '\nDetalle: ' + mot.join(', ') + '.' : ''}\n¿Cuál es su plan para recuperar antes de las 19:00?`;
+    return `<div class="sal ${x.est}"><div class="t">${esc(x.ec)} · ${SUP_EST[x.est]}</div><div class="d">Lleva ${x.liq} de ${x.esp} esperadas a esta hora · faltan ${x.falta}${mot.length ? ' · ' + mot.join(' · ') : ''}</div><button type="button" class="btn-out" data-sup-msg="${esc(x.ec)}">Copiar mensaje para el supervisor</button></div>`; }).join('')
+    || '<p class="sub">Todas las EECC van en meta a esta hora.</p>';
+  pintarSupTec({ hoy, dH, ahoraMin, Lh, P, OBS, R, asisDe });
+}
+function pintarSupTec(c) {
+  const { hoy, ahoraMin, Lh, P, OBS, R, asisDe } = c, ec = supEc;
+  $('sup-ec').innerHTML = R.map(x => `<button type="button" class="chip" aria-pressed="${x.ec === ec}" data-sup-ec="${esc(x.ec)}"><span class="dot" style="background:${SUP_COL[x.est]}"></span>${esc(x.ec)}</button>`).join('');
+  if (!ec) { $('sup-tec').innerHTML = ''; $('sup-dk').innerHTML = ''; return; }
+  $('sup-det-t').textContent = `Avance por técnico · ${ec}`;
+  const X = (m) => (Math.max(0, Math.min(660, m - 480)) / 660 * 100).toFixed(2) + '%', durTx = (m) => m == null ? '—' : m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
+  const frR = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? [+m[1] * 60, +m[2] * 60] : null; };
+  const TT = {}; const t0 = (nom) => { const k = tecNk(nom); return k ? (TT[k] || (TT[k] = { nom, k, altas: [], bolsa: [], obs: 0 })) : null; };
+  Lh.filter(x => x.ec === ec).forEach(x => { const o = t0(x.tec); if (o) o.altas.push(x); });
+  P.filter(p => p.ec === ec).forEach(p => { const o = t0(p.tec); if (o) o.bolsa.push(p); });
+  (asisDe(ec) || []).forEach(k => { if (!TT[k]) TT[k] = { nom: k, k, altas: [], bolsa: [], obs: 0, asis: true }; else TT[k].asis = true; });
+  (OBS || []).filter(o => o.f === hoy && !o.rc).forEach(o => { const t = TT[tecNk(o.tec)]; if (t) t.obs++; });
+  const L = Object.values(TT).map(t => {
+    const al = t.altas.map(x => ({ a: hmMin(x.hi), b: hmMin(x.hf), x })).filter(j => j.a != null).sort((p, q) => p.a - q.a);
+    const cur = t.bolsa.filter(p => p.ini && p.ini.slice(0, 10) === hoy).map(p => ({ a: hmMin(p.ini.slice(11, 16)), p })).filter(j => j.a != null);
+    const pendHoy = t.bolsa.filter(p => (p.ini && p.ini.slice(0, 10) === hoy) || (p.fp === hoy && ['AG', 'CO'].includes(tipoProg(p))));
+    const durs = al.filter(j => j.b != null && j.b >= j.a).map(j => j.b - j.a), prom = durs.length ? Math.round(durs.reduce((s, v) => s + v, 0) / durs.length) : null;
+    const ini = Math.min(...al.map(j => j.a), ...cur.map(j => j.a)), ult = Math.max(...al.map(j => j.b ?? j.a));
+    const est = cur.length ? ['cur', `Instalando desde ${minHm(Math.min(...cur.map(j => j.a)))}`] : al.length ? (ahoraMin - ult > 90 ? ['fin', `Sin actividad desde ${minHm(ult)}`] : ['esp', 'Entre altas']) : t.asis ? ['sin', 'Sin iniciar'] : ['fin', 'Sin actividad hoy'];
+    return { ...t, al, cur, pendHoy, prom, ini: isFinite(ini) ? ini : null, est, ord: { sin: 0, fin: 1, cur: 2, esp: 3 }[est[0]] };
+  }).sort((a, b) => a.ord - b.ord || b.pendHoy.length - a.pendHoy.length || a.nom.localeCompare(b.nom));
+  const dsT = L.flatMap(t => t.al.filter(j => j.b != null && j.b >= j.a).map(j => j.b - j.a));
+  $('sup-dk').innerHTML = [['Técnicos', L.length], ['Instalando ahora', L.filter(t => t.est[0] === 'cur').length], ['Sin iniciar', L.filter(t => t.est[0] === 'sin').length], ['Descargadas', L.reduce((s, t) => s + t.al.length, 0)], ['Observadas', L.reduce((s, t) => s + t.obs, 0)], ['Prom. por alta', durTx(dsT.length ? Math.round(dsT.reduce((s, v) => s + v, 0) / dsT.length) : null)]]
+    .map(([l, v]) => `<div class="dk"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
+  const hrsBolsa = (p) => p.rec ? Math.max(0, Math.round((SUP_REF - new Date(p.rec)) / 36e5)) : null;
+  $('sup-tec').innerHTML = L.map(t => { const ab = supAbiertos.has(t.k);
+    const blq = t.al.map((j, i) => { const b = j.b ?? j.a + 30; return `<span class="j d" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Alta ${i + 1} · AB ${j.x.ab} · inició ${minHm(j.a)} · terminó ${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${minHm(j.a)}</span>`; }).join('')
+      + t.cur.map(j => `<span class="j c" style="left:${X(j.a)};width:calc(${X(ahoraMin)} - ${X(j.a)})" title="En curso · AB ${j.p.ab} · inició ${minHm(j.a)} · lleva ${durTx(ahoraMin - j.a)}">${minHm(j.a)}</span>`).join('')
+      + t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).map(p => { const f = frR(p); if (!f) return ''; return `<span class="j p${f[1] <= ahoraMin ? ' pi' : ''}" style="left:${X(f[0])};width:calc(${X(Math.min(f[1], 1140))} - ${X(f[0])})" title="Pendiente AB ${p.ab} · franja ${esc(p.fr)} · ${f[1] <= ahoraMin ? 'franja vencida' : 'por atender'}">AB ${p.ab}</span>`; }).join('')
+      + `<span class="now" style="left:${X(ahoraMin)}" title="Ahora ${minHm(ahoraMin)}"></span>`;
+    return `<tr><td title="${esc(t.nom)}"><b>${esc(tecCorto(t.nom) || t.nom)}</b></td><td><span class="se ${t.est[0]}">${t.est[1]}</span></td><td>${t.al.length}</td><td class="${t.obs ? 'n-mal' : ''}">${t.obs}</td>
+      <td><button type="button" class="vp ${t.pendHoy.length > 2 ? 'am' : ''}" data-sup-tec="${esc(t.k)}" aria-expanded="${ab}">${t.pendHoy.length} <span aria-hidden="true">${ab ? '▴' : '▾'}</span></button></td><td>${t.bolsa.length}</td>
+      <td class="${t.ini != null && t.ini > 570 ? 'n-am' : ''}">${t.ini != null ? minHm(t.ini) : '—'}</td><td>${durTx(t.prom)}</td><td class="tl"><div class="tlb">${blq}</div></td></tr>
+      ${ab ? `<tr class="pdet"><td colspan="9"><div class="pbox"><b>Pendientes de ${esc(t.nom)}</b> · ${t.pendHoy.length} para hoy · ${t.bolsa.length} en su bolsa
+        <table class="pt"><thead><tr><th>AB</th><th>OS</th><th>Distrito</th><th>Agenda</th><th>F. AG</th><th>Franja</th><th>Visita</th><th>Horas en bolsa</th></tr></thead><tbody>
+        ${t.bolsa.slice().sort((a, b) => String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr))).map(p => `<tr><td><button type="button" class="clic" data-ficha-ab="${p.os}" style="all:unset;cursor:pointer;font-weight:700">${p.ab}</button></td><td>${p.os}</td><td>${esc(p.di || '—')}</td><td><span class="b ${EST_B[estAg(p)]}">${EST_TXT[estAg(p)]}</span></td><td>${p.fp ? fIso(p.fp) : '—'}</td><td>${conFranja(p) ? esc(p.fr) : '—'}</td><td>${visTxtFiltro(p)}</td><td class="${hrsBolsa(p) > 48 ? 'n-mal' : ''}">${hrsBolsa(p) ?? '—'} h</td></tr>`).join('') || '<tr><td colspan="8">Sin AB pendientes.</td></tr>'}
+        </tbody></table></div></td></tr>` : ''}`; }).join('') || '<tr><td colspan="9">Esta EECC no tiene técnicos con actividad o asistencia hoy.</td></tr>';
+}
+document.addEventListener('click', async (e) => {
+  const r = e.target.closest('#sup-rank tr[data-ec], [data-sup-ec]'); if (r) { supEc = r.dataset.ec || r.dataset.supEc; supAbiertos.clear(); pintarSup(); if (r.closest('#sup-rank')) $('sup-det').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const v = e.target.closest('[data-sup-tec]'); if (v) { const k = v.dataset.supTec; supAbiertos.has(k) ? supAbiertos.delete(k) : supAbiertos.add(k); pintarSup(); return; }
+  if (e.target.closest('#sup-todos')) { const ks = [...document.querySelectorAll('[data-sup-tec]')].map(b => b.dataset.supTec); if (ks.every(k => supAbiertos.has(k))) supAbiertos.clear(); else ks.forEach(k => supAbiertos.add(k)); pintarSup(); return; }
+  const m = e.target.closest('[data-sup-msg]'); if (m) { try { await navigator.clipboard.writeText(SUP_MSG[m.dataset.supMsg]); m.textContent = '✔ Mensaje copiado'; } catch { m.textContent = 'No se pudo copiar'; } setTimeout(() => { m.textContent = 'Copiar mensaje para el supervisor'; }, 1800); }
+});
+
+const PINTA_TAB = { panel: () => pintarPanel(), ingresos: () => { pintarIngresos(); pintarDetalle(); }, pendientes: () => pintarPendientes(), coord: () => pintarCoord(), avance: () => pintarAvance(), avt: () => pintarAvt(), ritmo: () => { pintarRitmo(); pintarRitAsis(); }, ctrl: () => pintarCtrl(), sup: () => pintarSup() };
 const tabSucia = new Set();
 function pintarTodo() { Object.keys(PINTA_TAB).forEach(k => tabSucia.add(k)); revisarCtrl(); pintarTabSiSucia(tab); pintarCinta(); revisarRitmo(); }
 function pintarTabSiSucia(k) { if (!tabSucia.has(k)) return; tabSucia.delete(k); PINTA_TAB[k](); }
