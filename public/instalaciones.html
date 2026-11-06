@@ -4580,10 +4580,10 @@ function pintarSupTec(c) {
   if (!ec) { $('sup-tec').innerHTML = ''; $('sup-dk').innerHTML = ''; return; }
   $('sup-det-t').textContent = `Avance por técnico · ${ec}`;
   const X = (m) => (Math.max(0, Math.min(660, m - 480)) / 660 * 100).toFixed(2) + '%', durTx = (m) => m == null ? '—' : m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
-  // Texto de cada barra según su largo (minutos): AB arriba; abajo inicio–fin · duración si entra, si no lo que quepa (el detalle completo queda en el tooltip)
-  const etq = (ic, ab, a, b, w, extra) => { const fin = b != null ? `${minHm(a)}–${minHm(b)}` : minHm(a), dur = extra || durTx(b != null ? b - a : null);
-    const sub = w >= 130 ? `${fin} · ${dur}` : w >= 80 ? fin : w >= 50 ? minHm(a) : '';
-    return w >= 48 ? `<b>${ic} ${ab}</b>${sub ? `<small>${sub}</small>` : ''}` : `<b>${ic}</b>`; };
+  // Texto de cada barra: si hay espacio, AB arriba e inicio–fin · duración abajo; si es pequeña, solo el tiempo (el detalle queda en el tooltip)
+  const etq = (ic, ab, a, b, w, extra) => { const fin = b != null ? `${minHm(a)}–${minHm(b)}` : minHm(a), dur = durTx(b != null ? b - a : w);
+    if (w >= 130) return `<b>${ic} ${ab}</b><small>${fin} · ${extra || dur}</small>`;   // con espacio: todo
+    return `<b>${w >= 70 ? dur : dur.replace(' h ', 'h').replace(' min', 'm')}</b>`; };   // barra pequeña: solo el tiempo que demoró (o lleva)
   const frR = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? [+m[1] * 60, +m[2] * 60] : null; };
   const TT = {}; const t0 = (nom) => { const k = tecNk(nom); return k ? (TT[k] || (TT[k] = { nom, k, altas: [], bolsa: [], obs: 0 })) : null; };
   Lh.filter(x => x.ec === ec).forEach(x => { const o = t0(x.tec); if (o) o.altas.push(x); });
