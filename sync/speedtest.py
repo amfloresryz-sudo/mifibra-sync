@@ -9,7 +9,7 @@ Reglas (acordadas con operaciones):
 - Un enlace que aparece más de una vez (en varios AB o repetido en el mismo) NO cuenta; se lista en detalle.
 - Velocidad (como el control de provincias): el robot lee cada enlace en speedtest.net una sola vez (caché en el estado).
   Mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps; 1.200 Mbps en planes mayores.
-  v = válida (llega al mínimo) · b = bajo el mínimo (la red no entregó) · n = no certificable (otra red que no es Mi Fibra,
+  v = válida (descarga mayor al mínimo) · b = bajo el mínimo (la red no entregó) · n = no certificable (otra red que no es Mi Fibra,
   o la prueba es de más de 3 días antes/después de la instalación, o el enlace no existe) · p = velocidad aún pendiente de leer.
 
 Se guarda compacto en la tabla `tableros`, clave "speedtest": tablas de nombres + una fila por alta.
@@ -54,11 +54,13 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
     x["fa"] = pd.to_datetime(x["fecha_atencion"], errors="coerce")
     x = x[x["fa"].notna()].sort_values(["fa", "id_os"])
 
-    # Veces que aparece cada enlace en todo el periodo (también repetido dentro del mismo AB).
+    # Veces que aparece cada PRUEBA (su N.º de resultado, escrita en cualquier forma de enlace: result/N, result/d/N, .png…)
+    # en todo el periodo, también repetida dentro del mismo AB. Regla del control: un N.º citado en 2 o más órdenes se descarta de todas.
+    rid = lambda c: _api(c) or c
     veces: dict[str, int] = defaultdict(int)
     for ido in x["id_os"]:
         for clave, _, _ in links.get(int(ido), []):
-            veces[clave] += 1
+            veces[rid(clave)] += 1
 
     tablas = {"f": [], "e": [], "k": [], "pn": []}
     idx = {k: {} for k in tablas}
@@ -77,7 +79,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         ls = links.get(ido, [])
         # Quién hizo la prueba (regla de operaciones, 04/11/2026): manda el título que el técnico escribe antes del enlace;
         # sin título, el tipo de enlace: «my-result» = técnico, cualquier otro enlace = cliente.
-        validos = [[l[0], l[1], l[2] or ("T" if "my-result" in str(l[0]) else "C")] for l in ls if veces[l[0]] == 1]
+        validos = [[l[0], l[1], l[2] or ("T" if "my-result" in str(l[0]) else "C")] for l in ls if veces[rid(l[0])] == 1]
         n_rep = len(ls) - len(validos)
         etiquetados = any(l[2] for l in validos)
         cli = sum(1 for l in validos if l[2] == "C")
@@ -90,7 +92,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         filas.append([fi, dia, ei, ki, plan_clase(r.tarifa_servicio), ab, os_, cli, tec_n, sid, n_rep, ix("pn", plan_nombre(r.tarifa_servicio)),
                       [[l[0], l[2] or ""] for l in validos]])   # [12] enlaces válidos; velocidades() los cambia por [quién, bajada, subida, estado]
         for clave, url, _ in ls:
-            if veces[clave] > 1:
+            if veces[rid(clave)] > 1:
                 rep[clave].append([len(filas) - 1, url])
 
     # Enlaces repetidos: [enlace, [índices de filas donde aparece]].
@@ -318,7 +320,8 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                     i = 7 if q == "C" else 9 if not q else 8
                     f[i] = max(0, f[i] - 1)
                     continue
-                e = "n" if not v[2] else ("v" if v[0] >= minimo else "b")
+                # Válida = descarga MAYOR al mínimo del plan (regla del control: exactamente 600,0 o 1.200,0 no llega)
+                e = "n" if not v[2] else ("v" if v[0] > minimo else "b")
                 out.append([q, v[0], v[1], e, t])
         f[12] = out
     if ref:
