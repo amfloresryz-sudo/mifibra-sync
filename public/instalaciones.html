@@ -2137,7 +2137,7 @@ function pintarPendientes0() {
       <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}" title="${esc(p.gesM || '')}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
       <td data-v="${p.pc ? 0 : 1}"><span class="b ${p.pc ? 'ges' : 'sag'}"${p.pcF ? ` title="Primer contacto: ${esc(fechaHora(p.pcF.replace(' ', 'T')))}"` : ' title="El comentario no trae #dd/mm/aaaa hh:mm#"'}>${p.pc ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
-      <td data-v="${visI(p) ? (visI(p) === 'VD' ? 3 : visI(p)) : 9}" class="td-vis">${visCelda(p)}</td>
+      <td data-v="${visTxtFiltro(p)}" class="td-vis">${visCelda(p)}</td>
       ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${msIso(p.rec)}">${p.rec ? `${fechaHora(p.rec)}<span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
@@ -2240,15 +2240,19 @@ const ultimoComentario = (t) => { const seg = String(t || '').split(/(?<=%)\s*,\
 const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
   EST_CAMPO.forEach(([k, re, txt, cls]) => { for (const m of t.matchAll(re)) if (!mejor || m.index > mejor.i) mejor = { i: m.index, k, txt, cls }; });
   return p._ec = mejor; };
-const visCelda = (p) => { const v = visI(p), e = estCampo(p);
-  return (v ? `<span class="b v1" title="Tomado del comentario">${visTxtI(v)}</span>` : '') + (e ? `<span class="b ec ${e.cls}" title="Según el último comentario: ${esc(ultimoComentario(p.ovt || p.ov).slice(0, 160))}">${e.txt}</span>` : '') || '-'; };
-const visTxtFiltro = (p) => { const v = visI(p), e = estCampo(p); return [v ? visTxtI(v) : '', e ? e.txt : ''].filter(Boolean).join(' · ') || '-'; };
+/* Una sola etiqueta: lo MÁS ACTUAL del último comentario (la visita o el estado, lo que aparezca más al final de ese comentario) */
+const visUlt = (p) => { if (p._vu !== undefined) return p._vu; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
+  for (const m of t.matchAll(RE_VISI)) { const v = m[2] ? 'VD' : /^(SEGUNDA|2)$/i.test(m[1]) ? '2' : '1'; if (!mejor || m.index > mejor.i) mejor = { i: m.index, txt: visTxtI(v), cls: 'v1', v }; }
+  const e = estCampo(p); if (e && (!mejor || e.i > mejor.i)) mejor = { i: e.i, txt: e.txt, cls: 'ec ' + e.cls };
+  return p._vu = mejor; };
+const visCelda = (p) => { const u = visUlt(p); return u ? `<span class="b ${u.cls}" title="Según el último comentario: ${esc(ultimoComentario(p.ovt || p.ov).slice(0, 160))}">${u.txt}</span>` : '-'; };
+const visTxtFiltro = (p) => { const u = visUlt(p); return u ? u.txt : '-'; };
 const COLS_PEND = [
   (p) => { const g = gestorDe(p); return [g, g === 'SIN GESTOR' ? '~' : g]; },
   (p) => [p.z || '—', String(zIdx(p.z)).padStart(3, '0')], (p) => [p.pl || '—'], (p) => [p.di || '—'], (p) => [p.seg || '—'], (p) => [cnCorto(p.cn)], (p) => [String(p.ab), String(p.ab).padStart(9, '0')], (p) => [tipoTr(p)],
   (p) => [p.ec || '—'], (p) => [tecCorto(p.tec) || '—'], (p) => [p.ges ? 'Gestionado' : 'Sin gestión'], (p) => [p.pc ? 'SÍ' : 'NO'],
   (p) => { const e = estAg(p); return [EST_TXT[e], String(EST_V[e])]; },
-  (p) => { const v = visI(p); return [visTxtFiltro(p), (v ? String(v === 'VD' ? 3 : v) : '9') + visTxtFiltro(p)]; },
+  (p) => [visTxtFiltro(p)],
   (p) => p.fp && estAg(p) !== 'SIN AGENDA' ? [fIso(p.fp), p.fp] : ['—', '~'], (p) => [conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~'],
   (p) => [p.ini ? 'SÍ' : 'NO'], (p) => [p.rec ? fIso(p.rec.slice(0, 10)) : '—', p.rec ? p.rec.slice(0, 10) : '~'] ];
 const colFil = {};   // columna -> Set de valores permitidos
