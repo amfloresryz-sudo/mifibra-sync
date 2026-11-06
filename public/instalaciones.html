@@ -2228,14 +2228,19 @@ const EST_CAMPO = [
   ['camino', /\b(?:TEC(?:NICO)?\.?\s*)?EN\s+(?:CAMINO|RUTA)\b|\bSALIENDO\s+(?:AL|A)\s+(?:PUNTO|DOMICILIO)/gi, 'En camino', 'ec-cam'],
   ['sitio', /\bEN\s+(?:SITIO|DOMICILIO|PUNTO|PREDIO)\b|\bTEC(?:NICO)?\.?\s+LLEG[OÓ]\b|\bLLEG[OÓ]\s+AL\s+(?:PUNTO|DOMICILIO)/gi, 'En sitio', 'ec-sit'],
   ['instal', /\bINSTALANDO\b|\bEN\s+(?:PROCESO\s+DE\s+)?INSTALACI[OÓ]N\b|\bTRABAJANDO\b/gi, 'Instalando', 'ec-ins'],
-  ['nocont', /\bNO\s+CONTESTA\b|\bCLIENTE\s+AUSENTE\b|\bNO\s+SE\s+ENCUENTRA\b|\bNO\s+UBICA|\bAPAGADO\b|\bBUZ[OÓ]N\b/gi, 'No contesta', 'ec-noc'],
-  ['reprog', /\bREPROGRAM/gi, 'Reprogramó', 'ec-rep'],
+  ['nocont', /\bNO\s+CONTESTA\b|\bCLIENTE\s+AUSENTE\b|\bNO\s+SE\s+ENCUENTRA\b|\bAUSENTE\b|\bNADIE\s+ATIENDE\b|\bNO\s+UBICA|\bAPAGADO\b|\bBUZ[OÓ]N\b/gi, 'No contesta', 'ec-noc'],
+  ['reprog', /\bREPROG?RAM|\bREPROGRMA|\bRE\s*AGEND|\bREPROGAM/gi, 'Reprogramó', 'ec-rep'],
 ];
-const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = String(p.ovt || p.ov || ''); let mejor = null;
+/* Último comentario: el OBS VISITA TÉCNICO junta todos los comentarios; cada uno termina en la firma %NOMBRE% o empieza con #dd/mm/aaaa hh:mm#.
+   Se toma el último tramo con texto (sin firma ni marcas). */
+const ultimoComentario = (t) => { const seg = String(t || '').split(/(?<=%)\s*,\s*|(?=#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#)/)
+  .map(x => x.replace(/%[^%]*%/g, ' ').replace(/#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#/g, ' ').replace(/\$R\$/g, ' ').replace(/^[\s,.\-–]+|[\s,.\-–]+$/g, ''))
+  .filter(x => x.length > 1); return seg.length ? seg[seg.length - 1] : ''; };
+const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
   EST_CAMPO.forEach(([k, re, txt, cls]) => { for (const m of t.matchAll(re)) if (!mejor || m.index > mejor.i) mejor = { i: m.index, k, txt, cls }; });
   return p._ec = mejor; };
 const visCelda = (p) => { const v = visI(p), e = estCampo(p);
-  return (v ? `<span class="b v1" title="Tomado del comentario">${visTxtI(v)}</span>` : '') + (e ? `<span class="b ec ${e.cls}" title="Lo último que dice el comentario del técnico">${e.txt}</span>` : '') || '-'; };
+  return (v ? `<span class="b v1" title="Tomado del comentario">${visTxtI(v)}</span>` : '') + (e ? `<span class="b ec ${e.cls}" title="Según el último comentario: ${esc(ultimoComentario(p.ovt || p.ov).slice(0, 160))}">${e.txt}</span>` : '') || '-'; };
 const visTxtFiltro = (p) => { const v = visI(p), e = estCampo(p); return [v ? visTxtI(v) : '', e ? e.txt : ''].filter(Boolean).join(' · ') || '-'; };
 const COLS_PEND = [
   (p) => { const g = gestorDe(p); return [g, g === 'SIN GESTOR' ? '~' : g]; },
@@ -3445,7 +3450,7 @@ function fichaAB(os) {
     + secF('Planta cercana', c0 ? grilla([['Caja más cercana', `${esc(c0[0])} <small>· ${c0[1]} m</small>`], ['Mapa', esc(corta(c0[2]))], ['Zona de planta (carpeta)', esc(c0[3])],
         ['Cajas a ≤200 m', `<button type="button" class="lnk num" data-cajas="${p.os}">${p.cj.length}${p.cj.length >= 15 ? '+' : ''} cajas</button>`]])
         : '<p class="fi-nota">Sin cajas de planta registradas a 200 m o menos de este AB (o el AB no tiene coordenadas en ScordSoft).</p>')
-    + secF('Comentario del técnico · OBS VISITA TÉCNICO (completo)', (p.ovt || p.ov) ? `${estCampo(p) ? `<p class="fi-ec"><span class="b ec ${estCampo(p).cls}">${estCampo(p).txt}</span> <small>lo último que dice el comentario</small></p>` : ''}<div class="fi-obs">${obsCompleta(p.ovt || p.ov)}${p.ove ? `<small>Última anotación: ${esc(p.ove)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
+    + secF('Comentario del técnico · OBS VISITA TÉCNICO (completo)', (p.ovt || p.ov) ? `${estCampo(p) ? `<p class="fi-ec"><span class="b ec ${estCampo(p).cls}">${estCampo(p).txt}</span> <small>según el último comentario: «${esc(ultimoComentario(p.ovt || p.ov).slice(0, 200))}»</small></p>` : ''}<div class="fi-obs">${obsCompleta(p.ovt || p.ov)}${p.ove ? `<small>Última anotación: ${esc(p.ove)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
     + secF('Comentarios de la EECC (Mis pendientes)', '<div id="fi-cec"><p class="fi-nota">Cargando…</p></div>')
     + '<p class="fi-nota">Las observaciones de venta del cliente no se muestran en el portal (datos personales); los teléfonos en la observación del técnico se ocultan.</p>';
   const ge = gestorDe(p);
