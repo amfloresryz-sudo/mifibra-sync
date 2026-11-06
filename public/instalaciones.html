@@ -450,10 +450,11 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .b.ec { font-weight: 700; } .b.ec-cam { background: #CFE3FF; color: #0B3D91; } .b.ec-sit { background: #C9F2EA; color: #04594A; }
 .b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
 #tb-pend td.td-vis { white-space: normal !important; }
-/* F. Recep en una sola línea: fecha + días (la hora está al pasar el puntero); nunca se corta */
+/* F. Recep en una sola línea: dd/mm hh:mm + días; nunca se corta */
 #tb-pend td.td-rec { text-overflow: clip; }
 #tb-pend td.td-rec .rec-f { white-space: nowrap; }
-#tb-pend td.td-rec .b.edad { display: inline-block !important; margin-left: 4px !important; }
+#tb-pend td.td-rec .b.edad { display: inline-block !important; margin-left: 3px !important; padding: 1px 4px !important; }
+#tb-pend td.td-rec { padding-left: 1px !important; padding-right: 1px !important; letter-spacing: -.1px; }
 .fi-ec { margin: 0 0 6px; }
 /* Tipo de trabajo: una etiqueta de color por tipo (mismo formato que Gestionado) */
 .b.sg-b2b { background: #FFF1C2; color: #7A5200; } .b.sg-ref { background: #FFE0E0; color: #B42318; } .b.cn-in { background: #DFF5E3; color: #17703F; }
@@ -1090,7 +1091,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div class="herr"><label class="seg-t" for="buscar" style="display:flex;flex-direction:column;gap:6px;flex:1 1 260px">Buscar<input id="buscar" type="search" placeholder="Abonado, OS, distrito, técnico o gestor"></label><div class="pen-acc"><span class="nota" id="pen-n"></span><button type="button" class="btn-out" data-img="tb-pend">Copiar imagen</button><button type="button" class="btn-out" data-xls="tb-pend" data-nom="pendientes-instalaciones">Descargar Excel</button></div></div>
       <p class="pen-aviso" id="aviso-tb-pend" role="status" aria-live="polite"></p>
       <div class="pen-scroll"><table class="det ord" id="tb-pend">
-        <colgroup><col style="width:6.4%"><col style="width:4.3%"><col style="width:5.6%"><col style="width:6.2%"><col style="width:4.2%"><col style="width:4.4%"><col style="width:4.5%"><col style="width:5.3%"><col style="width:6%"><col style="width:6.8%"><col style="width:6.2%"><col style="width:5%"><col style="width:5.8%"><col style="width:6.6%"><col style="width:6%"><col style="width:5.2%"><col style="width:5%"><col style="width:6.6%"></colgroup>
+        <colgroup><col style="width:6.4%"><col style="width:4.3%"><col style="width:5.6%"><col style="width:6.2%"><col style="width:4.2%"><col style="width:4.4%"><col style="width:4.5%"><col style="width:5.3%"><col style="width:6%"><col style="width:6.8%"><col style="width:6.2%"><col style="width:5%"><col style="width:5.8%"><col style="width:5.8%"><col style="width:6%"><col style="width:5.2%"><col style="width:5%"><col style="width:7.4%"></colgroup>
         <thead><tr><th>Gestor</th><th>Zona</th><th>Planta</th><th>Distrito</th><th title="Segmento">Seg.</th><th title="Canal de venta">Canal</th><th>AB</th><th title="Tipo de trabajo (tipo de orden)">T. trabajo</th><th>EECC_F</th><th>Técnico</th><th title="Gestionado = comentario con fecha y franja o un buen comentario">Gestión</th><th title="El comentario trae la marca #dd/mm/aaaa hh:mm#" style="white-space:normal !important;line-height:1.15">1er contacto</th><th>Agenda</th><th>Visita</th><th>F. AG</th><th>Franja</th><th>Iniciado</th><th>F. Recep</th></tr></thead>
         <tbody id="pen-filas"></tbody>
       </table></div>
@@ -2144,7 +2145,7 @@ function pintarPendientes0() {
       <td data-v="${visTxtFiltro(p)}" class="td-vis">${visCelda(p)}</td>
       ${ea === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${p.fp || ''}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${fIso(p.fp)}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
       <td data-v="${p.ini ? 0 : 1}"><span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${p.ini || ''}">${p.ini ? 'SÍ' : 'NO'}</span></td>
-      <td data-v="${msIso(p.rec)}" class="td-rec" title="${p.rec ? 'Recepción: ' + fechaHora(p.rec) : ''}">${p.rec ? `<span class="rec-f">${fIso(p.rec.slice(0, 10))}</span><span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
+      <td data-v="${msIso(p.rec)}" class="td-rec" title="${p.rec ? 'Recepción: ' + fechaHora(p.rec) : ''}">${p.rec ? `<span class="rec-f">${p.rec.slice(8, 10)}/${p.rec.slice(5, 7)} ${p.rec.slice(11, 16)}</span><span class="b edad${ed >= 3 ? ' r' : ed >= 1 ? ' v' : ''}">${ed} d</span>` : '—'}</td></tr>`; }), 18, '<tr><td colspan="18">No hay pendientes con este filtro.</td></tr>');
   prepararOrden($('tb-pend'));
   cargarComEecc();
   pintarCinta();
