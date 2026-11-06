@@ -504,7 +504,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .tlb .j.d { background: #EEF0F4; border: 1px solid #4B5565; color: #2B3240; } .sup-tt tfoot th, .sup-tt tfoot td { background: var(--gris-bg, #F1F2F5); font-weight: 800; border-top: 2px solid var(--borde-2, #D5D8DE); }
 .sup-tt tfoot small { font-weight: 600; white-space: normal; } .sup-tt tfoot td, .sup-tt tfoot th { white-space: normal; } .sup-tt tfoot td.tl-tot { white-space: normal; line-height: 1.35; font-size: 11.5px; color: var(--fg-2, #444); text-align: center; }
 .sup-tt .sa-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:#FFF1E0; color:#9A4A00; font-size:10.5px; font-weight:700; white-space:nowrap; }
-.sup-tt tr.sin-asis td:first-child { box-shadow: inset 3px 0 0 #E8892B; }
+.sup-tt tr.sin-asis td:first-child { border-left: 3px solid #E8892B; }
 .sup-tt tr.sup-fuera td { background:#FAFAFB; color: var(--fg-3, #666); font-size:12px; padding:8px 10px; }
 .sup-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; } .sup-acc { display: flex; align-items: center; gap: 10px; } .sup-aviso { font-size: 12px; font-weight: 600; }
 .tlb .j.o { background: var(--mal-bg, #FDECEC); border: 1.5px solid var(--mal, #B42318); color: var(--mal, #B42318); z-index: 2; box-shadow: 0 0 0 2px #fff; top: 4px; height: 26px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: #E3EEFF; border: 1px solid #1A56A8; color: #1A56A8; }
@@ -4109,9 +4109,10 @@ document.addEventListener('click', async (e) => {
   b.disabled = true; b.textContent = 'Armando imagen…';
   try {
     const blob = (async () => { await cargar(URL_H2C);
-      const r0 = caja.getBoundingClientRect(), sx = scrollX, sy = scrollY;
-      let x = r0.left + sx, y = r0.top + sy, w = r0.width, h = r0.height;
-      if (tipo === 'res') { const k = $('sup-kpis').getBoundingClientRect(), rk = $('sup-rank-sec').getBoundingClientRect(); y = k.top + sy - 12; h = rk.bottom - k.top + 24; }
+      // html2canvas 1.4 toma x / y como desplazamiento DENTRO del elemento (no de la página): 0, 0 = su esquina
+      const r0 = caja.getBoundingClientRect();
+      let x = 0, y = 0, w = r0.width, h = r0.height;
+      if (tipo === 'res') { const k = $('sup-kpis').getBoundingClientRect(), rk = $('sup-rank-sec').getBoundingClientRect(); y = Math.max(0, k.top - r0.top - 12); h = rk.bottom - k.top + 24; }
       const escala = Math.max(1, Math.min(6, 3840 / w, 32000 / h, Math.sqrt(250e6 / (w * h))));
       const cv = await html2canvas(caja, { backgroundColor: '#F5F6F8', scale: escala, logging: false, x, y, width: w, height: h, windowWidth: Math.max(innerWidth, w + 80),
         ignoreElements: (el) => el.matches && el.matches('.no-img, .sup-acc') });
