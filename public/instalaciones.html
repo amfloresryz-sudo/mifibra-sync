@@ -481,8 +481,9 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sup-chips .chip .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .sup-dk { margin-bottom: 14px; }
 .sup-res-cab { font-size: 13px; color: var(--texto-2); margin-bottom: 8px; } .sup-res-cab b:first-child { font: 800 15px Montserrat, sans-serif; color: var(--texto); margin-right: 6px; }
-.sup-res { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 14px; align-items: start; }
-@media (max-width: 1750px) { .sup-res { grid-template-columns: 1fr; } }
+.sup-res { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; align-items: stretch; }
+.rg-cards { align-content: start; }
+@media (max-width: 1500px) { .rg-k { padding: 7px 9px; } .rg-k .v { font-size: 20px; } .rg-k .l { font-size: 9.5px; } .rg-k .s { font-size: 10.5px; } .sup-fr th, .sup-fr td { padding: 5px 3px; font-size: 11px; } .sup-fr thead th { font-size: 9px; letter-spacing: 0; white-space: normal; } .sbar.sm { width: 34px; } }
 .rg-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .rg-k { border: 1px solid var(--borde); border-top: 4px solid #9CA3AF; border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; min-width: 0; }
 .rg-k .l { font: 700 10.5px Montserrat, sans-serif; text-transform: uppercase; letter-spacing: .4px; } .rg-k .v { font: 800 24px Montserrat, sans-serif; font-variant-numeric: tabular-nums; } .rg-k .s { font-size: 11.5px; color: var(--texto-4); } .rg-k .s.cmp { margin-top: 4px; }
@@ -510,7 +511,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .vp.am { color: #9A5B00; border-color: #F2C46B; } .vp[aria-expanded="true"] { background: var(--rosa); border-color: var(--magenta); color: var(--magenta-oscuro); }
 tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: left; white-space: normal; }
 .pt { margin-top: 8px; min-width: 700px; border-collapse: collapse; } .pt th { background: #F3F4F6; color: var(--texto-2); font: 700 10px Montserrat, sans-serif; text-transform: uppercase; padding: 6px 8px; } .pt td { padding: 6px 8px; border-bottom: 1px solid var(--borde); text-align: center; }
-@media (max-width: 1100px) { .sup-res { grid-template-columns: 1fr; } .sup-grid { grid-template-columns: 1fr; } .sup-kpis, .sup-dk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sup-linea { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .sup-res { grid-template-columns: 1fr; } .sup-grid { grid-template-columns: 1fr; } .sup-kpis, .sup-dk { grid-template-columns: repeat(3, minmax(0, 1fr)); } .sup-linea { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* F. Recep en una sola línea: dd/mm hh:mm + días; nunca se corta */
 #tb-pend td.td-rec { text-overflow: clip; }
 #tb-pend td.td-rec .rec-f { white-space: nowrap; }
@@ -4620,7 +4621,7 @@ function pintarSupTec(c) {
   const asisE = (() => { const e2 = Object.keys((window.__supA || {}).ec || {}).find(x => asiNorm(x) === asiNorm(ec)); return e2 ? window.__supA.ec[e2] : null; })();
   $('sup-dk').innerHTML = `<div class="sup-res-cab"><b>${esc(ec)}</b> ${asisE ? `Asistencia registrada${asisE.en ? ' a las ' + new Date(asisE.en).toLocaleTimeString('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit' }) : ''}${asisE.por ? ' por ' + esc(asisE.por) : ''} · <b>${(asisE.tecs || []).length}</b> rutas` : 'Sin asistencia registrada hoy'} · <b>${JH.tecs}</b> ya trabajando${tit}</div>
     <div class="sup-res"><div class="rg-cards">${cards}</div>
-    <div class="rg-fr"><h4>Horario por franja · hoy</h4><div class="tabla-scroll"><table class="sup-t sup-fr"><thead><tr><th>Franja</th><th>AB del día</th><th>Finalizados</th><th>En curso</th><th>En espera</th><th>Sin iniciar</th><th>Inicio real prom.</th><th>Fin real prom.</th><th title="Finalizados ayer en la misma franja hasta esta hora">Ayer a esta hora</th><th>Avance</th></tr></thead><tbody>${filasF || '<tr><td colspan="10">Sin altas ni AG de hoy.</td></tr>'}</tbody></table></div></div></div>`;
+    <div class="rg-fr"><h4>Horario por franja · hoy</h4><div class="tabla-scroll"><table class="sup-t sup-fr"><thead><tr><th>Franja</th><th>AB del día</th><th>Finaliz.</th><th>En curso</th><th>En espera</th><th>Sin iniciar</th><th title="Inicio real promedio">Inicio prom.</th><th title="Fin real promedio">Fin prom.</th><th title="Finalizados ayer en la misma franja hasta esta hora">Ayer</th><th>Avance</th></tr></thead><tbody>${filasF || '<tr><td colspan="10">Sin altas ni AG de hoy.</td></tr>'}</tbody></table></div></div></div>`;
   const hrsBolsa = (p) => p.rec ? Math.max(0, Math.round((SUP_REF - new Date(p.rec)) / 36e5)) : null;
   $('sup-tec').innerHTML = L.map(t => { const ab = supAbiertos.has(t.k);
     const blq = t.al.map((j, i) => { const b = j.b ?? j.a + 30; return `<span class="j d" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Alta ${i + 1} · AB ${j.x.ab} · inició ${minHm(j.a)} · terminó ${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${minHm(j.a)}</span>`; }).join('')
