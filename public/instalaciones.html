@@ -506,6 +506,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sup-tt .sa-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:#FFF1E0; color:#9A4A00; font-size:10.5px; font-weight:700; white-space:nowrap; }
 .sup-tt tr.sin-asis td:first-child { box-shadow: inset 3px 0 0 #E8892B; }
 .sup-tt tr.sup-fuera td { background:#FAFAFB; color: var(--fg-3, #666); font-size:12px; padding:8px 10px; }
+.sup-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; } .sup-acc { display: flex; align-items: center; gap: 10px; } .sup-aviso { font-size: 12px; font-weight: 600; }
 .tlb .j.o { background: var(--mal-bg, #FDECEC); border: 1.5px solid var(--mal, #B42318); color: var(--mal, #B42318); z-index: 2; box-shadow: 0 0 0 2px #fff; top: 4px; height: 26px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: #E3EEFF; border: 1px solid #1A56A8; color: #1A56A8; }
 .tlb .j.p { background: var(--ok-bg, #E6F6EC); border: 1px solid var(--ok, #0F7B45); color: var(--ok, #0F7B45); } .tlb .j.p.pi { background: var(--mal, #B42318); border-color: var(--mal, #B42318); color: #fff; }
 .tlb .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--magenta); }
@@ -1273,15 +1274,15 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
     </section>
     <div class="sup-kpis" id="sup-kpis"></div>
     <div class="sup-grid">
-      <section class="sec"><h3 class="sup-h">Ranking de EECC</h3><p class="sub">De la más atrasada a la mejor. La raya negra marca dónde deberían estar a esta hora. Clic en una fila para ver sus técnicos.</p>
+      <section class="sec" id="sup-rank-sec"><div class="sup-cab"><h3 class="sup-h">Ranking de EECC</h3><div class="sup-acc no-img"><span class="sup-aviso" id="aviso-sup-res"></span><button type="button" class="btn-out" data-sup-img="res" title="Indicadores de arriba + ranking, en 4K (3.840 px)">Copiar imagen 4K</button></div></div><p class="sub">De la más atrasada a la mejor. La raya negra marca dónde deberían estar a esta hora. Clic en una fila para ver sus técnicos.</p>
         <div class="tabla-scroll"><table class="sup-t"><thead><tr><th>EECC</th><th>Estado</th><th>Liq. / Obj.</th><th>Avance vs esperado</th><th>Faltan</th><th>Asistencia</th><th>Sin iniciar</th><th>Más de 24 h</th><th>Prod.</th><th title="Altas cerradas hasta esta misma hora el día anterior con datos">Ayer a esta hora</th><th>Últimos 7 días</th></tr></thead><tbody id="sup-rank"></tbody></table></div></section>
       <section class="sec"><h3 class="sup-h">Para empujar ahora</h3><p class="sub">Con el mensaje listo para el supervisor de cada EECC.</p><div class="sup-al" id="sup-al"></div></section>
     </div>
     <section class="sec" id="sup-det">
-      <h3 class="sup-h" id="sup-det-t">Avance por técnico</h3>
+      <div class="sup-cab"><h3 class="sup-h" id="sup-det-t">Avance por técnico</h3><div class="sup-acc no-img"><span class="sup-aviso" id="aviso-sup-det"></span><button type="button" class="btn-out" data-sup-img="det" title="Resumen de la EECC elegida + técnicos, en 4K (3.840 px)">Copiar imagen 4K</button></div></div>
       <p class="sub">Elige una EECC. La línea del tiempo muestra cada alta de hoy de 8:00 a 19:00 (inicio, duración y cierre) y sus pendientes del día en su franja.</p>
       <div class="sup-chips" id="sup-ec" role="group" aria-label="EECC"></div>
-      <p style="margin:0 0 10px"><button type="button" class="btn-out" id="sup-todos">Ver / ocultar los pendientes de todos</button> <small class="sub">o toca el número de «Pendientes hoy» de un técnico</small></p>
+      <p class="no-img" style="margin:0 0 10px"><button type="button" class="btn-out" id="sup-todos">Ver / ocultar los pendientes de todos</button> <small class="sub">o toca el número de «Pendientes hoy» de un técnico</small></p>
       <div class="sup-dk" id="sup-dk"></div>
       <div class="tabla-scroll"><table class="sup-t sup-tt"><thead><tr><th>Técnico</th><th>Ahora</th><th>Descargadas</th><th>Observadas</th><th>Pendientes hoy</th><th>Bolsa</th><th>1.ª alta inició</th><th>Tiempo prom. por alta</th><th class="tl-h">Altas del día<span class="tl-esc"><span>8h</span><span>10h</span><span>12h</span><span>14h</span><span>16h</span><span>18h</span></span></th></tr></thead><tbody id="sup-tec"></tbody><tfoot id="sup-tec-tot"></tfoot></table></div>
       <div class="sup-ley"><span><i class="lg d"></i>Finalizada (descargada)</span><span><i class="lg o"></i>Observada (a la hora en que se observó)</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Por atender (su franja sigue vigente)</span><span><i class="lg pi"></i>Sin iniciar (su franja ya pasó)</span><span><i class="lg n"></i>Ahora</span></div>
@@ -4099,6 +4100,28 @@ document.addEventListener('click', async (e) => {
   finally { b.disabled = false; }
 });
 
+/* Supervisión › Copiar imagen 4K: «res» = indicadores + ranking; «det» = avance por técnico de la EECC elegida (con su resumen y la línea del tiempo).
+   Se arma a 3.840 px de ancho (4K) sin botones; se copia al portapapeles y, si el navegador no deja, se descarga en PNG. */
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-sup-img]'); if (!b) return;
+  const tipo = b.dataset.supImg, idAv = 'sup-' + tipo, txt0 = b.textContent;
+  const caja = tipo === 'res' ? $('v-sup') : $('sup-det'); if (!caja) return;
+  b.disabled = true; b.textContent = 'Armando imagen…';
+  try {
+    const blob = (async () => { await cargar(URL_H2C);
+      const r0 = caja.getBoundingClientRect(), sx = scrollX, sy = scrollY;
+      let x = r0.left + sx, y = r0.top + sy, w = r0.width, h = r0.height;
+      if (tipo === 'res') { const k = $('sup-kpis').getBoundingClientRect(), rk = $('sup-rank-sec').getBoundingClientRect(); y = k.top + sy - 12; h = rk.bottom - k.top + 24; }
+      const escala = Math.max(1, Math.min(6, 3840 / w, 32000 / h, Math.sqrt(250e6 / (w * h))));
+      const cv = await html2canvas(caja, { backgroundColor: '#F5F6F8', scale: escala, logging: false, x, y, width: w, height: h, windowWidth: Math.max(innerWidth, w + 80),
+        ignoreElements: (el) => el.matches && el.matches('.no-img, .sup-acc') });
+      return await new Promise(r => cv.toBlob(r, 'image/png')); })();
+    const nom = tipo === 'res' ? 'supervision-ranking' : 'supervision-' + String(supEc || 'eecc').toLowerCase().replace(/\s+/g, '-');
+    try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); aviso(idAv, 'Imagen 4K copiada. Pégala con Ctrl+V en WhatsApp o correo.'); }
+    catch { await bajar(await blob, nombreArch(nom, 'png')); aviso(idAv, 'El navegador no permitió copiar; se descargó la imagen 4K en PNG.'); }
+  } catch { aviso(idAv, 'No se pudo armar la imagen. Inténtalo de nuevo.', true); }
+  finally { b.disabled = false; b.textContent = txt0; }
+});
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-copiar-tabla]'); if (!b) return;
   const id = b.dataset.copiarTabla, tb = $(id); if (!tb) { aviso(id, 'No hay datos para copiar.', true); return; }
