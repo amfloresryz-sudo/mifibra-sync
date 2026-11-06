@@ -495,17 +495,18 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .vs { display: inline-block; font: 700 11px Montserrat, sans-serif; color: var(--texto-4); white-space: nowrap; } .vs.up { color: #0F7B45; } .vs.dn { color: #B42318; }
 .sup-dk-old { display: none; }
 .sup-dk .dk { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 12px; } .sup-dk .l { font: 700 10.5px Montserrat, sans-serif; text-transform: uppercase; color: var(--texto-4); } .sup-dk .v { font: 800 20px Montserrat, sans-serif; }
-.sup-tt td.tl { padding: 6px 4px; min-width: 420px; }
+.sup-tt td.tl { padding: 5px 4px; min-width: 420px; }
 .se { display: inline-block; padding: 3px 9px; border-radius: 20px; font: 700 11px Montserrat, sans-serif; }
 .se.cur { background: #E6EEFB; color: #1F4E9C; } .se.esp { background: #E3F6EC; color: #0F7B45; } .se.sin { background: #FDE8E7; color: #B42318; } .se.fin { background: #EEF0F3; color: var(--texto-2); }
-.tlb { position: relative; height: 26px; background: repeating-linear-gradient(90deg, #F3F4F6 0, #F3F4F6 1px, transparent 1px, transparent calc(100% / 11)); border-radius: 6px; }
-.tlb .j { position: absolute; top: 4px; height: 18px; border-radius: 4px; font: 700 10px Montserrat, sans-serif; color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; }
+.tlb { position: relative; height: 34px; background: repeating-linear-gradient(90deg, #F3F4F6 0, #F3F4F6 1px, transparent 1px, transparent calc(100% / 11)); border-radius: 6px; }
+.tlb .j { position: absolute; top: 2px; height: 30px; border-radius: 5px; font: 700 10px/1.15 Montserrat, sans-serif; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; padding: 0 3px; box-sizing: border-box; }
+.tlb .j b, .tlb .j small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; } .tlb .j b { font-weight: 800; font-size: 10.5px; } .tlb .j small { font-weight: 600; font-size: 9px; opacity: .95; }
 .tlb .j.d { background: #1F9D61; } .sup-tt tfoot th, .sup-tt tfoot td { background: var(--gris-bg, #F1F2F5); font-weight: 800; border-top: 2px solid var(--borde-2, #D5D8DE); }
-.sup-tt tfoot small { font-weight: 600; } .sup-tt tfoot td.tl-tot { font-size: 12px; color: var(--fg-2, #444); text-align: center; }
+.sup-tt tfoot small { font-weight: 600; white-space: normal; } .sup-tt tfoot td, .sup-tt tfoot th { white-space: normal; } .sup-tt tfoot td.tl-tot { white-space: normal; line-height: 1.35; font-size: 11.5px; color: var(--fg-2, #444); text-align: center; }
 .sup-tt .sa-tag { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:999px; background:#FFF1E0; color:#9A4A00; font-size:10.5px; font-weight:700; white-space:nowrap; }
 .sup-tt tr.sin-asis td:first-child { box-shadow: inset 3px 0 0 #E8892B; }
 .sup-tt tr.sup-fuera td { background:#FAFAFB; color: var(--fg-3, #666); font-size:12px; padding:8px 10px; }
-.tlb .j.o { background: #D64545; z-index: 2; box-shadow: 0 0 0 2px #fff; top: 1px; height: 24px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: repeating-linear-gradient(45deg, #2F6FD6 0 6px, #5B8EE6 6px 12px); }
+.tlb .j.o { background: #D64545; z-index: 2; box-shadow: 0 0 0 2px #fff; top: 4px; height: 26px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: repeating-linear-gradient(45deg, #2F6FD6 0 6px, #5B8EE6 6px 12px); }
 .tlb .j.p { background: #fff; border: 1.5px dashed #6B7280; color: #374151; font-weight: 600; } .tlb .j.p.pi { border-color: #D64545; color: #B42318; background: #FFF5F5; }
 .tlb .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--magenta); }
 .tl-esc { display: flex; justify-content: space-between; font: 600 10px 'DM Sans', sans-serif; color: var(--texto-4); text-transform: none; letter-spacing: 0; margin-top: 3px; }
@@ -4579,6 +4580,10 @@ function pintarSupTec(c) {
   if (!ec) { $('sup-tec').innerHTML = ''; $('sup-dk').innerHTML = ''; return; }
   $('sup-det-t').textContent = `Avance por técnico · ${ec}`;
   const X = (m) => (Math.max(0, Math.min(660, m - 480)) / 660 * 100).toFixed(2) + '%', durTx = (m) => m == null ? '—' : m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`;
+  // Texto de cada barra según su largo (minutos): AB arriba; abajo inicio–fin · duración si entra, si no lo que quepa (el detalle completo queda en el tooltip)
+  const etq = (ic, ab, a, b, w, extra) => { const fin = b != null ? `${minHm(a)}–${minHm(b)}` : minHm(a), dur = extra || durTx(b != null ? b - a : null);
+    const sub = w >= 130 ? `${fin} · ${dur}` : w >= 80 ? fin : w >= 50 ? minHm(a) : '';
+    return w >= 48 ? `<b>${ic} ${ab}</b>${sub ? `<small>${sub}</small>` : ''}` : `<b>${ic}</b>`; };
   const frR = (p) => { const m = /(\d{1,2})\s*-\s*(\d{1,2})/.exec(p.fr || ''); return m ? [+m[1] * 60, +m[2] * 60] : null; };
   const TT = {}; const t0 = (nom) => { const k = tecNk(nom); return k ? (TT[k] || (TT[k] = { nom, k, altas: [], bolsa: [], obs: 0 })) : null; };
   Lh.filter(x => x.ec === ec).forEach(x => { const o = t0(x.tec); if (o) o.altas.push(x); });
@@ -4637,10 +4642,10 @@ function pintarSupTec(c) {
     <div class="rg-fr"><h4>Horario por franja · hoy</h4><div class="tabla-scroll"><table class="sup-t sup-fr"><thead><tr><th>Franja</th><th>AB del día</th><th>Finaliz.</th><th>En curso</th><th>En espera</th><th>Sin iniciar</th><th title="Inicio real promedio">Inicio prom.</th><th title="Fin real promedio">Fin prom.</th><th title="Finalizados ayer en la misma franja hasta esta hora">Ayer</th><th>Avance</th></tr></thead><tbody>${filasF || '<tr><td colspan="10">Sin altas ni AG de hoy.</td></tr>'}</tbody></table></div></div></div>`;
   const hrsBolsa = (p) => p.rec ? Math.max(0, Math.round((SUP_REF - new Date(p.rec)) / 36e5)) : null;
   $('sup-tec').innerHTML = L.map(t => { const ab = supAbiertos.has(t.k);
-    const blq = t.al.map((j, i) => { const b = j.b ?? j.a + 30; return `<span class="j d" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Alta ${i + 1} · AB ${j.x.ab} · inició ${minHm(j.a)} · terminó ${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${minHm(j.a)}</span>`; }).join('')
+    const blq = t.al.map((j, i) => { const b = j.b ?? j.a + 30; return `<span class="j d" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Alta ${i + 1} · AB ${j.x.ab} · inició ${minHm(j.a)} · terminó ${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${etq('✓', j.x.ab, j.a, j.b, b - j.a)}</span>`; }).join('')
       + (t.obsL || []).map(o => { const m = hmMin(o.h); if (m == null) return ''; return `<span class="j o" style="left:calc(${X(m)} - 8px);width:16px" title="Observada · AB ${o.ab} · ${o.h} · ${esc(o.m || '')}${o.s ? ' / ' + esc(o.s) : ''}${o.u ? ' · observó ' + esc(o.u) : ''}">✕</span>`; }).join('')
-      + t.cur.map(j => `<span class="j c" style="left:${X(j.a)};width:calc(${X(ahoraMin)} - ${X(j.a)})" title="En curso · AB ${j.p.ab} · inició ${minHm(j.a)} · lleva ${durTx(ahoraMin - j.a)}">${minHm(j.a)}</span>`).join('')
-      + t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).map(p => { const f = frR(p); if (!f) return ''; return `<span class="j p${f[1] <= ahoraMin ? ' pi' : ''}" style="left:${X(f[0])};width:calc(${X(Math.min(f[1], 1140))} - ${X(f[0])})" title="Pendiente AB ${p.ab} · franja ${esc(p.fr)} · ${f[1] <= ahoraMin ? 'franja vencida' : 'por atender'}">AB ${p.ab}</span>`; }).join('')
+      + t.cur.map(j => `<span class="j c" style="left:${X(j.a)};width:calc(${X(ahoraMin)} - ${X(j.a)})" title="En curso · AB ${j.p.ab} · inició ${minHm(j.a)} · lleva ${durTx(ahoraMin - j.a)}">${etq('⏳', j.p.ab, j.a, null, ahoraMin - j.a, 'lleva ' + durTx(ahoraMin - j.a))}</span>`).join('')
+      + t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).map(p => { const f = frR(p); if (!f) return ''; return `<span class="j p${f[1] <= ahoraMin ? ' pi' : ''}" style="left:${X(f[0])};width:calc(${X(Math.min(f[1], 1140))} - ${X(f[0])})" title="Pendiente AB ${p.ab} · franja ${esc(p.fr)} · ${f[1] <= ahoraMin ? 'franja vencida' : 'por atender'}"><b>AB ${p.ab}</b><small>franja ${esc(p.fr)}</small></span>`; }).join('')
       + `<span class="now" style="left:${X(ahoraMin)}" title="Ahora ${minHm(ahoraMin)}"></span>`;
     return `<tr${conAsis && !t.asis ? ' class="sin-asis"' : ''}><td title="${esc(t.nom)}"><b>${esc(tecCorto(t.nom) || t.nom)}</b>${conAsis && !t.asis ? ' <span class="sa-tag" title="No está en la asistencia que marcó la EECC, pero trabajó hoy">Sin asistencia</span>' : ''}</td><td><span class="se ${t.est[0]}">${t.est[1]}</span></td><td>${t.al.length}</td><td class="${t.obs ? 'n-mal' : ''}" title="${(t.obsL || []).map(o => 'AB ' + o.ab + ' · ' + o.h + ' · ' + (o.m || '')).join(' | ')}">${t.obs}</td>
       <td><button type="button" class="vp ${t.pendHoy.length > 2 ? 'am' : ''}" data-sup-tec="${esc(t.k)}" aria-expanded="${ab}">${t.pendHoy.length} <span aria-hidden="true">${ab ? '▴' : '▾'}</span></button></td><td>${t.bolsa.length}</td>
