@@ -496,7 +496,9 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .vs { display: inline-block; font: 700 11px Montserrat, sans-serif; color: var(--texto-4); white-space: nowrap; } .vs.up { color: #0F7B45; } .vs.dn { color: #B42318; }
 .sup-dk-old { display: none; }
 .sup-dk .dk { border: 1px solid var(--borde); border-radius: 12px; padding: 8px 12px; } .sup-dk .l { font: 700 10.5px Montserrat, sans-serif; text-transform: uppercase; color: var(--texto-4); } .sup-dk .v { font: 800 20px Montserrat, sans-serif; }
-.sup-tt td.tl { padding: 5px 4px; min-width: 420px; }
+.sup-tt td.tl { padding: 5px 4px; min-width: 560px; } .sup-tt th.tl-h { width: 48%; }
+/* Las columnas de datos se ajustan a su contenido; el espacio que sobra va a la línea del tiempo */
+.sup-tt thead th:not(.tl-h):not(:first-child) { width: 1%; } .sup-tt tbody td:nth-child(3) { white-space: nowrap; padding-left: 6px; padding-right: 6px; } .sup-tt td:nth-child(n+4):nth-child(-n+8), .sup-tt tfoot td:nth-child(n+4):nth-child(-n+8) { white-space: nowrap; } .sup-tt .se { font-size: 11px; }
 .se { display: inline-block; padding: 3px 9px; border-radius: 20px; font: 700 11px Montserrat, sans-serif; }
 .se.cur { background: #E6EEFB; color: #1F4E9C; } .se.esp { background: #E3F6EC; color: #0F7B45; } .se.sin { background: #FDE8E7; color: #B42318; } .se.fin { background: #EEF0F3; color: var(--texto-2); }
 .tlb { position: relative; height: 34px; background: repeating-linear-gradient(90deg, #F3F4F6 0, #F3F4F6 1px, transparent 1px, transparent calc(100% / 11)); border-radius: 6px; }
