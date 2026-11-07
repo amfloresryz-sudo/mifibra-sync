@@ -2421,7 +2421,8 @@ const txtCelda = (td) => (td ? td.querySelector('input') ? (td.querySelector('in
 const numCelda = (t) => { const m = String(t).replace(/\./g, '').replace(',', '.').match(/[-+]?\d+(?:\.\d+)?/); return m ? +m[0] : null; };
 function filtrosTabla(tb) {
   if (!tb) return; const F = TF[tb.id] || (TF[tb.id] = {});
-  [...filaCab(tb)].forEach((th, i) => { let b = th.querySelector('.fcol.fgen');
+  if (Object.keys(F).length) completarTabla(tb);   // tablas que se arman por partes: con filtros activos se arma completa para filtrar todas las filas
+  [...filaCab(tb)].forEach((th, i) => { if (/^editar/i.test(th.textContent.trim())) return; let b = th.querySelector('.fcol.fgen');
     if (!b) { b = document.createElement('button'); b.type = 'button'; b.className = 'fcol fgen'; b.dataset.tb = tb.id; b.dataset.fcol = i;
       b.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 2h14l-5.5 6.5V14l-3-1.5v-4z"/></svg>'; th.appendChild(b); }
     const on = !!F[i]; b.classList.toggle('on', on); b.setAttribute('aria-label', `Filtrar ${th.firstChild ? th.firstChild.textContent.trim() : 'columna'}${on ? ' (filtro activo)' : ''}`); b.title = on ? 'Filtro activo · clic para cambiarlo' : 'Filtrar esta columna'; });
@@ -2439,8 +2440,10 @@ function filtrosTabla(tb) {
       return `<td>${n(suma(c))}</td>`; });
     const tr = document.createElement('tr'); tr.className = 'tf-filt'; tr.innerHTML = celdas.join(''); tb.tFoot.insertBefore(tr, tb.tFoot.firstChild);
   }
+  if (tb.id.startsWith('tb-csd-') && (act.length || tb._filt)) { completarTabla(tb); csdResumen(tb); } tb._filt = act.length > 0;
 }
 function abrirFiltroTabla(btn) {
+  completarTabla($(btn.dataset.tb));
   const tb = $(btn.dataset.tb), c = +btn.dataset.fcol, F = TF[tb.id] || (TF[tb.id] = {}), abierto = document.querySelector('.fpop');
   if (abierto) { const mismo = abierto._col === 'g' + tb.id + c; cerrarFiltroCol(); if (mismo) return; }
   const filas = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1 && Object.entries(F).every(([k, S]) => +k === c || S.has(txtCelda(r.cells[k]))));
@@ -3126,7 +3129,15 @@ function pintarConsol(m) {
         <div class="pen-acc"><button type="button" class="btn-out" data-cs-marcar="${m}" aria-pressed="${c.marcar !== false}">${c.marcar !== false ? '✓ Marcar incumplidos' : 'Marcar incumplidos'}</button><button type="button" class="btn-out" data-img="${tid}" data-nom="detalle-${c.rank === 'GE' ? 'gestor' : 'eecc'}-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button></div></div>
       <p class="pen-aviso" id="aviso-${tid}" role="status" aria-live="polite"></p>
       <div class="scroll">${tabla}</div></div>`;
-  prepararOrden($(tid)); prepararOrden($('tb-csd-' + m));
+  prepararOrden($(tid)); prepararOrden($('tb-csd-' + m)); filtrosTabla($('tb-csd-' + m));
+}
+/* Detalle por AB con filtros de encabezado: el resumen (AB · cumplió · no cumplió) cuenta solo las filas que quedan visibles */
+function csdResumen(tb) {
+  const el = $('csd-n-' + tb.id.slice(7)); if (!el) return;
+  const iC = [...filaCab(tb)].findIndex(th => /^¿?cumpli/i.test(th.textContent.trim())), vis = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1 && !r.hidden);
+  const si = vis.filter(r => /^s[ií]/i.test(txtCelda(r.cells[iC]))).length, no = vis.filter(r => /^no/i.test(txtCelda(r.cells[iC]))).length, sinD = vis.length - si - no;
+  const filt = Object.keys(TF[tb.id] || {}).length;
+  el.innerHTML = `<b>${n(vis.length)}</b> AB${filt ? ' (filtrados)' : ''} · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span>${sinD ? ` · ${n(sinD)} sin descargar` : ''}`;
 }
 /* Detalle de cumplimiento e incumplimiento por AB: solo Estado OS DESCARGADA del rango del consolidado (mes: del 1 al último día con descargadas; día: el elegido) */
 function csDetalleAB(m, L, rangoTxt) {
@@ -3145,7 +3156,7 @@ function csDetalleAB(m, L, rangoTxt) {
       <td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec) || '—')}</td><td data-v="${msIso(x.rec)}">${x.rec ? fh(x.rec) + ' ' + x.rec.slice(11, 16) : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td style="white-space:nowrap">${esc(x.fr || '—')}${cfrB(x)}</td><td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${fh(x.ini)}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td><td data-v="${x.ini ? 0 : 1}"><span class="b ${x.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'SÍ' : 'NO'}</span></td><td>${btnEd(x)}</td></tr>`; }), 18, '<tr><td colspan="18">Sin AB con estos filtros.</td></tr>');
   return `<div class="cs-det csd"><div class="sec-cab"><div><h3 class="cs-h3">Detalle de cumplimiento por AB</h3><p class="sub">${esc(rangoTxt)} · Estado OS: ${esc(dt.es.size ? [...dt.es].map(v => v.toLowerCase()).join(', ') : 'todos')} · primero los que no cumplieron · BI = inicio de la atención del técnico</p></div>
-      <div class="pen-acc"><span class="nota"><b>${n(F.length)}</b> AB · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span>${sinD ? ` · ${n(sinD)} sin descargar` : ''}</span><button type="button" class="btn-out" data-csd-ab="${m}">Copiar AB</button><button type="button" class="btn-out" data-img="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button></div></div>
+      <div class="pen-acc"><span class="nota" id="csd-n-${m}"><b>${n(F.length)}</b> AB · <span style="color:var(--ok);font-weight:700">${n(si)} cumplió</span> · <span style="color:var(--mal);font-weight:700">${n(no)} no cumplió</span>${sinD ? ` · ${n(sinD)} sin descargar` : ''}</span><button type="button" class="btn-out" data-csd-ab="${m}">Copiar AB</button><button type="button" class="btn-out" data-img="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button><button type="button" class="btn-out" data-xls="${tid}" data-nom="cumplimiento-ab-${m === 'cd' ? 'diario' : 'mensual'}">Descargar Excel</button></div></div>
     <div class="csd-herr"><label class="seg-t csd-bus">Buscar AB <input type="search" data-csd-q="${m}" value="${esc(dt.q)}" placeholder="AB, OS, técnico, distrito o EECC"></label>
       <div class="f-mas" tabindex="0" aria-label="Segmentadores del detalle: pasa el puntero para verlos"><div class="f-mas-cab"><span class="seg-t">Segmentadores</span><span class="f-mas-que">Estado OS · Inicio · Resultado · EECC_F · Gestor · Tipo · Franja</span><span class="f-mas-act">${act.map(a => `<span>${esc(a)}</span>`).join('')}</span>${act.length ? `<button type="button" class="lnk" data-csd-limpiar style="font-size:12px">Limpiar</button>` : ''}<span class="f-mas-fl" aria-hidden="true">▾</span></div>
         <div class="f-mas-cuerpo"><div class="segs">${grupos}</div><p class="nota" style="margin:10px 0 0">Cada segmentador admite varias opciones a la vez.</p></div></div></div>
@@ -3162,7 +3173,7 @@ function csDetalleAB(m, L, rangoTxt) {
     if (t.closest('[data-cs-marcar]')) { c.marcar = c.marcar === false; pintarConsol(m); return; }
     const dk = t.closest('[data-csd-k]'); if (dk) { const S = c.dt[dk.dataset.csdK], v = dk.dataset.v; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintarConsol(m); return; }
     if (t.closest('[data-csd-limpiar]')) { CSD_SEGS.forEach(([k]) => c.dt[k].clear()); pintarConsol(m); return; }
-    if (t.closest('[data-csd-ab]')) { const tb = $('tb-csd-' + m); completarTabla(tb); const abs = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1).map(r => r.cells[0].textContent.trim());
+    if (t.closest('[data-csd-ab]')) { const tb = $('tb-csd-' + m); completarTabla(tb); const abs = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1 && !r.hidden).map(r => r.cells[0].textContent.trim());
       navigator.clipboard.writeText(abs.join('\n')).then(() => aviso('tb-csd-' + m, `${abs.length} AB copiados.`), () => aviso('tb-csd-' + m, 'Tu navegador no permitió copiar.', true)); return; }
     if (t.closest('[data-cs-mas]')) { c.mas = !c.mas; pintarConsol(m); return; }
     const tp = t.closest('[data-cs-tipo]'); if (tp) { document.querySelector(`#cr-btns [data-crt="${tp.dataset.csTipo}"]`).click(); return; }
@@ -4070,7 +4081,7 @@ const transparente = (c) => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.t
 async function excelDeTabla(tb, base, soloDatos) {
   await cargar(URL_XLS);
   const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Hoja1', { views: [{ state: 'frozen', ySplit: 1, xSplit: 1 }] }), borde = { style: 'thin', color: { argb: 'FFE5E7EB' } };
-  const cuerpo = [...tb.tBodies[0].rows].filter(r => !soloDatos || r.cells.length > 1);
+  const cuerpo = [...tb.tBodies[0].rows].filter(r => !r.hidden && (!soloDatos || r.cells.length > 1));
   const filas = [soloDatos ? tb.tHead.rows[tb.tHead.rows.length - 1] : null, ...(soloDatos ? [] : tb.tHead.rows), ...cuerpo, ...(tb.tFoot ? tb.tFoot.rows : [])].filter(Boolean), anchos = [];
   filas.forEach((tr, i) => { const fila = ws.getRow(i + 1);
     [...tr.cells].forEach((td, j) => { const txt = td.innerText.replace(/\s+/g, ' ').replace(/[↕↑↓▲▼▸▾]/g, '').trim(), c = fila.getCell(j + 1);
