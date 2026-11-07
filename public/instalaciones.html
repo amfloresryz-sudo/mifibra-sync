@@ -510,6 +510,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sup-tt tr.sin-asis td:first-child { border-left: 3px solid #E8892B; }
 .sup-tt tr.sup-fuera td { background:#FAFAFB; color: var(--fg-3, #666); font-size:12px; padding:8px 10px; }
 .sup-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; } .sup-acc { display: flex; align-items: center; gap: 10px; } .sup-aviso { font-size: 12px; font-weight: 600; }
+.tlb .j.v { background: #FFF4E5; border: 1px solid #B86E00; color: #7A4A00; } .tlb .j.v.vc { background: repeating-linear-gradient(45deg, #FFF4E5 0 6px, #FFE7C2 6px 12px); } .tlb .j.p.sf { border-style: dashed; } .sup-ley .lg.v { background: #FFF4E5; border: 1px solid #B86E00; }
 .tlb .j.o { background: var(--mal-bg, #FDECEC); border: 1.5px solid var(--mal, #B42318); color: var(--mal, #B42318); z-index: 2; box-shadow: 0 0 0 2px #fff; top: 4px; height: 26px; min-width: 16px; font-size: 12px; border-radius: 5px; } .tlb .j.c { background: #E3EEFF; border: 1px solid #1A56A8; color: #1A56A8; }
 .tlb .j.p { background: var(--ok-bg, #E6F6EC); border: 1px solid var(--ok, #0F7B45); color: var(--ok, #0F7B45); } .tlb .j.p.pi { background: var(--mal, #B42318); border-color: var(--mal, #B42318); color: #fff; }
 .tlb .now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--magenta); }
@@ -1287,8 +1288,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div class="sup-chips" id="sup-ec" role="group" aria-label="EECC"></div>
       <p class="no-img" style="margin:0 0 10px"><button type="button" class="btn-out" id="sup-todos">Ver / ocultar los pendientes de todos</button> <small class="sub">o toca el número de «Pendientes hoy» de un técnico</small></p>
       <div class="sup-dk" id="sup-dk"></div>
-      <div class="tabla-scroll"><table class="sup-t sup-tt"><thead><tr><th>Técnico</th><th title="Todos sus AB pendientes asignados">Bolsa</th><th title="Qué está haciendo ahora">Detalle</th><th title="Altas descargadas hoy">Altas</th><th title="Observadas hoy">Obs.</th><th title="AB de hoy por atender (en curso + agenda de hoy). Toca para ver sus pendientes">Pendiente hoy</th><th title="Hora en que inició su 1.ª alta del día">1.ª alta</th><th title="Tiempo medio de instalación: promedio de fin − inicio de sus altas de hoy">TMI</th><th class="tl-h">Altas del día<span class="tl-esc"><span>8h</span><span>10h</span><span>12h</span><span>14h</span><span>16h</span><span>18h</span></span></th></tr></thead><tbody id="sup-tec"></tbody><tfoot id="sup-tec-tot"></tfoot></table></div>
-      <div class="sup-ley"><span><i class="lg d"></i>Finalizada (descargada)</span><span><i class="lg o"></i>Observada (a la hora en que se observó)</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Por atender (su franja sigue vigente)</span><span><i class="lg pi"></i>Sin iniciar (su franja ya pasó)</span><span><i class="lg n"></i>Ahora</span></div>
+      <div class="tabla-scroll"><table class="sup-t sup-tt"><thead><tr><th>Técnico</th><th title="Todos sus AB pendientes menos los de AG futura (las AG del día siempre cuentan). Toca el número para ver el detalle">Pendientes</th><th title="Qué está haciendo ahora">Detalle</th><th title="Altas liquidadas (descargadas) hoy">Liq</th><th title="Averías liquidadas hoy (del tablero de Averías)">Averías</th><th title="Observadas hoy">Obs</th><th title="Hora en que inició su 1.ª alta del día">BI 1°</th><th title="Tiempo medio de instalación: promedio de fin − inicio de sus altas de hoy">TMI</th><th class="tl-h">Altas del día<span class="tl-esc"><span>8h</span><span>10h</span><span>12h</span><span>14h</span><span>16h</span><span>18h</span></span></th></tr></thead><tbody id="sup-tec"></tbody><tfoot id="sup-tec-tot"></tfoot></table></div>
+      <div class="sup-ley"><span><i class="lg d"></i>Finalizada (descargada)</span><span><i class="lg o"></i>Observada (a la hora en que se observó)</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Por atender (su franja sigue vigente)</span><span><i class="lg pi"></i>Sin iniciar (su franja ya pasó)</span><span><i class="lg v"></i>Avería (🔧)</span><span><i class="lg n"></i>Ahora</span></div>
     </section>
     <p class="sub">Reglas: <b>En meta</b> lleva lo esperado a esta hora o más · <b>En riesgo</b> entre 80 % y 99 % de lo esperado · <b>Crítico</b> menos del 80 % de lo esperado o más del 20 % de faltas. Lo esperado = objetivo del día (% del Avance sobre la base inicial) × parte de la jornada 8:00–19:00 que ya pasó.</p>
   </div>
@@ -4271,6 +4272,15 @@ const asiNorm = (e) => { const k = String(e || '').toUpperCase().trim(); return 
 /* Observados hoy (Ritmo del día): las observadas viven en su propio tablero (/api/observadas), no en el de Instalaciones.
    El técnico de cada observada es el escrito entre %…% en su comentario (el robot lo toma del último %nombre%) y su EECC la de ese técnico. */
 let OBSH = null, obsHEn = 0, obsHFil = '';
+/* Averías del día (tablero de Averías de la filial): para contar las averías que cada técnico liquidó hoy y dibujarlas en su línea del tiempo.
+   Si el usuario no tiene el módulo de Averías o falla, se sigue sin ellas. */
+let AVH = null, avhEn = 0, avhFil = '';
+async function traerAvHoy() {
+  const f = filialSel(); if (AVH && avhFil === f && Date.now() - avhEn < 120e3) return AVH;
+  try { const r = await fetch('/api/averias?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); AVH = r.ok ? await r.json() : null; }
+  catch { AVH = AVH || null; }
+  avhEn = Date.now(); avhFil = f; return AVH;
+}
 async function traerObsHoy() {
   const f = filialSel(); if (OBSH && obsHFil === f && Date.now() - obsHEn < 120e3) return OBSH;
   try { const r = await fetch('/api/observadas?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); OBSH = r.ok ? ((await r.json()).obs || []) : []; }
@@ -4556,7 +4566,7 @@ const SUP_NO_EC = /POR ASIGNAR|GESTOR|SUPERVISOR/i;
 async function pintarSup() {
   if (!$('v-sup') || !D || filialSel() !== 'LIMA') return;
   const hoy = hoyIso(), dH = D.dias, pctS = (x) => x == null ? '—' : Math.round(x * 100) + ' %';
-  const [A, OBS] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => [])]); window.__supA = A;
+  const [A, OBS, AV] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => []), traerAvHoy().catch(() => null)]); window.__supA = A;
   const esHoyD = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   const ahoraMin = esHoyD ? (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })() : (hmMin((D.corte || '').slice(11, 16)) ?? 19 * 60);
   const frac = Math.max(0, Math.min(1, (ahoraMin - 480) / 660)), refMs = esHoyD ? Date.now() : new Date(D.corte || Date.now()).getTime();
@@ -4608,10 +4618,10 @@ async function pintarSup() {
     SUP_MSG[x.ec] = `${x.ec} · corte ${minHm(ahoraMin)}\nLlevan ${x.liq} de ${x.obj} (${pctS(x.obj ? x.liq / x.obj : null)}). A esta hora deberían llevar ${x.esp}.\nFaltan ${x.falta} para el objetivo.${mot.length ? '\nDetalle: ' + mot.join(', ') + '.' : ''}\n¿Cuál es su plan para recuperar antes de las 19:00?`;
     return `<div class="sal ${x.est}"><div class="t">${esc(x.ec)} · ${SUP_EST[x.est]}</div><div class="d">Lleva ${x.liq} de ${x.esp} esperadas a esta hora · faltan ${x.falta}${mot.length ? ' · ' + mot.join(' · ') : ''}</div><button type="button" class="btn-out" data-sup-msg="${esc(x.ec)}">Copiar mensaje para el supervisor</button></div>`; }).join('')
     || '<p class="sub">Todas las EECC van en meta a esta hora.</p>';
-  pintarSupTec({ hoy, dH, ahoraMin, Lh, P, OBS, R, asisDe, ayer, hastaAhora, vsAyer });
+  pintarSupTec({ hoy, dH, ahoraMin, Lh, P, OBS, AV, R, asisDe, ayer, hastaAhora, vsAyer });
 }
 function pintarSupTec(c) {
-  const { hoy, ahoraMin, Lh, P, OBS, R, asisDe, ayer, hastaAhora, vsAyer } = c, ec = supEc;
+  const { hoy, ahoraMin, Lh, P, OBS, AV, R, asisDe, ayer, hastaAhora, vsAyer } = c, ec = supEc;
   $('sup-ec').innerHTML = R.map(x => `<button type="button" class="chip" aria-pressed="${x.ec === ec}" data-sup-ec="${esc(x.ec)}"><span class="dot" style="background:${SUP_COL[x.est]}"></span>${esc(x.ec)}</button>`).join('');
   if (!ec) { $('sup-tec').innerHTML = ''; $('sup-dk').innerHTML = ''; return; }
   $('sup-det-t').textContent = `Avance por técnico · ${ec}`;
@@ -4626,16 +4636,23 @@ function pintarSupTec(c) {
   P.filter(p => p.ec === ec).forEach(p => { const o = t0(p.tec); if (o) o.bolsa.push(p); });
   (asisDe(ec) || []).forEach(k => { if (!TT[k]) TT[k] = { nom: k, k, altas: [], bolsa: [], obs: 0, asis: true }; else TT[k].asis = true; });
   // Observadas de hoy (con la hora y el usuario que observó, del reporte de ScordSoft)
+  // Averías de hoy (liquidadas y en curso) del tablero de Averías: solo las de esta EECC o de sus técnicos
+  const avOk = AV && AV.mes === D.mes && AV.anio === D.anio && AV.dias === D.dias;
+  if (avOk) { (AV.liq || []).filter(x => x.d === AV.dias && (asiNorm(x.ec) === asiNorm(ec) || TT[tecNk(x.tec)])).forEach(x => { const t = TT[tecNk(x.tec)] || t0(x.tec); if (t) (t.avL || (t.avL = [])).push(x); });
+    (AV.pend || []).filter(p => p.ini && p.ini.slice(0, 10) === hoy && (asiNorm(p.ec) === asiNorm(ec) || TT[tecNk(p.tec)])).forEach(p => { const t = TT[tecNk(p.tec)] || t0(p.tec); if (t) (t.avC || (t.avC = [])).push(p); }); }
   (OBS || []).filter(o => o.f === hoy && !o.rc && (o.ec === ec || TT[tecNk(o.tec)])).forEach(o => { const t = TT[tecNk(o.tec)] || t0(o.tec); if (!t) return; t.obs++; (t.obsL || (t.obsL = [])).push(o); });
   let L = Object.values(TT).map(t => {
     const al = t.altas.map(x => ({ a: hmMin(x.hi), b: hmMin(x.hf), x })).filter(j => j.a != null).sort((p, q) => p.a - q.a);
     const cur = t.bolsa.filter(p => p.ini && p.ini.slice(0, 10) === hoy).map(p => ({ a: hmMin(p.ini.slice(11, 16)), p })).filter(j => j.a != null);
     const pendHoy = t.bolsa.filter(p => (p.ini && p.ini.slice(0, 10) === hoy) || (p.fp === hoy && ['AG', 'CO'].includes(tipoProg(p))));
+    // Pendientes = todos los AB de su bolsa menos los de AG futura (las AG del día siempre cuentan)
+    const pendT = t.bolsa.filter(p => !(p.fp && p.fp > hoy && ['AG', 'CO'].includes(tipoProg(p))) || p.fp === hoy);
+    const av = (t.avL || []).map(x => ({ a: hmMin(x.hi), b: hmMin(x.hf), x })).filter(j => j.a != null), avc = (t.avC || []).map(p => ({ a: hmMin(p.ini.slice(11, 16)), p })).filter(j => j.a != null);
     const durs = al.filter(j => j.b != null && j.b >= j.a).map(j => j.b - j.a), prom = durs.length ? Math.round(durs.reduce((s, v) => s + v, 0) / durs.length) : null;
-    const ini = Math.min(...al.map(j => j.a), ...cur.map(j => j.a)), ult = Math.max(...al.map(j => j.b ?? j.a));
-    const est = cur.length ? ['cur', `Instalando desde ${minHm(Math.min(...cur.map(j => j.a)))}`] : al.length ? (ahoraMin - ult > 90 ? ['fin', `Sin actividad desde ${minHm(ult)}`] : ['esp', 'Entre altas']) : t.asis ? ['sin', 'Sin iniciar'] : ['fin', 'Sin actividad hoy'];
-    return { ...t, al, cur, pendHoy, prom, ini: isFinite(ini) ? ini : null, est, ord: { sin: 0, fin: 1, cur: 2, esp: 3 }[est[0]] };
-  }).sort((a, b) => a.ord - b.ord || b.pendHoy.length - a.pendHoy.length || a.nom.localeCompare(b.nom));
+    const ini = Math.min(...al.map(j => j.a), ...cur.map(j => j.a)), ult = Math.max(...al.map(j => j.b ?? j.a), ...av.map(j => j.b ?? j.a));   // la última actividad cuenta también las averías
+    const est = cur.length ? ['cur', `Instalando desde ${minHm(Math.min(...cur.map(j => j.a)))}`] : avc.length ? ['cur', `En avería desde ${minHm(Math.min(...avc.map(j => j.a)))}`] : al.length || av.length ? (ahoraMin - ult > 90 ? ['fin', `Sin actividad desde ${minHm(ult)}`] : ['esp', al.length ? 'Entre altas' : 'Entre averías']) : t.asis ? ['sin', 'Sin iniciar'] : ['fin', 'Sin actividad hoy'];
+    return { ...t, al, cur, pendHoy, pendT, av, avc, prom, ini: isFinite(ini) ? ini : null, est, ord: { sin: 0, fin: 1, cur: 2, esp: 3 }[est[0]] };
+  }).sort((a, b) => a.ord - b.ord || b.pendT.length - a.pendT.length || a.nom.localeCompare(b.nom));
   // Con asistencia marcada por la EECC: la lista son sus rutas. Quien no está en la asistencia solo aparece si igual trabajó hoy
   // (alta, AB en curso u observada) y se marca «Sin asistencia»; los que solo tienen AB en su bolsa van a una nota aparte.
   const conAsis = (asisDe(ec) || []).length > 0, fuera = conAsis ? L.filter(t => !t.asis && !t.al.length && !t.cur.length && !t.obs) : [];
@@ -4685,12 +4702,14 @@ function pintarSupTec(c) {
     const blq = t.al.map((j, i) => { const b = j.b ?? j.a + 30; return `<span class="j d" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Alta ${i + 1} · AB ${j.x.ab} · inició ${minHm(j.a)} · terminó ${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${etq('✓', j.x.ab, j.a, j.b, b - j.a)}</span>`; }).join('')
       + (t.obsL || []).map(o => { const m = hmMin(o.h); if (m == null) return ''; return `<span class="j o" style="left:calc(${X(m)} - 8px);width:16px" title="Observada · AB ${o.ab} · ${o.h} · ${esc(o.m || '')}${o.s ? ' / ' + esc(o.s) : ''}${o.u ? ' · observó ' + esc(o.u) : ''}">✕</span>`; }).join('')
       + t.cur.map(j => `<span class="j c" style="left:${X(j.a)};width:calc(${X(ahoraMin)} - ${X(j.a)})" title="En curso · AB ${j.p.ab} · inició ${minHm(j.a)} · lleva ${durTx(ahoraMin - j.a)}">${etq('⏳', j.p.ab, j.a, null, ahoraMin - j.a, 'lleva ' + durTx(ahoraMin - j.a))}</span>`).join('')
+      + t.av.map(j => { const b = j.b ?? j.a + 30; return `<span class="j v" style="left:${X(j.a)};width:calc(${X(b)} - ${X(j.a)})" title="Avería · AB ${j.x.ab} · ${esc(j.x.ts || '')} · ${minHm(j.a)}–${minHm(j.b)} · ${durTx(j.b != null ? j.b - j.a : null)}">${etq('🔧', j.x.ab, j.a, j.b, b - j.a)}</span>`; }).join('')
+      + t.avc.map(j => `<span class="j v vc" style="left:${X(j.a)};width:calc(${X(ahoraMin)} - ${X(j.a)})" title="Avería en curso · AB ${j.p.ab} · inició ${minHm(j.a)} · lleva ${durTx(ahoraMin - j.a)}">${etq('🔧', j.p.ab, j.a, null, ahoraMin - j.a, 'lleva ' + durTx(ahoraMin - j.a))}</span>`).join('')
+      + t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy) && !frR(p)).map((p, i) => `<span class="j p sf" style="left:calc(${X(18 * 60)} + ${i * 4}px);width:calc(${X(19 * 60)} - ${X(18 * 60)})" title="AG de hoy sin franja definida · AB ${p.ab}"><b>AB ${p.ab}</b><small>hoy · sin franja</small></span>`).join('')
       + t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).map(p => { const f = frR(p); if (!f) return ''; return `<span class="j p${f[1] <= ahoraMin ? ' pi' : ''}" style="left:${X(f[0])};width:calc(${X(Math.min(f[1], 1140))} - ${X(f[0])})" title="Pendiente AB ${p.ab} · franja ${esc(p.fr)} · ${f[1] <= ahoraMin ? 'franja vencida' : 'por atender'}"><b>AB ${p.ab}</b><small>franja ${esc(p.fr)}</small></span>`; }).join('')
       + `<span class="now" style="left:${X(ahoraMin)}" title="Ahora ${minHm(ahoraMin)}"></span>`;
-    return sepDe(t) + `<tr${conAsis && !t.asis ? ' class="sin-asis"' : ''}><td title="${esc(t.nom)}"><b>${esc(tecCorto(t.nom) || t.nom)}</b>${conAsis && !t.asis ? ' <span class="sa-tag" title="No está en la asistencia que marcó la EECC, pero trabajó hoy">Sin asistencia</span>' : ''}</td><td>${t.bolsa.length}</td><td><span class="se ${t.est[0]}">${t.est[1]}</span></td><td>${t.al.length}</td><td class="${t.obs ? 'n-mal' : ''}" title="${(t.obsL || []).map(o => 'AB ' + o.ab + ' · ' + o.h + ' · ' + (o.m || '')).join(' | ')}">${t.obs}</td>
-      <td><button type="button" class="vp ${t.pendHoy.length > 2 ? 'am' : ''}" data-sup-tec="${esc(t.k)}" aria-expanded="${ab}">${t.pendHoy.length} <span aria-hidden="true">${ab ? '▴' : '▾'}</span></button></td>
+    return sepDe(t) + `<tr${conAsis && !t.asis ? ' class="sin-asis"' : ''}><td title="${esc(t.nom)}"><b>${esc(tecCorto(t.nom) || t.nom)}</b>${conAsis && !t.asis ? ' <span class="sa-tag" title="No está en la asistencia que marcó la EECC, pero trabajó hoy">Sin asistencia</span>' : ''}</td><td><button type="button" class="vp ${t.pendT.length > 4 ? 'am' : ''}" data-sup-tec="${esc(t.k)}" aria-expanded="${ab}" title="Todos sus AB pendientes menos los de AG futura · toca para ver el detalle">${t.pendT.length} <span aria-hidden="true">${ab ? '▴' : '▾'}</span></button></td><td><span class="se ${t.est[0]}">${t.est[1]}</span></td><td>${t.al.length}</td><td title="${t.av.map(j => 'AB ' + j.x.ab + ' · ' + (j.x.ts || '') + ' · ' + minHm(j.a) + '–' + minHm(j.b)).join(' | ')}">${t.av.length || (avOk ? 0 : '—')}${t.avc.length ? ` <small class="n-am">+${t.avc.length} en curso</small>` : ''}</td><td class="${t.obs ? 'n-mal' : ''}" title="${(t.obsL || []).map(o => 'AB ' + o.ab + ' · ' + o.h + ' · ' + (o.m || '')).join(' | ')}">${t.obs}</td>
       <td class="${t.ini != null && t.ini > 570 ? 'n-am' : ''}">${t.ini != null ? minHm(t.ini) : '—'}</td><td>${durTx(t.prom)}</td><td class="tl"><div class="tlb">${blq}</div></td></tr>
-      ${ab ? `<tr class="pdet"><td colspan="9"><div class="pbox"><b>Pendientes de ${esc(t.nom)}</b> · ${t.pendHoy.length} para hoy · ${t.bolsa.length} en su bolsa
+      ${ab ? `<tr class="pdet"><td colspan="9"><div class="pbox"><b>Pendientes de ${esc(t.nom)}</b> · ${t.pendT.length} pendientes (sin AG futuras) · ${t.pendHoy.length} para hoy · ${t.bolsa.length} en su bolsa
         <table class="pt"><thead><tr><th>AB</th><th>OS</th><th>Distrito</th><th>Agenda</th><th>F. AG</th><th>Franja</th><th>Visita</th><th>Horas en bolsa</th></tr></thead><tbody>
         ${t.bolsa.slice().sort((a, b) => String(a.fp || '9').localeCompare(String(b.fp || '9')) || String(a.fr).localeCompare(String(b.fr))).map(p => `<tr><td><button type="button" class="clic" data-ficha-ab="${p.os}" style="all:unset;cursor:pointer;font-weight:700">${p.ab}</button></td><td>${p.os}</td><td>${esc(p.di || '—')}</td><td><span class="b ${EST_B[estAg(p)]}">${EST_TXT[estAg(p)]}</span></td><td>${p.fp ? fIso(p.fp) : '—'}</td><td>${conFranja(p) ? esc(p.fr) : '—'}</td><td>${visTxtFiltro(p)}</td><td class="${hrsBolsa(p) > 48 ? 'n-mal' : ''}">${hrsBolsa(p) ?? '—'} h</td></tr>`).join('') || '<tr><td colspan="8">Sin AB pendientes.</td></tr>'}
         </tbody></table>
@@ -4700,7 +4719,7 @@ function pintarSupTec(c) {
   if (fuera.length) $('sup-tec').insertAdjacentHTML('beforeend', `<tr class="sup-fuera"><td colspan="9">No están en la asistencia de hoy y no trabajaron (solo tienen AB en su bolsa): ${fuera.map(t => `<b>${esc(tecCorto(t.nom) || t.nom)}</b> (${t.bolsa.length} AB)`).join(' · ')}</td></tr>`);
   { const sm = (f) => L.reduce((a, t) => a + f(t), 0), dAll = L.flatMap(t => t.al.filter(j => j.b != null && j.b >= j.a).map(j => j.b - j.a)), inis = L.map(t => t.ini).filter(v => v != null), cuenta = (k) => L.filter(t => t.est[0] === k).length;
     const nCur = sm(t => t.cur.length), nPend = sm(t => t.pendHoy.filter(p => !(p.ini && p.ini.slice(0, 10) === hoy)).length);
-    $('sup-tec-tot').innerHTML = L.length ? `<tr><th>Total · ${L.length} técnicos${conAsis ? `<small style="display:block;font-weight:600;text-transform:none">${L.filter(t => t.asis).length} con asistencia${L.some(t => !t.asis) ? ' · ' + L.filter(t => !t.asis).length + ' sin asistencia' : ''}</small>` : ''}</th><td>${sm(t => t.bolsa.length)}</td><td><small>${[cuenta('cur') && cuenta('cur') + ' instalando', cuenta('esp') && cuenta('esp') + ' entre altas', cuenta('sin') && cuenta('sin') + ' sin iniciar', cuenta('fin') && cuenta('fin') + ' sin actividad'].filter(Boolean).join(' · ') || '—'}</small></td><td>${sm(t => t.al.length)}</td><td class="${sm(t => t.obs) ? 'n-mal' : ''}">${sm(t => t.obs)}</td><td>${sm(t => t.pendHoy.length)}</td><td title="Promedio de la 1.ª alta">${inis.length ? minHm(promM(inis)) : '—'}</td><td title="Promedio de todas las altas descargadas">${durTx(promM(dAll))}</td><td class="tl-tot">${sm(t => t.al.length)} descargadas · ${nCur} en curso · ${sm(t => t.obs)} observadas · ${nPend} por atender</td></tr>` : ''; }
+    $('sup-tec-tot').innerHTML = L.length ? `<tr><th>Total · ${L.length} técnicos${conAsis ? `<small style="display:block;font-weight:600;text-transform:none">${L.filter(t => t.asis).length} con asistencia${L.some(t => !t.asis) ? ' · ' + L.filter(t => !t.asis).length + ' sin asistencia' : ''}</small>` : ''}</th><td>${sm(t => t.pendT.length)}</td><td><small>${[cuenta('cur') && cuenta('cur') + ' instalando', cuenta('esp') && cuenta('esp') + ' entre altas', cuenta('sin') && cuenta('sin') + ' sin iniciar', cuenta('fin') && cuenta('fin') + ' sin actividad'].filter(Boolean).join(' · ') || '—'}</small></td><td>${sm(t => t.al.length)}</td><td>${avOk ? sm(t => t.av.length) : '—'}</td><td class="${sm(t => t.obs) ? 'n-mal' : ''}">${sm(t => t.obs)}</td><td title="Promedio de la 1.ª alta">${inis.length ? minHm(promM(inis)) : '—'}</td><td title="Promedio de todas las altas descargadas">${durTx(promM(dAll))}</td><td class="tl-tot">${sm(t => t.al.length)} altas · ${avOk ? sm(t => t.av.length) + ' averías · ' : ''}${nCur} en curso · ${sm(t => t.obs)} observadas · ${nPend} por atender</td></tr>` : ''; }
 }
 document.addEventListener('click', async (e) => {
   const r = e.target.closest('#sup-rank tr[data-ec], [data-sup-ec]'); if (r) { supEc = r.dataset.ec || r.dataset.supEc; supAbiertos.clear(); pintarSup(); if (r.closest('#sup-rank')) $('sup-det').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
