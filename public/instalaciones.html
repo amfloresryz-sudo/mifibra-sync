@@ -986,7 +986,8 @@ tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: 
 .cs-dd > summary.on { background: var(--magenta, #E6007E); border-color: var(--magenta, #E6007E); color: #fff; }
 .cs-dd-p { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 300px; max-width: 86vw; background: #fff; border: 1px solid var(--borde-2, #D5D8DE); border-radius: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.16); padding: 10px; }
 .cs-dd-q { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--borde-2, #D5D8DE); border-radius: 8px; font: inherit; margin-bottom: 6px; }
-.cs-dd-l { max-height: 260px; overflow: auto; } .cs-dd-o[hidden] { display: none; } .cs-dd-o { display: flex; align-items: center; gap: 8px; padding: 5px 4px; font-size: 13px; cursor: pointer; border-radius: 6px; } .cs-dd-o:hover { background: var(--bg-2, #F5F6F8); }
+.cs-dd-l { max-height: 260px; overflow: auto; } .cs-dd-o[hidden] { display: none; } .cs-dd-o.off { color: var(--fg-4, #9AA0AA); text-decoration: line-through; } .cs-dd-n { margin: 6px 0 0; font-size: 11px; color: var(--fg-3, #666); }
+.pen-acc .cs-dd > summary { min-height: 40px; } .cs-dd-o { display: flex; align-items: center; gap: 8px; padding: 5px 4px; font-size: 13px; cursor: pointer; border-radius: 6px; } .cs-dd-o:hover { background: var(--bg-2, #F5F6F8); }
 .cs-dd-o span { margin-left: auto; color: var(--fg-3, #666); font-size: 12px; font-variant-numeric: tabular-nums; } .cs-dd-t { border-bottom: 1px solid var(--borde, #E5E7EB); margin-bottom: 4px; font-weight: 700; } .cs-dd-x { width: 100%; margin-top: 8px; }
 .fi-ev { margin-bottom: 10px; } .fi-ev-t { display: block; font-size: 13px; margin-bottom: 6px; } .fi-ev-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .fi-ev-i { margin: 0; border: 1px solid var(--borde, #e5e7eb); border-radius: 10px; overflow: hidden; background: var(--bg-2, #F7F8FA); }
@@ -3059,8 +3060,8 @@ function pintarCoord() {
   pintarCoDia();
 }
 /* ---------- Consolidado mensual y diario (como en Seguimiento de agendas) ---------- */
-const CS = { cm: { desde: '', hasta: '', ec: 'TODOS', di: 'TODOS', seg: 'TODOS', rank: 'EC', tg: 'TODOS', eg: 'TODOS', ver: false, mas: false },
-             cd: { dia: 0, ec: 'TODOS', di: 'TODOS', seg: 'TODOS', rank: 'EC', tg: 'TODOS', eg: 'TODOS', ver: false, mas: false } };
+const CS = { cm: { desde: '', hasta: '', ec: 'TODOS', diX: new Set(), seg: 'TODOS', rank: 'EC', tg: 'TODOS', eg: 'TODOS', ver: false, mas: false },
+             cd: { dia: 0, ec: 'TODOS', diX: new Set(), seg: 'TODOS', rank: 'EC', tg: 'TODOS', eg: 'TODOS', ver: false, mas: false } };
 // Detalle de cumplimiento por AB (debajo de cada consolidado): segmentadores de varias opciones + búsqueda
 // Estado OS empieza siempre en DESCARGADA (el cumplimiento se mide sobre las descargadas); se pueden sumar otros estados.
 ['cm', 'cd'].forEach(m => { CS[m].dt = { es: new Set(['DESCARGADA']), ini: new Set(), res: new Set(), ec: new Set(), ge: new Set(), t: new Set(), fr: new Set(), q: '' }; });
@@ -3088,7 +3089,7 @@ function csRango(m) {
 function csBase(m, sin = '') {
   const c = CS[m], [a, b] = csRango(m);
   return (D.progT || []).filter(x => ok(x) && x.t !== 'SA' && x.d >= a && x.d <= b
-    && (msOk(coTipo, x.t)) && (sin === 'ec' || msOk(c.ec, x.ec)) && (sin === 'di' || msOk(c.di, x.di || '(SIN DISTRITO)')) && (sin === 'seg' || msOk(c.seg, x.seg)));
+    && (msOk(coTipo, x.t)) && (sin === 'ec' || msOk(c.ec, x.ec)) && (sin === 'di' || !c.diX.has(x.di || '(SIN DISTRITO)')) && (sin === 'seg' || msOk(c.seg, x.seg)));
 }
 const csCuenta = (L) => { const o = { n: L.length, AG: 0, CO: 0, D: 0, A: 0, O: 0, R: 0, si: 0, inc: 0 };
   L.forEach(x => { o[x.t]++; o[x.e] = (o[x.e] || 0) + 1; if (x.e === 'D') { if (x.k === 'si') o.si++; else o.inc++; } }); o.p = o.D ? o.si / o.D * 100 : null; return o; };
@@ -3100,22 +3101,24 @@ function csChips(m, k, ops, cnt, lim = 0) {
   return ver.map(o => `<button type="button" class="chip" data-cs-k="${k}" data-v="${esc(o)}" aria-pressed="${msOn(c[k], o)}">${o === 'TODOS' ? 'Todos' : esc(o)}${o !== 'TODOS' && cnt ? ` (${n(cnt(o))})` : ''}</button>`).join('')
     + (lim && todos.length > lim + 1 ? `<button type="button" class="chip chip-mas" data-cs-mas>${c.mas ? 'Ver menos' : `+${todos.length - lim - 1} más`}</button>` : '');
 }
-/* Distrito: lista desplegable con buscador y casillas (varios a la vez); cuenta las programadas con los demás filtros */
-function csDistritos(m) {
-  const c = CS[m], S = MS(c.di), cnt = {}; csBase(m, 'di').forEach(x => { const d = x.di || '(SIN DISTRITO)'; cnt[d] = (cnt[d] || 0) + 1; });
-  S.forEach(d => { if (!(d in cnt)) cnt[d] = 0; });
-  const ops = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b)), txt = !S.size ? 'Todos los distritos' : S.size <= 2 ? [...S].join(', ') : `${S.size} distritos`;
-  return `<details class="cs-dd"${c.ddAb ? ' open' : ''} data-cs-dd><summary class="chip${S.size ? ' on' : ''}" aria-pressed="${S.size > 0}">${esc(txt)} <span aria-hidden="true">▾</span></summary>
-    <div class="cs-dd-p"><input type="search" class="cs-dd-q" placeholder="Buscar distrito" aria-label="Buscar distrito" value="${esc(c.ddQ || '')}" data-cs-ddq>
-      <label class="cs-dd-o cs-dd-t"><input type="checkbox" data-cs-di="TODOS" ${!S.size ? 'checked' : ''}> Todos <span>${n(Object.values(cnt).reduce((a, b) => a + b, 0))}</span></label>
-      <div class="cs-dd-l">${ops.map(d => `<label class="cs-dd-o" data-txt="${esc(d.toLowerCase())}"${c.ddQ && !d.toLowerCase().includes(c.ddQ.toLowerCase()) ? ' hidden' : ''}><input type="checkbox" data-cs-di="${esc(d)}" ${S.has(d) ? 'checked' : ''}> ${esc(d)} <span>${n(cnt[d])}</span></label>`).join('')}</div>
-      ${S.size ? '<button type="button" class="btn-out cs-dd-x" data-cs-di-x>Quitar filtro</button>' : ''}</div></details>`;
+/* Distrito: lista desplegable con buscador. Al revés de los demás: empieza con TODOS marcados y se desmarcan los que no se quieren ver.
+   Se muestra en los segmentadores y en el «Detalle por EECC/gestor» (es el mismo filtro); aplica a todo el consolidado. */
+function csDistritos(m, donde) {
+  const c = CS[m], X = c.diX, cnt = {}; csBase(m, 'di').forEach(x => { const d = x.di || '(SIN DISTRITO)'; cnt[d] = (cnt[d] || 0) + 1; });
+  const ops = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || a.localeCompare(b)), quitados = ops.filter(d => X.has(d)), vis = ops.length - quitados.length;
+  const txt = !quitados.length ? 'Todos los distritos' : !vis ? 'Ningún distrito' : quitados.length <= 2 ? 'Todos menos ' + quitados.join(', ') : `${vis} de ${ops.length} distritos`;
+  const ab = c.ddAb === donde, q = c.ddQ || '';
+  return `<details class="cs-dd"${ab ? ' open' : ''} data-cs-dd="${donde}"><summary class="chip${quitados.length ? ' on' : ''}" aria-pressed="${quitados.length > 0}" title="Distritos: desmarca los que no quieres ver">📍 ${esc(txt)} <span aria-hidden="true">▾</span></summary>
+    <div class="cs-dd-p"><input type="search" class="cs-dd-q" placeholder="Buscar distrito" aria-label="Buscar distrito" value="${esc(q)}" data-cs-ddq>
+      <label class="cs-dd-o cs-dd-t"><input type="checkbox" data-cs-di="TODOS" ${!quitados.length ? 'checked' : ''}> (Seleccionar todo) <span>${n(vis)} / ${n(ops.length)}</span></label>
+      <div class="cs-dd-l">${ops.map(d => `<label class="cs-dd-o${X.has(d) ? ' off' : ''}" data-txt="${esc(d.toLowerCase())}"${q && !d.toLowerCase().includes(q.toLowerCase()) ? ' hidden' : ''}><input type="checkbox" data-cs-di="${esc(d)}" ${X.has(d) ? '' : 'checked'}> ${esc(d)} <span>${n(cnt[d])}</span></label>`).join('')}</div>
+      ${quitados.length ? '<button type="button" class="btn-out cs-dd-x" data-cs-di-x>Volver a todos</button>' : ''}<p class="cs-dd-n">Desmarca los distritos que no quieres ver.</p></div></details>`;
 }
 function pintarConsol(m) {
   const box = $('cs-' + m); if (!box || !D.progT) return;
   const c = CS[m], meta = CFG.meta_cumpl ?? 95, [a, b] = csRango(m);
   const L = csBase(m), T = csCuenta(L), mesTxt = `${MESL} ${D.anio}`;
-  const ing = D.ing.filter(x => ok(x) && x.d >= a && x.d <= b && (msOk(c.seg, x.seg)) && (msOk(c.ec, x.ec)) && (msOk(c.di, x.di || '(SIN DISTRITO)'))).length;
+  const ing = D.ing.filter(x => ok(x) && x.d >= a && x.d <= b && (msOk(c.seg, x.seg)) && (msOk(c.ec, x.ec)) && (!c.diX.has(x.di || '(SIN DISTRITO)'))).length;
   const pc = (v, t) => t ? dec(v / t * 100) + '%' : '—';
   const num = (v, g, k, cls = '') => v ? `<button type="button" class="cs-n ${cls}" data-cs-l="${m}|${esc(g)}|${k}">${n(v)}</button>` : `<span class="cs-0">0</span>`;
   const rangoTxt = m === 'cd' ? `${diaInfo(a).wd} ${fDia(a)} ${D.anio}` : (a === 1 && !c.hasta ? `${mesTxt} · del 1 al ${fDia(b)} (último día con descargadas)` : `del ${fDia(a)} al ${fDia(b)}`);
@@ -3128,14 +3131,14 @@ function pintarConsol(m) {
     m === 'cm' ? fila('Desde / Hasta', `<input type="date" class="cs-fecha" data-cs-d="desde" value="${c.desde || isoDia(1)}" min="${isoDia(1)}" max="${isoDia(D.dias)}"><input type="date" class="cs-fecha" data-cs-d="hasta" value="${c.hasta || isoDia(ultDesc())}" min="${isoDia(1)}" max="${isoDia(D.dias)}"><button type="button" class="chip" data-cs-rango="mes">Todo el mes</button>`)
       : fila('Día', `<button type="button" class="chip" data-cs-dia="-1" aria-label="Día anterior" ${a <= 1 ? 'disabled' : ''}>◀</button><input type="date" class="cs-fecha" data-cs-d="dia" value="${isoDia(a)}" min="${isoDia(1)}" max="${isoDia(D.dias)}"><button type="button" class="chip" data-cs-dia="1" aria-label="Día siguiente" ${a >= D.dias ? 'disabled' : ''}>▶</button><button type="button" class="chip" data-cs-dia="0">Último día</button>`),
     fila('EECC', csChips(m, 'ec', ecOps, o => csBase(m, 'ec').filter(x => x.ec === o).length, 12)),
-    fila('Distrito', csDistritos(m)),
+    fila('Distrito', csDistritos(m, 'seg')),
     fila('Agenda / Coordinada', [['TODOS', 'Todas'], ['AG', 'Agenda'], ['CO', 'Coordinada']].map(([v, t]) => `<button type="button" class="chip" data-cs-tipo="${v}" aria-pressed="${coTipo === v}">${t}</button>`).join('')),
     fila('Segmento', csChips(m, 'seg', segOps, o => csBase(m, 'seg').filter(x => x.seg === o).length)),
     fila('Ranking por', `<button type="button" class="chip" data-cs-k="rank" data-v="EC" aria-pressed="${c.rank === 'EC'}">EECC</button><button type="button" class="chip" data-cs-k="rank" data-v="GE" aria-pressed="${c.rank === 'GE'}">Gestor</button>`),
     fila('Tipo (gráfico)', [['TODOS', 'Todos', Lg0.length], ['AG', 'Agendas', Lg0.filter(x => x.t === 'AG').length], ['CO', 'Coordinadas', Lg0.filter(x => x.t === 'CO').length]].map(([v, t, k]) => `<button type="button" class="chip" data-cs-k="tg" data-v="${v}" aria-pressed="${c.tg === v}">${t} (${n(k)})</button>`).join('')),
     fila(c.rank === 'GE' ? 'Gestor (gráfico)' : 'EECC (gráfico)', csChips(m, 'eg', egOps, o => Lg.filter(x => csGrupo(m, x) === o).length)),
   ].join('');
-  const activos = [rangoTxt, MS(c.ec).size && msTxt(c.ec), MS(c.di).size && (MS(c.di).size > 2 ? MS(c.di).size + ' distritos' : msTxt(c.di)), coTipo !== 'TODOS' && (coTipo === 'AG' ? 'Agendas' : 'Coordinadas'), MS(c.seg).size && msTxt(c.seg), 'ranking por ' + (c.rank === 'GE' ? 'gestor' : 'EECC')].filter(Boolean).join(' · ');
+  const activos = [rangoTxt, MS(c.ec).size && msTxt(c.ec), c.diX.size && (c.diX.size > 2 ? `sin ${c.diX.size} distritos` : 'sin ' + [...c.diX].join(', ')), coTipo !== 'TODOS' && (coTipo === 'AG' ? 'Agendas' : 'Coordinadas'), MS(c.seg).size && msTxt(c.seg), 'ranking por ' + (c.rank === 'GE' ? 'gestor' : 'EECC')].filter(Boolean).join(' · ');
   // ----- indicadores -----
   const otros = T.n - T.D, bar = (v, col) => `<div class="cs-bar"><i style="width:${Math.min(100, v || 0).toFixed(1)}%;background:var(--${col})"></i></div>`;
   const kpis = `<div class="cs-kpis">
@@ -3184,7 +3187,7 @@ function pintarConsol(m) {
     ${graf}</div>
     ${csDetalleAB(m, L, rangoTxt)}
     <div class="cs-det"><div class="sec-cab"><div><h3 class="cs-h3">Detalle por ${c.rank === 'GE' ? 'gestor' : 'EECC'}</h3><p class="sub">${esc(rangoTxt)} · programadas por fecha de agenda (F. AG), incluye anuladas · % cumplimiento = cumplidas ÷ descargadas · clic en un número para ver los AB y editar su agenda</p></div>
-        <div class="pen-acc"><button type="button" class="btn-out" data-cs-marcar="${m}" aria-pressed="${c.marcar !== false}">${c.marcar !== false ? '✓ Marcar incumplidos' : 'Marcar incumplidos'}</button><button type="button" class="btn-out" data-img="${tid}" data-nom="detalle-${c.rank === 'GE' ? 'gestor' : 'eecc'}-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button></div></div>
+        <div class="pen-acc">${csDistritos(m, 'det')}<button type="button" class="btn-out" data-cs-marcar="${m}" aria-pressed="${c.marcar !== false}">${c.marcar !== false ? '✓ Marcar incumplidos' : 'Marcar incumplidos'}</button><button type="button" class="btn-out" data-img="${tid}" data-nom="detalle-${c.rank === 'GE' ? 'gestor' : 'eecc'}-${m === 'cd' ? 'diario' : 'mensual'}">Copiar imagen</button></div></div>
       <p class="pen-aviso" id="aviso-${tid}" role="status" aria-live="polite"></p>
       <div class="scroll">${tabla}</div></div>`;
   prepararOrden($(tid)); prepararOrden($('tb-csd-' + m)); filtrosTabla($('tb-csd-' + m));
@@ -3235,14 +3238,17 @@ document.addEventListener('click', (e) => { document.querySelectorAll('details.c
     if (t.closest('[data-csd-ab]')) { const tb = $('tb-csd-' + m); completarTabla(tb); const abs = [...tb.tBodies[0].rows].filter(r => r.cells.length > 1 && !r.hidden).map(r => r.cells[0].textContent.trim());
       navigator.clipboard.writeText(abs.join('\n')).then(() => aviso('tb-csd-' + m, `${abs.length} AB copiados.`), () => aviso('tb-csd-' + m, 'Tu navegador no permitió copiar.', true)); return; }
     if (t.closest('[data-cs-mas]')) { c.mas = !c.mas; pintarConsol(m); return; }
-    if (t.closest('[data-cs-di-x]')) { c.di = 'TODOS'; c.ddQ = ''; c.ddAb = false; pintarConsol(m); return; }
+    if (t.closest('[data-cs-di-x]')) { const dd = t.closest('[data-cs-dd]'); c.diX = new Set(); c.ddQ = ''; c.ddAb = dd ? dd.dataset.csDd : false; pintarConsol(m); return; }
     const tp = t.closest('[data-cs-tipo]'); if (tp) { document.querySelector(`#cr-btns [data-crt="${tp.dataset.csTipo}"]`).click(); return; }
     if (t.closest('[data-cs-rango]')) { c.desde = c.hasta = ''; pintarConsol(m); return; }
     const dd = t.closest('[data-cs-dia]'); if (dd) { const v = +dd.dataset.csDia; c.dia = v ? Math.min(D.dias, Math.max(1, csRango(m)[0] + v)) : D.dias; pintarConsol(m); return; }
   });
-  box.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('[data-cs-dd]')) CS[m].ddAb = e.target.open; }, true);
+  box.addEventListener('toggle', (e) => { if (e.target.matches && e.target.matches('[data-cs-dd]')) { if (e.target.open) CS[m].ddAb = e.target.dataset.csDd; else if (CS[m].ddAb === e.target.dataset.csDd) CS[m].ddAb = false; } }, true);
   box.addEventListener('change', (e) => { const ck = e.target.closest('[data-cs-di]'); if (!ck) return; const c = CS[m];
-    c.di = msTog(c.di, ck.dataset.csDi); c.ddAb = true; c.eg = 'TODOS'; pintarConsol(m); });
+    const v = ck.dataset.csDi, dd = ck.closest('[data-cs-dd]');
+    if (v === 'TODOS') c.diX = ck.checked ? new Set() : new Set(csBase(m, 'di').map(x => x.di || '(SIN DISTRITO)'));
+    else { const X = new Set(c.diX); ck.checked ? X.delete(v) : X.add(v); c.diX = X; }
+    c.ddAb = dd ? dd.dataset.csDd : false; c.eg = 'TODOS'; pintarConsol(m); });
   box.addEventListener('input', (e) => { const q = e.target.closest('[data-cs-ddq]'); if (!q) return; const c = CS[m]; c.ddQ = q.value; const v = q.value.toLowerCase();
     box.querySelectorAll('.cs-dd-l .cs-dd-o').forEach(l => { l.hidden = !!v && !l.dataset.txt.includes(v); }); });
   box.addEventListener('input', (e) => { const q = e.target.closest('[data-csd-q]'); if (!q) return; CS[m].dt.q = q.value; clearTimeout(q._t);
