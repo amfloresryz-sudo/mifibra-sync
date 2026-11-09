@@ -979,7 +979,12 @@ tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: 
 .fi-grid b { font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
 .fi-nota { margin: 6px 0 0; font-size: 13px; color: var(--fg-3); }
 .fi-obs { background: var(--gris-bg); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--fg); white-space: pre-wrap; }
+.ev-mk { font-size: .8em; margin-left: 2px; cursor: help; }
 .lnk.cec::after { content: " 💬" attr(data-cec); font-size: .85em; }
+.fi-ev { margin-bottom: 10px; } .fi-ev-t { display: block; font-size: 13px; margin-bottom: 6px; } .fi-ev-g { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.fi-ev-i { margin: 0; border: 1px solid var(--borde, #e5e7eb); border-radius: 10px; overflow: hidden; background: var(--bg-2, #F7F8FA); }
+.fi-ev-i img, .fi-ev-i video { display: block; width: 100%; height: 120px; object-fit: cover; background: #111; } .fi-ev-i figcaption { font-size: 11px; color: var(--fg-3, #666); padding: 4px 6px; line-height: 1.3; }
+.fi-ev-x { display: flex; align-items: center; justify-content: center; height: 120px; font-size: 12px; color: var(--fg-2, #444); text-decoration: none; }
 .fi-cec { border: 1px solid var(--borde, #e5e7eb); border-left: 4px solid var(--magenta, #c0007a); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 14px; }
 .fi-cec .c { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--fg-3); margin-bottom: 4px; }
 .fi-cec p { margin: 0; white-space: pre-wrap; color: var(--fg); }
@@ -1622,8 +1627,34 @@ const RE_FEC = /\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b|\b(?:LUNES|MARTES|MI[EÉ]RC
 const RE_FRA = /\b\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\s*(?:A|-|AL|HASTA)\s*\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\b|\bA\s+LAS\s+\d{1,2}|\b\d{1,2}\s*(?::\s*\d{2})?\s*(?:AM|PM)\b|\b(?:RANGO|FRANJA)\s+(?:DE\s+)?\d/;
 const RE_TEC = /\b(?:CL(?:IENTE)?\s+EN\s+SITIO|T[EÉ]C(?:NICO)?\.?\s+(?:EN\s+(?:CAMINO|SITIO|RUTA|DOMICILIO|CASA(?:\s+DEL?\s+CLIENTE)?)|LLEG[OÓ]))\b/g;   // solo dice dónde está el técnico: no es gestión
 const RE_MOT = /\b(?:CLIENTE|CL|AB|ABONADO|TITULAR|FAMILIAR|CONTESTA|RESPONDE|WHATSAPP|WSP|MENSAJES?|LLAMADAS?|VD|VISITA|REPROGRAM\w*|POSTERGA|AGENDA|CONFIRM\w*|SOLICITA|INDICA|AUDITA|PLANO|SUP|FACTIBILIDAD|CANCELA|DESISTE|REAGENDA)\b/;
+/* ---------- Comentarios de las EECC al instante ----------
+   Lo que la EECC escribe en su web (Mis pendientes) se suma aquí apenas lo guarda, como si ya estuviera en ScordSoft:
+   cuenta para Gestión / 1er contacto / Visita y se marca 💬. El robot lo sigue escribiendo en ScordSoft igual que antes;
+   cuando el tablero ya lo trae de ScordSoft (o ya se escribió antes de la descarga), deja de sumarse para no duplicarlo. */
+let CER = { com: [], ev: {} }, cerJ = '';
+async function traerComRecientes() {
+  try { const r = await fetch('/api/eecc?accion=recientes&filial=' + encodeURIComponent(filialSel()), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' });
+    if (!r.ok) return false; const j = await r.json(), t = JSON.stringify(j); if (t === cerJ) return false; cerJ = t; CER = j; return true; } catch { return false; }
+}
+const normCec = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+const RE_SELLO = /#\s*\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}\s*#/;
+function aplicarComEecc() {
+  const ult = {}; (CER.com || []).forEach(c => { if (!ult[c.os] || c.creado_en > ult[c.os].creado_en) ult[c.os] = c; });
+  const corte = msIso((DC || D).corte), vistos = new Set();
+  [DC && DC.pend, DC && DC.pendx, D && D.pend, D && D.pendx, typeof DP !== 'undefined' && DP && DP.pend].forEach(L => (L || []).forEach(p => {
+    if (vistos.has(p)) return; vistos.add(p);
+    delete p.ovx; delete p.ovxS; delete p.ovxC; p._ec = p._vu = undefined;
+    const c = ult[p.os]; if (!c) return;
+    if (c.scord_en && Date.parse(c.scord_en) <= corte) return;                // ya se escribió en ScordSoft antes de la descarga del tablero
+    const cuerpo = String(c.texto || '').replace(/[#%<>]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase(), hist = p.ovt || p.ov || '';
+    if (!cuerpo || normCec(hist).includes(normCec(cuerpo).slice(0, 40))) return;   // el tablero ya lo trae
+    const conAg = RE_FEC.test(normCec(cuerpo)) && RE_FRA.test(normCec(cuerpo).replace(/\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b/g, ' '));
+    const f = new Date(Date.parse(c.scord_en || c.creado_en) - 5 * 3600e3).toISOString(), sello = `#${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)} ${f.slice(11, 16)}#`;
+    p.ovx = cuerpo; p.ovxC = c; p.ovxS = (conAg && !RE_SELLO.test(hist) ? sello + ' ' : '') + cuerpo;
+  }));
+}
 function evalGestion(p) {
-  const t0 = String(p.ovt || p.ov || '').toUpperCase(), pcs = [...t0.matchAll(RE_PC)];
+  const t0 = String((p.ovt || p.ov || '') + (p.ovxS ? ' ' + p.ovxS : '')).toUpperCase(), pcs = [...t0.matchAll(RE_PC)];
   p.pc = pcs.length > 0;
   p.pcF = pcs.length ? pcs.map(m => `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')} ${m[4].padStart(2, '0')}:${m[5]}`).sort()[0] : '';
   const t = t0.replace(RE_PC, ' ').replace(/%[^%]*%/g, ' ').replace(/\$R\$/g, ' ').replace(RE_TEC, ' ').replace(/\s+/g, ' ').trim();
@@ -1633,8 +1664,10 @@ function evalGestion(p) {
   else if (fec && fra) { p.ges = true; p.gesM = 'Comentario con fecha y franja'; }
   else if ((pal >= 5 && RE_MOT.test(t)) || pal >= 10) { p.ges = true; p.gesM = 'Buen comentario' + (fec ? ' (con fecha, sin franja)' : fra ? ' (con franja, sin fecha)' : ''); }
   else { p.ges = false; p.gesM = 'Comentario sin fecha ni franja y poco detallado'; }
+  if (p.ovx) p.gesM = (p.gesM || '') + ` · incluye el comentario de la EECC de las ${new Date(Date.parse(p.ovxC.creado_en) - 5 * 3600e3).toISOString().slice(11, 16)} (aún no llega de ScordSoft)`;
 }
 function aplicarAjustes() {
+  aplicarComEecc();
   [...(D.pend || []), ...(D.pendx || [])].forEach(evalGestion);
   CFG = cfgDe();
   [D.ing, D.liq, D.pend, D.pendx, D.progRaw || D.prog].forEach(L => (L || []).forEach(fijarEc));
@@ -2245,9 +2278,9 @@ function pintarPendientes0() {
   $('pen-n').innerHTML = `${L.length} de ${penUni().length} pendientes${esInst() ? '' : ' de ' + TOS_TXT().toLowerCase()}${nCol ? ` · ${nCol} filtro${nCol === 1 ? '' : 's'} de columna <button type="button" class="lnk" id="fcol-limpiar">quitar</button>` : ''}`;
   marcarFiltrosCol();
   $('pen-filas').innerHTML = diferir('tb-pend', L.map(p => { const ed = edadDias(p.rec), ea = estAg(p), ge = gestorDe(p);
-    return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td data-v="${esc(p.seg || '')}">${segB(p.seg)}</td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnB(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}${CEC[p.os] ? ' cec' : ''}"${CEC[p.os] ? ` data-cec="${CEC[p.os]}"` : ''} data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button></td><td data-v="${esc(tipoTr(p))}" title="${esc(p.to || 'INSTALACION SERVICIO')}"><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></td><td>${esc(p.ec)}</td>
+    return `<tr><td data-v="${esc(ge === 'SIN GESTOR' ? 'ZZZ' : ge)}" title="${esc(ge)}">${ge === 'SIN GESTOR' ? '<span style="color:var(--fg-4)">—</span>' : esc(ge)}</td><td data-v="${zIdx(p.z)}">${esc(p.z)}</td><td data-v="${esc(p.pl)}"><button type="button" class="lnk num" data-cajas="${p.os}" title="Ver cajas cercanas (≤200 m)">${esc(p.pl)}</button></td><td title="${esc(p.di)}" data-v="${esc(p.di)}">${esc(corto(p.di))}</td><td data-v="${esc(p.seg || '')}">${segB(p.seg)}</td><td data-v="${esc(p.cn || 'ZZ')}" title="${esc(cnNom(p.cn))}">${cnB(p.cn)}</td><td data-v="${p.ab}"><button type="button" class="lnk num${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' ab-ok' : ''}${CEC[p.os] ? ' cec' : ''}"${CEC[p.os] ? ` data-cec="${CEC[p.os]}"` : ''} data-ficha-ab="${p.os}" title="Ver datos del AB · OS ${p.os}&#10;EECC del plano: ${esc(p.ecp || 'sin dato')}${p.ecp && p.ecp === String(p.ec0 ?? p.ec).toUpperCase() ? ' (coincide)' : ''}">${p.ab}</button>${(CER.ev || {})[p.os] ? `<span class="ev-mk" title="La EECC adjuntó ${CER.ev[p.os]} evidencia${CER.ev[p.os] > 1 ? 's' : ''} · ábrelo para verlas">📎</span>` : ''}</td><td data-v="${esc(tipoTr(p))}" title="${esc(p.to || 'INSTALACION SERVICIO')}"><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></td><td>${esc(p.ec)}</td>
       <td title="${esc(p.tec)}" data-v="${esc(p.tec || 'ZZZ')}">${esc(tecCorto(p.tec))}</td>
-      <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}" title="${esc(p.gesM || '')}">${p.ges ? 'Gestionado' : 'Sin gestión'}</span></td>
+      <td data-v="${p.ges ? 0 : 1}"><span class="b ${p.ges ? 'ges' : 'sges'}" title="${esc(p.gesM || '')}">${p.ges ? 'Gestionado' : 'Sin gestión'}${p.ovx ? ' 💬' : ''}</span></td>
       <td data-v="${p.pc ? 0 : 1}"><span class="b ${p.pc ? 'ges' : 'sag'}"${p.pcF ? ` title="Primer contacto: ${esc(fechaHora(p.pcF.replace(' ', 'T')))}"` : ' title="El comentario no trae #dd/mm/aaaa hh:mm#"'}>${p.pc ? 'SÍ' : 'NO'}</span></td>
       <td data-v="${EST_V[ea]}"><span class="b ${EST_B[ea]}"${deObs(p) ? ' title="Agenda tomada del último comentario del técnico"' : ''}>${EST_TXT[ea]}${deObs(p) ? '*' : ''}</span></td>
       <td data-v="${visTxtFiltro(p)}" class="td-vis">${visCelda(p)}</td>
@@ -2261,7 +2294,7 @@ function pintarPendientes0() {
 /* Comentarios que las EECC dejan en «Mis pendientes»: 💬 junto al AB y sección en la ficha */
 let CEC = {}, cecEn = 0, cecF = '';
 async function cargarComEecc() {
-  const f = filialSel(); if (cecF === f && Date.now() - cecEn < 120e3) return; cecEn = Date.now(); cecF = f;
+  const f = filialSel(); if (cecF === f && Date.now() - cecEn < 30e3) return; cecEn = Date.now(); cecF = f;
   try {
     const r = await fetch('/api/eecc?accion=con_comentario&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() } }); if (!r.ok) return;
     const c = (await r.json()).comentarios || {};
@@ -2273,11 +2306,17 @@ const EST_CEC = { pendiente: ['pe', '⏳ Por escribir en ScordSoft'], escrito: [
 async function verComEecc(os) {
   const caja = () => document.getElementById('fi-cec'); if (!caja()) return;
   try {
-    const r = await fetch('/api/eecc?accion=comentarios&os=' + encodeURIComponent(os), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' });
+    const h = { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' };
+    const [r, re] = await Promise.all([fetch('/api/eecc?accion=comentarios&os=' + encodeURIComponent(os), h), fetch('/api/eecc?accion=evidencias&os=' + encodeURIComponent(os), h).catch(() => null)]);
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+    const E = re && re.ok ? ((await re.json().catch(() => ({}))).evidencias || []) : [];
     const C = j.comentarios || []; if (!caja()) return;
-    caja().innerHTML = !C.length ? '<p class="fi-nota">La EECC no ha dejado comentarios para este AB.</p>' : C.map(c => { const [k, t] = EST_CEC[c.scord_estado] || EST_CEC.pendiente;
-      return `<div class="fi-cec"><div class="c"><b>${esc(c.eecc)} · ${esc(c.nombre_usuario || c.usuario)}</b><span>${fLima(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="es ${k}"${c.scord_en ? ` title="Escrito el ${fLima(c.scord_en)}"` : ''}>${t}</span></div><p>${esc(c.texto)}</p></div>`; }).join('');
+    // Evidencias que adjuntó la EECC (fotos, videos o PDF): se ven aquí apenas se suben; el enlace vence en 1 hora (se renueva al reabrir la ficha)
+    const evH = E.length ? `<div class="fi-ev"><b class="fi-ev-t">📎 Evidencias de la EECC (${E.length})</b><div class="fi-ev-g">${E.map(x => { const img = /^image\//.test(x.tipo), vid = /^video\//.test(x.tipo), pie = `${esc(x.eecc || '')} · ${fLima(x.creado_en)}${x.comentario ? ' · ' + esc(x.comentario) : ''}`;
+      return `<figure class="fi-ev-i">${!x.url ? '<div class="fi-ev-x">No disponible</div>' : img ? `<a href="${esc(x.url)}" target="_blank" rel="noopener" title="Abrir en grande"><img src="${esc(x.url)}" alt="Evidencia ${esc(x.nombre || '')}" loading="lazy"></a>`
+        : vid ? `<video src="${esc(x.url)}" controls preload="metadata"></video>` : `<a class="fi-ev-x" href="${esc(x.url)}" target="_blank" rel="noopener">📄 ${esc(x.nombre || 'Archivo')}</a>`}<figcaption>${pie}</figcaption></figure>`; }).join('')}</div></div>` : '';
+    caja().innerHTML = evH + (!C.length ? '<p class="fi-nota">La EECC no ha dejado comentarios para este AB.</p>' : '') + (!C.length ? '' : C.map(c => { const [k, t] = EST_CEC[c.scord_estado] || EST_CEC.pendiente;
+      return `<div class="fi-cec"><div class="c"><b>${esc(c.eecc)} · ${esc(c.nombre_usuario || c.usuario)}</b><span>${fLima(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="es ${k}"${c.scord_en ? ` title="Escrito el ${fLima(c.scord_en)}"` : ''}>${t}</span></div><p>${esc(c.texto)}</p></div>`; }).join(''));
   } catch (e) { if (caja()) caja().innerHTML = `<p class="fi-nota">No se pudieron traer los comentarios de la EECC: ${esc(e.message)}</p>`; }
 }
 $('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; pintarPendientes(); });
@@ -2350,16 +2389,16 @@ const EST_CAMPO = [
 const ultimoComentario = (t) => { const seg = String(t || '').split(/(?<=%)\s*,\s*|(?=#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#)/)
   .map(x => x.replace(/%[^%]*%/g, ' ').replace(/#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#/g, ' ').replace(/\$R\$/g, ' ').replace(/^[\s,.\-–]+|[\s,.\-–]+$/g, ''))
   .filter(x => x.length > 1); return seg.length ? seg[seg.length - 1] : ''; };
-const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
+const estCampo = (p) => { if (p._ec !== undefined) return p._ec; const t = p.ovx || ultimoComentario(p.ovt || p.ov); let mejor = null;
   EST_CAMPO.forEach(([k, re, txt, cls]) => { for (const m of t.matchAll(re)) if (!mejor || m.index > mejor.i) mejor = { i: m.index, k, txt, cls }; });
   return p._ec = mejor; };
 /* Una sola etiqueta: lo MÁS ACTUAL del último comentario (la visita o el estado, lo que aparezca más al final de ese comentario) */
 // AG futura (agenda para otro día, incluida la de mañana): el comentario es de una visita anterior, no aplica → sin etiqueta
-const visUlt = (p) => { if (p._vu !== undefined) return p._vu; if (['FUTURA', 'MAÑANA'].includes(estAg(p))) return p._vu = null; const t = ultimoComentario(p.ovt || p.ov); let mejor = null;
+const visUlt = (p) => { if (p._vu !== undefined) return p._vu; if (['FUTURA', 'MAÑANA'].includes(estAg(p))) return p._vu = null; const t = p.ovx || ultimoComentario(p.ovt || p.ov); let mejor = null;
   for (const m of t.matchAll(RE_VISI)) { const v = m[2] ? 'VD' : /^(SEGUNDA|2)$/i.test(m[1]) ? '2' : '1'; if (!mejor || m.index > mejor.i) mejor = { i: m.index, txt: visTxtI(v), cls: 'v1', v }; }
   const e = estCampo(p); if (e && (!mejor || e.i > mejor.i)) mejor = { i: e.i, txt: e.txt, cls: 'ec ' + e.cls };
   return p._vu = mejor; };
-const visCelda = (p) => { const u = visUlt(p); return u ? `<span class="b ${u.cls}" title="Según el último comentario: ${esc(ultimoComentario(p.ovt || p.ov).slice(0, 160))}">${u.txt}</span>` : '-'; };
+const visCelda = (p) => { const u = visUlt(p); return u ? `<span class="b ${u.cls}" title="Según el último comentario${p.ovx ? ' (de la EECC en su web)' : ''}: ${esc((p.ovx || ultimoComentario(p.ovt || p.ov)).slice(0, 160))}">${u.txt}</span>` : '-'; };
 const visTxtFiltro = (p) => { const u = visUlt(p); return u ? u.txt : '-'; };
 const COLS_PEND = [
   (p) => { const g = gestorDe(p); return [g, g === 'SIN GESTOR' ? '~' : g]; },
@@ -3581,7 +3620,7 @@ function fichaAB(os) {
         ['Cajas a ≤200 m', `<button type="button" class="lnk num" data-cajas="${p.os}">${p.cj.length}${p.cj.length >= 15 ? '+' : ''} cajas</button>`]])
         : '<p class="fi-nota">Sin cajas de planta registradas a 200 m o menos de este AB (o el AB no tiene coordenadas en ScordSoft).</p>')
     + secF('Comentario del técnico · OBS VISITA TÉCNICO (completo)', (p.ovt || p.ov) ? `${estCampo(p) ? `<p class="fi-ec"><span class="b ec ${estCampo(p).cls}">${estCampo(p).txt}</span> <small>según el último comentario: «${esc(ultimoComentario(p.ovt || p.ov).slice(0, 200))}»</small></p>` : ''}<div class="fi-obs">${obsCompleta(p.ovt || p.ov)}${p.ove ? `<small>Última anotación: ${esc(p.ove)}</small>` : ''}</div>` : '<p class="fi-nota">Sin comentario registrado por el técnico para esta OS.</p>')
-    + secF('Comentarios de la EECC (Mis pendientes)', '<div id="fi-cec"><p class="fi-nota">Cargando…</p></div>')
+    + secF('Comentarios y evidencias de la EECC (Mis pendientes)', '<div id="fi-cec"><p class="fi-nota">Cargando…</p></div>')
     + '<p class="fi-nota">Las observaciones de venta del cliente no se muestran en el portal (datos personales); los teléfonos en la observación del técnico se ocultan.</p>';
   const ge = gestorDe(p);
   const volver = volverLista ? '<button type="button" class="btn-out" data-volver-lista style="margin-bottom:10px">← Volver a la lista</button>' : '';
@@ -4822,8 +4861,11 @@ setInterval(async () => {
 setInterval(async () => {
   if (document.hidden || !$('modal').hidden) return;
   const ae = document.activeElement; if (ae && ae.matches('input, select, textarea')) return;
-  try { const antes = JSON.stringify(AJ); await traerAjustes(D.filial || filialSel()); if (JSON.stringify(AJ) !== antes) { aplicarAjustes(); pintarFiltros(); pintarTodo(); } } catch { /* reintenta luego */ }
-}, 20 * 1000);
+  try { const antes = JSON.stringify(AJ); const [, nc] = await Promise.all([traerAjustes(D.filial || filialSel()), traerComRecientes()]);
+    if (nc) cecEn = 0;   // también se refresca el 💬 de los AB
+    if (nc || JSON.stringify(AJ) !== antes) { aplicarAjustes(); pintarFiltros(); pintarTodo(); } } catch { /* reintenta luego */ }
+}, 20 * 1000);   // ajustes y comentarios de las EECC: cada 20 s
+traerComRecientes().then(nc => { if (nc) { aplicarAjustes(); pintarFiltros(); pintarTodo(); } });
 const repintar = () => { pintarPanel(); pintarCoord(); };
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', repintar);
 new MutationObserver(repintar).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });

@@ -196,7 +196,21 @@ module.exports = async (req, res) => {
       const desde = new Date(Date.now() - 60 * 864e5).toISOString();
       const { datos } = await consultar(`eecc_comentarios?select=os&filial=in.(${fs.map(encodeURIComponent).join(',')})&creado_en=gte.${desde}`);
       const c = {}; datos.forEach(x => { c[x.os] = (c[x.os] || 0) + 1; });
-      return responder(res, 200, { comentarios: c }, 60);
+      return responder(res, 200, { comentarios: c }, 15);
+    }
+    // Comentarios y evidencias recientes de las EECC (últimos 3 días) para que la web unificada los muestre al instante,
+    // sin esperar a que se escriban en ScordSoft y el robot los vuelva a descargar.
+    if (req.method === 'GET' && accion === 'recientes') {
+      if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
+      const f0 = String(q.get('filial') || '').toUpperCase();
+      const pedidas = f0 === 'TODAS' ? filiales : f0.split(',').flatMap(f => f === 'PROVINCIAS' ? filialesReales('PROVINCIAS') : [f]);
+      const fs = pedidas.filter(f => filiales.includes(f)); if (!fs.length) return responder(res, 200, { com: [], ev: {} });
+      const desde = new Date(Date.now() - 3 * 864e5).toISOString(), inF = `filial=in.(${fs.map(encodeURIComponent).join(',')})`;
+      const [c, e] = await Promise.all([
+        consultar(`eecc_comentarios?select=os,eecc,nombre_usuario,usuario,texto,origen,creado_en,scord_estado,scord_en&${inF}&creado_en=gte.${desde}&order=creado_en.desc&limit=600`),
+        consultar(`evidencias?select=os&${inF}&creado_en=gte.${desde}`)]);
+      const ev = {}; e.datos.forEach(x => { ev[x.os] = (ev[x.os] || 0) + 1; });
+      return responder(res, 200, { com: c.datos.map(x => ({ ...x, texto: sinTel(x.texto) })), ev }, 10);
     }
     if (req.method === 'GET' && accion === 'comentarios') {
       const os = parseInt(q.get('os'), 10); if (!os) return responder(res, 400, { error: 'OS no válida' });
