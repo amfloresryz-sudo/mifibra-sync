@@ -366,6 +366,8 @@ body.rut-on { overflow: hidden; }
 .rut-msg { margin: 0; min-height: 16px; color: var(--ok); } .rut-ayuda { margin: 0; }
 @media (max-width: 900px) { .rut-cuerpo { grid-template-columns: 1fr; grid-template-rows: 60vh auto; } .rut-lado { border-left: 0; border-top: 1px solid var(--borde); } .rut-cab { grid-template-columns: 1fr; } }
 /* Cinta de alertas (como el portal de EECC): agendas de hoy con franja por vencer o vencida sin iniciar, con los segmentadores aplicados */
+.btn-pri { font: 700 13px var(--f-disp); border: 1px solid var(--fg); background: var(--fg); color: var(--sup); border-radius: 22px; padding: 9px 18px; cursor: pointer; min-height: 40px; }
+.btn-pri[disabled] { opacity: .55; cursor: wait; }
 .rut-tc { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 999px; background: var(--gris-bg, #EEF0F4); color: var(--fg-2, #444); margin-left: 4px; }
 </style>
 </head>
@@ -613,12 +615,13 @@ vistaPeriodo();
 /* Resultados de 100 min corregidos a mano por el usuario master (se guardan por OS y los ve todo el equipo) */
 let AJC = {};
 const urlAjAv = (f) => '/api/ajustes?modulo=averias&filial=' + encodeURIComponent(f);
+let RUTAV = {};   // ruteo editado a mano por el master: { os: { tec, ec, nota } } (se guarda en el portal, no cambia ScordSoft)
 async function traerAjCien(f) {
   if (esCombo(f)) { try { const L = MFF.partes(f), R = await Promise.all([...L, ...(L.some(x => x !== 'LIMA') ? ['PROVINCIAS'] : [])].map(x => fetch(urlAjAv(x), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }).then(r => r.ok ? r.json() : {}).catch(() => ({}))));
       AJC = {}; LSP = {}; RESPA = {};
-      R.forEach((j, i) => { if (i < L.length) { Object.assign(AJC, j.cien || {}); Object.entries(j.ls || {}).forEach(([m, o]) => { const M = LSP[m] || (LSP[m] = {}); Object.entries(o || {}).forEach(([d, c]) => { M[d] = (M[d] || 0) + (+c || 0); }); }); } else Object.assign(RESPA, j.responsables || {}); });
+      RUTAV = {}; R.forEach((j, i) => { if (i < L.length) { Object.assign(AJC, j.cien || {}); Object.assign(RUTAV, j.ruteo || {}); Object.entries(j.ls || {}).forEach(([m, o]) => { const M = LSP[m] || (LSP[m] = {}); Object.entries(o || {}).forEach(([d, c]) => { M[d] = (M[d] || 0) + (+c || 0); }); }); } else Object.assign(RESPA, j.responsables || {}); });
     } catch { /* sin ajustes */ } return; }
-  try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AJC = j.cien || {}; LSP = j.ls || {}; RESPA = j.responsables || {}; } catch { /* sin ajustes */ } }
+  try { const r = await fetch(urlAjAv(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); if (!r.ok) return; const j = await r.json(); AJC = j.cien || {}; LSP = j.ls || {}; RESPA = j.responsables || {}; RUTAV = j.ruteo || {}; } catch { /* sin ajustes */ } }
 let RESPA = {};                       // responsable de cada zona (o filial en Provincias) para «Averías pendientes»
 const altasAbiertas = new Set();      // zonas expandidas en «Averías pendientes» (empiezan contraídas)
 let LSP = {};   // líneas en servicio cargadas en el portal: { 'AAAA-MM': { DISTRITO: n } } (por filial)
@@ -1517,7 +1520,8 @@ $('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; p
 /* ---------- Ruteo de averías: mapa de los pendientes de la tabla (con sus filtros y segmentadores) por EECC y técnico ----------
    Igual que el Ruteo de Instalaciones: cada AB en su coordenada con el color de su EECC (o de su técnico); el número es el inicio
    de la franja de su agenda (#AGENDA ATC/MCD dd/mm h1-h2#), S = sin agenda. La ruta une los AB del mismo técnico y día en el orden
-   de la franja. Las áreas salen del mapa de planos. Aquí solo se mira: no cambia ScordSoft ni la asignación. */
+   de la franja. Las áreas salen del mapa de planos. El usuario master puede cambiar el técnico/EECC de un AB en el ruteo
+   (se guarda en el portal, no cambia ScordSoft). */
 const RUT = { modo: 'auto', tOff: new Set(), mapa: null, capa: null, areas: null, capaA: null, sel: null, ocultos: new Set(), ec: new Set(), dia: '', ajustado: false, cargando: false };
 const RUT_COL = ['#E6194B', '#3CB44B', '#4363D8', '#F58231', '#911EB4', '#42D4F4', '#F032E6', '#9A6324', '#469990', '#800000', '#808000', '#000075',
   '#E6007E', '#1A936F', '#FF8C42', '#5F0F40', '#0F4C5C', '#B5179E', '#7209B7', '#3A86FF', '#FB5607', '#8AC926', '#6A4C93', '#D62828'];
@@ -1557,8 +1561,9 @@ const rutAgDe = (p) => { if (p._rag !== undefined) return p._rag; let r = null;
   if (p.ags === 'ok') { const m = /(\d{1,2})-([a-z]{3})\.?\s*(\d{1,2})\s*-\s*(\d{1,2})/.exec(String(p.ag || '').toLowerCase()); const mm = m ? MES3.indexOf(m[2]) + 1 : 0;
     if (m && mm) { const yy = mm === 12 && D.mes === 1 ? D.anio - 1 : mm === 1 && D.mes === 12 ? D.anio + 1 : D.anio; r = { f: `${yy}-${String(mm).padStart(2, '0')}-${String(+m[1]).padStart(2, '0')}`, h1: +m[3], h2: +m[4] }; } }
   return p._rag = r; };
-const rutTec = (p) => p.tec || 'SIN TÉCNICO';
-const rutEc = (p) => p.ec || 'POR ASIGNAR';
+const rutAj = (p) => RUTAV[p.os];
+const rutTec = (p) => { const a = rutAj(p); return (a && a.tec) || p.tec || 'SIN TÉCNICO'; };
+const rutEc = (p) => { const a = rutAj(p); return (a && a.ec) || p.ec || 'POR ASIGNAR'; };
 const rutIni = (p) => { const a = rutAgDe(p); return a ? a.h1 : 99; };
 const rutTipo = (p) => rutAgDe(p) ? 'ag' : 'sa';
 const RUT_TIPOS = [['ag', '● Con agenda'], ['sa', '○ Sin agenda']];
@@ -1620,6 +1625,8 @@ function pintarRuteo() {
   [...RUT.ec].forEach(e => { if (!cE[e]) RUT.ec.delete(e); });
   const ecCol = {}, ecFm = {}; let ci = 0; Object.keys(cE).sort().forEach(e => { const na = /POR ASIGNAR/i.test(e); ecFm[e] = na ? -1 : ci; ecCol[e] = na ? '#8A8FA3' : RUT_COL_EC[ci++ % RUT_COL_EC.length]; });
   const modo = RUT.modo === 'auto' ? (RUT.ec.size === 1 ? 'tec' : 'ec') : RUT.modo; RUT.modoEf = modo;
+  const TXT_EC = { ag: 'Con agenda (● pastilla)', sa: 'Sin agenda (S)' };
+  document.querySelectorAll('[data-rut-tipo]').forEach(i => { const k = i.dataset.rutTipo, t = i.parentElement.lastChild; if (t && t.nodeType === 3) t.textContent = ' ' + (modo === 'ec' ? TXT_EC[k] : (RUT_TIPOS.find(x => x[0] === k) || [])[1]); });
   document.querySelectorAll('[data-rut-modo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rutModo === modo)));
   const dotEc = (e) => modo === 'ec' ? rutFormaMini(ecFm[e] ?? 0, ecCol[e] || '#8A8FA3') : '';
   $('rut-ec').innerHTML = `<button type="button" class="chip" data-rut-ec="" aria-pressed="${!RUT.ec.size}">Todas</button>` + Object.keys(cE).sort().map(e => `<button type="button" class="chip" data-rut-ec="${esc(e)}" aria-pressed="${RUT.ec.has(e)}">${dotEc(e)}${esc(e)} (${cE[e]})</button>`).join('');
@@ -1640,27 +1647,46 @@ function pintarRuteo() {
       const pd = {}; t.L.forEach(p => { const c = rutCoord(p.co), a = rutAgDe(p); if (c && a && !RUT.tOff.has('ag')) (pd[a.f] || (pd[a.f] = [])).push(c); });
       Object.values(pd).forEach(v => { if (v.length > 1) L.polyline(v, { color: t.col, weight: 3, opacity: .75, dashArray: '7 6' }).addTo(RUT.capa); }); }
     t.L.forEach(p => { const c = rutCoord(p.co); if (!c || RUT.tOff.has(rutTipo(p))) return; todos.push(c);
-      const sel = RUT.sel === p.os, a = rutAgDe(p);
+      const sel = RUT.sel === p.os, a = rutAgDe(p), ed = !!rutAj(p);
       const ic = modo === 'ec'
-        ? L.divIcon({ className: 'rut-pin fx', html: rutPinSvg(ecFm[t.ec] ?? 0, t.col, rutTipo(p), rutLbl(p), sel ? 'sel' : ''), iconSize: [34, 34], iconAnchor: [14, 14] })
-        : L.divIcon({ className: 'rut-pin', html: `<span class="t-${rutTipo(p)}${sel ? ' sel' : ''}" style="--c:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
+        ? L.divIcon({ className: 'rut-pin fx', html: rutPinSvg(ecFm[t.ec] ?? 0, t.col, rutTipo(p), rutLbl(p), `${sel ? 'sel' : ''}${ed ? ' ed' : ''}`), iconSize: [34, 34], iconAnchor: [14, 14] })
+        : L.divIcon({ className: 'rut-pin', html: `<span class="t-${rutTipo(p)}${sel ? ' sel' : ''}${ed ? ' ed' : ''}" style="--c:${t.col}">${rutLbl(p)}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] });
       L.marker(c, { icon: ic, title: `AB ${p.ab}` }).bindTooltip(`<b>AB ${p.ab}</b> · ${esc(rutTrab(p))} · ${esc(rutEc(p))}<br>${esc(rutTec(p) === 'SIN TÉCNICO' ? 'Sin técnico' : tecCorto(rutTec(p)))}<br>${a ? `Agenda ${rutFIso(a.f)} · ${a.h1}-${a.h2}` : 'Sin agenda'}`).on('click', () => rutElegir(p.os)).addTo(RUT.capa); }); });
   if (todos.length && !RUT.ajustado) { RUT.mapa.fitBounds(todos, { padding: [40, 40], maxZoom: 14 }); RUT.ajustado = true; }
   rutFicha();
 }
 function rutElegir(os) { RUT.sel = os; pintarRuteo(); const p = rutBase().find(x => x.os === os), c = p && rutCoord(p.co); if (c && RUT.mapa) RUT.mapa.panTo(c); }
+function rutTecnicos() {   // técnicos conocidos (pendientes, liquidadas y altas del mes) con su EECC
+  const m = new Map(); [...(D.pend || []), ...(D.pendx || []), ...(D.liq || []), ...(D.alta || [])].forEach(x => { if (x.tec && x.ec && !m.has(x.tec)) m.set(x.tec, x.ec); });
+  Object.values(RUTAV).forEach(a => { if (a.tec && !m.has(a.tec)) m.set(a.tec, a.ec || ''); });
+  return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
+}
 function rutFicha() {
   const f = $('rut-ficha'), p = RUT.sel && rutBase().find(x => x.os === RUT.sel);
-  if (!p) { f.innerHTML = `<p class="nota rut-ayuda">Haz clic en un AB del mapa (o en un técnico de la lista) para ver su detalle. ${RUT.modoEf === 'ec' ? 'Color «Por EECC»: cada EECC tiene su ícono y su color (ver los botones de arriba); la pastilla de la esquina lleva el inicio de la franja de su agenda: redonda = con agenda · S punteada = sin agenda.' : 'Forma: ● con agenda · ○ sin agenda; número = inicio de la franja.'}</p>`; return; }
-  const a = rutAgDe(p), e = estado(p), rec = e.st;
+  if (!p) { f.innerHTML = `<p class="nota rut-ayuda">Haz clic en un AB del mapa (o en un técnico de la lista) para ver su detalle y, si hace falta, cambiar su técnico. ${RUT.modoEf === 'ec' ? 'Color «Por EECC»: cada EECC tiene su ícono y su color (ver los botones de arriba); la pastilla de la esquina lleva el inicio de la franja de su agenda: redonda = con agenda · S punteada = sin agenda.' : 'Forma: ● con agenda · ○ sin agenda; número = inicio de la franja.'}</p>`; return; }
+  const a = rutAj(p), ag = rutAgDe(p), e = estado(p), rec = e.st, tecs = rutTecnicos(), ecs = [...new Set(tecs.map(t => t[1]).concat([p.ec]).filter(Boolean))].sort();
+  const porE = {}; tecs.forEach(([t, ec]) => (porE[ec] || (porE[ec] = [])).push(t));
   f.innerHTML = `<div class="rut-fc"><div class="rut-fh"><b>AB ${p.ab}</b><span>OS ${p.os}</span><span class="rut-tc">${esc(rutTrab(p))}</span><button type="button" class="lnk" data-rut-x aria-label="Cerrar detalle">✕</button></div>
     <dl class="rut-dl"><dt>Distrito</dt><dd>${esc(p.di || '—')} · ${esc(p.pl || '—')}</dd><dt>Tipo</dt><dd>${esc(p.ts || p.to || '—')}</dd>
-      <dt>Agenda</dt><dd>${a ? `${rutFIso(a.f)} · ${a.h1} - ${a.h2}` : p.ags === 'ok' ? esc(p.ag) : 'Sin agenda'}</dd><dt>Recepción</dt><dd>${rec ? `${ddmes(rec)} ${hhmm(rec)}` : '—'}</dd>
-      <dt>EECC</dt><dd>${esc(rutEc(p))}</dd><dt>Técnico</dt><dd>${esc(rutTec(p))}</dd><dt>Inicio</dt><dd>${p.ini ? 'Sí' : 'No'}</dd>
-      ${p.obs ? `<dt>Comentario</dt><dd class="rut-com">${esc(String(p.obs).slice(0, 300))}</dd>` : ''}</dl>
-    <div class="rut-bt"><button type="button" class="btn-out" data-ficha="ab" data-os="${p.os}">Ver ficha del AB</button>${p.co ? `<a class="btn-out" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(String(p.co).replace(/\s+/g, ''))}">Google Maps</a>` : ''}</div></div>`;
+      <dt>Agenda</dt><dd>${ag ? `${rutFIso(ag.f)} · ${ag.h1} - ${ag.h2}` : p.ags === 'ok' ? esc(p.ag) : 'Sin agenda'}</dd><dt>Recepción</dt><dd>${rec ? `${ddmes(rec)} ${hhmm(rec)}` : '—'}</dd>
+      <dt>EECC</dt><dd>${esc(rutEc(p))}${a ? ` <small class="rut-edt">editado (ScordSoft: ${esc(p.ec || '—')})</small>` : ''}</dd><dt>Técnico</dt><dd>${esc(rutTec(p))}${a ? ` <small class="rut-edt">ScordSoft: ${esc(p.tec || '—')}</small>` : ''}</dd>
+      <dt>Inicio</dt><dd>${p.ini ? 'Sí' : 'No'}</dd>${p.obs ? `<dt>Comentario</dt><dd class="rut-com">${esc(String(p.obs).slice(0, 300))}</dd>` : ''}</dl>
+    <form id="rut-f" class="rut-form"><label>Técnico en el ruteo<select name="tec"><option value="">— el de ScordSoft (${esc(p.tec ? tecCorto(p.tec) : 'sin técnico')}) —</option>${Object.keys(porE).sort().map(ec => `<optgroup label="${esc(ec)}">${porE[ec].map(t => `<option value="${esc(t)}" data-ec="${esc(ec)}"${a && a.tec === t ? ' selected' : ''}>${esc(t)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+      <label>EECC<select name="ec"><option value="">— la del técnico —</option>${ecs.map(ec => `<option${a && a.ec === ec ? ' selected' : ''}>${esc(ec)}</option>`).join('')}</select></label>
+      <label>Motivo<input name="nota" maxlength="120" value="${esc(a ? a.nota || '' : '')}" placeholder="Ej.: más cerca de su ruta"></label>
+      ${claveMaster() ? '' : '<label>Clave master<input name="clave" type="password" autocomplete="off" required></label>'}
+      <div class="rut-bt"><button type="submit" class="btn-pri">Guardar</button>${a ? '<button type="button" class="btn-out" data-rut-quitar>Volver al de ScordSoft</button>' : ''}<button type="button" class="btn-out" data-ficha="ab" data-os="${p.os}">Ver ficha del AB</button>
+      ${p.co ? `<a class="btn-out" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${encodeURIComponent(String(p.co).replace(/\s+/g, ''))}">Google Maps</a>` : ''}</div><p class="rut-msg" id="rut-msg" role="status"></p></form></div>`;
 }
-document.addEventListener('click', (e) => {
+async function rutGuardar(os, ajuste, clave) {
+  if (esCombo(D.filial)) throw new Error('Elige una sola filial para editar el ruteo.');
+  const r = await fetch(urlAjAv(D.filial || filialSel()) + '&accion=ruteo', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave }, body: JSON.stringify({ os, ajuste }) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Solo el usuario master puede editar el ruteo.'); }
+  if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+  ponerMaster(clave); RUTAV = j.ruteo || {};
+}
+document.addEventListener('click', async (e) => {
   if (e.target.closest('#pen-ruteo')) { abrirRuteo(); return; }
   if (!e.target.closest('#rut')) return;
   if (e.target.closest('#rut-cerrar')) { cerrarRuteo(); return; }
@@ -1668,6 +1694,7 @@ document.addEventListener('click', (e) => {
   const be = e.target.closest('[data-rut-ec]'); if (be) { const v = be.dataset.rutEc; if (!v) RUT.ec.clear(); else RUT.ec.has(v) ? RUT.ec.delete(v) : RUT.ec.add(v); RUT.ajustado = false; pintarRuteo(); return; }
   const bt = e.target.closest('[data-rut-tec]'); if (bt) { const t = RUT.T && RUT.T.get(bt.dataset.rutTec); const pts = t ? t.L.map(p => rutCoord(p.co)).filter(Boolean) : []; if (pts.length && RUT.mapa) RUT.mapa.fitBounds(pts, { padding: [60, 60], maxZoom: 15 }); if (t && t.L[0]) { RUT.sel = t.L[0].os; pintarRuteo(); } return; }
   if (e.target.closest('[data-rut-x]')) { RUT.sel = null; pintarRuteo(); return; }
+  if (e.target.closest('[data-rut-quitar]')) { const k = claveMaster() || (($('rut-f').clave || {}).value || ''); try { await rutGuardar(RUT.sel, null, k); pintarRuteo(); } catch (err) { $('rut-msg').textContent = err.message; } }
 });
 document.addEventListener('change', (e) => {
   if (!e.target.closest('#rut')) return;
@@ -1676,6 +1703,14 @@ document.addEventListener('change', (e) => {
   else if (e.target.id === 'rut-rutas') pintarRuteo();
   else if (e.target.matches('[data-rut-tipo]')) { const k = e.target.dataset.rutTipo; e.target.checked ? RUT.tOff.delete(k) : RUT.tOff.add(k); pintarRuteo(); }
   else if (e.target.matches('[data-rut-ver]')) { const k = e.target.dataset.rutVer; e.target.checked ? RUT.ocultos.delete(k) : RUT.ocultos.add(k); pintarRuteo(); }
+  else if (e.target.name === 'tec' && e.target.form && e.target.form.id === 'rut-f') { const o = e.target.selectedOptions[0]; if (o && o.dataset.ec) e.target.form.ec.value = o.dataset.ec; }
+});
+document.addEventListener('submit', async (e) => {
+  if (e.target.id !== 'rut-f') return; e.preventDefault(); const f = e.target, k = claveMaster() || (f.clave ? f.clave.value : '');
+  const tec = f.tec.value, ec = f.ec.value || (f.tec.selectedOptions[0] || {}).dataset?.ec || '', p = rutBase().find(x => x.os === RUT.sel);
+  $('rut-msg').textContent = 'Guardando…';
+  try { await rutGuardar(RUT.sel, tec || ec ? { tec, ec, nota: f.nota.value, ab: p && p.ab } : null, k); pintarRuteo(); $('rut-msg').textContent = '✓ Guardado: lo ven todos en el ruteo.'; }
+  catch (err) { $('rut-msg').textContent = err.message; }
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('rut') && !$('rut').hidden && $('modal').hidden) cerrarRuteo(); });
 
