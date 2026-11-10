@@ -453,8 +453,8 @@ function pintarAlertas() {
 }
 setInterval(() => { if (D.pend.length) pintarAlertas(); }, 60e3);
 setInterval(async () => { if (document.visibilityState === 'visible' && $('fondo').hidden && D.pend.length && await traerComRecientes()) pintar(); }, 30e3);   // comentarios de la EECC (también de otros usuarios de la misma EECC)
-/* Alto de la tabla: que entren 28 filas (encabezado + 28 filas); con más, se desplaza dentro de la tabla */
-const FILAS_VISIBLES = 28;
+/* Alto de la tabla: que entren 20 filas (encabezado + 20 filas); con más, se desplaza dentro de la tabla */
+const FILAS_VISIBLES = 20;
 function altoTabla() {
   const caja = $('tb').closest('.caja'), R = $('filas').rows, th = $('cab').getBoundingClientRect().height;
   if (!R.length || !th) return;
