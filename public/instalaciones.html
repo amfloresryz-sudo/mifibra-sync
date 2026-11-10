@@ -1672,6 +1672,11 @@ function evalGestion(p) {
   else if (fec && fra) { p.ges = true; p.gesM = 'Comentario con fecha y franja'; }
   else if ((pal >= 5 && RE_MOT.test(t)) || pal >= 10) { p.ges = true; p.gesM = 'Buen comentario' + (fec ? ' (con fecha, sin franja)' : fra ? ' (con franja, sin fecha)' : ''); }
   else { p.ges = false; p.gesM = 'Comentario sin fecha ni franja y poco detallado'; }
+  // Si el ÚLTIMO comentario dice que el técnico está en camino, en proceso o instalando, el AB se está atendiendo: cuenta como gestionado
+  if (!p.ges) { const ult = p.ovx || String(p.ovt || p.ov || '').split(/(?<=%)\s*,\s*|(?=#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#)/)
+      .map(x => x.replace(/%[^%]*%/g, ' ').replace(/#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#/g, ' ').replace(/\$R\$/g, ' ').trim()).filter(Boolean).pop() || '';
+    const m = /\b(?:EN\s+(?:CAMINO|RUTA|PROCESO)|INSTALANDO|EN\s+INSTALACI[OÓ]N)\b/i.exec(ult);
+    if (m) { p.ges = true; p.gesM = `El último comentario indica que el técnico está ${/INSTAL/i.test(m[0]) ? 'instalando' : /PROCESO/i.test(m[0]) ? 'en proceso' : 'en camino'}`; } }
   if (p.ovx) p.gesM = (p.gesM || '') + ` · incluye el comentario de la EECC de las ${new Date(Date.parse(p.ovxC.creado_en) - 5 * 3600e3).toISOString().slice(11, 16)} (aún no llega de ScordSoft)`;
 }
 function aplicarAjustes() {
