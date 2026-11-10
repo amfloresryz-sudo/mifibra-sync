@@ -369,6 +369,11 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .ing-t th.dia-h { font: 700 11.5px var(--f-disp); text-align: center; white-space: nowrap; } .ing-t th.dia-h small { display: block; font-weight: 500; color: var(--fg-4); }
 .ing-t td.sem-c { font-weight: 700; } .ing-t th.sem-t { background: var(--gris-bg); } .ing-t td.prom-c { color: var(--fg-3); font-weight: 500; }
 .ing-t td:first-child { white-space: nowrap; }
+.di-dd { position: relative; display: inline-block; } .di-dd > summary { list-style: none; cursor: pointer; } .di-dd > summary::-webkit-details-marker { display: none; }
+.di-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 300px; background: var(--sup); border: 1px solid var(--borde-2); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 10px; }
+.di-acc { display: flex; gap: 6px; margin-bottom: 8px; } .di-acc .btn-out { padding: 4px 10px; font-size: 12px; } .di-bus { margin-bottom: 6px; }
+.di-lista { max-height: 300px; overflow: auto; } .di-lista label { display: flex; align-items: center; gap: 8px; padding: 4px 4px; font-size: 12.5px; cursor: pointer; border-radius: 6px; }
+.di-lista label:hover { background: var(--gris-bg); } .di-lista label span { flex: 1; } .di-lista label small { color: var(--fg-4); }
 #tb-ing, #tb-eecc { width: auto; min-width: 0; } #tb-ing td, #tb-ing th, #tb-eecc td, #tb-eecc th { padding-left: 8px; padding-right: 8px; }
 #tb-ing td:not(:first-child), #tb-eecc td:not(:first-child) { min-width: 34px; text-align: center; }
 #tb-eecc th.ec-h { text-align: center; white-space: normal; min-width: 64px; max-width: 110px; line-height: 1.2; vertical-align: bottom; font-size: 11px; }
@@ -1988,17 +1993,26 @@ function pintarDetalle() {
   pintarAltas('altas-segs', 'altas-mat', 'altas-sub', 'altEc', 'altTp', 'tb-altas', true);
   plegarAltas();
 }
-const altasP = {}, altasAbiertas = new Set();   // zonas expandidas (al cargar la página siempre empiezan contraídas)
+const altasP = {}, altasAbiertas = new Set(), altasDiX = {}, altasDdAb = new Set();   // altasDiX: distritos desmarcados por tabla; altasDdAb: lista de distritos abierta   // zonas expandidas (al cargar la página siempre empiezan contraídas)
 /* Altas pendientes por zona/distrito × F. Recep (se usa en Detalle y en Ingresos) */
 function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
   const P0 = D.pend.filter(ok).filter(p => p.rec), SE = filtro[kEc], ST = filtro[kTp];
+  // Distrito: lista con casillas, todos marcados de inicio; se guarda lo DESMARCADO (así un distrito nuevo aparece marcado)
+  const DX = altasDiX[tbId] || (altasDiX[tbId] = new Set()), okD = (p) => !DX.has(p.di);
   const okE = (p) => !SE.size || SE.has(p.ec), okT = (p) => !ST.size || ST.has(estAg(p));
   // Varias opciones a la vez: cada segmentador cuenta con lo elegido en el otro.
   const grupos = [
-    { k: kEc, t: 'EECC', S: SE, ops: ecsDe(P0), cnt: (o) => P0.filter(p => okT(p) && p.ec === o).length },
-    { k: kTp, t: 'Tipo', S: ST, ops: ALT_TIPOS, cnt: (o) => P0.filter(p => okE(p) && estAg(p) === o).length } ];
+    { k: kEc, t: 'EECC', S: SE, ops: ecsDe(P0), cnt: (o) => P0.filter(p => okT(p) && okD(p) && p.ec === o).length },
+    { k: kTp, t: 'Tipo', S: ST, ops: ALT_TIPOS, cnt: (o) => P0.filter(p => okE(p) && okD(p) && estAg(p) === o).length } ];
   $(segsId).innerHTML = grupos.map(g => `<div class="g" data-k="${g.k}"><span class="seg-t">${g.t}</span><button type="button" class="chip" data-mv="" aria-pressed="${!g.S.size}">Todos</button>${g.ops.map(o => `<button type="button" class="chip" data-mv="${esc(o)}" aria-pressed="${g.S.has(o)}">${esc(o)} (${g.cnt(o)})</button>`).join('')}</div>`).join('');
-  const P = P0.filter(p => okE(p) && okT(p));
+  const P1 = P0.filter(p => okE(p) && okT(p)), nDi = {}; P1.forEach(p => { nDi[p.di] = (nDi[p.di] || 0) + 1; });
+  const dis = [...new Set([...Object.keys(nDi), ...DX])].sort((a, b) => (nDi[b] || 0) - (nDi[a] || 0) || (a < b ? -1 : 1)), nSel = dis.filter(d => !DX.has(d)).length;
+  $(segsId).insertAdjacentHTML('beforeend', `<div class="g"><span class="seg-t">Distrito</span><details class="di-dd" data-dx-tb="${tbId}"${altasDdAb.has(tbId) ? ' open' : ''}>
+    <summary class="chip" aria-pressed="${DX.size > 0}">${DX.size ? `${nSel} de ${dis.length} distritos` : `Todos los distritos (${dis.length})`} ▾</summary>
+    <div class="di-pop"><div class="di-acc"><button type="button" class="btn-out" data-dx-all="1">Marcar todos</button><button type="button" class="btn-out" data-dx-all="0">Quitar todos</button></div>
+      <input type="search" class="aj-in di-bus" placeholder="Buscar distrito…" aria-label="Buscar distrito">
+      <div class="di-lista">${dis.map(d => `<label><input type="checkbox" data-dx="${esc(d)}"${DX.has(d) ? '' : ' checked'}><span>${esc(d)}</span><small>${nDi[d] || 0}</small></label>`).join('')}</div></div></details></div>`);
+  const P = P1.filter(okD);
   altasP[tbId] = P;
   // Responsable: por zona en Lima (se edita con la clave master); en Provincias, por filial = los gestores que cada provincia
   // asignó a sus EECC en «Metas, EECC y gestores» (primero el que tiene más pendientes)
@@ -2007,7 +2021,7 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
     Object.keys(cnt).forEach(z => { RESP[z] = Object.keys(cnt[z]).sort((a, b) => cnt[z][b] - cnt[z][a] || a.localeCompare(b)).join(' / '); });
     Object.entries(AJ.prov || {}).forEach(([f, a]) => { if (!RESP[f]) { const g = [...new Set(Object.values(a.gestores || {}).filter(Boolean))]; if (g.length) RESP[f] = g.join(' / '); } }); }
   $('altas-resp').hidden = (D.filial || 'LIMA') !== 'LIMA'; $('altas-resp').style.display = $('altas-resp').hidden ? 'none' : '';   // solo Lima edita responsables
-  $(subId).textContent = `${P.length} altas pendientes${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}${SE.size ? ' · EECC: ' + [...SE].join(', ') : ''}${ST.size ? ' · Tipo: ' + [...ST].join(', ') : ''}`;
+  $(subId).textContent = `${P.length} altas pendientes${!MS(seg).size ? '' : ' · ' + msTxt(seg)}${!MS(zona).size ? '' : ' · zona ' + msTxt(zona)}${SE.size ? ' · EECC: ' + [...SE].join(', ') : ''}${ST.size ? ' · Tipo: ' + [...ST].join(', ') : ''}${DX.size ? ' · sin ' + DX.size + (DX.size === 1 ? ' distrito: ' : ' distritos: ') + [...DX].join(', ') : ''}`;
   if (!P.length) { $(matId).innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const f10 = (p) => p.rec.slice(0, 10), fechas = [...new Set(P.map(f10))].sort();
   const cls = (f) => { const e = edadDias(f); return e >= 8 ? 'e3' : e >= 4 ? 'e2' : e >= 3 ? 'e1' : ''; };
@@ -2028,6 +2042,15 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
 
 const ALT_TIPOS = ['INCUMPLIDA', 'HOY', 'MAÑANA', 'FUTURA', 'COORDINADA', 'SIN AGENDA'];
 // Segmentadores de Altas pendientes con varias opciones a la vez («Todos» limpia la selección).
+// Lista de distritos: marcar / desmarcar uno, todos o ninguno; el buscador solo oculta filas de la lista (no filtra la tabla)
+document.addEventListener('toggle', (e) => { const d = e.target; if (!d.matches || !d.matches('[data-dx-tb]')) return; d.open ? altasDdAb.add(d.dataset.dxTb) : altasDdAb.delete(d.dataset.dxTb); }, true);
+document.addEventListener('change', (e) => { const c = e.target.closest('[data-dx]'); if (!c) return; const dd = c.closest('[data-dx-tb]'), X = altasDiX[dd.dataset.dxTb];
+  c.checked ? X.delete(c.dataset.dx) : X.add(c.dataset.dx); requestAnimationFrame(pintarDetalle); });
+document.addEventListener('input', (e) => { const i = e.target.closest('.di-bus'); if (!i) return; const q = i.value.trim().toUpperCase();
+  i.closest('.di-pop').querySelectorAll('.di-lista label').forEach(l => { l.hidden = !!q && !l.textContent.toUpperCase().includes(q); }); });
+document.addEventListener('click', (e) => { const a = e.target.closest('[data-dx-all]'); if (!a) return; const dd = a.closest('[data-dx-tb]'), X = altasDiX[dd.dataset.dxTb];
+  if (a.dataset.dxAll === '1') X.clear(); else dd.querySelectorAll('[data-dx]').forEach(c => X.add(c.dataset.dx)); requestAnimationFrame(pintarDetalle); });
+document.addEventListener('click', (e) => { if (e.target.closest('.di-dd')) return; document.querySelectorAll('.di-dd[open]').forEach(d => { d.open = false; }); });
 $('altas-segs').addEventListener('click', (e) => {
   const b = e.target.closest('[data-mv]'), g = e.target.closest('[data-k]'); if (!b || !g) return;
   const S = filtro[g.dataset.k], v = b.dataset.mv;
