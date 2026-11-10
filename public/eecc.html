@@ -296,6 +296,7 @@ const dias = (iso) => iso ? Math.round((msIso(hoyIso()) - msIso(String(iso).slic
 const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const fIso = (s) => { if (!s) return '—'; const [, m, d] = String(s).slice(0, 10).split('-'); return `${d}-${MES[+m - 1]}.`; };
 const fCorta = fIso;
+const fDia = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split('-'); return `${d}/${m}/${y}`; };   // fecha sola, para el filtro de F. recep
 const fRec = (iso) => iso ? `${fIso(iso)} ${String(iso).slice(11, 16)}` : '—';
 const fHora = (iso) => iso ? new Date(iso).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
 const CORTOS = { 'SAN JUAN DE LURIGANCHO': 'SJL', 'SAN MARTIN DE PORRES': 'SMP', 'SAN JUAN DE MIRAFLORES': 'SJM', 'PUENTE PIEDRA': 'P. PIEDRA', 'JESUS MARIA': 'JESÚS M.', 'VILLA MARIA DEL TRIUNFO': 'VMT', 'VILLA SALVADOR': 'VES', 'VILLA EL SALVADOR': 'VES', 'CARMEN DE LA LEGUA REYNOSO': 'C. LEGUA', 'SANTIAGO DE SURCO': 'SURCO' };
@@ -406,7 +407,7 @@ const COLS = [
   ['F. AG', (p) => estAg(p) === 'SIN AGENDA' ? '—' : fIso(p.fp), (p) => estAg(p) === 'SIN AGENDA' ? '~' : p.fp, (p) => estAg(p) === 'SIN AGENDA' ? '—' : fIso(p.fp), (p) => estAg(p) !== 'SIN AGENDA' && fpOs(p), 4.4],
   ['Franja', (p) => conFranja(p) ? esc(p.fr) : '—', (p) => conFranja(p) ? String(parseInt(p.fr, 10)).padStart(2, '0') : '~', (p) => conFranja(p) ? p.fr.replace(/\s+/g, ' ') : '—', (p) => conFranja(p) && frOs(p), 4.2],
   ['Inic.', (p) => `<span class="b ${p.ini ? 'ges' : 'sag'} ini-pop" tabindex="0" data-ini-os="${p.os}">${p.ini ? 'SÍ' : 'NO'}</span>`, (p) => p.ini ? 0 : 1, (p) => p.ini ? 'SÍ' : 'NO', null, 3.4],
-  ['F. recep', (p) => p.rec ? fRec(p.rec) : '—', (p) => p.rec || '~', (p) => p.rec ? fRec(p.rec) : '—', null, 6.4],
+  ['F. recep', (p) => p.rec ? fRec(p.rec) : '—', (p) => p.rec || '~', (p) => p.rec ? fDia(p.rec) : '—', null, 6.4],   // filtro: solo la fecha
   ['Días', (p) => { const d = dias(p.rec); return d === null ? '—' : `<span class="b ant${d >= 3 ? ' r' : d >= 1 ? ' v' : ''}" title="${d} ${d === 1 ? 'día' : 'días'} desde la recepción">${d} d</span>`; },
     (p) => dias(p.rec) ?? -1, (p) => { const d = dias(p.rec); return d === null ? '—' : `${d} d`; }, null, 3.4],
   ['', (p) => `<button type="button" class="adj" data-os="${p.os}" data-subir="1" title="Adjuntar evidencia (fotos, PDF o video)" aria-label="Adjuntar evidencia al AB ${p.ab}">📎</button>`, null, null, null, 2.6] ];
@@ -528,8 +529,8 @@ $('f-fil').onchange = (e) => { F.fil = e.target.value; pintar(); };
 function cerrarFiltro() { const f = document.querySelector('.fpop'); if (f) f.remove(); }
 function abrirFiltro(btn) {
   const c = +btn.dataset.fcol, ya = document.querySelector('.fpop'); if (ya) { const mismo = ya._c === c; ya.remove(); if (mismo) return; }
-  const cnt = new Map(); filtrar(c).forEach(p => { const t = COLS[c][3](p); cnt.set(t, (cnt.get(t) || 0) + 1); });
-  const vals = [...cnt.keys()].sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }));
+  const cnt = new Map(), clave = new Map(); filtrar(c).forEach(p => { const t = COLS[c][3](p); cnt.set(t, (cnt.get(t) || 0) + 1); if (COLS[c][0] === 'F. recep') clave.set(t, String(p.rec || '~').slice(0, 10)); });
+  const vals = [...cnt.keys()].sort((a, b) => clave.size ? clave.get(a).localeCompare(clave.get(b)) : String(a).localeCompare(String(b), 'es', { numeric: true }));   // F. recep: por fecha
   const sel = colFil[c] ? new Set(colFil[c]) : new Set(vals);
   const pop = document.createElement('div'); pop.className = 'fpop'; pop._c = c;
   pop.innerHTML = `<input type="search" placeholder="Buscar valor" aria-label="Buscar valor"><div class="fl"></div><div class="fb"><button type="button" class="btn out" data-f="quitar">Quitar filtro</button><button type="button" class="btn pri" data-f="ok">Aplicar</button></div>`;
