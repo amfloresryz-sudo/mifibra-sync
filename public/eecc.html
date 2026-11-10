@@ -453,6 +453,15 @@ function pintarAlertas() {
 }
 setInterval(() => { if (D.pend.length) pintarAlertas(); }, 60e3);
 setInterval(async () => { if (document.visibilityState === 'visible' && $('fondo').hidden && D.pend.length && await traerComRecientes()) pintar(); }, 30e3);   // comentarios de la EECC (también de otros usuarios de la misma EECC)
+/* Alto de la tabla: que entren 41 filas (encabezado + 41 filas); con más, se desplaza dentro de la tabla */
+const FILAS_VISIBLES = 41;
+function altoTabla() {
+  const caja = $('tb').closest('.caja'), R = $('filas').rows, th = $('cab').getBoundingClientRect().height;
+  if (!R.length || !th) return;
+  let h = th + 2; for (let i = 0; i < Math.min(FILAS_VISIBLES, R.length); i++) h += R[i].getBoundingClientRect().height;
+  caja.style.maxHeight = Math.ceil(h) + 'px';
+}
+addEventListener('resize', () => { clearTimeout(altoTabla.t); altoTabla.t = setTimeout(altoTabla, 150); });
 function pintar() {
   pintarAlertas();
   aplicarComEecc(); D.pend.forEach(evalGestion);   // siempre con las reglas de la web unificada
@@ -478,6 +487,7 @@ function pintar() {
   $('cols').innerHTML = COLS.map(c => `<col style="width:${(c[5] / tot * 100).toFixed(2)}%">`).join('');
   $('filas').innerHTML = orden.length ? orden.map(p => `<tr>${COLS.map(([, h, , , v], i) => `<td${v ? ok(v(p), 'Coincide con la OS') : ''}${COLS[i][0] === 'H / V' ? ` data-x="${hvDe(p)}"` : ''}>${h(p)}</td>`).join('')}</tr>`).join('')
     : `<tr><td colspan="${COLS.length}" class="vacio">No hay pendientes con este filtro.</td></tr>`;
+  altoTabla();
   $('tarjetas').innerHTML = orden.length ? orden.map(p => `<div class="tj">
       <div class="tj-top"><div><button type="button" class="ab" data-os="${p.os}">AB ${p.ab}</button><span class="os">OS ${p.os}</span></div><span class="b tt-${tipoCls(p)}">${esc(tipoTr(p))}</span></div>
       <div class="tj-l"><b>${val(p.di)}</b> · ${vivB(p)} · ${segB(p.seg)} · ${esc(p.pl || '')}</div>
