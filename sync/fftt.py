@@ -1,4 +1,4 @@
-"""Tablero del buscador FFTT (facilidades técnicas): altas de internet DESCARGADA del periodo del reporte, con su TAP (ZONA),
+"""Tablero del buscador FFTT (facilidades técnicas): altas INSTALACION SERVICIO del servicio INTERNET en estado DESCARGADA del periodo del reporte, con su TAP (ZONA),
 caja (NAP), borne, cintillo (Dispositivo), EECC, técnico y planta. La página valida el formato por planta y busca cintillos
 duplicados; aquí solo se arma la lista (sin leer Supabase)."""
 import pandas as pd
@@ -17,6 +17,10 @@ def _t(v) -> str:
 
 def construir(df: pd.DataFrame, corte: str) -> dict:
     d = df[(df["tipo_orden"] == "INSTALACION SERVICIO") & (df["estado_os"] == "DESCARGADA")]
+    # Solo el servicio INTERNET: la OS del servicio OTT (TV) que nace con la misma alta trae el mismo TAP, caja y cintillo y
+    # duplicaba el AB (y su cintillo) en el buscador. Si el reporte no trae la columna servicio, se deja todo como antes.
+    if "servicio" in d and d["servicio"].notna().any():
+        d = d[d["servicio"].fillna("INTERNET").astype(str).str.strip().str.upper() == "INTERNET"]
     plantas = instalaciones.CONFIG["plantas"]
     filas = []
     for r in d.itertuples(index=False):
