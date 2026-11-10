@@ -449,7 +449,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .b.v1 { background: #FFE58A; color: #3D2E00; }
 .td-vis { white-space: normal; } .td-vis .b { display: block; width: max-content; max-width: 100%; margin: 2px auto; font-size: 11px; }
 .b.ec { font-weight: 700; } .b.ec-cam { background: #CFE3FF; color: #0B3D91; } .b.ec-sit { background: #C9F2EA; color: #04594A; }
-.b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
+.b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-pro { background: #D2F1EE; color: #0B5750; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
 #tb-pend td.td-vis { white-space: normal !important; }
 /* ---------- Supervisión ---------- */
 .sup-hero { background: var(--noche); color: #fff; } .sup-hero h2 { color: #fff; margin: 0; } .sup-hero .sub { color: #C9CAD6; }
@@ -2389,6 +2389,7 @@ const EST_CAMPO = [
   ['camino', /\b(?:TEC(?:NICO)?\.?\s*)?EN\s+(?:CAMINO|RUTA)\b|\bSALIENDO\s+(?:AL|A)\s+(?:PUNTO|DOMICILIO)/gi, 'En camino', 'ec-cam'],
   ['sitio', /\bEN\s+(?:SITIO|DOMICILIO|PUNTO|PREDIO)\b|\bTEC(?:NICO)?\.?\s+LLEG[OÓ]\b|\bLLEG[OÓ]\s+AL\s+(?:PUNTO|DOMICILIO)/gi, 'En sitio', 'ec-sit'],
   ['instal', /\bINSTALANDO\b|\bEN\s+(?:PROCESO\s+DE\s+)?INSTALACI[OÓ]N\b|\bTRABAJANDO\b/gi, 'Instalando', 'ec-ins'],
+  ['proceso', /\bEN\s+PROCESO\b/gi, 'En proceso', 'ec-pro'],   // «en proceso de instalación» sigue siendo Instalando (empata en la misma posición y gana la de arriba)
   ['nocont', /\bNO\s+CONTESTA\b|\bCLIENTE\s+AUSENTE\b|\bNO\s+SE\s+ENCUENTRA\b|\bAUSENTE\b|\bNADIE\s+ATIENDE\b|\bNO\s+UBICA|\bAPAGADO\b|\bBUZ[OÓ]N\b/gi, 'No contesta', 'ec-noc'],
   ['reprog', /\bREPROG?RAM|\bREPROGRMA|\bRE\s*AGEND|\bREPROGAM/gi, 'Reprogramó', 'ec-rep'],
 ];
