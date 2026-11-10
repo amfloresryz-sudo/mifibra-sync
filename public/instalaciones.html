@@ -1144,7 +1144,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-ingresos" aria-labelledby="tab-ingresos" hidden style="flex-direction:column;gap:22px">
     <section class="sec" aria-labelledby="t-ing">
       <div><h2 id="t-ing">Distrito y fechas de ingreso</h2><p class="sub" id="ing-sub"></p></div>
-      <p class="nota">Altas por distrito (filas) y día de F. Recep (columnas), del 01 a la fecha de corte, agrupadas por semana (lunes a domingo): la semana cerrada se ve en una columna con su total y la semana en curso abierta por día; toca ▸ / ▾ en cada semana para abrirla o plegarla. El promedio por día es el total ÷ días transcurridos del mes. Respeta los filtros de Segmento y Zona.</p>
+      <p class="nota">Altas por distrito (filas) y día de F. Recep (columnas), del 01 a la fecha de corte, agrupadas por semana del mes (1–7 semana 1, 8–14 semana 2, 15–21 semana 3, 22–28 semana 4, 29 al fin de mes semana 5): la semana cerrada se ve en una columna con su total y la semana en curso abierta por día; toca ▸ / ▾ en cada semana para abrirla o plegarla. El promedio por día es el total ÷ días transcurridos del mes. Respeta los filtros de Segmento y Zona.</p>
       <div class="ing-acc" id="ing-acc"><button type="button" class="btn-out" data-sem-todo="0">Agrupar todas las semanas</button><button type="button" class="btn-out" data-sem-todo="1">Ver todos los días</button><button type="button" class="btn-out" data-sem-todo="">Semana en curso abierta</button></div>
       <div class="scroll" id="ing-mat"></div>
     </section>
@@ -1942,11 +1942,13 @@ function pintarIngresos() {
   const cols = Object.keys(tot).sort((a, b) => tot[b] - tot[a] || (a < b ? -1 : 1));
   const cel = cuenta(I, x => x.d + '|' + x.di), mx = Math.max(1, ...Object.values(cel));
   $('ing-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · ${n(I.length)} ingresos${!MS(seg).size ? '' : ' · ' + msTxt(seg)}`;
-  // Días agrupados por semana (lunes a domingo): la semana cerrada se ve en una fila (plegada) y la semana en curso abierta con sus días;
+  // Días agrupados por semana del mes: la semana cerrada se ve en una columna (plegada) y la semana en curso abierta con sus días;
   // cada semana se abre o se pliega con un clic (ingSem guarda lo que eligió el usuario).
   const hoyL = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
-  const iso = (d) => `${D.anio}-${pad2(D.mes)}-${pad2(d)}`, lunes = (d) => { const f = new Date(D.anio, D.mes - 1, d); f.setDate(f.getDate() - ((f.getDay() + 6) % 7)); return f; };
-  const SEM = []; DIAS.forEach(d => { const l = lunes(d), k = l.toLocaleDateString('sv-SE'); let w = SEM[SEM.length - 1]; if (!w || w.k !== k) { const dom = new Date(l); dom.setDate(l.getDate() + 6); w = { k, dias: [], cerrada: dom.toLocaleDateString('sv-SE') < hoyL }; SEM.push(w); } w.dias.push(d); });
+  // Semanas del mes por número de día: 1–7 = semana 1, 8–14 = semana 2, 15–21 = semana 3, 22–28 = semana 4, 29 al fin de mes = semana 5.
+  const finMes = new Date(D.anio, D.mes, 0).getDate(), iso = (d) => `${D.anio}-${pad2(D.mes)}-${pad2(d)}`;
+  const SEM = []; DIAS.forEach(d => { const i = Math.floor((d - 1) / 7), k = `${D.anio}-${pad2(D.mes)}-S${i + 1}`; let w = SEM[SEM.length - 1];
+    if (!w || w.k !== k) { w = { k, n: i + 1, dias: [], cerrada: iso(Math.min(7 * (i + 1), finMes)) < hoyL }; SEM.push(w); } w.dias.push(d); });
   const abierta = (w) => ingSem[w.k] ?? ingTodo ?? !w.cerrada;
   const celS = {}; SEM.forEach(w => w.dias.forEach(d => cols.forEach(c => { celS[w.k + '|' + c] = (celS[w.k + '|' + c] || 0) + (cel[d + '|' + c] || 0); })));
   const mxS = Math.max(1, ...Object.values(celS));
@@ -1956,7 +1958,7 @@ function pintarIngresos() {
   const totCol = (c) => c.t === 'd' ? cols.reduce((x, di) => x + (cel[c.d + '|' + di] || 0), 0) : cols.reduce((x, di) => x + (celS[c.w.k + '|' + di] || 0), 0);
   const rango = (w) => { const a = w.dias[0], b = w.dias[w.dias.length - 1]; return `${pad2(a)}${a !== b ? '–' + pad2(b) : ''} ${MC}.`; };
   const cab1 = SEM.map(w => { const ab = abierta(w), span = ab ? w.dias.length : 1;
-    return `<th colspan="${span}" class="sem-h${ab ? ' ab' : ''}"><button type="button" class="sem-tg" data-sem-tg="${w.k}" aria-expanded="${ab}" title="${ab ? 'Plegar' : 'Abrir'} la semana"><i>${ab ? '▾' : '▸'}</i>Sem. ${rango(w)}<small>${w.cerrada ? 'cerrada' : 'en curso'}</small></button></th>`; }).join('');
+    return `<th colspan="${span}" class="sem-h${ab ? ' ab' : ''}"><button type="button" class="sem-tg" data-sem-tg="${w.k}" aria-expanded="${ab}" title="${ab ? 'Plegar' : 'Abrir'} la semana"><i>${ab ? '▾' : '▸'}</i>Semana ${w.n}<small>${rango(w)} · ${w.cerrada ? 'cerrada' : 'en curso'}</small></button></th>`; }).join('');
   const cab2 = colsT.map(c => c.t === 'd' ? `<th class="dia-h">${pad2(c.d)}<small>${diaInfo(c.d).wd}</small></th>` : `<th class="dia-h sem-t">Total<small>${c.w.dias.length} día${c.w.dias.length === 1 ? '' : 's'}</small></th>`).join('');
   const filas = cols.map(di => `<tr><td title="${esc(di)}">${esc(di)}</td>${colsT.map(c => { const v = valor(c, di); return `<td class="${calor(v, c.t === 'd' ? mx : mxS)}${c.t === 's' ? ' sem-c' : ''}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tot[di]}</td><td class="t-col prom-c">${dec(tot[di] / D.dias)}</td></tr>`).join('');
   $('ing-mat').innerHTML = !I.length ? '<p class="nota">No hay ingresos con este filtro.</p>' : `<table class="mat ing-t" id="tb-ing"><thead><tr><th rowspan="2">Distrito</th>${cab1}<th rowspan="2">Total</th><th rowspan="2">Prom.<br>por día</th></tr><tr>${cab2}</tr></thead><tbody>${filas}</tbody>
