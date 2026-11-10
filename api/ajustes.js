@@ -221,6 +221,14 @@ module.exports = async (req, res) => {
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
         if (!esMaster(req)) return responder(res, 403, { error: 'Clave master incorrecta: solo el usuario master puede cambiar los responsables.' });
         nuevo = { ...previo, responsables: limpiarResponsables(cuerpo?.responsables, modulo === 'averias') };
+      } else if (accion === 'metas') {
+        // Metas de la filial editadas desde «Lima + Provincias» / «Provincias»: solo el usuario master (clave de administrador).
+        // Solo cambian las metas (generales y por canal); nombres, gestores, rutas y lo demás se conservan.
+        if (modulo !== 'instalaciones') return responder(res, 400, { error: 'Módulo no válido.' });
+        if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
+        if (!esMaster(req)) return responder(res, 403, { error: 'Clave de administrador incorrecta: solo el usuario master puede cambiar las metas aquí.' });
+        const mc = {}; for (const c of CANALES) { const m = limpiarMetas(cuerpo?.metasCn?.[c]); if (Object.keys(m).length) mc[c] = m; }
+        nuevo = { ...previo, metas: limpiarMetas(cuerpo?.metas), metasCn: mc };
       } else if (accion === 'tecnicos') {
         // EECC de cada técnico: solo el usuario master. Reemplaza la lista completa.
         if (!process.env.MASTER_TOKEN) return responder(res, 403, { error: 'Falta configurar la clave master (MASTER_TOKEN) en Vercel.' });
