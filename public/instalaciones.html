@@ -903,6 +903,8 @@ tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: 
 .fil-act { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .tb-ind tr.ec-h td:first-child { padding-left: 18px; }
 .sub-f { color: var(--magenta-txt); font-weight: 700; }
+.pv-tb .aj-in { width: 74px; text-align: center; padding: 5px 6px; } .pv-tb .aj-in.cam { border-color: var(--acc, #e6007e); background: var(--rosa); }
+.pv-pie { display: flex; gap: 10px; align-items: flex-end; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; } .pv-pie label { font: 700 11px var(--f-disp); text-transform: uppercase; letter-spacing: .4px; color: var(--fg-3); display: flex; flex-direction: column; gap: 4px; } .pv-pie .aj-in { width: 190px; }
 .pv-tb td, .pv-tb th { text-align: center; } .pv-tb td:first-child, .pv-tb th:first-child { text-align: left; } .pv-tb tr.pv-tot td { background: var(--rosa); border-top: 2px solid var(--fg); }
 .aj-cn { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; } .aj-cn .chip { color: var(--fg); border-color: var(--borde); }
 .aj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 18px; }
@@ -3711,30 +3713,67 @@ function abrirAjustes() {
   $('modal-copiar').hidden = true; pintarAjMetas();
   if (!ajOk) $('modal-aviso').textContent = 'Aún no se pudieron leer los ajustes guardados; lo que guardes ahora los reemplazará.';
 }
-/* Provincias › Todas: resumen (solo lectura) de lo que se llenó en cada provincia; se edita en cada filial */
-let pvCn = 'TODOS';
+/* Lima + Provincias / Provincias › Todas: las metas de cada filial se editan aquí mismo (con la clave master) y se guardan
+   en los ajustes de cada filial, así se ven igual al entrar a esa filial. Los gestores se siguen editando en cada filial. */
+let pvCn = 'TODOS', pvEd = {};
+const pvCopia = () => { const o = {}; Object.keys(AJ.prov || {}).forEach(f => { const a = AJ.prov[f] || {};
+  o[f] = { metas: { ...(a.metas || {}) }, metasCn: Object.fromEntries(['IC', 'VI', 'OT'].map(c => [c, { ...((a.metasCn || {})[c] || {}) }])) }; }); return o; };
+const pvDe = (f, c) => c === 'TODOS' ? pvEd[f].metas : pvEd[f].metasCn[c];
+const pvCambio = (f) => { const a = AJ.prov[f] || {}, b = pvEd[f], lim = (m) => JSON.stringify(Object.fromEntries(Object.entries(m || {}).sort()));
+  return lim(a.metas) !== lim(b.metas) || ['IC', 'VI', 'OT'].some(c => lim((a.metasCn || {})[c]) !== lim(b.metasCn[c])); };
 function pintarPvMetas() {
   const f2 = (v, k) => v == null ? '<span style="color:var(--fg-4)">—</span>' : k === 'meta_mes' ? n(v) : dec(v);
-  const T = metasProv(pvCn), peso = {}; ((DP || D).pend || []).forEach(p => { peso[p.fi] = (peso[p.fi] || 0) + 1; });
+  const sv = AJ.prov; AJ.prov = pvEd; let T; try { T = metasProv(pvCn); } finally { AJ.prov = sv; }   // total con lo que se está escribiendo
+  const peso = {}; ((DP || D).pend || []).forEach(p => { peso[p.fi] = (peso[p.fi] || 0) + 1; });
+  const ph = (f, k) => pvCn !== 'TODOS' && pvEd[f].metas[k] != null ? String(pvEd[f].metas[k]) : String(D.config?.[k] ?? '');   // en gris: lo que se usa si queda vacío
+  const orig = (f, k) => { const a = AJ.prov[f] || {}, m = pvCn === 'TODOS' ? a.metas || {} : (a.metasCn || {})[pvCn] || {}; return m[k]; };
   $('pv-metas').innerHTML = `<div class="scroll"><table class="aj-tb pv-tb"><thead><tr><th>Filial</th>${METAS_AJ.map(([, t]) => `<th>${t.replace(' (instalaciones)', '').replace(' (%)', ' %')}</th>`).join('')}</tr></thead><tbody>
-    ${Object.keys(AJ.prov || {}).map(f => { const m = metaProvDe(AJ.prov[f] || { metas: {}, metasCn: {} }, pvCn); return `<tr><td>${esc(nomFil(f))}<small>${n(peso[f] || 0)} pendientes</small></td>${METAS_AJ.map(([k]) => `<td>${f2(m[k], k)}</td>`).join('')}</tr>`; }).join('')}
+    ${Object.keys(pvEd).map(f => { const m = pvDe(f, pvCn); return `<tr><td>${esc(nomFil(f))}<small>${n(peso[f] || 0)} pendientes</small></td>${METAS_AJ.map(([k, t]) => `<td><input class="aj-in${m[k] !== orig(f, k) ? ' cam' : ''}" type="number" step="any" min="0" data-pv-f="${esc(f)}" data-pv-k="${k}" value="${m[k] ?? ''}" placeholder="${esc(ph(f, k))}" aria-label="${esc(t)} · ${esc(nomFil(f))}"></td>`).join('')}</tr>`; }).join('')}
     <tr class="pv-tot"><td><b>${esc(MFF.txt(D.filial))}</b><small>lo que se usa aquí</small></td>${METAS_AJ.map(([k]) => `<td><b>${T[k] != null ? f2(T[k], k) : `${f2(D.config?.[k], k)} <small>(robot)</small>`}</b></td>`).join('')}</tr></tbody></table></div>`;
+  const nc = Object.keys(pvEd).filter(pvCambio).length; $('pv-guardar').disabled = !nc;
+  $('pv-guardar').textContent = nc ? `Guardar metas (${nc} filial${nc === 1 ? '' : 'es'})` : 'Guardar metas';
 }
 function abrirAjustesProv() {
-  pvCn = msUno(canal) || 'TODOS';
+  pvCn = msUno(canal) || 'TODOS'; pvEd = pvCopia();
   const cnt = {}; ((DP || D).pend || []).forEach(p => { const k = p.fi + '|' + ecProv(p); cnt[k] = (cnt[k] || 0) + 1; });
   const filas = Object.keys(AJ.prov || {}).flatMap(f => { const a = AJ.prov[f] || {}, ecs = new Set([...Object.keys(a.gestores || {}), ...Object.keys(cnt).filter(k => k.startsWith(f + '|')).map(k => k.slice(f.length + 1))]);
     return [...ecs].sort((x, y) => (cnt[f + '|' + y] || 0) - (cnt[f + '|' + x] || 0)).map(e => ({ f, e, nom: (a.nombres || {})[e] || e, ge: (a.gestores || {})[e] || '', n: cnt[f + '|' + e] || 0 })); });
   const html = secF('Metas · Provincias = suma de las filiales', `<div class="aj-cn" role="group" aria-label="Canal de las metas" id="pv-cn">${CANALES.map(([k, t]) => `<button type="button" class="chip" data-pv-cn="${k}" aria-pressed="${k === pvCn}">${t}</button>`).join('')}</div>
-      <div id="pv-metas"></div><p class="fi-nota">Meta del mes = suma de las metas de cada provincia. Las demás metas = promedio de las provincias que la llenaron, ponderado por sus pendientes. Lo que ninguna provincia llenó usa el valor del robot.</p>`)
+      <div id="pv-metas"></div><p class="fi-nota">Escribe la meta de cada filial. Vacío = se usa el valor en gris (el del robot; en un canal, la meta de «Todos» de esa filial). Lo que cambies se guarda en esa filial y se ve igual al entrar a ella. Total: meta del mes = suma de las filiales; las demás = promedio de las filiales que la llenaron, ponderado por sus pendientes.</p>
+      <div class="pv-pie"><label>Clave administrador<input class="aj-in" type="password" id="pv-clave" autocomplete="current-password" value="${esc(claveMaster())}"></label><button type="button" class="btn-out" id="pv-cerrar">Cancelar</button><button type="button" class="btn-pri" id="pv-guardar" disabled>Guardar metas</button></div>`)
     + secF('Gestores de cada filial', `<div class="scroll" style="max-height:40vh;overflow:auto"><table class="aj-tb"><thead><tr><th>Filial</th><th>EECC</th><th>Gestor</th><th>Pendientes</th></tr></thead><tbody>
       ${filas.map(r => `<tr><td>${esc(nomFil(r.f))}</td><td>${esc(r.nom)}${r.nom !== r.e ? `<small>${esc(r.e)}</small>` : ''}</td><td>${r.ge ? esc(r.ge) : '<span style="color:var(--fg-4)">Sin gestor</span>'}</td><td>${n(r.n)}</td></tr>`).join('') || '<tr><td colspan="4">Ninguna provincia tiene EECC con pendientes.</td></tr>'}
-      </tbody></table></div><p class="fi-nota">En Provincias cada AB toma el gestor que su filial le asignó a su EECC. Para cambiar metas o gestores, elige la filial (Ancash, Arequipa…) y edítalos ahí: aquí se juntan solos.</p>`)
-    + `<div class="aj-pie"><button type="button" class="btn-pri" id="pv-cerrar">Entendido</button></div>`;
+      </tbody></table></div><p class="fi-nota">Cada AB toma el gestor que su filial le asignó a su EECC. Para cambiar gestores, elige la filial (Lima, Ancash, Arequipa…) y edítalos ahí: aquí se juntan solos.</p>`);
   abrirFichaModal('Metas, EECC y gestores', `Instalaciones · ${esc(MFF.txt(D.filial))} · se juntan las metas y los gestores llenados en cada filial`, html);
   $('modal-copiar').hidden = true; pintarPvMetas();
 }
-document.addEventListener('click', (e) => { if (e.target.closest('#pv-cerrar')) { cerrarModal(); return; }
+document.addEventListener('input', (e) => { const i = e.target.closest('[data-pv-f]'); if (!i) return;
+  const m = pvDe(i.dataset.pvF, pvCn), v = i.value.trim(); if (v !== '' && isFinite(Number(v)) && Number(v) >= 0) m[i.dataset.pvK] = Number(v); else delete m[i.dataset.pvK];
+  const a = AJ.prov[i.dataset.pvF] || {}, o = (pvCn === 'TODOS' ? a.metas || {} : (a.metasCn || {})[pvCn] || {})[i.dataset.pvK]; i.classList.toggle('cam', m[i.dataset.pvK] !== o);
+  const foco = i.dataset.pvF + '|' + i.dataset.pvK, pos = i.selectionStart; pintarPvMetas();
+  const j = [...document.querySelectorAll('[data-pv-f]')].find(x => x.dataset.pvF + '|' + x.dataset.pvK === foco); if (j) { j.focus(); try { j.setSelectionRange(pos, pos); } catch { /* number */ } } });
+async function guardarPvMetas() {
+  const clave = $('pv-clave').value.trim(), F = Object.keys(pvEd).filter(pvCambio), av = $('modal-aviso');
+  if (!clave) { av.style.color = ''; av.textContent = 'Escribe la clave de administrador para guardar.'; $('pv-clave').focus(); return; }
+  $('pv-guardar').disabled = true; av.style.color = ''; av.textContent = `Guardando ${F.length} filial${F.length === 1 ? '' : 'es'}…`;
+  const ok = [], err = [];
+  for (const f of F) {
+    try { const metasCn = Object.fromEntries(Object.entries(pvEd[f].metasCn).filter(([, m]) => Object.keys(m).length));
+      const r = await fetch(urlAj(f) + '&accion=metas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-portal-token': tokenPortal(), 'x-master-token': clave },
+        body: JSON.stringify({ metas: pvEd[f].metas, metasCn }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 403) { ponerMaster(''); throw new Error(j.error || 'Clave de administrador incorrecta.'); }
+      if (!r.ok) throw new Error(j.error || `Error ${r.status}`);
+      AJ.prov[f] = { ...AJ.prov[f], metas: j.metas || {}, metasCn: j.metasCn || {} }; CACHE.set('aj:' + f, null); ok.push(f); }
+    catch (e) { err.push(`${nomFil(f)}: ${e.message}`); if (/clave/i.test(e.message)) break; }
+  }
+  if (ok.length) { ponerMaster(clave); CACHE.set('aj:' + ((D && D.filial) || filialSel()), AJ); aplicarAjustes(); pintarTodo(); }
+  const nuevo = pvCopia(); ok.forEach(f => { pvEd[f] = nuevo[f]; });   // lo que no se pudo guardar se queda escrito para reintentar
+  pintarPvMetas();
+  av.style.color = err.length ? 'var(--mal, #b42318)' : 'var(--ok)';
+  av.textContent = err.length ? `No se guardó: ${err.join(' · ')}${ok.length ? ` · sí se guardó: ${ok.map(nomFil).join(', ')}` : ''}` : `Metas guardadas en ${ok.map(nomFil).join(', ')}. Se ven igual al entrar a cada filial.`;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('#pv-cerrar')) { cerrarModal(); return; } if (e.target.closest('#pv-guardar')) { guardarPvMetas(); return; }
   const b = e.target.closest('[data-pv-cn]'); if (!b) return; pvCn = b.dataset.pvCn; document.querySelectorAll('#pv-cn [data-pv-cn]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); pintarPvMetas(); });
 $('pen-ajustes').addEventListener('click', abrirAjustes);
 /* ---------- Técnicos y EECC: el usuario master cambia a qué EECC pertenece cada técnico (aplica en Instalaciones y Averías) ---------- */
