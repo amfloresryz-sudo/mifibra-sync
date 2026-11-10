@@ -1322,7 +1322,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <section class="sec"><h3 class="sup-h">Para empujar ahora</h3><p class="sub">Con el mensaje listo para el supervisor de cada EECC.</p><div class="sup-al" id="sup-al"></div></section>
     </div>
     <section class="sec" id="sup-det">
-      <div class="sup-cab"><h3 class="sup-h" id="sup-det-t">Avance por técnico</h3><div class="sup-acc no-img"><span class="sup-aviso" id="aviso-sup-det"></span><button type="button" class="btn-out" data-sup-img="det" title="Resumen de la EECC elegida + técnicos, en 4K (3.840 px)">Copiar imagen 4K</button></div></div>
+      <div class="sup-cab"><h3 class="sup-h" id="sup-det-t">Avance por técnico</h3><div class="sup-acc no-img"><span class="sup-aviso" id="aviso-sup-det"></span><button type="button" class="btn-out" data-sup-img="tec" title="Solo la tabla de técnicos (Técnico a TMI, con el total), sin la línea del tiempo, en 4K">Copiar tabla de técnicos</button><button type="button" class="btn-out" data-sup-img="det" title="Resumen de la EECC elegida + técnicos, en 4K (3.840 px)">Copiar imagen 4K</button></div></div>
       <p class="sub">Elige una EECC. La línea del tiempo muestra cada alta de hoy de 8:00 a 19:00 (inicio, duración y cierre) y sus pendientes del día en su franja.</p>
       <div class="sup-chips" id="sup-ec" role="group" aria-label="EECC"></div>
       <p class="no-img" style="margin:0 0 10px"><button type="button" class="btn-out" id="sup-todos">Ver / ocultar los pendientes de todos</button> <small class="sub">o toca el número de «Pendientes hoy» de un técnico</small></p>
@@ -4319,7 +4319,8 @@ addEventListener('scroll', () => { const p = $('tl-pop'); if (p) p.hidden = true
    Se arma a 3.840 px de ancho (4K) sin botones; se copia al portapapeles y, si el navegador no deja, se descarga en PNG. */
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-sup-img]'); if (!b) return;
-  const tipo = b.dataset.supImg, idAv = 'sup-' + tipo, txt0 = b.textContent;
+  const tipo = b.dataset.supImg, idAv = 'sup-' + (tipo === 'tec' ? 'det' : tipo), txt0 = b.textContent;
+  if (tipo === 'tec') { supImgTec(b, idAv, txt0); return; }
   const caja = tipo === 'res' ? $('v-sup') : $('sup-det'); if (!caja) return;
   b.disabled = true; b.textContent = 'Armando imagen…';
   try {
@@ -4338,6 +4339,29 @@ document.addEventListener('click', async (e) => {
   } catch { aviso(idAv, 'No se pudo armar la imagen. Inténtalo de nuevo.', true); }
   finally { b.disabled = false; b.textContent = txt0; }
 });
+/* Copiar tabla de técnicos: solo el rango Técnico → TMI (con la fila de total y la nota de los que no están en la asistencia),
+   sin la columna «Altas del día» (línea del tiempo) ni su leyenda. Se arma una copia de la tabla fuera de la vista, a 4K. */
+async function supImgTec(b, idAv, txt0) {
+  const tb = document.querySelector('#sup-det table.sup-tt'); if (!tb || !$('sup-tec').rows.length) { aviso(idAv, 'Elige una EECC para copiar su tabla.', true); return; }
+  b.disabled = true; b.textContent = 'Armando imagen…';
+  const caja = document.createElement('div'); caja.className = 'sec sup-img-tec';
+  caja.style.cssText = 'position:fixed;left:-10000px;top:0;padding:16px 18px;background:#FFFFFF;width:max-content';
+  caja.innerHTML = `<h3 class="sup-h" style="margin:0 0 10px">${esc($('sup-det-t').textContent)}</h3>`;
+  const t = tb.cloneNode(true); t.style.width = 'auto'; t.querySelectorAll('.tl-h, td.tl, td.tl-tot').forEach(c => c.remove());
+  t.querySelectorAll('td[colspan="10"], th[colspan="10"]').forEach(c => { c.colSpan = 9; });
+  t.querySelectorAll('[aria-hidden="true"]').forEach(c => c.remove());
+  caja.appendChild(t); document.body.appendChild(caja);
+  try {
+    const blob = (async () => { await cargar(URL_H2C);
+      const w = caja.offsetWidth, h = caja.offsetHeight, escala = Math.max(1, Math.min(6, 3840 / w, 32000 / h, Math.sqrt(250e6 / (w * h))));
+      const cv = await html2canvas(caja, { backgroundColor: '#FFFFFF', scale: escala, logging: false, windowWidth: Math.max(innerWidth, w + 80) });
+      return await new Promise(r => cv.toBlob(r, 'image/png')); })();
+    const nom = 'tecnicos-' + String(supEc || 'eecc').toLowerCase().replace(/\s+/g, '-');
+    try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); aviso(idAv, 'Tabla de técnicos copiada. Pégala con Ctrl+V en WhatsApp o correo.'); }
+    catch { await bajar(await blob, nombreArch(nom, 'png')); aviso(idAv, 'El navegador no permitió copiar; se descargó la imagen en PNG.'); }
+  } catch { aviso(idAv, 'No se pudo armar la imagen. Inténtalo de nuevo.', true); }
+  finally { caja.remove(); b.disabled = false; b.textContent = txt0; }
+}
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-copiar-tabla]'); if (!b) return;
   const id = b.dataset.copiarTabla, tb = $(id); if (!tb) { aviso(id, 'No hay datos para copiar.', true); return; }
