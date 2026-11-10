@@ -330,18 +330,45 @@ const agenda = (p) => p.fp ? `${fCorta(p.fp)}${tieneFranja(p) ? ' · ' + esc(p.f
 const RE_PC = /#(\d{2})\/(\d{2})\/(\d{4}) (\d{1,2}):(\d{2})#/g;
 const RE_FEC = /\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b|\b(?:LUNES|MARTES|MI[EÉ]RCOLES|JUEVES|VIERNES|S[AÁ]BADO|DOMINGO|HOY|MA[NÑ]ANA)\b|\b\d{1,2}\s+DE\s+(?:ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SE?TIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\b/;
 const RE_FRA = /\b\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\s*(?:A|-|AL|HASTA)\s*\d{1,2}(?:\s*:\s*\d{2})?\s*(?:AM|PM|HRS?)?\b|\bA\s+LAS\s+\d{1,2}|\b\d{1,2}\s*(?::\s*\d{2})?\s*(?:AM|PM)\b|\b(?:RANGO|FRANJA)\s+(?:DE\s+)?\d/;
-const RE_TEC = /\b(?:CL(?:IENTE)?\s+EN\s+SITIO|T[EÉ]C(?:NICO)?\.?\s+(?:EN\s+(?:CAMINO|SITIO|RUTA|DOMICILIO|CASA(?:\s+DEL?\s+CLIENTE)?)|LLEG[OÓ]))\b/g;
+const RE_TEC = /\b(?:CL(?:IENTE)?\s+EN\s+SITIO|T[EÉ]C(?:NICO)?\.?\s+(?:EN\s+(?:CAMINO|SITIO|RUTA|DOMICILIO|CASA(?:\s+DEL?\s+CLIENTE)?)|LLEG[OÓ]))\b/g;   // solo dice dónde está el técnico: no es gestión
 const RE_MOT = /\b(?:CLIENTE|CL|AB|ABONADO|TITULAR|FAMILIAR|CONTESTA|RESPONDE|WHATSAPP|WSP|MENSAJES?|LLAMADAS?|VD|VISITA|REPROGRAM\w*|POSTERGA|AGENDA|CONFIRM\w*|SOLICITA|INDICA|AUDITA|PLANO|SUP|FACTIBILIDAD|CANCELA|DESISTE|REAGENDA)\b/;
+/* Gestión igual que en la web unificada de Mi Fibra (mismas reglas). Además, lo que la EECC comenta aquí cuenta al instante,
+   como si ya estuviera en ScordSoft (el robot lo sigue escribiendo en ScordSoft como siempre); cuando ya llega de ScordSoft deja de sumarse. */
+let CER = [], cerJ = '';
+async function traerComRecientes() {
+  try { const j = await api('recientes'), t = JSON.stringify(j.com || []); if (t === cerJ) return false; cerJ = t; CER = j.com || []; return true; } catch { return false; }
+}
+const normCec = (t) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+const RE_SELLO = /#\s*\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}\s*#/;
+function aplicarComEecc() {
+  const ult = {}; CER.forEach(c => { if (!ult[c.os] || c.creado_en > ult[c.os].creado_en) ult[c.os] = c; });
+  const corte = Date.parse(D.actualizado || '') || 0;
+  D.pend.forEach(p => { delete p.ovx; delete p.ovxS; delete p.ovxC;
+    const c = ult[p.os]; if (!c) return;
+    if (c.scord_en && Date.parse(c.scord_en) <= corte - 15 * 60e3) return;      // ya estaba en ScordSoft cuando se armó el tablero
+    const cuerpo = String(c.texto || '').replace(/[#%<>]/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase(), hist = p.ovt || p.ov || '';
+    if (!cuerpo || normCec(hist).includes(normCec(cuerpo).slice(0, 40))) return;   // el tablero ya lo trae
+    const conAg = RE_FEC.test(normCec(cuerpo)) && RE_FRA.test(normCec(cuerpo).replace(/\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b/g, ' '));
+    const f = new Date(Date.parse(c.scord_en || c.creado_en) - 5 * 3600e3).toISOString(), sello = `#${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)} ${f.slice(11, 16)}#`;
+    p.ovx = cuerpo; p.ovxC = c; p.ovxS = (conAg && !RE_SELLO.test(hist) ? sello + ' ' : '') + cuerpo; });
+}
 function evalGestion(p) {
-  const t0 = String(p.ovt || p.ov || '').toUpperCase(), pcs = [...t0.matchAll(RE_PC)];
+  const t0 = String((p.ovt || p.ov || '') + (p.ovxS ? ' ' + p.ovxS : '')).toUpperCase(), pcs = [...t0.matchAll(RE_PC)];
   p.pc = pcs.length > 0;
+  p.pcF = pcs.length ? pcs.map(m => `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')} ${m[4].padStart(2, '0')}:${m[5]}`).sort()[0] : '';
   const t = t0.replace(RE_PC, ' ').replace(/%[^%]*%/g, ' ').replace(/\$R\$/g, ' ').replace(RE_TEC, ' ').replace(/\s+/g, ' ').trim();
   const sinFec = t.replace(/\b\d{1,2}\s*[\/.]\s*(?:\d{1,2}|1O)\b/g, ' ');
   const fec = RE_FEC.test(t), fra = RE_FRA.test(sinFec), pal = t ? t.split(' ').filter(w => /[A-ZÁÉÍÓÚÑ0-9]/.test(w)).length : 0;
-  if (!t) { p.ges = false; p.gesM = t0.trim() ? 'El comentario solo dice dónde está el técnico' : 'Sin comentario'; }
+  if (!t) { p.ges = false; p.gesM = t0.trim() ? 'El comentario solo dice dónde está el técnico (en camino, en sitio…)' : 'Sin comentario'; }
   else if (fec && fra) { p.ges = true; p.gesM = 'Comentario con fecha y franja'; }
-  else if ((pal >= 5 && RE_MOT.test(t)) || pal >= 10) { p.ges = true; p.gesM = 'Buen comentario'; }
+  else if ((pal >= 5 && RE_MOT.test(t)) || pal >= 10) { p.ges = true; p.gesM = 'Buen comentario' + (fec ? ' (con fecha, sin franja)' : fra ? ' (con franja, sin fecha)' : ''); }
   else { p.ges = false; p.gesM = 'Comentario sin fecha ni franja y poco detallado'; }
+  // Si el ÚLTIMO comentario dice que el técnico está en camino, en proceso o instalando, el AB se está atendiendo: cuenta como gestionado
+  if (!p.ges) { const ult = p.ovx || String(p.ovt || p.ov || '').split(/(?<=%)\s*,\s*|(?=#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#)/)
+      .map(x => x.replace(/%[^%]*%/g, ' ').replace(/#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#/g, ' ').replace(/\$R\$/g, ' ').trim()).filter(Boolean).pop() || '';
+    const m = /\b(?:EN\s+(?:CAMINO|RUTA|PROCESO)|INSTALANDO|EN\s+INSTALACI[OÓ]N)\b/i.exec(ult);
+    if (m) { p.ges = true; p.gesM = `El último comentario indica que el técnico está ${/INSTAL|PROCESO/i.test(m[0]) ? 'instalando' : 'en camino'}`; } }
+  if (p.ovx) p.gesM = (p.gesM || '') + ` · incluye tu comentario de las ${new Date(Date.parse(p.ovxC.creado_en) - 5 * 3600e3).toISOString().slice(11, 16)} (aún no llega de ScordSoft)`;
 }
 const RE_VISI = /(?:(PRIMERA|SEGUNDA|[12])\s*(?:ERA|RA|ER|DA|DO|°|º|\.ª|ª)?\s*VISI?T[AO]S?\b|(VISITA\s+DIRECTA|\bVD)\b)/gi;
 const visI = (p) => { if (p.vi !== undefined) return p.vi; const L = [...String(p.ovt || p.ov || '').matchAll(RE_VISI)]; const m = L[L.length - 1];
@@ -424,9 +451,10 @@ function pintarAlertas() {
   if (pista.dataset.k !== nuevo) { pista.innerHTML = nuevo; pista.dataset.k = nuevo; }
 }
 setInterval(() => { if (D.pend.length) pintarAlertas(); }, 60e3);
+setInterval(async () => { if (document.visibilityState === 'visible' && $('fondo').hidden && D.pend.length && await traerComRecientes()) pintar(); }, 30e3);   // comentarios de la EECC (también de otros usuarios de la misma EECC)
 function pintar() {
   pintarAlertas();
-  D.pend.forEach(p => { if (p.ges === undefined) evalGestion(p); });
+  aplicarComEecc(); D.pend.forEach(evalGestion);   // siempre con las reglas de la web unificada
   const B = base(), L = filtrar();
   const ins = B.filter(p => p.grupo === 'INSTALACION').length, conEv = B.filter(p => nEv(p)).length;
   chips($('f-gr'), [['TODOS', 'Todos', B.length], ['INSTALACION', 'Instalaciones', ins], ['MISCELANEO', 'Misceláneos', B.length - ins]], 'gr');
@@ -556,7 +584,7 @@ $('xls').onclick = async () => {
 
 async function cargar() {
   try {
-    D = await api('pendientes'); D.vivienda = D.vivienda || {}; if (!asisCambio) cargarAsis();
+    const [d0] = await Promise.all([api('pendientes'), traerComRecientes()]); D = d0; D.vivienda = D.vivienda || {}; if (!asisCambio) cargarAsis();
     $('quien').innerHTML = `<b>${esc(D.eecc)}</b><br>${esc(U.n || U.u || '')}`;
     $('tit').textContent = `Mis pendientes · ${D.eecc}`;
     $('sub').textContent = `Instalaciones y misceláneos registrados (pendientes) de tu EECC · actualizado ${fHora(D.actualizado)} · se actualiza cada 10 minutos`;
@@ -643,7 +671,8 @@ function prepararComentario(p) {
     const t = ta.value.trim(); if (t.length < 3) { $('com-err').textContent = 'Escribe el comentario.'; ta.focus(); return; }
     b.disabled = true; const t0 = b.textContent; b.textContent = 'Enviando…';
     try { const r = await api('comentar', '', { os: p.os, texto: t }); ta.value = ''; ta.oninput();
-      toast(r.repetido ? 'Ese comentario ya estaba enviado.' : `Comentario enviado para el AB ${p.ab}.`); verComentarios(p); }
+      toast(r.repetido ? 'Ese comentario ya estaba enviado.' : `Comentario enviado para el AB ${p.ab}.`); verComentarios(p);
+      traerComRecientes().then(nc => { if (nc) pintar(); }); }   // la gestión del AB se actualiza al instante
     catch (e) { $('com-err').textContent = e.message; }
     finally { b.disabled = false; b.textContent = t0; }
   };

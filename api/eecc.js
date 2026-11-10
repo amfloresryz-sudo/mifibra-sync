@@ -201,11 +201,12 @@ module.exports = async (req, res) => {
     // Comentarios y evidencias recientes de las EECC (últimos 3 días) para que la web unificada los muestre al instante,
     // sin esperar a que se escriban en ScordSoft y el robot los vuelva a descargar.
     if (req.method === 'GET' && accion === 'recientes') {
-      if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
-      const f0 = String(q.get('filial') || '').toUpperCase();
-      const pedidas = f0 === 'TODAS' ? filiales : f0.split(',').flatMap(f => f === 'PROVINCIAS' ? filialesReales('PROVINCIAS') : [f]);
+      // EECC: solo sus propios comentarios (para que su web cuente la gestión al instante, igual que la web unificada)
+      if (!interno && !esEecc) return responder(res, 403, { error: 'Sin permiso.' });
+      const f0 = String(q.get('filial') || 'TODAS').toUpperCase();
+      const pedidas = esEecc || f0 === 'TODAS' ? filiales : f0.split(',').flatMap(f => f === 'PROVINCIAS' ? filialesReales('PROVINCIAS') : [f]);
       const fs = pedidas.filter(f => filiales.includes(f)); if (!fs.length) return responder(res, 200, { com: [], ev: {} });
-      const desde = new Date(Date.now() - 3 * 864e5).toISOString(), inF = `filial=in.(${fs.map(encodeURIComponent).join(',')})`;
+      const desde = new Date(Date.now() - 3 * 864e5).toISOString(), inF = `filial=in.(${fs.map(encodeURIComponent).join(',')})${esEecc ? `&eecc=eq.${encodeURIComponent(eecc)}` : ''}`;
       const [c, e] = await Promise.all([
         consultar(`eecc_comentarios?select=os,eecc,nombre_usuario,usuario,texto,origen,creado_en,scord_estado,scord_en&${inF}&creado_en=gte.${desde}&order=creado_en.desc&limit=600`),
         consultar(`evidencias?select=os&${inF}&creado_en=gte.${desde}`)]);
