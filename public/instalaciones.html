@@ -449,7 +449,7 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .b.v1 { background: #FFE58A; color: #3D2E00; }
 .td-vis { white-space: normal; } .td-vis .b { display: block; width: max-content; max-width: 100%; margin: 2px auto; font-size: 11px; }
 .b.ec { font-weight: 700; } .b.ec-cam { background: #CFE3FF; color: #0B3D91; } .b.ec-sit { background: #C9F2EA; color: #04594A; }
-.b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-pro { background: #D2F1EE; color: #0B5750; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
+.b.ec-ins { background: #D3F5D0; color: #1E5E19; } .b.ec-noc { background: #FFD9D6; color: #8A1C12; } .b.ec-rep { background: #E8DBFF; color: #4B1D9E; }
 #tb-pend td.td-vis { white-space: normal !important; }
 /* ---------- Supervisión ---------- */
 .sup-hero { background: var(--noche); color: #fff; } .sup-hero h2 { color: #fff; margin: 0; } .sup-hero .sub { color: #C9CAD6; }
@@ -1676,7 +1676,7 @@ function evalGestion(p) {
   if (!p.ges) { const ult = p.ovx || String(p.ovt || p.ov || '').split(/(?<=%)\s*,\s*|(?=#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#)/)
       .map(x => x.replace(/%[^%]*%/g, ' ').replace(/#\d{2}\/\d{2}\/\d{4}\s+\d{1,2}:\d{2}#/g, ' ').replace(/\$R\$/g, ' ').trim()).filter(Boolean).pop() || '';
     const m = /\b(?:EN\s+(?:CAMINO|RUTA|PROCESO)|INSTALANDO|EN\s+INSTALACI[OÓ]N)\b/i.exec(ult);
-    if (m) { p.ges = true; p.gesM = `El último comentario indica que el técnico está ${/INSTAL/i.test(m[0]) ? 'instalando' : /PROCESO/i.test(m[0]) ? 'en proceso' : 'en camino'}`; } }
+    if (m) { p.ges = true; p.gesM = `El último comentario indica que el técnico está ${/INSTAL|PROCESO/i.test(m[0]) ? 'instalando' : 'en camino'}`; } }
   if (p.ovx) p.gesM = (p.gesM || '') + ` · incluye el comentario de la EECC de las ${new Date(Date.parse(p.ovxC.creado_en) - 5 * 3600e3).toISOString().slice(11, 16)} (aún no llega de ScordSoft)`;
 }
 function aplicarAjustes() {
@@ -2393,8 +2393,7 @@ const visTxtI = (v) => v === 'VD' ? 'VD' : `${v}° visita`;
 const EST_CAMPO = [
   ['camino', /\b(?:TEC(?:NICO)?\.?\s*)?EN\s+(?:CAMINO|RUTA)\b|\bSALIENDO\s+(?:AL|A)\s+(?:PUNTO|DOMICILIO)/gi, 'En camino', 'ec-cam'],
   ['sitio', /\bEN\s+(?:SITIO|DOMICILIO|PUNTO|PREDIO)\b|\bTEC(?:NICO)?\.?\s+LLEG[OÓ]\b|\bLLEG[OÓ]\s+AL\s+(?:PUNTO|DOMICILIO)/gi, 'En sitio', 'ec-sit'],
-  ['instal', /\bINSTALANDO\b|\bEN\s+(?:PROCESO\s+DE\s+)?INSTALACI[OÓ]N\b|\bTRABAJANDO\b/gi, 'Instalando', 'ec-ins'],
-  ['proceso', /\bEN\s+PROCESO\b/gi, 'En proceso', 'ec-pro'],   // «en proceso de instalación» sigue siendo Instalando (empata en la misma posición y gana la de arriba)
+  ['instal', /\bINSTALANDO\b|\bEN\s+(?:PROCESO\s+DE\s+)?INSTALACI[OÓ]N\b|\bEN\s+PROCESO\b|\bTRABAJANDO\b/gi, 'Instalando', 'ec-ins'],   // «en proceso» también se muestra como Instalando
   ['nocont', /\bNO\s+CONTESTA\b|\bCLIENTE\s+AUSENTE\b|\bNO\s+SE\s+ENCUENTRA\b|\bAUSENTE\b|\bNADIE\s+ATIENDE\b|\bNO\s+UBICA|\bAPAGADO\b|\bBUZ[OÓ]N\b/gi, 'No contesta', 'ec-noc'],
   ['reprog', /\bREPROG?RAM|\bREPROGRMA|\bRE\s*AGEND|\bREPROGAM/gi, 'Reprogramó', 'ec-rep'],
 ];
