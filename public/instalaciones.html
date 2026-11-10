@@ -365,6 +365,14 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .mat td.cero { color: var(--fg-4); }
 .mat .t-col { font-weight: 700; background: var(--gris-bg); }
 .mat tfoot td { font-weight: 700; background: var(--gris-bg); }
+.ing-t th.sem-h { text-align: center; border-left: 2px solid var(--borde-2); background: var(--gris-bg); } .ing-t th.sem-h.ab { background: var(--rosa); }
+.ing-t th.dia-h { font: 700 11.5px var(--f-disp); text-align: center; white-space: nowrap; } .ing-t th.dia-h small { display: block; font-weight: 500; color: var(--fg-4); }
+.ing-t td.sem-c { font-weight: 700; } .ing-t th.sem-t { background: var(--gris-bg); } .ing-t td.prom-c { color: var(--fg-3); font-weight: 500; }
+.ing-t td:first-child { white-space: nowrap; }
+#tb-eecc th.ec-h { text-align: center; white-space: normal; min-width: 64px; max-width: 110px; line-height: 1.2; vertical-align: bottom; font-size: 11px; }
+.sem-tg { border: 0; background: none; font: 700 12.5px var(--f-disp); color: var(--fg); cursor: pointer; padding: 0; white-space: nowrap; text-align: left; }
+.sem-tg i { display: inline-block; width: 14px; font-style: normal; color: var(--magenta-txt); } .sem-tg small { display: block; font-weight: 500; color: var(--fg-4); font-size: 10.5px; }
+.ing-acc { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .mat tfoot tr.prom td { font-weight: 500; color: var(--fg-3); background: var(--sup); }
 .mat tr.zona td { background: var(--gris-bg); font-family: var(--f-disp); font-weight: 700; }
 .mat tr.zona td:first-child { background: var(--gris-bg); }
@@ -1136,11 +1144,12 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-ingresos" aria-labelledby="tab-ingresos" hidden style="flex-direction:column;gap:22px">
     <section class="sec" aria-labelledby="t-ing">
       <div><h2 id="t-ing">Distrito y fechas de ingreso</h2><p class="sub" id="ing-sub"></p></div>
-      <p class="nota">Altas por día de F. Recep (filas) y distrito (columnas), del 01 a la fecha de corte. El promedio por día es el total ÷ días transcurridos del mes. Respeta los filtros de Segmento y Zona.</p>
+      <p class="nota">Altas por distrito (filas) y día de F. Recep (columnas), del 01 a la fecha de corte, agrupadas por semana (lunes a domingo): la semana cerrada se ve en una columna con su total y la semana en curso abierta por día; toca ▸ / ▾ en cada semana para abrirla o plegarla. El promedio por día es el total ÷ días transcurridos del mes. Respeta los filtros de Segmento y Zona.</p>
+      <div class="ing-acc" id="ing-acc"><button type="button" class="btn-out" data-sem-todo="0">Agrupar todas las semanas</button><button type="button" class="btn-out" data-sem-todo="1">Ver todos los días</button><button type="button" class="btn-out" data-sem-todo="">Semana en curso abierta</button></div>
       <div class="scroll" id="ing-mat"></div>
     </section>
     <section class="sec" aria-labelledby="t-eecc">
-      <div><h2 id="t-eecc">EECC y distritos</h2><p class="sub">Solo pendientes (REGISTRADA) por EECC (filas) y distrito (columnas).</p></div>
+      <div><h2 id="t-eecc">EECC y distritos</h2><p class="sub">Solo pendientes (REGISTRADA) por distrito (filas) y EECC (columnas).</p></div>
       <div class="segs" id="eecc-segs"></div>
       <div class="scroll" id="eecc-mat"></div>
     </section>
@@ -1922,16 +1931,36 @@ const tpOk = (p, f) => msAny(f, o => tipoProg(p) === TP[o]);
 
 /* ---------- INGRESOS ---------- */
 function calor(v, mx) { if (!v) return 'cero'; const r = v / mx; return r > .66 ? 'h3c' : r > .33 ? 'h2c' : 'h1c'; }
+let ingSem = {}, ingTodo = null;   // ingTodo: true/false si se pidió abrir o plegar todas; semana (lunes ISO) → abierta true/false, según lo que eligió el usuario; sin elegir: cerrada plegada, en curso abierta
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-sem-tg]'); if (t) { const k = t.dataset.semTg; ingSem[k] = t.getAttribute('aria-expanded') !== 'true'; pintarIngresos(); return; }
+  const a = e.target.closest('[data-sem-todo]'); if (!a) return;
+  ingSem = {}; ingTodo = a.dataset.semTodo === '' ? null : a.dataset.semTodo === '1';
+  pintarIngresos(); });
 function pintarIngresos() {
   const I = D.ing.filter(ok), tot = cuenta(I, x => x.di);
   const cols = Object.keys(tot).sort((a, b) => tot[b] - tot[a] || (a < b ? -1 : 1));
   const cel = cuenta(I, x => x.d + '|' + x.di), mx = Math.max(1, ...Object.values(cel));
   $('ing-sub').textContent = `${MESL.charAt(0).toUpperCase() + MESL.slice(1)} ${D.anio} · ${n(I.length)} ingresos${!MS(seg).size ? '' : ' · ' + msTxt(seg)}`;
-  const filas = DIAS.map(d => { const tf = cols.reduce((a, c) => a + (cel[d + '|' + c] || 0), 0);
-    return `<tr><td data-v="${d}">${fDia(d)}</td>${cols.map(c => { const v = cel[d + '|' + c] || 0; return `<td class="${calor(v, mx)}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tf}</td></tr>`; }).join('');
-  $('ing-mat').innerHTML = !I.length ? '<p class="nota">No hay ingresos con este filtro.</p>' : `<table class="mat ord" id="tb-ing"><thead><tr><th>Fecha</th>${cols.map(c => `<th class="vert" title="${esc(c)}"><span>${esc(corto(c))}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>${filas}</tbody>
-    <tfoot><tr><td>Total</td>${cols.map(c => `<td>${tot[c]}</td>`).join('')}<td>${I.length}</td></tr><tr class="prom"><td>Promedio por día</td>${cols.map(c => `<td>${dec(tot[c] / D.dias)}</td>`).join('')}<td>${dec(I.length / D.dias)}</td></tr></tfoot></table>`;
-  prepararOrden($('tb-ing'));
+  // Días agrupados por semana (lunes a domingo): la semana cerrada se ve en una fila (plegada) y la semana en curso abierta con sus días;
+  // cada semana se abre o se pliega con un clic (ingSem guarda lo que eligió el usuario).
+  const hoyL = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+  const iso = (d) => `${D.anio}-${pad2(D.mes)}-${pad2(d)}`, lunes = (d) => { const f = new Date(D.anio, D.mes - 1, d); f.setDate(f.getDate() - ((f.getDay() + 6) % 7)); return f; };
+  const SEM = []; DIAS.forEach(d => { const l = lunes(d), k = l.toLocaleDateString('sv-SE'); let w = SEM[SEM.length - 1]; if (!w || w.k !== k) { const dom = new Date(l); dom.setDate(l.getDate() + 6); w = { k, dias: [], cerrada: dom.toLocaleDateString('sv-SE') < hoyL }; SEM.push(w); } w.dias.push(d); });
+  const abierta = (w) => ingSem[w.k] ?? ingTodo ?? !w.cerrada;
+  const celS = {}; SEM.forEach(w => w.dias.forEach(d => cols.forEach(c => { celS[w.k + '|' + c] = (celS[w.k + '|' + c] || 0) + (cel[d + '|' + c] || 0); })));
+  const mxS = Math.max(1, ...Object.values(celS));
+  // Distritos en filas y fechas en columnas. Semana cerrada = una columna con su total; semana abierta = una columna por día.
+  const colsT = []; SEM.forEach(w => { if (abierta(w)) w.dias.forEach(d => colsT.push({ t: 'd', d, w })); else colsT.push({ t: 's', w }); });
+  const valor = (c, di) => c.t === 'd' ? cel[c.d + '|' + di] || 0 : celS[c.w.k + '|' + di] || 0;
+  const totCol = (c) => c.t === 'd' ? cols.reduce((x, di) => x + (cel[c.d + '|' + di] || 0), 0) : cols.reduce((x, di) => x + (celS[c.w.k + '|' + di] || 0), 0);
+  const rango = (w) => { const a = w.dias[0], b = w.dias[w.dias.length - 1]; return `${pad2(a)}${a !== b ? '–' + pad2(b) : ''} ${MC}.`; };
+  const cab1 = SEM.map(w => { const ab = abierta(w), span = ab ? w.dias.length : 1;
+    return `<th colspan="${span}" class="sem-h${ab ? ' ab' : ''}"><button type="button" class="sem-tg" data-sem-tg="${w.k}" aria-expanded="${ab}" title="${ab ? 'Plegar' : 'Abrir'} la semana"><i>${ab ? '▾' : '▸'}</i>Sem. ${rango(w)}<small>${w.cerrada ? 'cerrada' : 'en curso'}</small></button></th>`; }).join('');
+  const cab2 = colsT.map(c => c.t === 'd' ? `<th class="dia-h">${pad2(c.d)}<small>${diaInfo(c.d).wd}</small></th>` : `<th class="dia-h sem-t">Total<small>${c.w.dias.length} día${c.w.dias.length === 1 ? '' : 's'}</small></th>`).join('');
+  const filas = cols.map(di => `<tr><td title="${esc(di)}">${esc(di)}</td>${colsT.map(c => { const v = valor(c, di); return `<td class="${calor(v, c.t === 'd' ? mx : mxS)}${c.t === 's' ? ' sem-c' : ''}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tot[di]}</td><td class="t-col prom-c">${dec(tot[di] / D.dias)}</td></tr>`).join('');
+  $('ing-mat').innerHTML = !I.length ? '<p class="nota">No hay ingresos con este filtro.</p>' : `<table class="mat ing-t" id="tb-ing"><thead><tr><th rowspan="2">Distrito</th>${cab1}<th rowspan="2">Total</th><th rowspan="2">Prom.<br>por día</th></tr><tr>${cab2}</tr></thead><tbody>${filas}</tbody>
+    <tfoot><tr><td>Total</td>${colsT.map(c => `<td>${totCol(c)}</td>`).join('')}<td>${I.length}</td><td>${dec(I.length / D.dias)}</td></tr></tfoot></table>`;
   const P0 = D.pend.filter(ok);
   segmentos('eecc-segs', [
     { k: 'ingEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
@@ -1940,9 +1969,10 @@ function pintarIngresos() {
   if (!P.length) { $('eecc-mat').innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const dt = cuenta(P, p => p.di), et = cuenta(P, p => p.ec), c2 = cuenta(P, p => p.ec + '|' + p.di);
   const dc = Object.keys(dt).sort((a, b) => dt[b] - dt[a]), er = Object.keys(et).sort((a, b) => et[b] - et[a]), mx2 = Math.max(1, ...Object.values(c2));
-  $('eecc-mat').innerHTML = `<table class="mat ord" id="tb-eecc"><thead><tr><th>EECC</th>${dc.map(c => `<th class="vert" title="${esc(c)}"><span>${esc(corto(c))}</span></th>`).join('')}<th>Total</th></tr></thead><tbody>
-    ${er.map(e => `<tr><td>${esc(e)}</td>${dc.map(c => { const v = c2[e + '|' + c] || 0; return `<td class="${calor(v, mx2)}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${et[e]}</td></tr>`).join('')}</tbody>
-    <tfoot><tr><td>Total</td>${dc.map(c => `<td>${dt[c]}</td>`).join('')}<td>${P.length}</td></tr></tfoot></table>`;
+  // Distritos en filas y EECC en columnas
+  $('eecc-mat').innerHTML = `<table class="mat ord" id="tb-eecc"><thead><tr><th>Distrito</th>${er.map(e => `<th class="ec-h" title="${esc(e)}">${esc(e)}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+    ${dc.map(c => `<tr><td title="${esc(c)}">${esc(c)}</td>${er.map(e => { const v = c2[e + '|' + c] || 0; return `<td class="${calor(v, mx2)}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${dt[c]}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td>${er.map(e => `<td>${et[e]}</td>`).join('')}<td>${P.length}</td></tr></tfoot></table>`;
   prepararOrden($('tb-eecc'));
 }
 
