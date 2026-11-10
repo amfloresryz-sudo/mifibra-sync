@@ -369,6 +369,8 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .ing-t th.dia-h { font: 700 11.5px var(--f-disp); text-align: center; white-space: nowrap; } .ing-t th.dia-h small { display: block; font-weight: 500; color: var(--fg-4); }
 .ing-t td.sem-c { font-weight: 700; } .ing-t th.sem-t { background: var(--gris-bg); } .ing-t td.prom-c { color: var(--fg-3); font-weight: 500; }
 .ing-t td:first-child { white-space: nowrap; }
+#tb-ing, #tb-eecc { width: auto; min-width: 0; } #tb-ing td, #tb-ing th, #tb-eecc td, #tb-eecc th { padding-left: 8px; padding-right: 8px; }
+#tb-ing td:not(:first-child), #tb-eecc td:not(:first-child) { min-width: 34px; text-align: center; }
 #tb-eecc th.ec-h { text-align: center; white-space: normal; min-width: 64px; max-width: 110px; line-height: 1.2; vertical-align: bottom; font-size: 11px; }
 .sem-tg { border: 0; background: none; font: 700 12.5px var(--f-disp); color: var(--fg); cursor: pointer; padding: 0; white-space: nowrap; text-align: left; }
 .sem-tg i { display: inline-block; width: 14px; font-style: normal; color: var(--magenta-txt); } .sem-tg small { display: block; font-weight: 500; color: var(--fg-4); font-size: 10.5px; }
@@ -1144,7 +1146,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
   <div role="tabpanel" id="v-ingresos" aria-labelledby="tab-ingresos" hidden style="flex-direction:column;gap:22px">
     <section class="sec" aria-labelledby="t-ing">
       <div><h2 id="t-ing">Distrito y fechas de ingreso</h2><p class="sub" id="ing-sub"></p></div>
-      <p class="nota">Altas por distrito (filas) y día de F. Recep (columnas), del 01 a la fecha de corte, agrupadas por semana del mes (1–7 semana 1, 8–14 semana 2, 15–21 semana 3, 22–28 semana 4, 29 al fin de mes semana 5): la semana cerrada se ve en una columna con su total y la semana en curso abierta por día; toca ▸ / ▾ en cada semana para abrirla o plegarla. El promedio por día es el total ÷ días transcurridos del mes. Respeta los filtros de Segmento y Zona.</p>
+      <p class="nota">Altas por distrito (filas) y día de F. Recep (columnas), del 01 a la fecha de corte, agrupadas por semana del mes (1–7 semana 1, 8–14 semana 2, 15–21 semana 3, 22–28 semana 4, 29 al fin de mes semana 5): la semana cerrada se ve en una columna con su total y la semana en curso abierta por día; toca ▸ / ▾ en cada semana para abrirla o plegarla. El promedio por día considera solo de lunes a sábado: altas de lunes a sábado ÷ días de lunes a sábado transcurridos (los domingos no cuentan). Respeta los filtros de Segmento y Zona.</p>
       <div class="ing-acc" id="ing-acc"><button type="button" class="btn-out" data-sem-todo="0">Agrupar todas las semanas</button><button type="button" class="btn-out" data-sem-todo="1">Ver todos los días</button><button type="button" class="btn-out" data-sem-todo="">Semana en curso abierta</button></div>
       <div class="scroll" id="ing-mat"></div>
     </section>
@@ -1960,9 +1962,12 @@ function pintarIngresos() {
   const cab1 = SEM.map(w => { const ab = abierta(w), span = ab ? w.dias.length : 1;
     return `<th colspan="${span}" class="sem-h${ab ? ' ab' : ''}"><button type="button" class="sem-tg" data-sem-tg="${w.k}" aria-expanded="${ab}" title="${ab ? 'Plegar' : 'Abrir'} la semana"><i>${ab ? '▾' : '▸'}</i>Semana ${w.n}<small>${rango(w)} · ${w.cerrada ? 'cerrada' : 'en curso'}</small></button></th>`; }).join('');
   const cab2 = colsT.map(c => c.t === 'd' ? `<th class="dia-h">${pad2(c.d)}<small>${diaInfo(c.d).wd}</small></th>` : `<th class="dia-h sem-t">Total<small>${c.w.dias.length} día${c.w.dias.length === 1 ? '' : 's'}</small></th>`).join('');
-  const filas = cols.map(di => `<tr><td title="${esc(di)}">${esc(di)}</td>${colsT.map(c => { const v = valor(c, di); return `<td class="${calor(v, c.t === 'd' ? mx : mxS)}${c.t === 's' ? ' sem-c' : ''}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tot[di]}</td><td class="t-col prom-c">${dec(tot[di] / D.dias)}</td></tr>`).join('');
-  $('ing-mat').innerHTML = !I.length ? '<p class="nota">No hay ingresos con este filtro.</p>' : `<table class="mat ing-t" id="tb-ing"><thead><tr><th rowspan="2">Distrito</th>${cab1}<th rowspan="2">Total</th><th rowspan="2">Prom.<br>por día</th></tr><tr>${cab2}</tr></thead><tbody>${filas}</tbody>
-    <tfoot><tr><td>Total</td>${colsT.map(c => `<td>${totCol(c)}</td>`).join('')}<td>${I.length}</td><td>${dec(I.length / D.dias)}</td></tr></tfoot></table>`;
+  // Promedio por día: solo de lunes a sábado (las altas de domingo no suman y los domingos no cuentan como día)
+  const HAB = DIAS.filter(d => !diaInfo(d).fin), nHab = Math.max(1, HAB.length);
+  const promDi = (di) => HAB.reduce((x, d) => x + (cel[d + '|' + di] || 0), 0) / nHab, promTot = cols.reduce((x, di) => x + promDi(di), 0);
+  const filas = cols.map(di => `<tr><td title="${esc(di)}">${esc(di)}</td>${colsT.map(c => { const v = valor(c, di); return `<td class="${calor(v, c.t === 'd' ? mx : mxS)}${c.t === 's' ? ' sem-c' : ''}" data-v="${v}">${v || '·'}</td>`; }).join('')}<td class="t-col">${tot[di]}</td><td class="t-col prom-c">${dec(promDi(di))}</td></tr>`).join('');
+  $('ing-mat').innerHTML = !I.length ? '<p class="nota">No hay ingresos con este filtro.</p>' : `<table class="mat ing-t" id="tb-ing"><thead><tr><th rowspan="2">Distrito</th>${cab1}<th rowspan="2">Total</th><th rowspan="2" title="Promedio de lunes a sábado">Prom. día<br><small>lun–sáb</small></th></tr><tr>${cab2}</tr></thead><tbody>${filas}</tbody>
+    <tfoot><tr><td>Total</td>${colsT.map(c => `<td>${totCol(c)}</td>`).join('')}<td>${I.length}</td><td>${dec(promTot)}</td></tr></tfoot></table>`;
   const P0 = D.pend.filter(ok);
   segmentos('eecc-segs', [
     { k: 'ingEc', t: 'EECC', ops: ecsDe(P0), cnt: (o) => P0.filter(p => p.ec === o).length },
