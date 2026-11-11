@@ -93,25 +93,43 @@ def _filas_base(archivo: Path, df0: pd.DataFrame, inicio: str, cajas) -> list[di
     return filas
 
 
-def _cada_hora(nombre: str, funcion, *a):
-    """Resultado guardado en disco (junto al estado del robot) y reutilizado por 1 hora: los mapas de cajas y de áreas
-    casi no cambian y bajarlos en cada actualización tomaba tiempo. Si la función devuelve None no se guarda."""
+def _cada_hora(nombre: str, funcion, *a, horas: float = 4):
+    """Resultado guardado en disco (junto al estado del robot) y reutilizado por unas horas: los mapas de cajas y de
+    áreas casi no cambian y bajarlos tomaba tiempo. Si la descarga falla (o devuelve None) se usa la ÚLTIMA COPIA
+    BUENA aunque sea vieja: así las cajas no cambian y la base ya limpia se reutiliza (antes se volvía a limpiar
+    toda, ~2 min más). Solo sin ninguna copia se devuelve None (o se propaga el error)."""
     import pickle
     ruta = ESTADO.parent / f"cache_{nombre}.pkl"
+
+    def copia():
+        with open(ruta, "rb") as f:
+            return pickle.load(f)
     try:
-        if ruta.exists() and time.time() - ruta.stat().st_mtime < 3600:
-            with open(ruta, "rb") as f:
-                return pickle.load(f)
+        if ruta.exists() and time.time() - ruta.stat().st_mtime < horas * 3600:
+            return copia()
     except Exception:  # noqa: BLE001 - copia dañada: se vuelve a calcular
         pass
-    r = funcion(*a)
-    if r is not None:
-        try:
-            ruta.parent.mkdir(parents=True, exist_ok=True)
-            with open(ruta, "wb") as f:
-                pickle.dump(r, f)
-        except Exception:  # noqa: BLE001
-            pass
+    try:
+        r = funcion(*a)
+    except Exception as e:  # noqa: BLE001
+        if ruta.exists():
+            print(f"Aviso: {nombre}: no se pudo actualizar ({str(e)[:120]}); se usa la última copia buena.", flush=True)
+            return copia()
+        raise
+    if r is None:
+        if ruta.exists():
+            print(f"Aviso: {nombre}: la descarga vino incompleta; se usa la última copia buena.", flush=True)
+            try:
+                return copia()
+            except Exception:  # noqa: BLE001
+                return None
+        return None
+    try:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta, "wb") as f:
+            pickle.dump(r, f)
+    except Exception:  # noqa: BLE001
+        pass
     return r
 
 
@@ -225,6 +243,70 @@ def _cambios_agenda(tableros: dict[str, dict], estado: dict, ahora: datetime, as
         datos["camb"] = camb
 
 
+def _tab_filial(filial: str) -> dict[str, dict]:
+    """Tableros de UNA filial (o del bloque PROVINCIAS). Se corre en procesos aparte (uno por núcleo) y lee lo común
+    de _CTX, que los procesos heredan al crearse (fork), así no se copian las órdenes en cada llamada."""
+    from . import averias, instalaciones, resumen
+    c = _CTX
+    d, desde, fa, tecnicos, fin_ant, corte, zonas_prov, hoy, actualizado = (
+        c["grupos"][filial], c["desde"], c["fa"], c["tecnicos"], c["fin_ant"], c["corte"], c["zonas_prov"], c["hoy"], c["actualizado"])
+    tableros: dict[str, dict] = {}
+    t0 = time.time()
+    # ---------------- indicadores de la portada / Dashboard
+    tableros[f"indicadores:{filial}"] = {**resumen.indicadores(d, actualizado), "filial": filial}
+
+    # ---------------- Averías y TC
+    zz = averias.ZONAS if filial == "LIMA" else zonas_prov if filial == "PROVINCIAS" else {}
+    av = _cols(d[d["tipo_orden"].isin(["SERVICIO TECNICO", *averias.TIPOS_ORDEN_MISC])], averias.COLUMNAS_BD)
+    ins = _cols(d[(d["tipo_orden"] == "INSTALACION SERVICIO") & (d["estado_os"] == "DESCARGADA")
+                  & (fa[d.index] >= pd.Timestamp(desde - timedelta(days=31)))], averias.COLUMNAS_INST, ("id_os", "filial"))
+    otros_av = _cols(d[(d["estado_os"] == "REGISTRADA") & (d["tipo_orden"] != "INSTALACION SERVICIO")],
+                     instalaciones.COLUMNAS_BD, ("tipo_orden", "detalle"))
+    if not av.empty:
+        try:
+            ant = averias.construir(av, tecnicos, fin_ant, zonas=zz, inst=ins)
+            ant["filial"] = filial
+            tableros[f"averias:{filial}:{fin_ant:%Y-%m}"] = ant
+        except Exception as e:  # noqa: BLE001 - el mes en curso se guarda igual
+            print(f"Aviso: no se calculó el mes anterior de averías {filial}: {e}", flush=True)
+        datos = averias.construir(av, tecnicos, corte, zonas=zz, inst=ins)
+        datos["pendx"] = instalaciones.pendientes_otros_averias(otros_av, tecnicos, corte, filial=filial,
+                                                                zonas=instalaciones.ZONAS if filial == "LIMA" else {})
+        datos["filial"] = filial
+        tableros[f"averias:{filial}"] = datos
+
+    # ---------------- Instalaciones
+    it = _cols(d[d["tipo_orden"] == "INSTALACION SERVICIO"], instalaciones.COLUMNAS_BD)
+    if not it.empty:
+        zz = instalaciones.ZONAS if filial == "LIMA" else zonas_prov if filial == "PROVINCIAS" else {}
+        try:
+            ant = instalaciones.construir(it, tecnicos, fin_ant, filial=filial, zonas=zz)
+            ant["filial"] = filial
+            ant.pop("obs", None)
+            tableros[f"instalaciones:{filial}:{fin_ant:%Y-%m}"] = ant
+        except Exception as e:  # noqa: BLE001
+            print(f"Aviso: no se calculó el mes anterior de instalaciones {filial}: {e}", flush=True)
+        otros_in = _cols(d[(d["estado_os"] == "REGISTRADA") & (d["tipo_orden"] != "INSTALACION SERVICIO")],
+                         instalaciones.COLUMNAS_BD, ("tipo_orden", "detalle"))
+        avt = _cols(d[(d["estado_os"] == "DESCARGADA") & d["contrata"].astype(str).str.startswith("EECC")
+                      & (fa[d.index] >= pd.Timestamp(hoy.replace(day=1)))], instalaciones.COLUMNAS_AVT)
+        datos = instalaciones.construir(it, tecnicos, corte, filial=filial, zonas=zz)
+        datos["pendx"] = instalaciones.pendientes_otros(otros_in, tecnicos, corte, filial=filial, zonas=zz, excluir=("INSTALACION SERVICIO",),
+                                                          permitidos=instalaciones.DET_INSTALACIONES - {"INSTALACION"})
+        datos["avt"] = instalaciones.avance_total(avt, datos["anio"], datos["mes"])
+        sem = _cols(d[(d["estado_os"] == "DESCARGADA") & d["contrata"].astype(str).str.startswith("EECC")
+                      & (fa[d.index] >= pd.Timestamp(hoy - timedelta(days=7)))], instalaciones.COLUMNAS_AVT)
+        datos["tec7"] = instalaciones.tecnicos_semana(sem)
+        datos["filial"] = filial
+        tableros[f"observadas:{filial}"] = {"obs": datos.pop("obs"), "filial": filial, "corte": datos["corte"]}
+        tableros[f"instalaciones:{filial}"] = datos
+    print(f"  Tableros de {filial} calculados en {time.time() - t0:.0f} s.", flush=True)
+    return tableros
+
+
+_CTX: dict = {}
+
+
 def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links_st: dict | None = None) -> dict[str, dict]:
     """Todos los tableros del portal a partir de las órdenes del periodo (sin leer Supabase)."""
     from . import averias, instalaciones, resumen
@@ -257,57 +339,26 @@ def calcular_tableros(df: pd.DataFrame, ahora: datetime, actualizado: str, links
     if not prov.empty:
         dd = prov.assign(_d=prov["distrito"].fillna("").astype(str).str.upper().str.strip(), _f=prov["filial"].astype(str))
         zonas_prov = {d: g.mode().iat[0] for d, g in dd[dd["_d"] != ""].groupby("_d")["_f"]}
-    for filial, d in grupos:
-        t0 = time.time()
-        # ---------------- indicadores de la portada / Dashboard
-        tableros[f"indicadores:{filial}"] = {**resumen.indicadores(d, actualizado), "filial": filial}
-
-        # ---------------- Averías y TC
-        zz = averias.ZONAS if filial == "LIMA" else zonas_prov if filial == "PROVINCIAS" else {}
-        av = _cols(d[d["tipo_orden"].isin(["SERVICIO TECNICO", *averias.TIPOS_ORDEN_MISC])], averias.COLUMNAS_BD)
-        ins = _cols(d[(d["tipo_orden"] == "INSTALACION SERVICIO") & (d["estado_os"] == "DESCARGADA")
-                      & (fa[d.index] >= pd.Timestamp(desde - timedelta(days=31)))], averias.COLUMNAS_INST, ("id_os", "filial"))
-        otros_av = _cols(d[(d["estado_os"] == "REGISTRADA") & (d["tipo_orden"] != "INSTALACION SERVICIO")],
-                         instalaciones.COLUMNAS_BD, ("tipo_orden", "detalle"))
-        if not av.empty:
-            try:
-                ant = averias.construir(av, tecnicos, fin_ant, zonas=zz, inst=ins)
-                ant["filial"] = filial
-                tableros[f"averias:{filial}:{fin_ant:%Y-%m}"] = ant
-            except Exception as e:  # noqa: BLE001 - el mes en curso se guarda igual
-                print(f"Aviso: no se calculó el mes anterior de averías {filial}: {e}", flush=True)
-            datos = averias.construir(av, tecnicos, corte, zonas=zz, inst=ins)
-            datos["pendx"] = instalaciones.pendientes_otros_averias(otros_av, tecnicos, corte, filial=filial,
-                                                                    zonas=instalaciones.ZONAS if filial == "LIMA" else {})
-            datos["filial"] = filial
-            tableros[f"averias:{filial}"] = datos
-
-        # ---------------- Instalaciones
-        it = _cols(d[d["tipo_orden"] == "INSTALACION SERVICIO"], instalaciones.COLUMNAS_BD)
-        if not it.empty:
-            zz = instalaciones.ZONAS if filial == "LIMA" else zonas_prov if filial == "PROVINCIAS" else {}
-            try:
-                ant = instalaciones.construir(it, tecnicos, fin_ant, filial=filial, zonas=zz)
-                ant["filial"] = filial
-                ant.pop("obs", None)
-                tableros[f"instalaciones:{filial}:{fin_ant:%Y-%m}"] = ant
-            except Exception as e:  # noqa: BLE001
-                print(f"Aviso: no se calculó el mes anterior de instalaciones {filial}: {e}", flush=True)
-            otros_in = _cols(d[(d["estado_os"] == "REGISTRADA") & (d["tipo_orden"] != "INSTALACION SERVICIO")],
-                             instalaciones.COLUMNAS_BD, ("tipo_orden", "detalle"))
-            avt = _cols(d[(d["estado_os"] == "DESCARGADA") & d["contrata"].astype(str).str.startswith("EECC")
-                          & (fa[d.index] >= pd.Timestamp(hoy.replace(day=1)))], instalaciones.COLUMNAS_AVT)
-            datos = instalaciones.construir(it, tecnicos, corte, filial=filial, zonas=zz)
-            datos["pendx"] = instalaciones.pendientes_otros(otros_in, tecnicos, corte, filial=filial, zonas=zz, excluir=("INSTALACION SERVICIO",),
-                                                              permitidos=instalaciones.DET_INSTALACIONES - {"INSTALACION"})
-            datos["avt"] = instalaciones.avance_total(avt, datos["anio"], datos["mes"])
-            sem = _cols(d[(d["estado_os"] == "DESCARGADA") & d["contrata"].astype(str).str.startswith("EECC")
-                          & (fa[d.index] >= pd.Timestamp(hoy - timedelta(days=7)))], instalaciones.COLUMNAS_AVT)
-            datos["tec7"] = instalaciones.tecnicos_semana(sem)
-            datos["filial"] = filial
-            tableros[f"observadas:{filial}"] = {"obs": datos.pop("obs"), "filial": filial, "corte": datos["corte"]}
-            tableros[f"instalaciones:{filial}"] = datos
-        print(f"  Tableros de {filial} calculados en {time.time() - t0:.0f} s.", flush=True)
+    # Cada filial (y PROVINCIAS) se calcula en su propio proceso, a la vez (antes, una tras otra: ~95 s).
+    global _CTX
+    _CTX = {"grupos": dict(grupos), "desde": desde, "fa": fa, "tecnicos": tecnicos, "fin_ant": fin_ant, "corte": corte,
+            "zonas_prov": zonas_prov, "hoy": hoy, "actualizado": actualizado}
+    orden = sorted(_CTX["grupos"], key=lambda f: -len(_CTX["grupos"][f]))   # las más grandes primero
+    hechas: dict[str, dict] = {}
+    try:
+        import multiprocessing
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=max(1, min(4, os.cpu_count() or 2)), mp_context=multiprocessing.get_context("fork")) as ex:
+            for filial, parte in zip(orden, ex.map(_tab_filial, orden)):
+                hechas[filial] = parte
+    except Exception as e:  # noqa: BLE001 - si el paralelo falla, se calcula como antes (una tras otra)
+        print(f"Aviso: tableros en paralelo no disponibles ({str(e)[:150]}); se calculan uno tras otro.", flush=True)
+        for filial in orden:
+            if filial not in hechas:
+                hechas[filial] = _tab_filial(filial)
+    for filial, _ in grupos:   # mismo orden de siempre
+        tableros.update(hechas[filial])
+    _CTX = {}
     try:  # Buscador FFTT: un solo tablero con todas las filiales (la página filtra y valida)
         from . import fftt
         tableros["fftt"] = fftt.construir(df, actualizado)
@@ -531,7 +582,11 @@ def main(argv: list[str] | None = None) -> int:
             _bolsa_inicial(tableros, estado, ahora)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se guardó la bolsa inicial del día: {e}", flush=True)
-        try:   # velocidad de cada prueba de Speed Test (speedtest.net): lo leído queda guardado en Supabase y no se pierde
+        # Speed Test: leer las velocidades de speedtest.net toma hasta ~1,5 min; se hace EN PARALELO con la escritura de
+        # las órdenes (no se tocan entre sí) y se espera antes de guardar los tableros.
+        import threading
+        st_hilo = None
+        try:
             if "speedtest" in tableros:
                 from . import speedtest as _st
                 stv = estado.setdefault("stv", {})
@@ -542,14 +597,18 @@ def main(argv: list[str] | None = None) -> int:
                         stv.setdefault(k, v)
                     estado["stv_turno"] = turno
                     print(f"  Speed Test: {len(stv) - n0} velocidades recuperadas de Supabase ({len(stv)} en total).", flush=True)
-                _st.velocidades(tableros["speedtest"], stv)
-                tableros["speedtest_vel"] = {"v": stv}   # copia permanente (el portal no la lee; solo el robot)
-                # enlaces de cada instalación «FILIAL|OS» → [día, [[enlace, título]]] (para reportes; el portal no la lee)
-                tableros["speedtest_enlaces"] = {"o": tableros["speedtest"].pop("_enlaces", {})}
+
+                def _leer_st():
+                    t_st = time.time()
+                    try:
+                        _st.velocidades(tableros["speedtest"], stv, segundos=90)
+                    except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
+                        print(f"Aviso: no se leyeron las velocidades de Speed Test: {e}", flush=True)
+                    print(f"  [tiempo] Speed Test: {time.time() - t_st:.0f} s (en paralelo con las órdenes)", flush=True)
+                st_hilo = threading.Thread(target=_leer_st, daemon=True)
+                st_hilo.start()
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se leyeron las velocidades de Speed Test: {e}", flush=True)
-        if "speedtest" in tableros:
-            tableros["speedtest"].pop("_enlaces", None)   # nunca va al portal
         try:   # cambios de agenda del día (fecha o franja) respecto de la actualización anterior
             _cambios_agenda(tableros, estado, ahora, asignacion)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
@@ -560,6 +619,13 @@ def main(argv: list[str] | None = None) -> int:
         borradas = 0 if ant_incompleto else subir.borrar_ausentes(set(filas_por_id), estado, desde.isoformat(), completo)
         if borradas:
             print(f"{borradas} órdenes que ya no están en el reporte se borraron de la base.", flush=True)
+        if st_hilo is not None:   # el Speed Test termina antes de guardar el estado y los tableros
+            st_hilo.join(timeout=240)
+            tableros["speedtest_vel"] = {"v": estado.get("stv", {})}   # copia permanente (el portal no la lee; solo el robot)
+            # enlaces de cada instalación «FILIAL|OS» → [día, [[enlace, título]]] (para reportes; el portal no la lee)
+            tableros["speedtest_enlaces"] = {"o": tableros["speedtest"].pop("_enlaces", {})}
+        if "speedtest" in tableros:
+            tableros["speedtest"].pop("_enlaces", None)   # nunca va al portal
         estado["arranque"] = False
         subir.guardar_estado(ESTADO, estado)
         n_tab = subir.guardar_tableros(tableros, estado, inicio)
