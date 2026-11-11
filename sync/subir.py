@@ -192,13 +192,16 @@ def borrar_ausentes(ids_reporte: set[int], estado: dict, desde: str, reporte_com
 
 # ---------------------------------------------------------------- tableros y registro
 
-def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str, a_la_vez: int = 4) -> int:
+def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str, a_la_vez: int = 4, omitir=None) -> int:
     """Guarda solo los tableros cuyo contenido cambió, de 4 en 4 a la vez (antes uno por uno). Devuelve cuántos se
-    escribieron. Si alguno falla, los demás se guardan igual y al final se avisa del error."""
+    escribieron. Si alguno falla, los demás se guardan igual y al final se avisa del error.
+    omitir(clave) → True: ese tablero no se reescribe en esta corrida si ya se guardó antes (mes cerrado en las rápidas)."""
     from concurrent.futures import ThreadPoolExecutor
     t = estado.setdefault("t", {})
     pend = []
     for clave, datos in tableros.items():
+        if omitir is not None and clave in t and omitir(clave):
+            continue
         h = _hash(datos)
         if t.get(clave) != h:
             pend.append((clave, datos, h))

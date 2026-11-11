@@ -35,6 +35,18 @@ from . import procesar
 
 LIMA = ZoneInfo("America/Lima")
 FILIALES = ["ANCASH", "AREQUIPA", "CAJAMARCA", "HUANUCO", "LA LIBERTAD", "LAMBAYEQUE", "LIMA", "PIURA"]
+# Suspensiones, reconexiones y cortes que hace OFICINA (sin EECC), ya descargados: son ~80 % de las órdenes y nada del
+# portal las lee de la base (Avance total solo cuenta trabajos de EECC y sale del reporte). No se suben a Supabase para
+# no llenar la base (límite 500 MB del plan); siguen en el reporte, así que tampoco se borran las que ya estaban.
+TIPOS_OFICINA = {"SUSPENSION DE SERVICIO", "RECONEXION SERVICIO", "CORTE DEFINITIVO"}
+_RE_MES_CERRADO = re.compile(r":\d{4}-\d{2}$")   # tableros del mes anterior (instalaciones:LIMA:2026-10, …)
+
+
+def _solo_oficina(f: dict) -> bool:
+    return (f.get("tipo_orden") in TIPOS_OFICINA and f.get("estado_os") == "DESCARGADA"
+            and not str(f.get("contrata") or "").strip().upper().startswith("EECC"))
+
+
 TIMESTAMPS = ("fecha_registro", "atencion_inicio", "atencion_fin", "fecha_observacion", "fecha_mod", "inicio_fachada")
 ESTADO = Path(os.environ.get("ESTADO_ROBOT", ".estado/robot.json.gz"))
 
@@ -613,7 +625,10 @@ def main(argv: list[str] | None = None) -> int:
             _cambios_agenda(tableros, estado, ahora, asignacion)
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
             print(f"Aviso: no se calcularon los cambios de agenda: {e}", flush=True)
-        total = subir.upsert_ordenes(filas, estado, cajas_ok=indice_cajas is not None)
+        a_subir = [f for f in filas if not _solo_oficina(f)]
+        if len(a_subir) < len(filas):
+            print(f"{len(filas) - len(a_subir)} suspensiones / reconexiones / cortes de oficina no se suben a la base (no los usa el portal).", flush=True)
+        total = subir.upsert_ordenes(a_subir, estado, cajas_ok=indice_cajas is not None)
         print(f"{total} órdenes escritas en Supabase.", flush=True)
         completo = all(por_filial.get(f, 0) > 0 for f in FILIALES) and not ant_incompleto
         borradas = 0 if ant_incompleto else subir.borrar_ausentes(set(filas_por_id), estado, desde.isoformat(), completo)
@@ -628,7 +643,10 @@ def main(argv: list[str] | None = None) -> int:
             tableros["speedtest"].pop("_enlaces", None)   # nunca va al portal
         estado["arranque"] = False
         subir.guardar_estado(ESTADO, estado)
-        n_tab = subir.guardar_tableros(tableros, estado, inicio)
+        # Mes anterior (cerrado): solo se reescribe en la actualización completa (cada ~2 h); en las rápidas y exprés sus
+        # datos vienen de esa misma completa, así que reescribirlo cada 10 min solo gastaba disco de Supabase.
+        n_tab = subir.guardar_tableros(tableros, estado, inicio,
+                                       omitir=None if not args.base else (lambda c: bool(_RE_MES_CERRADO.search(c))))
         try:
             subir.limpiar_diagnosticos()
         except Exception as e:  # noqa: BLE001 - nunca detiene la corrida
