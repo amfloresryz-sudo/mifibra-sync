@@ -1,6 +1,6 @@
 // GET /api/instalaciones?filial=LIMA[&mes=AAAA-MM]
 // Devuelve el tablero de Instalaciones de una filial, que el robot calcula en cada sincronización (tabla "tableros").
-const { consultar, autorizado, responder, filialDe, puedeModulo } = require('./_supabase');
+const { consultar, leerTableros, autorizado, responder, filialDe, puedeModulo } = require('./_supabase');
 
 module.exports = async (req, res) => {
   if (!(await autorizado(req))) return responder(res, 401, { error: 'No autorizado' });
@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
       const { datos } = await consultar(`tableros?select=actualizado&clave=eq.${encodeURIComponent(clave)}`);
       return responder(res, 200, { actualizado: datos[0]?.actualizado || null }, 10);
     }
-    const { datos } = await consultar(`tableros?select=datos,actualizado&clave=eq.${encodeURIComponent(clave)}`);
+    const { datos } = await leerTableros(clave, 'datos,actualizado');   // con memoria: solo baja de Supabase si el robot actualizó
     if (!datos.length) return responder(res, 404, { error: `Aún no hay datos de instalaciones para la filial ${filial}.` });
     responder(res, 200, { ...datos[0].datos, filial, actualizado: datos[0].actualizado }, 60);
   } catch (e) {

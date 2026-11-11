@@ -16,6 +16,24 @@ async function consultar(ruta, { contar = false } = {}) {
   return { datos, total };
 }
 
+// Tableros con memoria (por instancia de Vercel): primero se pide solo la hora de cada tablero (consulta de bytes) y,
+// si no cambió desde la última lectura, se responde con la copia en memoria sin volver a bajar el tablero de Supabase.
+// Así varios usuarios mirando el mismo tablero cuentan una sola descarga por actualización del robot (el tráfico de
+// salida de Supabase es lo que más se acerca al límite del plan). Si el robot actualizó, se baja de nuevo al instante.
+const MEM_TAB = new Map();
+async function leerTableros(claves, select = 'clave,datos,actualizado') {
+  const lista = [].concat(claves), enc = lista.map(c => encodeURIComponent(c)).join(',');
+  const filtro = lista.length === 1 ? `clave=eq.${enc}` : `clave=in.(${enc})`;
+  const { datos: H } = await consultar(`tableros?select=clave,actualizado&${filtro}`);
+  const firma = H.map(x => x.clave + '=' + x.actualizado).sort().join('|'), k = select + '¦' + lista.join(',');
+  const m = MEM_TAB.get(k);
+  if (m && m.firma === firma) return { datos: structuredClone(m.datos), mem: true };
+  const { datos } = await consultar(`tableros?select=${select}&${filtro}`);
+  MEM_TAB.delete(k); MEM_TAB.set(k, { firma, datos });
+  while (MEM_TAB.size > 24) MEM_TAB.delete(MEM_TAB.keys().next().value);   // las más viejas salen primero
+  return { datos: structuredClone(datos), mem: false };
+}
+
 // Inserta o reemplaza filas (upsert) en una tabla. Solo lo usan los ajustes del portal.
 async function guardar(tabla, filas, conflicto) {
   if (!URL_BASE || !CLAVE) throw new Error('Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en Vercel');
@@ -123,4 +141,4 @@ async function pedir(ruta, method, cuerpo, prefer = 'return=minimal') {
   return prefer.includes('representation') ? r.json() : null;
 }
 
-module.exports = { PROV7, MODULOS_PORTAL, puedeModulo, consultar, guardar, pedir, autorizado, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, filialDe, filialesDe, filtroFilial, permitidas, puedeVer, FILIALES };
+module.exports = { PROV7, MODULOS_PORTAL, puedeModulo, consultar, leerTableros, guardar, pedir, autorizado, sesionDe, firmarSesion, accesoConfig, guardarAcceso, esMaster, iguales, responder, filialDe, filialesDe, filtroFilial, permitidas, puedeVer, FILIALES };

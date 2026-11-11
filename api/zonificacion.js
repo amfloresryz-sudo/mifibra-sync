@@ -1,13 +1,13 @@
 // GET  /api/zonificacion  → todos los distritos con sus planos (tablero que arma el robot) + EECC editadas en el portal (al instante)
 // POST /api/zonificacion  → { cambios: { "FILIAL|DISTRITO|PLANO": "EECC" } } guarda la EECC de esos planos ("" = vuelve a la de la hoja ZONA).
 //                           Solo el usuario master (clave master en x-master-token).
-const { consultar, guardar, autorizado, responder, puedeVer, puedeModulo, esMaster } = require('./_supabase');
+const { consultar, leerTableros, guardar, autorizado, responder, puedeVer, puedeModulo, esMaster } = require('./_supabase');
 
 const CLAVE_EDIT = 'zonificacion:GLOBAL';
 let MEM = { en: 0, d: null };
 async function tablero() {
-  if (MEM.d && Date.now() - MEM.en < 120e3) return MEM.d;
-  const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.zonificacion');
+  if (MEM.d && Date.now() - MEM.en < 20e3) return MEM.d;   // ráfagas de pedidos: 20 s; luego se revisa la hora (memoria por actualización)
+  const { datos } = await leerTableros('zonificacion', 'datos,actualizado');
   MEM = { en: Date.now(), d: datos[0] || null }; return MEM.d;
 }
 async function editadas() {
@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
   // ?areas=1 → áreas de los planos (polígonos de Google My Maps) para el mapa de Ruteo de Pendientes
   if (new URL(req.url, 'http://x').searchParams.get('areas')) {
     if (!(req.usuario && req.usuario.e) && !puedeModulo(req, 'instalaciones', 'zonificacion', 'fftt', 'averias')) return responder(res, 403, { error: 'No tienes acceso a este módulo.' });   // las EECC también ven las áreas
-    try { const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.areas');
+    try { const { datos } = await leerTableros('areas', 'datos,actualizado');
       return responder(res, 200, datos.length ? { ...datos[0].datos, actualizado: datos[0].actualizado } : { areas: [] }, datos.length ? 300 : 0); }   // sin áreas no se guarda en caché
     catch (e) { return responder(res, 500, { error: e.message }); }
   }

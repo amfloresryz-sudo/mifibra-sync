@@ -4,7 +4,7 @@
 // POST /api/speedtest?accion=vel (solo el robot, con firma): respaldo para leer velocidades en speedtest.net desde Vercel
 // cuando speedtest.net no responde a los servidores de GitHub. Cuerpo {claves: [...]} → {r: {clave: [bajada, subida, red Mi Fibra 1/0, fecha] | [-1] | null}}.
 const crypto = require('crypto');
-const { consultar, autorizado, responder, puedeVer, permitidas, puedeModulo } = require('./_supabase');
+const { consultar, leerTableros, autorizado, responder, puedeVer, permitidas, puedeModulo } = require('./_supabase');
 
 // Firma del robot: HMAC-SHA256 con la clave de Supabase (la tienen el robot y Vercel) sobre «speedtest-vel:AAAA-MM-DD» (hoy o ayer, UTC)
 function firmaOk(req) {
@@ -32,8 +32,8 @@ async function cuerpo(req) { if (req.body && typeof req.body === 'object') retur
 // El tablero (≈1 MB) se guarda en memoria 2 min por instancia: no se vuelve a pedir a Supabase en cada visita.
 let MEM = { en: 0, d: null };
 async function tablero() {
-  if (MEM.d && Date.now() - MEM.en < 120e3) return MEM.d;
-  const { datos } = await consultar('tableros?select=datos,actualizado&clave=eq.speedtest');
+  if (MEM.d && Date.now() - MEM.en < 20e3) return MEM.d;   // ráfagas de pedidos: 20 s; luego se revisa la hora (memoria por actualización)
+  const { datos } = await leerTableros('speedtest', 'datos,actualizado');
   MEM = { en: Date.now(), d: datos[0] || null }; return MEM.d;
 }
 

@@ -15,7 +15,7 @@
 // POST ?accion=comentar  {os, texto}                                  → comentario de la EECC (lo ve Mi Fibra y el robot lo escribe en ScordSoft)
 // Las evidencias se borran solas a los 30 días (archivo y registro).
 const crypto = require('crypto');
-const { consultar, pedir, guardar, autorizado, responder, permitidas, puedeModulo, FILIALES } = require('./_supabase');
+const { consultar, leerTableros, pedir, guardar, autorizado, responder, permitidas, puedeModulo, FILIALES } = require('./_supabase');
 
 const URL_BASE = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const CLAVE = process.env.SUPABASE_SERVICE_KEY || '';
@@ -49,7 +49,7 @@ async function storage(ruta, method, cuerpo) {
 async function pendientesPortal(filiales) {
   const cl = filiales.map(f => encodeURIComponent('instalaciones:' + f)).join(',');
   const [{ datos: T }, { datos: A }] = await Promise.all([
-    consultar(`tableros?select=clave,datos->pend,datos->pendx,datos->avt,datos->tec7,datos->corte,actualizado&clave=in.(${cl})`),
+    leerTableros(filiales.map(f => 'instalaciones:' + f), 'clave,datos->pend,datos->pendx,datos->avt,datos->tec7,datos->corte,actualizado'),   // con memoria: solo baja si el robot actualizó
     consultar(`ajustes?select=clave,datos&clave=in.(${cl})`)]);
   const aj = {}; A.forEach(x => { aj[x.clave] = x.datos || {}; });
   const L = [], H = [], M = [], S = []; let actualizado = null;   // S = técnicos que descargaron en los últimos 7 días   // M = técnicos que descargaron en el mes (rutas de la EECC)   // H = órdenes descargadas HOY por técnicos de EECC (avance del día)
