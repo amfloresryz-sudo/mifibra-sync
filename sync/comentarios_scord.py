@@ -12,6 +12,14 @@ Para no duplicar ni dejar nada a medias:
   - Si grabó pero no lo puede confirmar, lo marca «error» (no reintenta, para no escribirlo dos veces).
   - Nunca toca los botones de editar o borrar del historial.
 
+Agenda (si el comentario trae día y franja, p. ej. «cliente agenda 12/11 de 8 a 10»):
+  4. Mismo AB en Agendamiento de Ordenes (estado REGISTRADA): se marcan TODAS sus OS registradas → «Asignar Tecnico» →
+     «Agendar Orden de servicio»: FECHA ATENCIÓN, HORARIO ATENCION OS (8 - 10 … 18 - 20) y OBSERVACIÓN; el técnico se deja
+     el que ya tiene la OS → Grabar. Luego vuelve a buscar y confirma que la OS quedó con esa fecha y franja.
+  - Manda el ÚLTIMO comentario con agenda de la OS (los anteriores quedan «reemplazado»); sin agenda no se toca nada.
+  - No se agenda si la fecha ya pasó, si la OS ya no está registrada o si no tiene técnico; si ya tenía esa fecha y
+    franja, queda «igual» sin grabar.
+
 Uso:
   python -m sync.comentarios_scord                  # escribe los pendientes una vez y termina
   python -m sync.comentarios_scord --vigilar 300    # revisa Supabase cada minuto durante 300 min (turno del robot)
@@ -44,9 +52,20 @@ MAX_INTENTOS = 3
 
 def pendientes(limite: int = 20) -> list[dict]:
     r = _pedir("GET", _url("eecc_comentarios"), "Leer comentarios pendientes", headers=_cabeceras(),
-               params={"select": "id,os,ab,filial,eecc,usuario,nombre_usuario,texto,scord_intentos,creado_en",
+               params={"select": "id,os,ab,filial,eecc,usuario,nombre_usuario,texto,scord_intentos,creado_en,ag_estado",
                        "scord_estado": "eq.pendiente", "order": "creado_en.asc", "limit": str(limite)})
     return r.json()
+
+
+def hay_agenda_mas_nueva(c: dict) -> bool:
+    """¿Hay otro comentario más nuevo para la misma OS que también trae agenda? (manda el último)."""
+    r = _pedir("GET", _url("eecc_comentarios"), "Leer comentarios de la OS", headers=_cabeceras(),
+               params={"select": "id,texto,creado_en", "os": f"eq.{c['os']}", "creado_en": f"gt.{c['creado_en']}", "order": "creado_en.asc"})
+    return any(agenda_de(x["texto"], _dia_lima(x["creado_en"])) for x in r.json())
+
+
+def _dia_lima(iso: str) -> date:
+    return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).astimezone(timezone(timedelta(hours=-5))).date()
 
 
 def marcar(cid: int, **campos) -> None:
@@ -87,6 +106,99 @@ def texto_scord(c: dict, hist: str = "", ahora: datetime | None = None) -> str:
         ahora = ahora or datetime.now(timezone(timedelta(hours=-5)))
         t = f"#{ahora:%d/%m/%Y %H:%M}# {t}"
     return t[:MAX_TEXTO]
+
+
+# ----------------------------------------------------------------------------------------------- agenda del comentario
+
+FRANJAS = ["8 - 10", "10 - 12", "12 - 14", "14 - 16", "16 - 18", "18 - 20"]
+_DIAS_SEM = ["LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"]
+_MESES = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SETIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"]
+# día: 12/11 · 12.11 · 12 DE NOVIEMBRE · HOY · MAÑANA · PASADO MAÑANA · LUNES… (con número opcional: «MAÑANA 09», «JUEVES 12»)
+_RE_DIA = re.compile(r"\b(?P<d>\d{1,2})\s*[/.]\s*(?P<m>\d{1,2})(?:\s*[/.]\s*\d{2,4})?\b"
+                     r"|\b(?P<d3>\d{1,2})\s*-\s*(?P<m3>\d{1,2})\b(?=\s*(?:/\s*\d{2,4}\s*)?(?:DE|EN|A\s+LAS|RANGO|HORARIO|ENTRE)\b)"
+                     r"|\b(?P<d2>\d{1,2})\s+DE\s+(?P<mes>ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SE?TIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\b"
+                     r"|\b(?P<rel>PASADO\s+MANANA|HOY|MANANA)\b(?:\s+(?:\w+\s+)?(?P<dr>\d{1,2})\b(?!\s*(?::|AM|PM|A\b|-|HRS?)))?"
+                     r"|\b(?P<sem>LUNES|MARTES|MIERCOLES|JUEVES|VIERNES|SABADO|DOMINGO)\b(?:\s+(?P<ds>\d{1,2})\b(?!\s*(?::|AM|PM|A\b|-|HRS?)))?")
+_H = r"(\d{1,2})(?:\s*:\s*(\d{2}))?\s*(AM|PM|A\.?\s?M\.?|P\.?\s?M\.?|HRS?|[AP](?=\s+A\b))?"
+_RE_RANGO = re.compile(r"\b" + _H + r"\s*(?:A|-|AL|HASTA)\s*" + _H + r"(?![\d/])")
+_RE_HORA = re.compile(r"\bA\s+LAS\s+" + _H + r"|\b(\d{1,2})(?:\s*:\s*(\d{2}))?\s*(AM|PM)\b|\b(?:RANGO|FRANJA|HORARIO)\s+(?:DE\s+)?" + _H)
+
+
+def _hora24(h: int, mer: str | None, mer2: str | None = None) -> int:
+    mer = (mer or mer2 or "").replace(".", "").replace(" ", "")
+    if mer.startswith("P") and h < 12:
+        return h + 12
+    if not mer.startswith("A") and h < 8:   # sin AM/PM, «de 2 a 4» es de la tarde
+        return h + 12
+    return h
+
+
+def _franja(h: int) -> str | None:
+    """Franja de 2 h que contiene la hora de inicio (9 → 8 - 10, 15 → 14 - 16); fuera de 8:00–19:59 no hay franja."""
+    return FRANJAS[(h - 8) // 2] if 8 <= h < 20 else None
+
+
+def _franja_en(t: str, desde: int = 0) -> str | None:
+    """Primera franja u hora que aparece en el texto desde la posición dada."""
+    r, h = _RE_RANGO.search(t, desde), _RE_HORA.search(t, desde)
+    m = min([x for x in (r, h) if x], key=lambda x: x.start(), default=None)
+    if not m:
+        return None
+    if m.re is _RE_RANGO:
+        h1 = int(m[1])
+        if h1 > 23 or int(m[4]) > 23:
+            return None
+        h2 = _hora24(int(m[4]), m[6])
+        if m[3]:
+            return _franja(_hora24(h1, m[3]))
+        # sin AM/PM en la 1.ª hora: toma el de la 2.ª solo si cuadra («4-6pm» = 16; «10-12pm» = 10; «12-2pm» = 12)
+        return _franja(h1 + 12 if h1 < 12 and (h1 < 8 or (m[6] or "").startswith("P") and h1 + 12 <= h2) else h1)
+    g = [x for x in m.groups()]
+    for i in (0, 3, 6):   # «A LAS h», «h AM/PM», «RANGO DE h»
+        if g[i]:
+            return _franja(_hora24(int(g[i]), g[i + 2])) if int(g[i]) <= 23 else None
+    return None
+
+
+def _dia(m: re.Match, ref: date) -> date | None:
+    try:
+        if m["d"]:
+            d, mes = int(m["d"]), int(m["m"])
+        elif m["d3"]:   # «10-11 DE 4 A 6»: día-mes con guion, solo del mes en curso o del siguiente
+            d, mes = int(m["d3"]), int(m["m3"])
+            if mes not in (ref.month, ref.month % 12 + 1):
+                return None
+        elif m["d2"]:
+            d, mes = int(m["d2"]), _MESES.index(m["mes"].replace("SET", "SET") if m["mes"] != "SEPTIEMBRE" else "SETIEMBRE") + 1
+        elif m["rel"]:
+            f = ref + timedelta(days={"HOY": 0, "MANANA": 1}.get(m["rel"], 2))
+            if m["dr"] and int(m["dr"]) != f.day:   # «MAÑANA 09» debe coincidir con el día de mañana
+                return None
+            return f
+        else:
+            k = _DIAS_SEM.index(m["sem"]); f = ref + timedelta(days=(k - ref.weekday()) % 7)
+            if m["ds"]:
+                d = int(m["ds"]); f2 = date(f.year, f.month, d) if d >= f.day or True else f
+                return f2 if f2.weekday() == k else None
+            return f
+        if not (1 <= mes <= 12 and 1 <= d <= 31):
+            return None
+        anio = ref.year + (1 if mes < ref.month - 6 else 0)   # «05/01» escrito en diciembre es del año siguiente
+        return date(anio, mes, d)
+    except (ValueError, IndexError):
+        return None
+
+
+def agenda_de(texto: str, ref: date) -> tuple[date, str] | None:
+    """Día y franja que trae el comentario (la última fecha que menciona y la franja u hora que la acompaña).
+    ref = día en que se escribió el comentario (para HOY, MAÑANA, LUNES…). None si no trae día Y franja válidos."""
+    t = _norm(RE_SELLO.sub(" ", re.sub(r"%[^%]*%", " ", texto or "")))   # sin el sello #dd/mm/aaaa hh:mm# ni el %TÉCNICO%
+    for m in reversed(list(_RE_DIA.finditer(t))):   # la última fecha que trae su franja u hora a continuación
+        f = _dia(m, ref)
+        fr = f and _franja_en(t[:m.end() + 60], m.end())
+        if fr:
+            return f, fr
+    return None
 
 
 def _norm(s: str) -> str:
@@ -217,6 +329,139 @@ def escribir(page: Page, base: str, c: dict, probar: bool) -> str:
                      + (msg or " ".join(avisos)))
 
 
+def buscar_ab(page: Page, base: str, c: dict) -> list[dict]:
+    """Deja en la grilla las OS REGISTRADAS del AB y devuelve [{os, fec, hor, chk}] (chk = id de su casilla)."""
+    page.goto(f"{base}{PANTALLA}", wait_until="networkidle")
+    _elegir_filial(page, c)
+    hace_un_anio = (date.today() - timedelta(days=365)).strftime("%d/%m/%Y")
+    page.evaluate(
+        """([ab, ini]) => { const v = (id, x) => { const e = document.getElementById(id); if (e) e.value = x; };
+            v('MainContent_cboEstadoOS', '001'); v('MainContent_txtNumeroOS', ''); v('MainContent_txtAbonado', ab);
+            v('MainContent_txtFechaRegistroIni', ini); }""", [str(int(c["ab"])), hace_un_anio])
+    page.click("#MainContent_btnBuscar")
+    page.wait_for_timeout(1500)
+    try:
+        page.wait_for_function(
+            r"""(g) => { const t = document.querySelector(g); return (t && t.querySelector('input[id*=chkSeleccion]')) || /TOTAL DE REGISTROS:?\s*0\b/.test(document.body.innerText); }""",
+            arg=GRILLA, timeout=60_000)
+    except Exception:  # noqa: BLE001
+        pass
+    return page.evaluate(
+        r"""(g) => { const t = document.querySelector(g); if (!t) return [];
+            const h = [...t.querySelectorAll('tr')[0].cells].map(c => c.innerText.replace(/\s+/g, ' ').trim().toUpperCase());
+            const i = (re) => h.findIndex(x => re.test(x)), iOs = i(/^NRO ?OS$/), iF = i(/FEC\. ?PROG/), iH = i(/HORARIO/), iE = i(/^EST\. ?OS$/), iT = i(/TEC\. ?ASIG/);
+            return [...t.querySelectorAll('tr')].filter(tr => tr.querySelector('input[id*=chkSeleccion]')).map(tr => ({
+              os: tr.cells[iOs]?.innerText.trim(), fec: tr.cells[iF]?.innerText.trim(), hor: tr.cells[iH]?.innerText.replace(/\s+/g, ' ').trim(),
+              est: tr.cells[iE]?.innerText.trim(), tec: tr.cells[iT]?.innerText.replace(/\s+/g, ' ').trim(), chk: tr.querySelector('input[id*=chkSeleccion]').id })); }""", GRILLA)
+
+
+def _elegir_filial(page: Page, c: dict) -> None:
+    page.wait_for_selector("#MainContent_txtNumeroOS", timeout=60_000)
+    valor = page.evaluate(
+        """(t) => { const n = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+                    const o = [...document.querySelector('#MainContent_cboFilial').options].find(o => n(o.text) === t);
+                    return o ? o.value : null; }""", _norm(c["filial"]))
+    if not valor:
+        raise ErrorRobot(f"La filial {c['filial']} no está en ScordSoft.")
+    if page.input_value("#MainContent_cboFilial") != valor:
+        page.select_option("#MainContent_cboFilial", valor)
+        page.wait_for_timeout(1500)
+        page.wait_for_load_state("networkidle", timeout=60_000)
+        page.wait_for_selector("#MainContent_txtNumeroOS", timeout=60_000)
+
+
+def agendar(page: Page, base: str, c: dict, fecha: date, franja: str, probar: bool) -> tuple[str, str]:
+    """Pone fecha y franja a todas las OS registradas del AB. Devuelve (estado, detalle):
+    agendado · igual · omitido (con motivo) · prueba. Lanza ErrorRobot si algo falla."""
+    if not c.get("ab"):
+        return "omitido", "el comentario no tiene AB"
+    f_txt = fecha.strftime("%d/%m/%Y")
+    filas = buscar_ab(page, base, c)
+    mia = next((f for f in filas if f["os"] == str(c["os"])), None)
+    if not mia:
+        return "omitido", f"la OS {c['os']} ya no está registrada"
+    if all(f["fec"] == f_txt and f["hor"] == franja for f in filas):
+        return "igual", f"ya tenía {f_txt} {franja}"
+    tec_os = mia.get("tec") or ""
+    if not tec_os or re.search(r"S/?\s*ASIGNAR|SIN ASIGNAR", tec_os, re.I):
+        return "omitido", "la OS no tiene técnico asignado"
+    for f in filas:   # todas las OS registradas del AB (Internet, OTT…)
+        page.check(f"#{f['chk']}")
+    # La ventana abre con la fecha de hoy, técnico «Seleccione» y horario «NO DEFINE»: se llenan los tres.
+    _postback(page, lambda: page.click("#MainContent_tabForm_tpaReportados_btnProgramar"), "#MainContent_pnlProgramacionOS")
+    page.wait_for_timeout(1000)
+    # 1) FECHA: al cambiarla ScordSoft revisa la capacidad (postback parcial que puede limpiar el técnico)
+    page.fill("#MainContent_txtFechaAtencionProgramacion", f_txt)
+    page.evaluate("() => $('#MainContent_txtFechaAtencionProgramacion').trigger('change')")
+    page.wait_for_timeout(1500)
+    page.wait_for_load_state("networkidle", timeout=60_000)
+    if page.input_value("#MainContent_txtFechaAtencionProgramacion") != f_txt:
+        page.fill("#MainContent_txtFechaAtencionProgramacion", f_txt)
+    # 2) TÉCNICO: el que ya tiene la OS (en la lista sale con menos nombres: «MALDONADO SEBASTIAN, RENZO»)
+    valor = page.evaluate(
+        r"""(t) => { const n = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+            const T = n(t), ops = [...document.getElementById('MainContent_cboRegidtecnicoProgramacion').options].filter(o => o.index > 0);
+            const m = ops.filter(o => { const x = n(o.text); return x === T || T.startsWith(x) || x.startsWith(T); });
+            return m.length === 1 ? m[0].value : null; }""", tec_os)
+    if not valor:
+        page.click("#divCerrarProgramacionOS")
+        return "omitido", f"no se encontró al técnico {tec_os} en la lista de ScordSoft"
+    if page.input_value("#MainContent_cboRegidtecnicoProgramacion") != valor:
+        page.select_option("#MainContent_cboRegidtecnicoProgramacion", valor)   # dispara un postback parcial
+        page.wait_for_timeout(1500)
+        page.wait_for_load_state("networkidle", timeout=60_000)
+    # 3) HORARIO y OBSERVACIÓN
+    page.select_option("#MainContent_cboHorarioAtencionOS", label=franja)
+    obs = f"Agenda web {f_txt} {franja}: {cuerpo(c)} - {c.get('nombre_usuario') or c.get('usuario') or ''}"[:MAX_TEXTO]
+    page.fill("#MainContent_txtObservacionAsignacion", obs)
+    revisa = page.evaluate("() => { const g = id => document.getElementById(id); const s = g('MainContent_cboRegidtecnicoProgramacion'), h = g('MainContent_cboHorarioAtencionOS');"
+                           " return [g('MainContent_txtFechaAtencionProgramacion').value, s.value, h.options[h.selectedIndex].text, s.options[s.selectedIndex].text]; }")
+    if revisa[:3] != [f_txt, valor, franja]:
+        page.click("#divCerrarProgramacionOS")
+        raise ErrorRobot(f"La ventana no quedó con la fecha, técnico y franja pedidos ({revisa}); no se grabó.")
+    tec = revisa[3]
+    if probar:
+        _captura(page, CAPTURAS, f"prueba_agenda_{c['os']}")
+        page.click("#divCerrarProgramacionOS")
+        return "prueba", f"{f_txt} {franja} · técnico {tec} · {len(filas)} OS"
+    avisos: list[str] = []
+    page.once("dialog", lambda d: (avisos.append(d.message), d.accept()))
+    _postback(page, lambda: page.click("#MainContent_btnGrabarProgramacion"))
+    page.wait_for_timeout(1000)
+    msg = (page.inner_text("#MainContent_lblMsgEdicionProgramacionOS") if page.locator("#MainContent_lblMsgEdicionProgramacionOS").count() else "").strip()
+    if msg or avisos:
+        print(f"   ScordSoft dijo: {msg} {' '.join(avisos)}".rstrip(), flush=True)
+    filas = buscar_ab(page, base, c)
+    mia = next((f for f in filas if f["os"] == str(c["os"])), None)
+    if mia and mia["fec"] == f_txt and mia["hor"] == franja:
+        return "agendado", f"{f_txt} {franja} · técnico {tec} · {len(filas)} OS"
+    raise ErrorRobot("GRABADO_SIN_CONFIRMAR: se pulsó Grabar en Agendar Orden pero la OS no muestra la fecha y franja. "
+                     + (msg or " ".join(avisos)))
+
+
+def procesar_agenda(page: Page, base: str, c: dict, probar: bool) -> None:
+    """Después de escribir el comentario: si trae día y franja, agenda la OS en ScordSoft (y lo deja anotado en Supabase)."""
+    ag = agenda_de(c["texto"], _dia_lima(c["creado_en"]))
+    if not ag or c.get("ag_estado"):
+        return
+    fecha, franja = ag
+    base_campos = {"ag_fecha": fecha.isoformat(), "ag_franja": franja, "ag_en": _ahora()}
+    hoy = datetime.now(timezone(timedelta(hours=-5))).date()
+    try:
+        if hay_agenda_mas_nueva(c):
+            est, det = "reemplazado", "hay un comentario más nuevo con agenda"
+        elif fecha < hoy:
+            est, det = "omitido", f"la fecha {fecha:%d/%m} ya pasó"
+        else:
+            est, det = agendar(page, base, c, fecha, franja, probar)
+    except Exception as e:  # noqa: BLE001
+        _captura(page, CAPTURAS, f"error_agenda_{c['os']}_{int(time.time())}")
+        est, det = "error", str(e)[:300]
+    print(f"   agenda {fecha:%d/%m} {franja} → {est} ({det})", flush=True)
+    if not probar:
+        marcar(c["id"], ag_estado=est, ag_error=None if est in ("agendado", "igual") else det, **base_campos)
+
+
 # ----------------------------------------------------------------------------------------------- ciclo
 
 def procesar(lista: list[dict], probar: bool) -> None:
@@ -234,6 +479,8 @@ def procesar(lista: list[dict], probar: bool) -> None:
                 if r in ("escrito", "ya_estaba"):
                     marcar(c["id"], scord_estado="escrito", scord_en=_ahora(), scord_error=None,
                            scord_intentos=(c.get("scord_intentos") or 0) + 1)
+                if r in ("escrito", "ya_estaba", "prueba"):
+                    procesar_agenda(page, base, c, probar)
             except Exception as e:  # noqa: BLE001 - un comentario fallido no detiene los demás
                 _captura(page, CAPTURAS, f"error_{c['os']}_{int(time.time())}")
                 n = (c.get("scord_intentos") or 0) + 1
