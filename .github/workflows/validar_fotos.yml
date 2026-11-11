@@ -11,7 +11,7 @@ on:
 
 jobs:
   validar:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # fijo: «ubuntu-latest» pasó a Ubuntu 26 y falla al instalar el navegador
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,13 @@ jobs:
       - name: Instalar dependencias
         run: |
           pip install -r requirements.txt
-          python -m playwright install --with-deps chromium
+          # El navegador del robot: si la red de GitHub falla al bajar paquetes de Ubuntu, se reintenta (hasta 3 veces)
+          for i in 1 2 3; do
+            python -m playwright install --with-deps chromium && break
+            [ "$i" = 3 ] && exit 1
+            echo "Reintento $i de la instalación del navegador en 30 s…"; sleep 30
+            sudo apt-get update -o Acquire::Retries=3 || true
+          done
       - name: Validar fotos
         env:
           SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
