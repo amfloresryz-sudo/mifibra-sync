@@ -10,6 +10,11 @@ on:
         description: "Rama con el código nuevo a medir"
         default: "robot-rapido"
         type: string
+      modo:
+        description: "tiempos (mide actual vs nuevo + exprés) o comparar (confirma que los tableros salen idénticos)"
+        default: "comparar"
+        type: choice
+        options: [comparar, tiempos]
 
 permissions:
   contents: read
@@ -46,7 +51,69 @@ jobs:
           key: robot-estado-simulacion-${{ github.run_id }}
           restore-keys: robot-estado-
 
+      - name: Comparar tableros (actual vs nuevo)
+        if: ${{ inputs.modo == 'comparar' }}
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          base=$(ls -d .estado/base/*/ 2>/dev/null | sort | tail -1); base=${base%/}
+          [ -n "$base" ] || { echo "No hay reporte base guardado en el estado del robot."; exit 1; }
+          corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+          cat > "$RUNNER_TEMP/volcar.py" <<'PY'
+          # Corre el robot (sin escribir nada) y guarda cada tablero calculado como JSON ordenado, para comparar.
+          import json, sys, os
+          sys.path.insert(0, os.getcwd())   # el código de la versión (actual o nuevo) está en la carpeta actual
+          import sync.main as M
+          salida = sys.argv[1]
+          original = M.calcular_tableros
+          def volcar(*a, **k):
+              t = original(*a, **k)
+              os.makedirs(salida, exist_ok=True)
+              for clave, datos in t.items():
+                  with open(os.path.join(salida, clave.replace(":", "__").replace("/", "_") + ".json"), "w") as f:
+                      json.dump(datos, f, sort_keys=True, ensure_ascii=False, default=str)
+              return t
+          M.calcular_tableros = volcar
+          sys.exit(M.main(sys.argv[2:]))
+          PY
+          for v in actual nuevo; do
+            mkdir -p "$RUNNER_TEMP/b_$v"; cp "$base"/*.xlsx "$RUNNER_TEMP/b_$v/"
+            ( cd "$v" && ESTADO_ROBOT="$RUNNER_TEMP/est_$v/robot.json.gz" python -u "$RUNNER_TEMP/volcar.py" "$RUNNER_TEMP/tab_$v" \
+                --base $(ls "$RUNNER_TEMP"/b_$v/*.xlsx) --sin-subir --corte "$corte" ) 2>&1 | grep -E "\[tiempo\]|Traceback|Error" | sed "s/^/[$v] /"
+          done
+          python - "$RUNNER_TEMP/tab_actual" "$RUNNER_TEMP/tab_nuevo" <<'PY'
+          import json, os, sys
+          a, b = sys.argv[1], sys.argv[2]
+          A, B = set(os.listdir(a)), set(os.listdir(b))
+          print(f"Tableros: actual {len(A)} · nuevo {len(B)}")
+          for x in sorted(A - B): print(f"  FALTA en el nuevo: {x}")
+          for x in sorted(B - A): print(f"  SOBRA en el nuevo: {x}")
+          def primera_dif(x, y, ruta=""):
+              if type(x) != type(y): return f"{ruta}: tipo {type(x).__name__} vs {type(y).__name__}"
+              if isinstance(x, dict):
+                  for k in sorted(set(x) | set(y)):
+                      if k not in x or k not in y: return f"{ruta}/{k}: solo en {'nuevo' if k not in x else 'actual'}"
+                      d = primera_dif(x[k], y[k], f"{ruta}/{k}")
+                      if d: return d
+              elif isinstance(x, list):
+                  if len(x) != len(y): return f"{ruta}: {len(x)} vs {len(y)} elementos"
+                  for i, (p, q) in enumerate(zip(x, y)):
+                      d = primera_dif(p, q, f"{ruta}[{i}]")
+                      if d: return d
+              elif x != y: return f"{ruta}: {str(x)[:80]} vs {str(y)[:80]}"
+              return None
+          iguales, distintos = 0, 0
+          for x in sorted(A & B):
+              p, q = open(os.path.join(a, x)).read(), open(os.path.join(b, x)).read()
+              if p == q: iguales += 1; continue
+              distintos += 1
+              print(f"  DISTINTO {x}: {primera_dif(json.loads(p), json.loads(q))}")
+          print(f"RESULTADO: {iguales} idénticos · {distintos} distintos · {len(A ^ B)} que faltan o sobran")
+          PY
+          echo "Listo: nada se escribió en Supabase ni en la web."
+
       - name: Simular
+        if: ${{ inputs.modo == 'tiempos' }}
         env:
           SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
           SCORDSOFT2_USUARIO: ${{ secrets.SCORDSOFT2_USUARIO }}
