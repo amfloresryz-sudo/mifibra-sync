@@ -11,7 +11,10 @@ else:   # copia de las velocidades ya leídas que guarda el robot en Supabase (s
     from sync import subir
     cache = {k: v for k, v in (subir.leer_tablero("speedtest_vel").get("v") or {}).items()}
     print(f"Caché de velocidades: {len(cache)} enlaces.", flush=True)
+claves = {str(r[6]): [[c, q] for c, q in (r[12] if len(r) > 12 else [])] for r in tab["o"]}   # enlaces de cada alta (antes de leer velocidades)
 ST.velocidades(tab, cache, limite=2000, segundos=400)
+tab["_claves"] = claves
+tab["_vel"] = {c: cache.get(c) for v in claves.values() for c, _ in v}   # [bajada, subida, red ok, fecha (epoch)] de cada enlace
 json.dump(cache, open(cache_f, "w"))
 tab.pop("_enlaces", None)
 crudo = {}
