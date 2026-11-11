@@ -49,13 +49,15 @@ jobs:
       - name: Instalar dependencias
         run: |
           pip install -r requirements.txt
-          # El navegador del robot: si la red de GitHub falla al bajar paquetes de Ubuntu, se reintenta (hasta 3 veces)
+          # El navegador del robot se baja del CDN de Playwright (no depende de los repositorios de Ubuntu); 3 intentos.
           for i in 1 2 3; do
-            python -m playwright install --with-deps chromium && break
+            python -m playwright install chromium && break
             [ "$i" = 3 ] && exit 1
-            echo "Reintento $i de la instalación del navegador en 30 s…"; sleep 30
-            sudo apt-get update -o Acquire::Retries=3 || true
+            echo "Reintento $i de la descarga del navegador en 20 s…"; sleep 20
           done
+          # Librerías y fuentes del sistema: el servidor de GitHub ya trae lo que Chromium necesita. Se intenta completar
+          # con apt, pero si los repositorios de Ubuntu no responden (pasó el 11-nov) se sigue sin frenar el turno.
+          timeout 180 python -m playwright install-deps chromium || echo "Aviso: no se instalaron las librerías extra (apt no respondió); se sigue."
 
       # Huellas de las órdenes ya guardadas: así cada corrida escribe en Supabase solo lo que cambió.
       - name: Recuperar estado del robot
