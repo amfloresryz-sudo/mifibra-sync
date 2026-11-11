@@ -130,6 +130,19 @@ async function asistencia() {
   return a.fecha === hoyLima() ? { fecha: a.fecha, ec: a.ec || {} } : { fecha: hoyLima(), ec: {} };
 }
 
+// Historial de asistencia: una fila por mes («asistencia:HIST:AAAA-MM») con, por día y EECC, la hora del PRIMER registro
+// (p), la del último cambio (u), quién la marcó, cuántos técnicos marcó (n), sus rutas (r) y la lista de técnicos.
+const claveHist = (fecha) => 'asistencia:HIST:' + fecha.slice(0, 7);
+async function leerHist(fecha) {
+  const { datos } = await consultar(`ajustes?select=datos&clave=eq.${encodeURIComponent(claveHist(fecha))}`);
+  return (datos[0] && datos[0].datos) || { d: {} };
+}
+async function guardarHist(fecha, eecc, reg) {
+  const h = await leerHist(fecha), dia = h.d[fecha] || (h.d[fecha] = {}), prev = dia[eecc];
+  dia[eecc] = { p: (prev && prev.p) || reg.en, u: reg.en, por: reg.por, n: reg.tecs.length, r: reg.rutas, tecs: reg.tecs };
+  await guardar('ajustes', [{ clave: claveHist(fecha), datos: h, actualizado: new Date().toISOString() }], 'clave');
+}
+
 async function leerCuerpo(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   let s = ''; for await (const c of req) { s += c; if (s.length > 20000) throw new Error('Cuerpo demasiado grande'); }
@@ -174,11 +187,22 @@ module.exports = async (req, res) => {
       const a = await asistencia();
       a.ec[eecc] = { tecs, por: u.n || u.u || '', en: new Date().toISOString(), rutas: d.rutas.length };
       await guardar('ajustes', [{ clave: CLAVE_ASIS, datos: a, actualizado: new Date().toISOString() }], 'clave');
+      try { await guardarHist(a.fecha, eecc, a.ec[eecc]); } catch (e) { console.error('Historial de asistencia:', e.message); }   // no frena el registro
       return responder(res, 200, { fecha: a.fecha, rutas: d.rutas, ...a.ec[eecc] });
     }
     if (req.method === 'GET' && accion === 'asistencia_todas') {
       if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
       return responder(res, 200, await asistencia());
+    }
+    if (req.method === 'GET' && accion === 'asistencia_hist') {
+      // Historial del mes (?mes=AAAA-MM; sin mes = el actual). Hoy se completa con la asistencia del día si aún no estaba
+      // en el historial (las marcadas antes de que existiera el historial: se toma su última hora como la del registro).
+      if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
+      const hoy = hoyLima(), mes = /^\d{4}-\d{2}$/.test(q.get('mes') || '') ? q.get('mes') : hoy.slice(0, 7);
+      const h = await leerHist(mes + '-01');
+      if (mes === hoy.slice(0, 7)) { const a = await asistencia(), dia = h.d[hoy] || (h.d[hoy] = {});
+        Object.entries(a.ec).forEach(([k, v]) => { if (!dia[k]) dia[k] = { p: v.en, u: v.en, por: v.por, n: (v.tecs || []).length, r: v.rutas, tecs: v.tecs || [] }; }); }
+      return responder(res, 200, { mes, d: h.d });
     }
     if (req.method === 'GET' && accion === 'con_evidencia') {
       if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
