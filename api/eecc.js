@@ -111,7 +111,7 @@ async function podar() {
 
 // Comentarios de la EECC: los de la casilla y los que acompañan a una evidencia (el mismo texto subido con
 // varios archivos se guarda una sola vez).
-const COLS_COM = 'id,os,ab,eecc,usuario,nombre_usuario,texto,origen,creado_en,scord_estado,scord_en';
+const COLS_COM = 'id,os,ab,eecc,usuario,nombre_usuario,texto,origen,creado_en,scord_estado,scord_en,ag_estado,ag_fecha,ag_franja,ag_error';
 async function nuevoComentario(p, eecc, u, txt, origen) {
   const desde = new Date(Date.now() - 15 * 60e3).toISOString();
   const { datos } = await consultar(`eecc_comentarios?select=id&os=eq.${p.os}&texto=eq.${encodeURIComponent(txt)}&creado_en=gte.${desde}&limit=1`);
