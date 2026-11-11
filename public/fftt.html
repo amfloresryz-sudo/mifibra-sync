@@ -200,7 +200,10 @@ const REGLAS = {
     nap: { re: /^0?[1-9]\d?$/, txt: 'Caja (NAP) = N° de CTO, 1 a 2 dígitos (ej. 25, 09)' }, bor: BORNE, cin: CINT },
   FIBERLUX: { zo: { re: /^(?=\d{5,8}$)0*[1-9]\d{3,6}$/, txt: 'TAP = código de CTO, solo números con o sin ceros adelante (ej. 181823, 0185078)', sug: sugCto },
     nap: { test: (v) => vacio(v) || String(v).trim() === '.', txt: 'Caja (NAP) = NO VA: debe estar vacía o con "."' }, bor: BORNE, cin: CINT },
-  ATP: { zo: { re: /^(?:\d{4}\s*\/\s*\d{2}\s*\/\s*\d{2}|\d{4}\s*\/\s*(?!CTO?\d)[A-Z]{2,5}\d{3}|(?!CT)[A-Z]{2}\d{3})$/i, txt: 'TAP = PROYECTO / TRONCAL / DIVICAU (ej. 0017/09/10) · verticales PROYECTO / UBICACIÓN (ej. 0010/LINC171) · o 2 letras + 3 números (ej. BR204)', sug: sugAtp },
+  ATP: { zo: { re: /^(?:\d{4}\s*\/\s*\d{2}\s*\/\s*\d{2}|\d{4}\s*\/\s*(?!CTO?\d)[A-Z]{2,5}\d{3}|(?!CT)[A-Z]{2}\d{3})$/i,
+    // Excepción: en el distrito de ATE la planta ATP de MONUMENTAL se registra con TAP = MONUMENTAL (solo AB de planta ATP)
+    test(v, o) { return this.re.test(v) || (!!o && o.pl === 'ATP' && /^ATE(\s+VITARTE)?$/i.test(String(o.di || '').trim()) && /^MONUMENTAL$/i.test(v)); },
+    txt: 'TAP = PROYECTO / TRONCAL / DIVICAU (ej. 0017/09/10) · verticales PROYECTO / UBICACIÓN (ej. 0010/LINC171) · o 2 letras + 3 números (ej. BR204) · en ATE también MONUMENTAL', sug: sugAtp },
     nap: napNum, bor: BORNE, cin: CINT },
   ECONOCABLE: { zo: { re: /^P\d{9}$/i, txt: 'TAP = código de CTO: P + 9 dígitos (ej. P150110011)', sug: sugEcono }, nap: napNum, bor: BORNE, cin: CINT },
 };
@@ -209,7 +212,7 @@ const CAMPOS = { zo: 'TAP (ZONA)', nap: 'CAJA (NAP)', bor: 'POSTE (BORNE)', cin:
 // Ejemplos correctos por planta (los mismos del buscador anterior)
 const EJ = { PANGEA: { zo: 'HM/G316/04 · LO/G573/D06 · CB/H200/15', nap: '25', bor: '8', cin: '1562' },
   FIBERLUX: { zo: '181823 · 0185078 · 0001910 · 00210556', nap: '(vacío) ó .', bor: '4', cin: '4767' },
-  ATP: { zo: '0017/09/10 · vertical: 0010/LINC171, 0017/BR204 ó 0017/SINSI025 · BR204', nap: '004', bor: '6', cin: 'distinto de 0' },
+  ATP: { zo: '0017/09/10 · vertical: 0010/LINC171, 0017/BR204 ó 0017/SINSI025 · BR204 · en ATE: MONUMENTAL', nap: '004', bor: '6', cin: 'distinto de 0' },
   ECONOCABLE: { zo: 'P150110011', nap: '038', bor: '7', cin: '358' } };
 const IMGS = { PANGEA: [['pangea', 'App: así se llena para PANGEA'], ['pangea_guia', 'Guía CTO Pangea: NODO-DIVICAU, D = DIVISOR, número = CTO']],
   FIBERLUX: [['fiberlux', 'App: así se llena para FIBERLUX (Caja NO VA)']],
@@ -226,7 +229,7 @@ const ix = Object.fromEntries(T.cols.map((c, i) => [c, i]));
 const cinKey = (v) => { const t = String(v || '').replace(/\D/g, '').replace(/^0+/, ''); return t; };
 const R = T.filas.map((f, i) => { const o = { i }; T.cols.forEach(c => o[c] = f[ix[c]]); o.mes = o.fa.slice(0, 7); o.ecN = String(o.ec || '').replace(/^EECC\s+/i, '') || '—';
   const rg = REGLAS[o.pl]; o.bad = null; o.difp = '';
-  const fallas = (r) => { const b = {}; for (const k in r) { const v = String(o[k] ?? '').trim(), ok = r[k].test ? r[k].test(v) : r[k].re.test(v); if (!ok) b[k] = 1; } return Object.keys(b).length ? b : null; };
+  const fallas = (r) => { const b = {}; for (const k in r) { const v = String(o[k] ?? '').trim(), ok = r[k].test ? r[k].test(v, o) : r[k].re.test(v); if (!ok) b[k] = 1; } return Object.keys(b).length ? b : null; };
   if (rg) { o.bad = fallas(rg);
     // No cumple su planta pero sí todas las reglas de otra: no es error, es «Dif. proveedor» (las FFTT son de otra planta)
     if (o.bad) { const otra = Object.keys(REGLAS).find(p => p !== o.pl && !fallas(REGLAS[p])); if (otra) { o.difp = otra; o.bad = null; } } }
