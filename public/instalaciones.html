@@ -482,6 +482,13 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 .sup-al { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .sup-h { margin: 0 0 2px; font-size: 17px; }
 .sup-t { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.ah-fil { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 4px 0 12px; } .ah-fil label { font-size: 12.5px; color: var(--texto-2); display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; } .ah-fil input { width: auto; padding: 4px 8px; }
+#tb-ah { width: auto; } #tb-ah th, #tb-ah td { padding: 6px 8px; text-align: center; white-space: nowrap; } #tb-ah td:first-child { font-weight: 700; }
+#tb-ah th.sem { background: #FBE3EF; } #tb-ah th small { display: block; font-weight: 600; color: var(--texto-4); text-transform: none; letter-spacing: 0; }
+#tb-ah td.ah { line-height: 1.2; border-left: 1px solid var(--borde); } #tb-ah td.ah b { display: block; font: 800 13px Montserrat, sans-serif; }
+#tb-ah td.ah small { font-size: 11px; color: var(--texto-3, #555); } #tb-ah td.ah.tar b { color: var(--mal); } #tb-ah td.ah.ok b { color: var(--ok); }
+#tb-ah td.ah .bajo { color: var(--mal); font-weight: 700; } #tb-ah td.ah.sin b { color: var(--texto-4); font-weight: 600; } #tb-ah td.ah.hoy { background: #FFF4F9; }
+#tb-ah td.res { background: var(--gris-bg); font-weight: 700; } .lg.ah-ok { background: var(--ok); } .lg.ah-tar { background: var(--mal); }
 .sup-t th { font: 700 10.5px Montserrat, sans-serif; letter-spacing: .4px; text-transform: uppercase; color: var(--magenta-oscuro); background: var(--rosa); padding: 9px 6px; white-space: nowrap; text-align: center; }
 .sup-t td { padding: 8px 6px; border-bottom: 1px solid var(--borde); text-align: center; white-space: nowrap; }
 .sup-t th:first-child, .sup-t td:first-child { text-align: left; }
@@ -1338,6 +1345,15 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div class="tabla-scroll"><table class="sup-t sup-tt"><thead><tr><th rowspan="2">Técnico</th><th rowspan="2" title="Todos sus AB pendientes menos los de AG futura: las AG de hoy y de mañana sí cuentan; fuera solo pasado mañana en adelante. Toca el número para ver el detalle">Pendientes</th><th rowspan="2" title="Qué está haciendo ahora">Detalle</th><th colspan="3" class="th-grp" title="Liquidadas hoy por el técnico">Instalaciones</th><th rowspan="2" title="Observadas hoy">Obs</th><th rowspan="2" title="Hora en que inició su 1.ª alta del día">BI 1°</th><th rowspan="2" title="Tiempo medio de instalación: promedio de fin − inicio de sus altas de hoy">TMI</th><th rowspan="2" class="tl-h">Altas del día<span class="tl-esc"><span>8h</span><span>10h</span><span>12h</span><span>14h</span><span>16h</span><span>18h</span></span></th></tr><tr><th class="th-sub" title="Altas liquidadas (descargadas) hoy">Inst</th><th class="th-sub" title="Averías, TC y MCD liquidados hoy (del tablero de Averías)">Avería</th><th class="th-sub" title="Misceláneos liquidados hoy: traslados, reinstalación y cambio de equipo">Misc</th></tr></thead><tbody id="sup-tec"></tbody><tfoot id="sup-tec-tot"></tfoot></table></div>
       <div class="sup-ley"><span><i class="lg d"></i>Finalizada (descargada)</span><span><i class="lg o"></i>Observada (a la hora en que se observó)</span><span><i class="lg c"></i>En curso</span><span><i class="lg p"></i>Por atender (su franja sigue vigente)</span><span><i class="lg pi"></i>Sin iniciar (su franja ya pasó)</span><span><i class="lg v"></i>Avería / TC / MCD (🔧)</span><span><i class="lg mi"></i>Misceláneo (🧰)</span><span><i class="lg n"></i>Ahora</span></div>
       <div class="tl-pop" id="tl-pop" hidden role="dialog" aria-label="Detalle"></div>
+    </section>
+    <section class="sec" id="sup-ah-sec" aria-labelledby="t-sup-ah">
+      <div class="sup-cab"><h3 class="sup-h" id="t-sup-ah">Historial de asistencia</h3><div class="sup-acc no-img"><span class="sup-aviso" id="aviso-sup-ah"></span><button type="button" class="btn-out" id="ah-copiar" title="Copia la tabla (con el rango de fechas elegido) como imagen en 4K">Copiar imagen</button></div></div>
+      <div class="ah-fil no-img"><span class="seg-t">Fechas</span>
+        <button type="button" class="chip" data-ah-r="sem">Esta semana</button><button type="button" class="chip" data-ah-r="ant">Semana pasada</button><button type="button" class="chip" data-ah-r="mes">Todo el mes</button>
+        <label>Desde <input type="date" class="aj-in" id="ah-desde"></label><label>Hasta <input type="date" class="aj-in" id="ah-hasta"></label></div>
+      <p class="sub">Por EECC y día: <b>hora en que registró la asistencia</b> (la primera vez; en rojo si fue después de las 08:00) y <b>técnicos con al menos una alta al cierre del día</b> de los que marcó en la asistencia. Los días sin asistencia guardada muestran solo cuántos técnicos hicieron alta.</p>
+      <div class="tabla-scroll"><table class="sup-t" id="tb-ah"></table></div>
+      <div class="sup-ley"><span><i class="lg ah-ok"></i>Registró hasta las 08:00</span><span><i class="lg ah-tar"></i>Registró después de las 08:00</span><span><b>12/14 · 86 %</b> = 12 de los 14 técnicos de la asistencia hicieron al menos una alta</span><span><b style="color:var(--mal)">%</b> menos del 80 %</span></div>
     </section>
     <p class="sub">Reglas: <b>En meta</b> lleva lo esperado a esta hora o más · <b>En riesgo</b> entre 80 % y 99 % de lo esperado · <b>Crítico</b> menos del 80 % de lo esperado o más del 20 % de faltas. Lo esperado = objetivo del día (% del Avance sobre la base inicial) × parte de la jornada 8:00–19:00 que ya pasó.</p>
   </div>
@@ -4494,6 +4510,80 @@ function pintarRitmo() {
    Con EECC elegidas arriba: las rutas con asistencia y su estado de hoy, y aparte (en naranja) los técnicos SIN asistencia
    que igual están trabajando (alta hoy o AB iniciado hoy). Sin EECC elegida: resumen por EECC al final de la pestaña. */
 let ASI = null, asiEn = 0, raFr = new Set(), raAg = new Set();   // raAg = tipo de agenda elegido (en curso, hoy, atrasada, futura, sin agenda)   // raFr = franjas elegidas en Asistencia de rutas (vacío = todas)
+/* Historial de asistencia (Supervisión): EECC en filas, días del mes (lun–sáb) en columnas agrupados por semana.
+   Cada celda: hora del primer registro de la asistencia y técnicos de esa asistencia con al menos una alta ese día. */
+const ASIS_TARDE = 8 * 60;   // después de las 08:00 cuenta como tarde
+const ahR = { d: null, h: null };   // rango elegido (AAAA-MM-DD)
+// rangos rápidos dentro del mes cargado: semana en curso (lun–hoy), semana pasada (lun–sáb) y todo el mes
+function ahRangos() {
+  const ult = new Date(D.anio, D.mes - 1, D.dias), lun = new Date(ult); lun.setDate(ult.getDate() - ((ult.getDay() + 6) % 7));
+  const iso = (f) => f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+  const r0 = isoDia(1), r1 = isoDia(D.dias), cl = (x) => x < r0 ? r0 : x > r1 ? r1 : x;
+  const lA = new Date(lun); lA.setDate(lun.getDate() - 7); const sA = new Date(lA); sA.setDate(lA.getDate() + 5);
+  const o = { sem: [cl(iso(lun)), r1], mes: [r0, r1] }; if (iso(sA) >= r0) o.ant = [cl(iso(lA)), cl(iso(sA))]; return o;
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-ah-r]'); if (!b) return; const x = ahRangos()[b.dataset.ahR];
+  if (!x) { aviso('sup-ah', 'La semana pasada no está en el mes cargado.', true); return; } [ahR.d, ahR.h] = x; pintarSupHist(); });
+document.addEventListener('change', (e) => { if (e.target.id === 'ah-desde') { ahR.d = e.target.value; pintarSupHist(); } else if (e.target.id === 'ah-hasta') { ahR.h = e.target.value; pintarSupHist(); } });
+// Copiar imagen: título + rango + tabla + leyenda, armados fuera de la vista, en 4K
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('#ah-copiar'); if (!b) return; const tb = $('tb-ah'); if (!tb || !tb.tBodies[0]?.rows.length) return;
+  const t0 = b.textContent; b.disabled = true; b.textContent = 'Armando imagen…';
+  const caja = document.createElement('div'); caja.className = 'sec'; caja.style.cssText = 'position:fixed;left:-10000px;top:0;padding:16px 18px;background:#FFFFFF;width:max-content';
+  caja.innerHTML = `<h3 class="sup-h" style="margin:0 0 4px">Historial de asistencia · ${esc(D.filial || 'LIMA')}</h3><p class="sub" style="margin:0 0 10px">Del ${fIso(ahR.d)} al ${fIso(ahR.h)} · hora del registro (rojo después de las 08:00) y técnicos con al menos una alta / técnicos de la asistencia</p>`;
+  caja.appendChild(tb.cloneNode(true)); const ley = document.querySelector('#sup-ah-sec .sup-ley'); if (ley) caja.appendChild(ley.cloneNode(true)); document.body.appendChild(caja);
+  try {
+    const blob = (async () => { await cargar(URL_H2C); const w = caja.offsetWidth, h = caja.offsetHeight, esc2 = Math.max(1, Math.min(6, 3840 / w, 32000 / h, Math.sqrt(250e6 / (w * h))));
+      const cv = await html2canvas(caja, { backgroundColor: '#FFFFFF', scale: esc2, logging: false, windowWidth: Math.max(innerWidth, w + 80) }); return await new Promise(r => cv.toBlob(r, 'image/png')); })();
+    try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); aviso('sup-ah', 'Imagen copiada. Pégala con Ctrl+V en WhatsApp o correo.'); }
+    catch { await bajar(await blob, nombreArch('historial-asistencia', 'png')); aviso('sup-ah', 'El navegador no permitió copiar; se descargó la imagen en PNG.'); }
+  } catch { aviso('sup-ah', 'No se pudo armar la imagen. Inténtalo de nuevo.', true); }
+  finally { caja.remove(); b.disabled = false; b.textContent = t0; }
+});
+let AHI = null, ahiEn = 0;
+async function traerAsisHist() {
+  const mes = D.anio + '-' + String(D.mes).padStart(2, '0');   // se guarda por mes: al cambiar el período se pide el otro
+  if (AHI && AHI.mesK === mes && Date.now() - ahiEn < 120e3) return AHI;
+  try { const r = await fetch('/api/eecc?accion=asistencia_hist&mes=' + mes, { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); AHI = r.ok ? await r.json() : { d: {} }; }
+  catch { AHI = AHI && AHI.mesK === mes ? AHI : { d: {} }; }
+  AHI.mesK = mes; ahiEn = Date.now(); return AHI;
+}
+async function pintarSupHist() {
+  const tb = $('tb-ah'); if (!tb) return;
+  const H = (await traerAsisHist()).d || {}, hoyD = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+  const hmL = (iso) => { if (!iso) return null; const t = new Date(iso).toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }); return hmMin(t); };
+  // rango de fechas (dentro del mes cargado): por defecto todo el mes hasta hoy
+  const r0 = isoDia(1), r1 = isoDia(D.dias); ahR.d = ahR.d && ahR.d >= r0 && ahR.d <= r1 ? ahR.d : r0; ahR.h = ahR.h && ahR.h >= r0 && ahR.h <= r1 ? ahR.h : r1;
+  if (ahR.d > ahR.h) [ahR.d, ahR.h] = [ahR.h, ahR.d];
+  const iD = $('ah-desde'), iH = $('ah-hasta'); [iD, iH].forEach(i => { i.min = r0; i.max = r1; }); iD.value = ahR.d; iH.value = ahR.h;
+  const dD = +ahR.d.slice(8), dHs = +ahR.h.slice(8), rr = ahRangos();
+  document.querySelectorAll('[data-ah-r]').forEach(b => { const x = rr[b.dataset.ahR]; b.setAttribute('aria-pressed', String(!!x && x[0] === ahR.d && x[1] === ahR.h)); });
+  const DIAS = []; for (let d = dD; d <= dHs; d++) if (!diaInfo(d).fin) DIAS.push(d);
+  // técnicos con al menos una alta por día (nombre normalizado) y por EECC
+  const conAlta = {}, porEc = {};
+  D.liq.filter(ok).forEach(x => { if (!x.tec) return; const k = tecNk(x.tec); (conAlta[x.d] || (conAlta[x.d] = new Set())).add(k);
+    const e = asiNorm(x.ec || ''); if (!e || /^(POR ASIGNAR|SIN EECC)$/.test(e)) return; ((porEc[e] || (porEc[e] = {}))[x.d] || (porEc[e][x.d] = new Set())).add(k); });
+  const ecs = new Set(Object.keys(porEc)); Object.values(H).forEach(dia => Object.keys(dia).forEach(e => ecs.add(asiNorm(e))));
+  const regDe = (e, d) => { const dia = H[isoDia(d)] || {}, k = Object.keys(dia).find(x => asiNorm(x) === e); return k ? dia[k] : null; };
+  const filas = [...ecs].sort().map(e => {
+    let sh = 0, nh = 0, tar = 0, sa = 0, sn = 0;
+    const celdas = DIAS.map(d => {
+      const r = regDe(e, d), iso = isoDia(d), hoy = iso === hoyD, A = conAlta[d] || new Set();
+      if (!r) { const n0 = porEc[e]?.[d]?.size || 0; return `<td class="ah sin${hoy ? ' hoy' : ''}" title="Sin asistencia guardada ese día"><b>—</b><small>${n0 ? n0 + ' con alta' : ''}</small></td>`; }
+      const h = hmL(r.p), u = hmL(r.u), tecs = (r.tecs || []).map(tecNk), a = tecs.filter(t => A.has(t)).length, n = tecs.length || r.n || 0, pc = n ? Math.round(a / n * 100) : null;
+      const esTar = h != null && h > ASIS_TARDE; if (h != null) { sh += h; nh++; if (esTar) tar++; } if (!hoy && n) { sa += a; sn += n; }
+      const sinAlta = (r.tecs || []).filter(t => !A.has(tecNk(t)));
+      const tt = `Registró ${r.por || ''} a las ${minHm(h)}${u != null && u !== h ? ' · último cambio ' + minHm(u) : ''} · ${n} técnicos de ${r.r || '—'} rutas${sinAlta.length ? '\nSin alta' + (hoy ? ' aún' : '') + ': ' + sinAlta.join(' · ') : ''}`;
+      return `<td class="ah ${esTar ? 'tar' : 'ok'}${hoy ? ' hoy' : ''}" title="${esc(tt)}"><b>${minHm(h)}</b><small>${a}/${n}${pc != null ? ` · <span class="${!hoy && pc < 80 ? 'bajo' : ''}">${pc} %</span>` : ''}${hoy ? ' · en curso' : ''}</small></td>`;
+    }).join('');
+    const pcT = sn ? Math.round(sa / sn * 100) : null;
+    return `<tr><td>${esc(e)}</td>${celdas}<td class="res">${nh ? minHm(Math.round(sh / nh)) : '—'}</td><td class="res">${nh ? tar + ' de ' + nh : '—'}</td><td class="res${pcT != null && pcT < 80 ? ' bajo' : ''}">${pcT != null ? pcT + ' %' : '—'}</td></tr>`;
+  }).join('');
+  // cabecera: semanas (1–7, 8–14, 15–21, 22–28, 29–fin) y días
+  const sem = (d) => Math.min(5, Math.ceil(d / 7)), grp = []; DIAS.forEach(d => { const g = grp[grp.length - 1]; if (g && g.s === sem(d)) g.n++; else grp.push({ s: sem(d), n: 1 }); });
+  tb.innerHTML = `<thead><tr><th rowspan="2">EECC</th>${grp.map(g => `<th class="sem" colspan="${g.n}">Semana ${g.s}</th>`).join('')}<th rowspan="2" title="Promedio de la hora de registro">Hora prom.</th><th rowspan="2" title="Días que registró después de las 08:00">Tarde</th><th rowspan="2" title="Técnicos de la asistencia con al menos una alta, días cerrados">% con alta</th></tr>
+    <tr>${DIAS.map(d => `<th>${d}<small>${diaInfo(d).wd}</small></th>`).join('')}</tr></thead><tbody>${filas || `<tr><td colspan="${DIAS.length + 4}">Aún no hay datos.</td></tr>`}</tbody>`;
+}
 async function traerAsistencia() {
   if (ASI && Date.now() - asiEn < 60e3) return ASI;
   try { const r = await fetch('/api/eecc?accion=asistencia_todas', { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); ASI = r.ok ? await r.json() : { ec: {} }; }
@@ -4813,6 +4903,7 @@ async function pintarSup() {
   if (!$('v-sup') || !D || filialSel() !== 'LIMA') return;
   const hoy = hoyIso(), dH = D.dias, pctS = (x) => x == null ? '—' : Math.round(x * 100) + ' %';
   const [A, OBS, AV] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => []), traerAvHoy().catch(() => null)]); window.__supA = A;
+  pintarSupHist().catch(() => {});
   const esHoyD = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   const ahoraMin = esHoyD ? (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })() : (hmMin((D.corte || '').slice(11, 16)) ?? 19 * 60);
   const frac = Math.max(0, Math.min(1, (ahoraMin - 480) / 660)), refMs = esHoyD ? Date.now() : new Date(D.corte || Date.now()).getTime();
