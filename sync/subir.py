@@ -192,19 +192,36 @@ def borrar_ausentes(ids_reporte: set[int], estado: dict, desde: str, reporte_com
 
 # ---------------------------------------------------------------- tableros y registro
 
-def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str) -> int:
-    """Guarda solo los tableros cuyo contenido cambió. Devuelve cuántos se escribieron."""
+def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str, a_la_vez: int = 4) -> int:
+    """Guarda solo los tableros cuyo contenido cambió, de 4 en 4 a la vez (antes uno por uno). Devuelve cuántos se
+    escribieron. Si alguno falla, los demás se guardan igual y al final se avisa del error."""
+    from concurrent.futures import ThreadPoolExecutor
     t = estado.setdefault("t", {})
-    n = 0
+    pend = []
     for clave, datos in tableros.items():
         h = _hash(datos)
-        if t.get(clave) == h:
-            continue
+        if t.get(clave) != h:
+            pend.append((clave, datos, h))
+
+    def uno(x):
+        clave, datos, h = x
         _pedir("POST", _url("tableros") + "?on_conflict=clave", f"Tablero {clave}",
                json={"clave": clave, "datos": datos, "actualizado": actualizado},
                headers=_cabeceras({"Prefer": "resolution=merge-duplicates,return=minimal"}))
-        t[clave] = h
-        n += 1
+        return clave, h
+
+    n, errores = 0, []
+    with ThreadPoolExecutor(max_workers=a_la_vez) as ex:
+        futuros = [ex.submit(uno, x) for x in pend]
+        for f in futuros:
+            try:
+                clave, h = f.result()
+                t[clave] = h
+                n += 1
+            except Exception as e:  # noqa: BLE001
+                errores.append(e)
+    if errores:
+        raise errores[0]
     return n
 
 
