@@ -684,6 +684,7 @@ tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: 
 .csd-caja table { width: 100%; }
 .ab-com { all: unset; cursor: pointer; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
 .ab-com:hover, .ab-com:focus-visible { text-decoration: underline; outline: none; }
+sup.kr { margin-left: 3px; font: 800 9.5px Montserrat, sans-serif; color: #1F4E9C; background: #E6EEFB; border-radius: 4px; padding: 0 3px; }
 #tb-codet td.ab-c, .csd-caja td.ab-c { background: var(--rosa); color: var(--magenta-txt); font-size: 13.5px; position: sticky; left: 0; }
 .csd-caja thead th:first-child { position: sticky; left: 0; z-index: 2; }
 @media (max-width: 760px) { .csd-herr { grid-template-columns: 1fr; } }
@@ -1263,7 +1264,7 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div style="max-height:560px;overflow:auto;border:1px solid var(--borde);border-radius:12px"><table class="det ord" id="tb-codet">
         <thead><tr><th>AB</th><th>OS</th><th>Gestor</th><th>EECC_F</th><th>Zona</th><th>Planta</th><th>Distrito</th><th>Segmento</th><th>Técnico</th><th>F. Recep y hora</th><th>F. AG</th><th>Franja</th><th>Tipo</th><th>BI fecha</th><th>BI hora</th><th>¿Inició?</th><th>¿Cumplió?</th><th>Estado OS</th><th>Editar</th></tr></thead>
         <tbody id="codet-filas"></tbody></table></div>
-      <p class="nota">¿Cumplió? Sí = atendida el día de la agenda dentro de su franja (o antes) · No = fuera de franja o en otro día · Pendiente = su día aún no llega o es hoy y no se ha atendido · AG* = la OS no tenía franja y la agenda se tomó del comentario del técnico · ✎ = agenda editada a mano (pasa el puntero para ver el motivo) · Clic en un encabezado para ordenar.</p>
+      <p class="nota">¿Cumplió? Sí = atendida el día de la agenda dentro de su franja (o antes) · No = fuera de franja o en otro día · Se mide con el inicio de atención; si el comentario del técnico dice REAGENDA, se cruza con el inicio fachada (marcado con <sup class="kr">R</sup>) · Pendiente = su día aún no llega o es hoy y no se ha atendido · AG* = la OS no tenía franja y la agenda se tomó del comentario del técnico · ✎ = agenda editada a mano (pasa el puntero para ver el motivo) · Clic en un encabezado para ordenar.</p>
     </section>
     <section class="sec co-pan" data-cop="dia" aria-labelledby="t-co" hidden>
       <div class="sec-cab"><div><h2 id="t-co">Consolidado de agendas y coordinadas del mes</h2><p class="sub"><span class="mes-anio"></span> · por día programado (ruta del técnico) · solo Estado OS DESCARGADA</p></div></div>
@@ -2873,7 +2874,7 @@ function pintarCoDetalle() {
       <td data-v="${msIso(x.rec)}">${x.rec ? `${x.rec.slice(8, 10)}/${x.rec.slice(5, 7)}/${x.rec.slice(0, 4)} ${x.rec.slice(11, 16)}` : '—'}</td><td data-v="${x.d}">${fDia(x.d)}</td><td style="white-space:nowrap">${esc(x.fr || '—')}${cfrB(x)}</td>
       <td>${tipoB(x)}</td>
       <td data-v="${x.ini || ''}">${x.ini ? `${x.ini.slice(8, 10)}/${x.ini.slice(5, 7)}/${x.ini.slice(0, 4)}` : '—'}</td><td>${x.ini ? x.ini.slice(11, 16) : '—'}</td>
-      <td><span class="ini-pop ini-txt" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'Sí' : 'No'}</span></td><td data-v="${kMed(x)}">${cuB(kMed(x))}</td><td>${EST_OS[x.e] || '—'}</td><td>${btnEd(x)}</td></tr>`; }), 19, '<tr><td colspan="19">No hay registros con estos filtros.</td></tr>');
+      <td><span class="ini-pop ini-txt" tabindex="0" data-ini="${x.ini || ''}">${x.ini ? 'Sí' : 'No'}</span></td><td data-v="${kMed(x)}"${x.kr ? ' title="Reagendada: el comentario del técnico dice REAGENDA, así que el cumplimiento se midió con el inicio fachada"' : ''}>${cuB(kMed(x))}${x.kr ? '<sup class="kr">R</sup>' : ''}</td><td>${EST_OS[x.e] || '—'}</td><td>${btnEd(x)}</td></tr>`; }), 19, '<tr><td colspan="19">No hay registros con estos filtros.</td></tr>');
   prepararOrden($('tb-codet'));
 }
 $('codet-desde').addEventListener('change', (e) => { filtro.coDesde = e.target.value; pintarCoDetalle(); });
