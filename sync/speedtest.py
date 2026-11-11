@@ -5,12 +5,13 @@ Reglas (acordadas con operaciones):
 - AB sin enlace → «Sin medición».
 - Cada enlace es del cliente o del técnico según la etiqueta que lo antecede; sin etiqueta → técnico.
   Cliente = la etiqueta dice test/prueba cliente (o algo del cliente); técnico = test velocidad técnico, técnico…
-  Sin etiqueta (aunque sean 2 o más enlaces) → prueba del técnico.
+  Sin etiqueta: enlace «my-result» → técnico (con alerta DE APP); cualquier otro enlace → cliente.
+  Un solo enlace en el AB con título de técnico → se toma como del cliente.
 - Un enlace que aparece más de una vez (en varios AB o repetido en el mismo) NO cuenta; se lista en detalle.
 - Velocidad (como el control de provincias): el robot lee cada enlace en speedtest.net una sola vez (caché en el estado).
   Mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps; 1.200 Mbps en planes mayores.
   v = válida (descarga mayor al mínimo) · b = bajo el mínimo (la red no entregó) · n = no certificable (otra red que no es Mi Fibra,
-  o la prueba es de más de 3 días antes/después de la instalación, o el enlace no existe) · p = velocidad aún pendiente de leer.
+  o el enlace no existe; la prueba de antes del día anterior o después del día siguiente a la atención no cuenta) · p = velocidad aún pendiente de leer.
 
 Se guarda compacto en la tabla `tableros`, clave "speedtest": tablas de nombres + una fila por alta.
 """
@@ -79,7 +80,10 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         ls = links.get(ido, [])
         # Quién hizo la prueba (regla de operaciones, 04/11/2026): manda el título que el técnico escribe antes del enlace;
         # sin título, el tipo de enlace: «my-result» = técnico, cualquier otro enlace = cliente.
-        validos = [[l[0], l[1], l[2] or ("T" if "my-result" in str(l[0]) else "C")] for l in ls if veces[rid(l[0])] == 1]
+        validos = [[l[0], l[1], l[2] or ("T" if "my-result" in str(l[0]) else "C"), bool(l[2])] for l in ls if veces[rid(l[0])] == 1]
+        # Regla de operaciones (11/11/2026): si el AB tiene UN solo enlace y su título dice técnico, la prueba se toma como del cliente.
+        if len(validos) == 1 and validos[0][3] and validos[0][2] == "T":
+            validos[0][2] = "C"
         n_rep = len(ls) - len(validos)
         etiquetados = any(l[2] for l in validos)
         cli = sum(1 for l in validos if l[2] == "C")
@@ -310,9 +314,9 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
         for clave, q in f[12]:
             v, t = cache.get(clave), _tipo_enlace(clave)   # [4] = tipo de enlace (para comparar cliente vs técnico)
             if t in SIN_PUBLICO or (v is not None and v[0] < 0):
-                out.append([q, None, None, "n", t])   # «Resultado no encontrado» en speedtest.net
+                out.append([q, None, None, "n", t] + (["A"] if "my-result" in str(clave) else []))   # «Resultado no encontrado» en speedtest.net
             elif v is None:
-                out.append([q, None, None, "p", t])
+                out.append([q, None, None, "p", t] + (["A"] if "my-result" in str(clave) else []))
             else:
                 # Regla del control de provincias: la prueba vale solo si es de máximo 1 día respecto de la atención
                 # (del día anterior al siguiente); si no, no suma en ningún cálculo.
@@ -322,7 +326,7 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                     continue
                 # Válida = descarga MAYOR al mínimo del plan (regla del control: exactamente 600,0 o 1.200,0 no llega)
                 e = "n" if not v[2] else ("v" if v[0] > minimo else "b")
-                out.append([q, v[0], v[1], e, t])
+                out.append([q, v[0], v[1], e, t] + (["A"] if "my-result" in str(clave) else []))   # [5] «A» = enlace de la app (my-result): alerta DE APP
         f[12] = out
     if ref:
         print(f"  Speed Test: {n_ref} instalaciones tomadas de los archivos de control (sync/ref).", flush=True)

@@ -217,6 +217,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 .modal .det td { font-size: 12px !important; padding: 7px 4px !important; } .modal .det th { padding: 8px 4px !important; letter-spacing: 0 !important; font-size: 10px !important; }
 .modal .det td.corta { max-width: 8vw; overflow: hidden; text-overflow: ellipsis; } .modal .det td.c6 { max-width: 7vw; } .modal .det td.c7 { max-width: 11vw; } .modal .det td.c13 { max-width: 7vw; }
 .modal .det td.t-pr { font-variant-numeric: tabular-nums; } .modal .det td.t-pr i { color: var(--fg-4); font-style: normal; margin: 0 3px; }
+.alerta-app { color: #8A5A00 !important; background: #FFF4D6; border-radius: 8px; padding: 4px 8px; margin-top: 2px; }
+.pr-app { margin-left: 4px; padding: 0 5px; border-radius: 6px; background: #FFF4D6; color: #8A5A00; font-size: 10.5px; font-weight: 800; white-space: nowrap; }
 .pr-ok { color: var(--ok, #12805c); font-weight: 700; } .pr-mal { color: var(--mal, #c62828); font-weight: 700; } .pr-nd { color: var(--fg-4, #888); }
 .modal table { min-width: 0; width: 100%; } .modal th, .modal td { padding: 9px 6px; } .modal td { font-size: 13px; } .modal th { font-size: 10.5px; letter-spacing: .3px; }
 .b-est { display: inline-block; font: 700 11px var(--f-disp); padding: 3px 8px; border-radius: 8px; background: var(--gris-bg); color: var(--fg-2); } .b-est.D { background: var(--ok-bg); color: var(--ok); } .b-est.O { background: #FFF4DB; color: #8A5300; } .b-est.A { background: var(--mal-bg); color: var(--mal); }
@@ -375,6 +377,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     // válida = prueba del cliente que se abre y llega al mínimo del plan; el tipo de enlace ya no invalida (solo cuenta si el enlace
     // no abre: si el del cliente y el del técnico dan error, la instalación queda como «no encontrado»)
     o.cv = cc(p => p[3] === 'v'); o.cvmt = 0; o.cpe = cc(p => p[3] === 'p');
+    o.app = P.filter(p => p[5] === 'A').length;   // enlaces de la app (my-result): alerta DE APP
     o.bmax = P.reduce((m, p) => p[1] != null && p[1] > m ? p[1] : m, 0);
     // grupo: no encontrado (cliente y técnico) · válida · mismo tipo de enlace · pendiente · cliente bajo el mínimo · solo técnico · sin ST
     o.k = o.nfAll ? 'nf' : o.cv ? 'v' : o.cvmt ? 'mt' : o.cpe ? 'pe' : o.c > 0 ? 'cb' : o.tn > 0 ? 'tec' : 'sin'; });
@@ -414,8 +417,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) ver(el, el.dataset.tip); });
   document.addEventListener('focusout', () => { flot.hidden = true; });
 
-  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0, sid: 0, cli: 0, v: 0, cb: 0, mt: 0, nf: 0, tec: 0, pe: 0, sin: 0, pv: 0, pbj: 0, pnc: 0, ppe: 0, pnf: 0, nfp: 0 };
-    L.forEach(o => { a.sid += o.sid || 0; if (o.c > 0) a.cli++; a[o.k]++; a.pv += o.pv; a.pbj += o.pbj; a.pnc += o.pnc; a.ppe += o.ppe; a.pnf += o.pnf || 0; });
+  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0, sid: 0, cli: 0, v: 0, cb: 0, mt: 0, nf: 0, tec: 0, pe: 0, sin: 0, pv: 0, pbj: 0, pnc: 0, ppe: 0, pnf: 0, nfp: 0, app: 0, appAb: 0 };
+    L.forEach(o => { a.app += o.app || 0; if (o.app) a.appAb++; a.sid += o.sid || 0; if (o.c > 0) a.cli++; a[o.k]++; a.pv += o.pv; a.pbj += o.pbj; a.pnc += o.pnc; a.ppe += o.ppe; a.pnf += o.pnf || 0; });
     L.forEach(o => { if (o.pr) a.med++; a.pr += o.pr; a.c += o.c; a.tn += o.tn; a.s += o.s; a.r += o.r; }); return a; };
   let tab = 'sin', L = [], abiertos = new Set();
 
@@ -445,7 +448,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
         <div class="fila"><button type="button" class="nb big" data-lista="g-cli|kpi|" title="Ver los AB con prueba del cliente">${pc(pCli)}</button>
           <div class="vs"><b>${a.pr ? pp(pCli - OBJ_CLI) : '—'}</b><span>vs meta</span></div>${dCli != null ? `<div class="vs"><b>${pp(pCli - dCli)}</b><span>vs ${mAntTxt}</span></div>` : ''}</div>
         <div class="regla"><div class="pista"><i style="left:${Math.min(pCli, OBJ_CLI)}%;width:${Math.abs(OBJ_CLI - pCli)}%"></i><em style="left:${OBJ_CLI}%"></em><b style="left:${pCli}%"></b></div><span class="esc"><i>0</i><i style="left:${OBJ_CLI}%"><b>meta ${OBJ_CLI}%</b></i><i>100</i></span></div>
-        <p class="s"><button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> de ${n(a.pr)} pruebas se hicieron con el equipo del cliente.</p></div>
+        <p class="s"><button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> de ${n(a.pr)} pruebas se hicieron con el equipo del cliente.</p>${a.app ? `<p class="s alerta-app">⚠ <button type="button" class="nb" data-lista="g-app|kpi|">${n(a.appAb)} AB</button> con prueba DE APP (enlace my-result · ${n(a.app)} pruebas)</p>` : ''}</div>
       <div class="k4c"><div class="k4h"><span class="t">${titMes}</span>${b ? chip(`${a.ins - b.ins >= 0 ? '+' : '−'}${n(Math.abs(a.ins - b.ins))}`) : ''}</div>
         <button type="button" class="nb big2" data-lista="todo|">${n(a.ins)}</button>
         <p class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> con medición · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medir</p>${chispa(S.map(x => x.ins), lab)}</div>
@@ -773,11 +776,11 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const P = (Array.isArray(D.o[o.i][12]) ? D.o[o.i][12] : []).filter(p => Array.isArray(p) && p.length >= 4 && (p[0] === 'C') === cli);
     const cant = cli ? o.c : o.tn + o.s;
     if (!P.length) return cant ? `${cant} sin dato` : '—';
-    return P.map(p => p[1] != null ? `${p[1]} ${p[3] === 'v' ? '✓' : p[3] === 'b' ? '✗' : 's/v'}` : (p[3] === 'p' ? 'pend.' : 'no encontrado')).join(' · ');
+    return P.map(p => (p[1] != null ? `${p[1]} ${p[3] === 'v' ? '✓' : p[3] === 'b' ? '✗' : 's/v'}` : (p[3] === 'p' ? 'pend.' : 'no encontrado')) + (p[5] === 'A' ? ' ⚠DE APP' : '')).join(' · ');
   }
   function celTests(v) {
     if (v === '—') return '<td class="tenue">—</td>';
-    return `<td class="t-pr">${String(v).split(' · ').map(t => `<span class="${/✓/.test(t) ? 'pr-ok' : /✗/.test(t) ? 'pr-mal' : 'pr-nd'}">${esc(t)}</span>`).join('<i>·</i>')}</td>`;
+    return `<td class="t-pr">${String(v).split(' · ').map(t => `<span class="${/✓/.test(t) ? 'pr-ok' : /✗/.test(t) ? 'pr-mal' : 'pr-nd'}">${esc(t.replace(' ⚠DE APP', ''))}</span>${/⚠DE APP/.test(t) ? '<b class="pr-app" title="Enlace de la app (my-result)">⚠ DE APP</b>' : ''}`).join('<i>·</i>')}</td>`;
   }
   function pintarModal() {
     modalIdx = modalFilasAll.map((f, k) => k).filter(k => okFila(modalFilasAll[k], 'modal'));
@@ -793,7 +796,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('modal-xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
     try { await excel(modalCab, modalFilas, `speedtest-${modalNom}-${hoyTxt()}.xlsx`); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = `Excel descargado con ${n(modalFilas.length)} filas.`; }
     catch { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudo generar el Excel.'; } finally { b.disabled = false; } });
-  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-nf': ['Resultado no encontrado (cliente y técnico)', o => o.k === 'nf'], 'g-mt': ['Mismo tipo de enlace (cliente y técnico)', o => o.k === 'mt'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas del cliente válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas del cliente bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas del cliente de otra red', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
+  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-app': ['Con prueba DE APP (enlace my-result)', o => o.app > 0], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-nf': ['Resultado no encontrado (cliente y técnico)', o => o.k === 'nf'], 'g-mt': ['Mismo tipo de enlace (cliente y técnico)', o => o.k === 'mt'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas del cliente válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas del cliente bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas del cliente de otra red', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
   function abrirLista(clave) {
     const [q, ...r] = clave.split('|'), v = r.join('|'), per = $('ctx').textContent;
     if (q === 'url') { const R = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i])), ix]).filter(([, ix]) => ix.length).sort((a, b) => b[2].length - a[2].length), [url, , todo] = R[+v] || []; if (!url) return;
