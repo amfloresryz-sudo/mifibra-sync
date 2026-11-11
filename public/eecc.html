@@ -666,13 +666,17 @@ function ficha(os, irASubir) {
   if (irASubir) setTimeout(() => $('sec-subir').scrollIntoView({ block: 'center', behavior: 'smooth' }), 50); else $('m-x').focus();
 }
 
+const agB = (c, fF) => { if (!c.ag_estado) return ''; const f = c.ag_fecha ? c.ag_fecha.slice(8, 10) + '/' + c.ag_fecha.slice(5, 7) + ' ' + (c.ag_franja || '') : '';
+  const M = { agendado: ['ok', '📅 Agendado en ScordSoft ' + f], igual: ['ok', '📅 ScordSoft ya tenía ' + f], reemplazado: ['pe', '📅 ' + f + ' reemplazado por un comentario más nuevo'],
+    omitido: ['pe', '📅 ' + f + ' no se agendó'], error: ['er', '⚠ No se pudo agendar ' + f] }, [k, t] = M[c.ag_estado] || ['pe', '📅 ' + f];
+  return `<span class="est-sc ${k}"${c.ag_error ? ` title="${esc(c.ag_error)}"` : ''}>${t}</span>`; };
 const EST_SC = { pendiente: ['pe', '⏳ Por escribir en ScordSoft'], escrito: ['ok', '✓ En ScordSoft'], error: ['er', '⚠ No se pudo escribir en ScordSoft'] };
 async function verComentarios(p) {
   try {
     const { comentarios: C } = await api('comentarios', '&os=' + p.os);
     if (abierta !== p) return;
     $('coms').innerHTML = !C.length ? '<p class="nota">Aún no hay comentarios de tu EECC para este AB.</p>' : C.map(c => { const [k, t] = EST_SC[c.scord_estado] || EST_SC.pendiente;
-      return `<div class="com"><div class="cab-c"><b>${esc(c.nombre_usuario || c.usuario)}</b><span>${fHora(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="est-sc ${k}"${c.scord_en ? ` title="Escrito el ${fHora(c.scord_en)}"` : ''}>${t}</span></div><p>${esc(c.texto)}</p></div>`; }).join('');
+      return `<div class="com"><div class="cab-c"><b>${esc(c.nombre_usuario || c.usuario)}</b><span>${fHora(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="est-sc ${k}"${c.scord_en ? ` title="Escrito el ${fHora(c.scord_en)}"` : ''}>${t}</span>${agB(c)}</div><p>${esc(c.texto)}</p></div>`; }).join('');
   } catch (e) { if (abierta === p) $('coms').innerHTML = `<p class="err">${esc(e.message)}</p>`; }
 }
 function prepararComentario(p) {

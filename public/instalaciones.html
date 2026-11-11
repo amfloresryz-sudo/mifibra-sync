@@ -2401,6 +2401,10 @@ async function cargarComEecc() {
   } catch { /* sin comentarios de EECC */ }
 }
 const fLima = (iso) => iso ? new Date(iso).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+const agB = (c, fF) => { if (!c.ag_estado) return ''; const f = c.ag_fecha ? c.ag_fecha.slice(8, 10) + '/' + c.ag_fecha.slice(5, 7) + ' ' + (c.ag_franja || '') : '';
+  const M = { agendado: ['ok', '📅 Agendado en ScordSoft ' + f], igual: ['ok', '📅 ScordSoft ya tenía ' + f], reemplazado: ['pe', '📅 ' + f + ' reemplazado por un comentario más nuevo'],
+    omitido: ['pe', '📅 ' + f + ' no se agendó'], error: ['er', '⚠ No se pudo agendar ' + f] }, [k, t] = M[c.ag_estado] || ['pe', '📅 ' + f];
+  return `<span class="es ${k}"${c.ag_error ? ` title="${esc(c.ag_error)}"` : ''}>${t}</span>`; };
 const EST_CEC = { pendiente: ['pe', '⏳ Por escribir en ScordSoft'], escrito: ['ok', '✓ Escrito en ScordSoft'], error: ['er', '⚠ No se pudo escribir en ScordSoft'] };
 async function verComEecc(os) {
   const caja = () => document.getElementById('fi-cec'); if (!caja()) return;
@@ -2415,7 +2419,7 @@ async function verComEecc(os) {
       return `<figure class="fi-ev-i">${!x.url ? '<div class="fi-ev-x">No disponible</div>' : img ? `<a href="${esc(x.url)}" target="_blank" rel="noopener" title="Abrir en grande"><img src="${esc(x.url)}" alt="Evidencia ${esc(x.nombre || '')}" loading="lazy"></a>`
         : vid ? `<video src="${esc(x.url)}" controls preload="metadata"></video>` : `<a class="fi-ev-x" href="${esc(x.url)}" target="_blank" rel="noopener">📄 ${esc(x.nombre || 'Archivo')}</a>`}<figcaption>${pie}</figcaption></figure>`; }).join('')}</div></div>` : '';
     caja().innerHTML = evH + (!C.length ? '<p class="fi-nota">La EECC no ha dejado comentarios para este AB.</p>' : '') + (!C.length ? '' : C.map(c => { const [k, t] = EST_CEC[c.scord_estado] || EST_CEC.pendiente;
-      return `<div class="fi-cec"><div class="c"><b>${esc(c.eecc)} · ${esc(c.nombre_usuario || c.usuario)}</b><span>${fLima(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="es ${k}"${c.scord_en ? ` title="Escrito el ${fLima(c.scord_en)}"` : ''}>${t}</span></div><p>${esc(c.texto)}</p></div>`; }).join(''));
+      return `<div class="fi-cec"><div class="c"><b>${esc(c.eecc)} · ${esc(c.nombre_usuario || c.usuario)}</b><span>${fLima(c.creado_en)}</span>${c.origen === 'evidencia' ? '<span>📎 con evidencia</span>' : ''}<span class="es ${k}"${c.scord_en ? ` title="Escrito el ${fLima(c.scord_en)}"` : ''}>${t}</span>${agB(c)}</div><p>${esc(c.texto)}</p></div>`; }).join(''));
   } catch (e) { if (caja()) caja().innerHTML = `<p class="fi-nota">No se pudieron traer los comentarios de la EECC: ${esc(e.message)}</p>`; }
 }
 $('buscar').addEventListener('input', (e) => { filtro.buscar = e.target.value; pintarPendientes(); });
