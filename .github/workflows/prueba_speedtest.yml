@@ -1,7 +1,7 @@
 name: Prueba Speed Test (no escribe)
 
 # PRUEBA: compara las reglas de Speed Test de main (actuales) con las de esta rama (nuevas) para LIMA del 10/11,
-# con el último reporte guardado en el estado del robot. No usa claves de ScordSoft ni de Supabase: no toca nada.
+# con el último reporte guardado en el estado del robot. Sin claves de ScordSoft; Supabase solo se LEE (caché de velocidades).
 on:
   push:
     branches: [vista-previa-st-quien]
@@ -35,6 +35,9 @@ jobs:
           key: robot-estado-prueba-st-${{ github.run_id }}
           restore-keys: robot-estado-
       - name: Comparar
+        env:   # solo para LEER la caché de velocidades (speedtest_vel); los scripts de prueba no escriben nada
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           base=$(ls -d .estado/base/*/ 2>/dev/null | sort | tail -1); base=${base%/}
           [ -n "$base" ] || { echo "No hay reporte base guardado."; exit 1; }
