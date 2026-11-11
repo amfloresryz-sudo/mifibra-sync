@@ -390,14 +390,7 @@ def agendar(page: Page, base: str, c: dict, fecha: date, franja: str, probar: bo
     # La ventana abre con la fecha de hoy, técnico «Seleccione» y horario «NO DEFINE»: se llenan los tres.
     _postback(page, lambda: page.click("#MainContent_tabForm_tpaReportados_btnProgramar"), "#MainContent_pnlProgramacionOS")
     page.wait_for_timeout(1000)
-    # 1) FECHA: al cambiarla ScordSoft revisa la capacidad (postback parcial que puede limpiar el técnico)
-    page.fill("#MainContent_txtFechaAtencionProgramacion", f_txt)
-    page.evaluate("() => $('#MainContent_txtFechaAtencionProgramacion').trigger('change')")
-    page.wait_for_timeout(1500)
-    page.wait_for_load_state("networkidle", timeout=60_000)
-    if page.input_value("#MainContent_txtFechaAtencionProgramacion") != f_txt:
-        page.fill("#MainContent_txtFechaAtencionProgramacion", f_txt)
-    # 2) TÉCNICO: el que ya tiene la OS (en la lista sale con menos nombres: «MALDONADO SEBASTIAN, RENZO»)
+    # TÉCNICO: el que ya tiene la OS (en la lista sale con menos nombres: «MALDONADO SEBASTIAN, RENZO»)
     valor = page.evaluate(
         r"""(t) => { const n = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
             const T = n(t), ops = [...document.getElementById('MainContent_cboRegidtecnicoProgramacion').options].filter(o => o.index > 0);
@@ -406,10 +399,27 @@ def agendar(page: Page, base: str, c: dict, fecha: date, franja: str, probar: bo
     if not valor:
         page.click("#divCerrarProgramacionOS")
         return "omitido", f"no se encontró al técnico {tec_os} en la lista de ScordSoft"
-    if page.input_value("#MainContent_cboRegidtecnicoProgramacion") != valor:
-        page.select_option("#MainContent_cboRegidtecnicoProgramacion", valor)   # dispara un postback parcial
-        page.wait_for_timeout(1500)
-        page.wait_for_load_state("networkidle", timeout=60_000)
+
+    def poner_tecnico() -> None:   # elegirlo dispara un postback parcial que vuelve a poner la fecha de hoy
+        if page.input_value("#MainContent_cboRegidtecnicoProgramacion") != valor:
+            page.select_option("#MainContent_cboRegidtecnicoProgramacion", valor)
+            page.wait_for_timeout(1500)
+            page.wait_for_load_state("networkidle", timeout=60_000)
+
+    def poner_fecha() -> None:     # cambiarla dispara la revisión de capacidad (otro postback parcial)
+        if page.input_value("#MainContent_txtFechaAtencionProgramacion") != f_txt:
+            page.fill("#MainContent_txtFechaAtencionProgramacion", f_txt)
+            page.evaluate("() => $('#MainContent_txtFechaAtencionProgramacion').trigger('change')")
+            page.wait_for_timeout(1500)
+            page.wait_for_load_state("networkidle", timeout=60_000)
+
+    # Primero el técnico y después la fecha (el postback del técnico reponía la fecha de hoy); se repasa hasta 3 veces
+    for _ in range(3):
+        poner_tecnico()
+        poner_fecha()
+        if (page.input_value("#MainContent_cboRegidtecnicoProgramacion") == valor
+                and page.input_value("#MainContent_txtFechaAtencionProgramacion") == f_txt):
+            break
     # 3) HORARIO y OBSERVACIÓN
     page.select_option("#MainContent_cboHorarioAtencionOS", label=franja)
     obs = f"Agenda web {f_txt} {franja}: {cuerpo(c)} - {c.get('nombre_usuario') or c.get('usuario') or ''}"[:MAX_TEXTO]
