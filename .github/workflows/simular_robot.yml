@@ -1,0 +1,93 @@
+name: Simular robot (prueba sin escribir)
+
+# PRUEBA, no toca la web ni Supabase (todo con --sin-subir): mide los tiempos del robot ACTUAL (rama main) frente al
+# NUEVO (otra rama) con el mismo reporte (la última descarga completa guardada en el estado del robot), y prueba el
+# robot EXPRÉS con el 2.º usuario de ScordSoft (solo descarga lo de hoy; no se cruza con el robot principal).
+on:
+  workflow_dispatch:
+    inputs:
+      rama:
+        description: "Rama con el código nuevo a medir"
+        default: "robot-rapido"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  simular:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: actual
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.rama }}
+          path: nuevo
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: actual/requirements.txt
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r actual/requirements.txt
+          for i in 1 2 3; do python -m playwright install chromium && break; [ "$i" = 3 ] && exit 1; sleep 20; done
+          timeout 180 python -m playwright install-deps chromium || echo "Aviso: sin librerías extra (apt no respondió)."
+
+      - name: Recuperar estado del robot (solo lectura)
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado
+          key: robot-estado-simulacion-${{ github.run_id }}
+          restore-keys: robot-estado-
+
+      - name: Simular
+        env:
+          SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
+          SCORDSOFT2_USUARIO: ${{ secrets.SCORDSOFT2_USUARIO }}
+          SCORDSOFT2_CLAVE: ${{ secrets.SCORDSOFT2_CLAVE }}
+          SCORDSOFT2_TOTP_SECRETO: ${{ secrets.SCORDSOFT2_TOTP_SECRETO }}
+          SCORDSOFT_SEL_USUARIO: ${{ vars.SCORDSOFT_SEL_USUARIO }}
+          SCORDSOFT_SEL_CLAVE: ${{ vars.SCORDSOFT_SEL_CLAVE }}
+          SCORDSOFT_SEL_INGRESAR: ${{ vars.SCORDSOFT_SEL_INGRESAR }}
+          SCORDSOFT_SEL_CODIGO: ${{ vars.SCORDSOFT_SEL_CODIGO }}
+          # SIN las claves de Supabase a propósito: así es imposible que la prueba escriba en la base
+        run: |
+          set +e
+          echo "Núcleos del servidor: $(nproc) · memoria: $(free -g | awk '/Mem:/{print $2}') GB"
+          base=$(ls -d .estado/base/*/ 2>/dev/null | sort | tail -1); base=${base%/}
+          [ -n "$base" ] || { echo "No hay reporte base guardado en el estado del robot."; exit 1; }
+          echo "Reporte base: $base ($(du -sh "$base" | cut -f1))"
+          corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+          medir() {   # $1 = actual|nuevo · $2 = etiqueta · resto = argumentos de sync.main
+            local v=$1 et=$2; shift 2
+            echo "::group::$et"
+            ( cd "$v" && ESTADO_ROBOT="$RUNNER_TEMP/est_$v/robot.json.gz" /usr/bin/time -f "  [tiempo] TOTAL $et: %e s · memoria máx %M KB" \
+                python -u -m sync.main "$@" --sin-subir --corte "$corte" ) 2>&1 | grep -E "\[tiempo\]|calculados en|Aviso|Error|ERROR|Traceback|órdenes en el reporte|copia buena" | sed "s/^/[$et] /"
+            echo "  → código de salida: ${PIPESTATUS[0]}"
+            echo "::endgroup::"
+          }
+          # Cada versión con su propia copia del reporte (así ninguna aprovecha lo que dejó la otra)
+          for v in actual nuevo; do mkdir -p "$RUNNER_TEMP/b_$v"; cp "$base"/*.xlsx "$RUNNER_TEMP/b_$v/"; done
+          B1=$(ls "$RUNNER_TEMP"/b_actual/*.xlsx); B2=$(ls "$RUNNER_TEMP"/b_nuevo/*.xlsx)
+          medir actual "ACTUAL (1.ª, sin copias)" --base $B1
+          medir actual "ACTUAL (2.ª, con copias)" --base $B1
+          medir nuevo  "NUEVO (1.ª, sin copias)"  --base $B2
+          medir nuevo  "NUEVO (2.ª, con copias)"  --base $B2
+
+          echo "::group::EXPRÉS: descarga con el 2.º usuario"
+          if [ -z "$SCORDSOFT2_USUARIO" ]; then echo "Falta el secreto SCORDSOFT2_USUARIO"; else
+            ( cd nuevo && SCORDSOFT_USUARIO="$SCORDSOFT2_USUARIO" SCORDSOFT_CLAVE="$SCORDSOFT2_CLAVE" SCORDSOFT_TOTP_SECRETO="$SCORDSOFT2_TOTP_SECRETO" \
+                timeout 480 python -u -m sync.main --solo-descargar-expres "$RUNNER_TEMP/exp" ) 2>&1 | tail -15 | sed "s/^/[exprés] /"
+            ls -la "$RUNNER_TEMP/exp" 2>/dev/null
+            if ls "$RUNNER_TEMP"/exp/*.xlsx >/dev/null 2>&1; then
+              medir nuevo "EXPRÉS: proceso (base + lo de hoy)" --base $B2 --parche "$RUNNER_TEMP"/exp/*.xlsx
+            fi
+          fi
+          echo "::endgroup::"
+          echo "Listo: nada se escribió en Supabase ni en la web."
