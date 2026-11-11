@@ -361,7 +361,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   // Enlaces sin etiqueta (aunque sean 2 o más) cuentan como prueba del técnico: ya no hay «Sin identificar»
   O.forEach(o => { o.sid = o.s; o.tn += o.s; o.s = 0; o.pr = o.c + o.tn;
     // Velocidad de cada prueba (el robot la lee en speedtest.net): [quién C/T/«», bajada, subida, estado v/b/n/p]
-    const P = Array.isArray(D.o[o.i][12]) ? D.o[o.i][12].filter(p => Array.isArray(p) && p.length >= 4) : [], cnt = (f) => P.filter(f).length;
+    // Quién «A» = enlace my-result sin título (app del técnico): NO se considera; solo se muestra con alerta DE APP
+    const P0 = Array.isArray(D.o[o.i][12]) ? D.o[o.i][12].filter(p => Array.isArray(p) && p.length >= 4) : [], P = P0.filter(p => p[0] !== 'A'), cnt = (f) => P.filter(f).length;
     // Mediciones: solo las pruebas del CLIENTE, según su plan (600 Mbps hasta 1.000; 1.200 Mbps en planes mayores).
     // pv = llega al mínimo · pbj = bajo el mínimo del plan · pnc = otra red o no encontrada · ppe = velocidad aún por leer
     const NF = (p) => p[3] === 'n' && p[1] == null;
@@ -377,7 +378,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     // válida = prueba del cliente que se abre y llega al mínimo del plan; el tipo de enlace ya no invalida (solo cuenta si el enlace
     // no abre: si el del cliente y el del técnico dan error, la instalación queda como «no encontrado»)
     o.cv = cc(p => p[3] === 'v'); o.cvmt = 0; o.cpe = cc(p => p[3] === 'p');
-    o.app = P.filter(p => p[5] === 'A').length;   // enlaces de la app (my-result): alerta DE APP
+    o.app = P0.length - P.length;   // enlaces de la app (my-result sin título): alerta DE APP, no cuentan
     o.bmax = P.reduce((m, p) => p[1] != null && p[1] > m ? p[1] : m, 0);
     // grupo: no encontrado (cliente y técnico) · válida · mismo tipo de enlace · pendiente · cliente bajo el mínimo · solo técnico · sin ST
     o.k = o.nfAll ? 'nf' : o.cv ? 'v' : o.cvmt ? 'mt' : o.cpe ? 'pe' : o.c > 0 ? 'cb' : o.tn > 0 ? 'tec' : 'sin'; });
@@ -448,7 +449,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
         <div class="fila"><button type="button" class="nb big" data-lista="g-cli|kpi|" title="Ver los AB con prueba del cliente">${pc(pCli)}</button>
           <div class="vs"><b>${a.pr ? pp(pCli - OBJ_CLI) : '—'}</b><span>vs meta</span></div>${dCli != null ? `<div class="vs"><b>${pp(pCli - dCli)}</b><span>vs ${mAntTxt}</span></div>` : ''}</div>
         <div class="regla"><div class="pista"><i style="left:${Math.min(pCli, OBJ_CLI)}%;width:${Math.abs(OBJ_CLI - pCli)}%"></i><em style="left:${OBJ_CLI}%"></em><b style="left:${pCli}%"></b></div><span class="esc"><i>0</i><i style="left:${OBJ_CLI}%"><b>meta ${OBJ_CLI}%</b></i><i>100</i></span></div>
-        <p class="s"><button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> de ${n(a.pr)} pruebas se hicieron con el equipo del cliente.</p>${a.app ? `<p class="s alerta-app">⚠ <button type="button" class="nb" data-lista="g-app|kpi|">${n(a.appAb)} AB</button> con prueba DE APP (enlace my-result · ${n(a.app)} pruebas)</p>` : ''}</div>
+        <p class="s"><button type="button" class="nb" data-lista="g-cli|kpi|">${n(a.c)}</button> de ${n(a.pr)} pruebas se hicieron con el equipo del cliente.</p>${a.app ? `<p class="s alerta-app">⚠ <button type="button" class="nb" data-lista="g-app|kpi|">${n(a.appAb)} AB</button> con enlace DE APP (my-result sin título · ${n(a.app)} enlaces que no se consideran)</p>` : ''}</div>
       <div class="k4c"><div class="k4h"><span class="t">${titMes}</span>${b ? chip(`${a.ins - b.ins >= 0 ? '+' : '−'}${n(Math.abs(a.ins - b.ins))}`) : ''}</div>
         <button type="button" class="nb big2" data-lista="todo|">${n(a.ins)}</button>
         <p class="s"><button type="button" class="nb" data-lista="med|">${n(a.med)}</button> con medición · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> sin medir</p>${chispa(S.map(x => x.ins), lab)}</div>
@@ -776,7 +777,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const P = (Array.isArray(D.o[o.i][12]) ? D.o[o.i][12] : []).filter(p => Array.isArray(p) && p.length >= 4 && (p[0] === 'C') === cli);
     const cant = cli ? o.c : o.tn + o.s;
     if (!P.length) return cant ? `${cant} sin dato` : '—';
-    return P.map(p => (p[1] != null ? `${p[1]} ${p[3] === 'v' ? '✓' : p[3] === 'b' ? '✗' : 's/v'}` : (p[3] === 'p' ? 'pend.' : 'no encontrado')) + (p[5] === 'A' ? ' ⚠DE APP' : '')).join(' · ');
+    return P.map(p => (p[1] != null ? `${p[1]} ${p[3] === 'v' ? '✓' : p[3] === 'b' ? '✗' : 's/v'}` : (p[3] === 'p' ? 'pend.' : 'no encontrado')) + (p[0] === 'A' ? ' ⚠DE APP' : '')).join(' · ');
   }
   function celTests(v) {
     if (v === '—') return '<td class="tenue">—</td>';
@@ -796,7 +797,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   $('modal-xls').addEventListener('click', async (e) => { const b = e.currentTarget; b.disabled = true;
     try { await excel(modalCab, modalFilas, `speedtest-${modalNom}-${hoyTxt()}.xlsx`); $('modal-aviso').style.color = ''; $('modal-aviso').textContent = `Excel descargado con ${n(modalFilas.length)} filas.`; }
     catch { $('modal-aviso').style.color = 'var(--mal)'; $('modal-aviso').textContent = 'No se pudo generar el Excel.'; } finally { b.disabled = false; } });
-  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-app': ['Con prueba DE APP (enlace my-result)', o => o.app > 0], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-nf': ['Resultado no encontrado (cliente y técnico)', o => o.k === 'nf'], 'g-mt': ['Mismo tipo de enlace (cliente y técnico)', o => o.k === 'mt'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas del cliente válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas del cliente bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas del cliente de otra red', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
+  const Q = { 'g-todo': ['Instalaciones', () => true], 'g-app': ['Con enlace DE APP (my-result sin título · no se considera)', o => o.app > 0], 'g-med': ['Con medición', o => o.pr > 0], 'g-cli': ['Con prueba en dispositivo del cliente', o => o.c > 0], 'g-tec': ['Con prueba del técnico', o => o.tn + o.s > 0], 'g-sid': ['Con enlaces sin título', o => o.sid > 0], 'g-val': ['Instalaciones válidas', o => o.k === 'v'], 'g-nf': ['Resultado no encontrado (cliente y técnico)', o => o.k === 'nf'], 'g-mt': ['Mismo tipo de enlace (cliente y técnico)', o => o.k === 'mt'], 'g-cb': ['Cliente, bajo el mínimo del plan', o => o.k === 'cb'], 'g-pv': ['Con pruebas del cliente válidas para el plan', o => o.pv > 0], 'g-pbj': ['Con pruebas del cliente bajo el mínimo del plan', o => o.pbj > 0], 'g-pnc': ['Con pruebas del cliente de otra red', o => o.pnc > 0], 'g-rep': ['Con enlaces repetidos', o => o.r > 0] };
   function abrirLista(clave) {
     const [q, ...r] = clave.split('|'), v = r.join('|'), per = $('ctx').textContent;
     if (q === 'url') { const R = D.rep.map(([u, ix]) => [u, ix.filter(i => sel(O[i])), ix]).filter(([, ix]) => ix.length).sort((a, b) => b[2].length - a[2].length), [url, , todo] = R[+v] || []; if (!url) return;

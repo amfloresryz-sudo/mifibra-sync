@@ -1,0 +1,52 @@
+name: Prueba Speed Test (no escribe)
+
+# PRUEBA: compara las reglas de Speed Test de main (actuales) con las de esta rama (nuevas) para LIMA del 10/11,
+# con el último reporte guardado en el estado del robot. No usa claves de ScordSoft ni de Supabase: no toca nada.
+on:
+  push:
+    branches: [vista-previa-st-quien]
+    paths: [".github/workflows/prueba_speedtest.yml", ".github/prueba/**", "sync/speedtest.py"]
+
+permissions:
+  contents: read
+
+jobs:
+  probar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: nuevo
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: actual
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: actual/requirements.txt
+      - run: pip install -r actual/requirements.txt
+      - name: Recuperar estado del robot (solo lectura)
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado
+          key: robot-estado-prueba-st-${{ github.run_id }}
+          restore-keys: robot-estado-
+      - name: Comparar
+        run: |
+          base=$(ls -d .estado/base/*/ 2>/dev/null | sort | tail -1); base=${base%/}
+          [ -n "$base" ] || { echo "No hay reporte base guardado."; exit 1; }
+          echo "Reporte base: $base"; ls -la "$base"
+          mkdir -p out; cp "$base"/*.xlsx "$RUNNER_TEMP/"
+          corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+          ( cd nuevo && ESTADO_ROBOT="$RUNNER_TEMP/est/robot.json.gz" python -u .github/prueba/st_capturar.py "$GITHUB_WORKSPACE/out/cap.pkl" LIMA 2026-11-10 "$corte" $(ls "$RUNNER_TEMP"/*.xlsx) ) 2>&1 | tail -15
+          ( cd nuevo && python -u .github/prueba/st_comparar.py "$GITHUB_WORKSPACE/out/cap.pkl" "$GITHUB_WORKSPACE/out/cache.json" "$GITHUB_WORKSPACE/out/nuevo.json" )
+          ( cd actual && python -u ../nuevo/.github/prueba/st_comparar.py "$GITHUB_WORKSPACE/out/cap.pkl" "$GITHUB_WORKSPACE/out/cache.json" "$GITHUB_WORKSPACE/out/actual.json" )
+          rm -f out/cap.pkl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prueba-speedtest
+          path: out/
+          retention-days: 3

@@ -5,7 +5,7 @@ Reglas (acordadas con operaciones):
 - AB sin enlace → «Sin medición».
 - Cada enlace es del cliente o del técnico según la etiqueta que lo antecede; sin etiqueta → técnico.
   Cliente = la etiqueta dice test/prueba cliente (o algo del cliente); técnico = test velocidad técnico, técnico…
-  Sin etiqueta: enlace «my-result» → técnico (con alerta DE APP); cualquier otro enlace → cliente.
+  Sin etiqueta: enlace «my-result» → app del técnico: NO se considera (alerta DE APP); cualquier otro enlace → cliente.
   Un solo enlace en el AB con título de técnico → se toma como del cliente.
 - Un enlace que aparece más de una vez (en varios AB o repetido en el mismo) NO cuenta; se lista en detalle.
 - Velocidad (como el control de provincias): el robot lee cada enlace en speedtest.net una sola vez (caché en el estado).
@@ -80,8 +80,12 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         ls = links.get(ido, [])
         # Quién hizo la prueba (regla de operaciones, 04/11/2026): manda el título que el técnico escribe antes del enlace;
         # sin título, el tipo de enlace: «my-result» = técnico, cualquier otro enlace = cliente.
-        validos = [[l[0], l[1], l[2] or ("T" if "my-result" in str(l[0]) else "C"), bool(l[2])] for l in ls if veces[rid(l[0])] == 1]
-        # Regla de operaciones (11/11/2026): si el AB tiene UN solo enlace y su título dice técnico, la prueba se toma como del cliente.
+        # Regla de operaciones (11/11/2026):
+        # · enlace «my-result» SIN título = prueba de la app del técnico: NO se considera (no suma en nada); se muestra con alerta DE APP.
+        # · si al AB le queda UN solo enlace y su título dice técnico, la prueba se toma como del cliente.
+        no_rep = [l for l in ls if veces[rid(l[0])] == 1]
+        app = [l for l in no_rep if not l[2] and "my-result" in str(l[0])]
+        validos = [[l[0], l[1], l[2] or "C", bool(l[2])] for l in no_rep if l not in app]
         if len(validos) == 1 and validos[0][3] and validos[0][2] == "T":
             validos[0][2] = "C"
         n_rep = len(ls) - len(validos)
@@ -94,7 +98,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         ab = int(r.abonado_codigo) if pd.notna(r.abonado_codigo) else None
         os_ = int(r.nro_os) if pd.notna(r.nro_os) else None
         filas.append([fi, dia, ei, ki, plan_clase(r.tarifa_servicio), ab, os_, cli, tec_n, sid, n_rep, ix("pn", plan_nombre(r.tarifa_servicio)),
-                      [[l[0], l[2] or ""] for l in validos]])   # [12] enlaces válidos; velocidades() los cambia por [quién, bajada, subida, estado]
+                      [[l[0], l[2] or ""] for l in validos] + [[l[0], "A"] for l in app]])   # [12] enlaces válidos (+ los de la app, quién «A», que no cuentan); velocidades() los cambia por [quién, bajada, subida, estado, tipo]
         for clave, url, _ in ls:
             if veces[rid(clave)] > 1:
                 rep[clave].append([len(filas) - 1, url])
@@ -314,19 +318,21 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
         for clave, q in f[12]:
             v, t = cache.get(clave), _tipo_enlace(clave)   # [4] = tipo de enlace (para comparar cliente vs técnico)
             if t in SIN_PUBLICO or (v is not None and v[0] < 0):
-                out.append([q, None, None, "n", t] + (["A"] if "my-result" in str(clave) else []))   # «Resultado no encontrado» en speedtest.net
+                out.append([q, None, None, "n", t])   # «Resultado no encontrado» en speedtest.net
             elif v is None:
-                out.append([q, None, None, "p", t] + (["A"] if "my-result" in str(clave) else []))
+                out.append([q, None, None, "p", t])
             else:
                 # Regla del control de provincias: la prueba vale solo si es de máximo 1 día respecto de la atención
                 # (del día anterior al siguiente); si no, no suma en ningún cálculo.
                 if v[3] and not (dia - 86400 <= v[3] < dia + 2 * 86400):
+                    if q == "A":   # de la app: ya no suma en nada
+                        continue
                     i = 7 if q == "C" else 9 if not q else 8
                     f[i] = max(0, f[i] - 1)
                     continue
                 # Válida = descarga MAYOR al mínimo del plan (regla del control: exactamente 600,0 o 1.200,0 no llega)
                 e = "n" if not v[2] else ("v" if v[0] > minimo else "b")
-                out.append([q, v[0], v[1], e, t] + (["A"] if "my-result" in str(clave) else []))   # [5] «A» = enlace de la app (my-result): alerta DE APP
+                out.append([q, v[0], v[1], e, t])
         f[12] = out
     if ref:
         print(f"  Speed Test: {n_ref} instalaciones tomadas de los archivos de control (sync/ref).", flush=True)
