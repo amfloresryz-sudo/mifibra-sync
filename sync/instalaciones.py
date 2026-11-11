@@ -77,6 +77,7 @@ CONFIG = {
                 [r"^[A-ZÑ ]+([ -]T\d+)?$", "ATP"]],
 }
 _RE_FRANJA = re.compile(r"(\d{1,2})\s*-\s*(\d{1,2})")
+_RE_REAGENDA = re.compile(r"\bRE[\s-]?AGEND", re.I)   # «reagenda», «reagendó», «re agenda», «re-agendar»
 
 
 def _norm(v) -> str:
@@ -239,13 +240,25 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
     } for _, r in df[df["estado_os"] == "REGISTRADA"].sort_values("rec").iterrows()]
 
     # Agendas (cliente eligió franja) y coordinadas (sin franja: la fecha la coordina el gestor), por fecha programada.
+    def reagendada(r) -> bool:
+        """El comentario del técnico (OBS VISITA TÉCNICO u observaciones) menciona una reagenda: «reagenda», «reagendó», «re agenda»…"""
+        return bool(_RE_REAGENDA.search(" ".join(_txt(r.get(c)) for c in ("obs_visita_todo", "obs_visita", "observaciones"))))
+
+    def inicio_cumple(r):
+        """Inicio con el que se mide el cumplimiento: el de atención; si el comentario dice que se REAGENDÓ y hay inicio
+        fachada, se cruza con el inicio fachada (la visita llegó en su franja aunque la atención se abrió después)."""
+        if pd.notna(r["ifa"]) and reagendada(r):
+            return r["ifa"], True
+        return r["hi"], False
+
     def cumplimiento(r) -> str:
         fp = r["fp"]
-        if pd.notna(r["hi"]):
-            if r["hi"].normalize() != fp:
-                return "no" if r["hi"].normalize() > fp else "si"   # atendida antes de la fecha también cumple
+        ini = inicio_cumple(r)[0]
+        if pd.notna(ini):
+            if ini.normalize() != fp:
+                return "no" if ini.normalize() > fp else "si"   # atendida antes de la fecha también cumple
             m = _RE_FRANJA.search(_txt(r["horario_atencion"]))
-            return "tarde" if m and r["hi"].hour * 60 + r["hi"].minute > int(m[2]) * 60 else "si"  # 10:00 en 8 - 10 aún cumple
+            return "tarde" if m and ini.hour * 60 + ini.minute > int(m[2]) * 60 else "si"  # 10:00 en 8 - 10 aún cumple
         if fp < hoy:
             return "no"
         return "hoy" if fp == hoy else "fut"
@@ -256,6 +269,7 @@ def construir(df: pd.DataFrame, tec_contrata: dict[str, str], corte: datetime, f
         "fr": _txt(r["horario_atencion"]), "ec": _txt(r["ec"]) or "POR ASIGNAR", "tec": r["tec"], "di": _txt(r["distrito"]),
         "seg": _seg(r), "id": int(r["id_os"]), "ab": int(r["abonado_codigo"]), "os": int(r["nro_os"]), "e": E.get(r["estado_os"], "R"),
         "rec": _iso(r["rec"]), "ini": _iso(r["ifa"] if pd.notna(r["ifa"]) else r["hi"]), "k": cumplimiento(r),   # inicio: fachada (o atención)
+        **({"kr": 1} if inicio_cumple(r)[1] else {}),   # kr = reagendada: el cumplimiento se midió con el inicio fachada
         "cita": r["fc"].strftime("%Y-%m-%d") if pd.notna(r["fc"]) else None, "cn": _canal(r.get("canal_atencion")),
         "fpo": r["fpo"].strftime("%Y-%m-%d") if pd.notna(r["fpo"]) else None, "fro": r["fro"], 
     } for _, r in P.iterrows()]
