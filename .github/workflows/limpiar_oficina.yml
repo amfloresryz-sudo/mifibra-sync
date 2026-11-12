@@ -1,0 +1,39 @@
+name: Limpiar órdenes de oficina (mensual)
+
+# Borra de Supabase las suspensiones / reconexiones / cortes de OFICINA ya descargados que se hayan colado (el portal
+# no los usa y el robot ya no los sube). Corre sola el día 1 de cada mes a las 0:30 (Lima), con el robot dormido.
+# También se puede lanzar a mano: modo «probar» solo cuenta, «borrar» borra.
+on:
+  schedule:
+    - cron: "30 5 1 * *"   # 05:30 UTC = 0:30 Lima, día 1 de cada mes
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "probar (solo cuenta) o borrar"
+        default: "probar"
+        type: choice
+        options: [probar, borrar]
+
+permissions:
+  contents: read
+
+jobs:
+  limpiar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Borrar órdenes de oficina
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.modo }}" != "borrar" ]; then
+            python -m sync.limpiar_oficina --probar
+          else
+            python -m sync.limpiar_oficina
+          fi
