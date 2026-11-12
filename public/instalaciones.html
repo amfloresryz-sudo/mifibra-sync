@@ -4904,10 +4904,17 @@ function revisarSup() { const b = $('tab-sup'); if (!b) return; const ve = filia
 const supAgFut = (p, hoy) => { if (!p.fp || !['AG', 'CO'].includes(tipoProg(p))) return false; const d = new Date(hoy + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1); return p.fp > d.toISOString().slice(0, 10); };
 let supEc = null, SUP_REF = Date.now(); const supAbiertos = new Set(), SUP_MSG = {}, SUP_EST = { ok: 'En meta', am: 'En riesgo', mal: 'Crítico' }, SUP_COL = { ok: '#0F7B45', am: '#E0A100', mal: '#B42318' };
 const SUP_NO_EC = /POR ASIGNAR|GESTOR|SUPERVISOR/i;
+let supRepinta = false;
 async function pintarSup() {
   if (!$('v-sup') || !D || filialSel() !== 'LIMA') return;
   const hoy = hoyIso(), dH = D.dias, pctS = (x) => x == null ? '—' : Math.round(x * 100) + ' %';
-  const [A, OBS, AV] = await Promise.all([traerAsistencia().catch(() => ({ ec: {} })), traerObsHoy().catch(() => []), traerAvHoy().catch(() => null)]); window.__supA = A;
+  // Si Supabase demora, no se espera: a los 1,5 s se dibuja con lo que ya hay (última copia o vacío) y se vuelve a dibujar
+  // solo cuando llegan asistencia, observadas y averías. Antes la pestaña quedaba en blanco hasta que llegaban las 3.
+  const F0 = { A: () => ASI || { ec: {} }, O: () => OBSH || [], V: () => AVH || null }; let faltan = 0;
+  const tope = (p, def) => { let tarde = false; const t = new Promise(r => setTimeout(() => { tarde = true; faltan++; r(def()); }, 1500));
+    p.catch(() => {}).finally(() => { if (tarde && !supRepinta) { supRepinta = true; setTimeout(() => { supRepinta = false; if (tab === 'sup') pintarSup(); }, 80); } });
+    return Promise.race([p.catch(def), t]); };
+  const [A, OBS, AV] = await Promise.all([tope(traerAsistencia(), F0.A), tope(traerObsHoy(), F0.O), tope(traerAvHoy(), F0.V)]); window.__supA = A;
   pintarSupHist().catch(() => {});
   const esHoyD = hoy === new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
   const ahoraMin = esHoyD ? (() => { const [h, m] = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Lima', hour12: false }).split(':').map(Number); return h * 60 + m; })() : (hmMin((D.corte || '').slice(11, 16)) ?? 19 * 60);
@@ -4917,7 +4924,7 @@ async function pintarSup() {
   const PASOS = [[480, 540, '8:00 – 9:00', '¿Salió completa?', 'Asistencia y faltas'], [600, 630, '10:00', '¿Todas las rutas iniciaron?', 'Técnicos sin iniciar'], [720, 780, '12:00 – 13:00', '¿Van al ritmo?', 'Avance vs lo esperado'], [900, 960, '15:00 – 16:00', '¿Qué se salva hoy?', 'Hoy + incumplidas + franjas'], [1080, 1140, '18:00 – 19:00', '¿Cumplió y por qué no?', 'Cierre y motivos']];
   const iA = PASOS.reduce((a, p, i) => ahoraMin >= p[0] ? i : a, -1);
   $('sup-linea').innerHTML = PASOS.map((p, i) => `<div class="sup-paso ${i < iA ? 'hecho' : i === iA ? 'ahora' : ''}"><div class="h">${p[2]}</div><div class="q">${p[3]}</div><div class="e">${p[4]}</div></div>`).join('');
-  $('sup-sub').innerHTML = `${esc(D.filial || filialSel())} · ${fIso(hoy)} · ${minHm(ahoraMin)} · a esta hora deberían llevar el <b>${pctS(frac)}</b> del objetivo del día (jornada 8:00–19:00)`;
+  $('sup-sub').innerHTML = `${esc(D.filial || filialSel())} · ${fIso(hoy)} · ${minHm(ahoraMin)} · a esta hora deberían llevar el <b>${pctS(frac)}</b> del objetivo del día (jornada 8:00–19:00)${faltan ? ' · <i class="sup-carga">cargando asistencia, observadas y averías…</i>' : ''}`;
   // por EECC
   const Lh = D.liq.filter(x => x.d === dH && ok(x)), P = D.pend.filter(ok), E = {};
   const e0 = (k) => E[k] || (E[k] = { ec: k, liq: 0, ini: 0, tecs: new Set(), m24: 0, bolsa: 0, hist: [] });
