@@ -1626,8 +1626,15 @@ function baseInicial(dia) {
   const fut = (t, fp) => (t === 'AG' || t === 'CO') && !!fp && fp > dia;
   const foto = D.bini && D.bini[dia];
   if (foto && foto.f) { const pm = new Map((D.pend || []).map(p => [p.os, p]));
+    // Las que a la hora de la foto estaban «POR ASIGNAR» (ingresaron de noche) se cuentan en la EECC que las recibió después
+    // (la del pendiente de hoy o, si ya se liquidó, la de la liquidación): así su objetivo no queda en «POR ASIGNAR».
+    const lm = new Map((D.liq || []).filter(x => x.d === +dia.slice(8, 10)).map(x => [x.os, x]));
+    const ecOrig = (x) => x.ecR !== undefined ? x.ecR : x.ec0 !== undefined ? x.ec0 : x.ec;
+    const sinEc = (e) => !e || e === 'POR ASIGNAR' || e === 'SIN EECC';
     const filas = foto.f.filter(r => { let fp = r[7], t = r[8]; if (r.length < 9) { const p = pm.get(r[0]); if (!p) return true; fp = p.fp; t = tipoProg(p); } return !fut(t, fp); })
-      .map(r => { const x = { os: r[0], ec: r[1] || 'POR ASIGNAR', tec: r[2], seg: r[3], cn: r[4], z: r[5], fi: r[6] ?? undefined }; fijarEc(x); return x; });
+      .map(r => { let ec = r[1], tec = r[2];
+        if (sinEc(ec)) { const h = pm.get(r[0]) || lm.get(r[0]); if (h && !sinEc(ecOrig(h))) { ec = ecOrig(h); tec = h.tec || tec; } }
+        const x = { os: r[0], ec: ec || 'POR ASIGNAR', tec, seg: r[3], cn: r[4], z: r[5], fi: r[6] ?? undefined }; fijarEc(x); return x; });
     return { filas, txt: `foto de las ${foto.c || '0:00'}, sin AG futuras` }; }
   const antes = (x) => !!x.rec && x.rec.slice(0, 10) < dia, dN = +dia.slice(8, 10);
   const filas = [...(D.pend || []).filter(p => antes(p) && !fut(tipoProg(p), p.fp)), ...(D.liq || []).filter(x => x.d >= dN && antes(x))];
