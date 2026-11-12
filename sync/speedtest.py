@@ -9,8 +9,8 @@ Reglas (acordadas con operaciones):
 - Un enlace que aparece más de una vez (en varios AB o repetido en el mismo) NO cuenta; se lista en detalle.
 - Velocidad (como el control de provincias): el robot lee cada enlace en speedtest.net una sola vez (caché en el estado).
   Mínimo del plan: 600 Mbps de bajada en planes de hasta 1.000 Mbps; 1.200 Mbps en planes mayores.
-  v = válida (descarga mayor al mínimo) · b = bajo el mínimo (la red no entregó) · n = no certificable (otra red que no es Mi Fibra,
-  o la prueba es de más de 3 días antes/después de la instalación, o el enlace no existe) · p = velocidad aún pendiente de leer.
+  Reglas del Excel del Control Operativo: v = sobre el mínimo (descarga mayor al mínimo) · n = bajo el mínimo, no certificable
+  (sin dato de enlace) · p = velocidad aún pendiente de leer. Un enlace que no abre o una prueba de otra red (no Mi Fibra) no es prueba.
 
 Se guarda compacto en la tabla `tableros`, clave "speedtest": tablas de nombres + una fila por alta.
 """
@@ -309,8 +309,12 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
         out = []
         for clave, q in f[12]:
             v, t = cache.get(clave), _tipo_enlace(clave)   # [4] = tipo de enlace (para comparar cliente vs técnico)
-            if t in SIN_PUBLICO or (v is not None and v[0] < 0):
-                out.append([q, None, None, "n", t])   # «Resultado no encontrado» en speedtest.net
+            # Regla del Excel del Control Operativo (base de Ookla): solo existen pruebas con velocidad hechas en la red Mi Fibra.
+            # Un enlace que no abre o una prueba de otra red NO es prueba (no suma en ningún cálculo).
+            if t in SIN_PUBLICO or (v is not None and (v[0] < 0 or (len(v) > 2 and not v[2]))):
+                i = 7 if q == "C" else 9 if not q else 8
+                f[i] = max(0, f[i] - 1)
+                continue
             elif v is None:
                 out.append([q, None, None, "p", t])
             else:
@@ -320,8 +324,9 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                     i = 7 if q == "C" else 9 if not q else 8
                     f[i] = max(0, f[i] - 1)
                     continue
-                # Válida = descarga MAYOR al mínimo del plan (regla del control: exactamente 600,0 o 1.200,0 no llega)
-                e = "n" if not v[2] else ("v" if v[0] > minimo else "b")
+                # Regla del Excel: «Sobre el mínimo» = descarga MAYOR al mínimo del plan (600 / 1.200 Mbps; el exacto no llega).
+                # Bajo el mínimo: speedtest.net no da el dato de enlace del equipo → «no certificable (sin dato de enlace)».
+                e = "v" if v[0] > minimo else "n"
                 out.append([q, v[0], v[1], e, t])
         f[12] = out
     if ref:
