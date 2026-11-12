@@ -17,21 +17,43 @@ async function consultar(ruta, { contar = false } = {}) {
 }
 
 // Tableros con memoria (por instancia de Vercel): primero se pide solo la hora de cada tablero (consulta de bytes) y,
-// si no cambió desde la última lectura, se responde con la copia en memoria sin volver a bajar el tablero de Supabase.
-// Así varios usuarios mirando el mismo tablero cuentan una sola descarga por actualización del robot (el tráfico de
-// salida de Supabase es lo que más se acerca al límite del plan). Si el robot actualizó, se baja de nuevo al instante.
-const MEM_TAB = new Map();
+// si no cambió desde la última lectura, se responde con la copia en memoria sin volver a bajar el tablero.
+// Los tableros grandes ya no viven dentro de la base: el robot los guarda comprimidos como archivo en Supabase Storage
+// (bucket «tableros») y en la tabla deja solo un puntero {_st: ruta, _v: versión}. Así la base casi no escribe en disco
+// (el disco del plan gratuito se agotaba) y lo que baja es ~5 veces más chico. Los tableros chicos siguen en la tabla.
+const zlib = require('zlib');
+const MEM_TAB = new Map();   // clave → { act, datos }
+async function datosDe(fila) {
+  const d = fila.datos;
+  if (!d || typeof d !== 'object' || !d._st) return d;
+  const r = await fetch(`${URL_BASE}/storage/v1/object/tableros/${d._st}?v=${encodeURIComponent(d._v || '')}`,
+    { headers: { apikey: CLAVE, Authorization: `Bearer ${CLAVE}` }, cache: 'no-store' });
+  if (!r.ok) throw new Error(`Storage ${r.status} al leer el tablero ${fila.clave}`);
+  return JSON.parse(zlib.gunzipSync(Buffer.from(await r.arrayBuffer())).toString('utf8'));
+}
 async function leerTableros(claves, select = 'clave,datos,actualizado') {
   const lista = [].concat(claves), enc = lista.map(c => encodeURIComponent(c)).join(',');
-  const filtro = lista.length === 1 ? `clave=eq.${enc}` : `clave=in.(${enc})`;
-  const { datos: H } = await consultar(`tableros?select=clave,actualizado&${filtro}`);
-  const firma = H.map(x => x.clave + '=' + x.actualizado).sort().join('|'), k = select + '¦' + lista.join(',');
-  const m = MEM_TAB.get(k);
-  if (m && m.firma === firma) return { datos: structuredClone(m.datos), mem: true };
-  const { datos } = await consultar(`tableros?select=${select}&${filtro}`);
-  MEM_TAB.delete(k); MEM_TAB.set(k, { firma, datos });
-  while (MEM_TAB.size > 24) MEM_TAB.delete(MEM_TAB.keys().next().value);   // las más viejas salen primero
-  return { datos: structuredClone(datos), mem: false };
+  const { datos: H } = await consultar(`tableros?select=clave,actualizado&clave=in.(${enc})`);
+  const falta = H.filter(x => { const m = MEM_TAB.get(x.clave); return !m || m.act !== x.actualizado; }).map(x => x.clave);
+  if (falta.length) {
+    const { datos: F } = await consultar(`tableros?select=clave,datos,actualizado&clave=in.(${falta.map(c => encodeURIComponent(c)).join(',')})`);
+    const listos = await Promise.all(F.map(async x => [x.clave, { act: x.actualizado, datos: await datosDe(x) }]));
+    listos.forEach(([k, v]) => { MEM_TAB.delete(k); MEM_TAB.set(k, v); });
+    while (MEM_TAB.size > 40) MEM_TAB.delete(MEM_TAB.keys().next().value);   // las más viejas salen primero
+  }
+  // Mismas columnas que pedía la consulta original: clave, actualizado, datos o datos->campo (sale como «campo»)
+  const cols = select.split(',').map(c => c.trim());
+  const filas = H.filter(x => MEM_TAB.has(x.clave)).map(x => {
+    const m = MEM_TAB.get(x.clave), o = {};
+    cols.forEach(c => {
+      if (c === 'clave') o.clave = x.clave;
+      else if (c === 'actualizado') o.actualizado = m.act;
+      else if (c === 'datos') o.datos = m.datos;
+      else if (c.startsWith('datos->')) { const k = c.slice(7); o[k] = m.datos && m.datos[k] !== undefined ? m.datos[k] : null; }
+    });
+    return o;
+  });
+  return { datos: structuredClone(filas), mem: !falta.length };
 }
 
 // Inserta o reemplaza filas (upsert) en una tabla. Solo lo usan los ajustes del portal.
