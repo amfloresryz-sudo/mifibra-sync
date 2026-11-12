@@ -184,12 +184,20 @@ def _bolsa_inicial(tableros: dict[str, dict], estado: dict, ahora: datetime) -> 
     if not B:   # estado nuevo (caché de GitHub vacía): se recuperan las fotos ya guardadas en Supabase
         from . import subir
 
-        r = subir._pedir("GET", subir._url("tableros") + "?select=clave,bini:datos->bini&clave=like.instalaciones:*",
+        r = subir._pedir("GET", subir._url("tableros") + "?select=clave,bini:datos->bini,st:datos->_st&clave=like.instalaciones:*",
                          "Bolsa inicial", headers=subir._cabeceras())
         for x in r.json():
             partes = x["clave"].split(":")
-            if len(partes) == 2 and isinstance(x.get("bini"), dict):
-                B[partes[1]] = x["bini"]
+            if len(partes) != 2:
+                continue
+            bini = x.get("bini")
+            if x.get("st"):   # tablero guardado en Storage: se baja el archivo para sacar la bolsa
+                try:
+                    bini = (subir.leer_tablero(x["clave"]) or {}).get("bini")
+                except Exception as e:  # noqa: BLE001
+                    print(f"Aviso: no se leyó la bolsa inicial de {x['clave']}: {e}", flush=True)
+            if isinstance(bini, dict):
+                B[partes[1]] = bini
     for clave, datos in tableros.items():
         partes = clave.split(":")
         if partes[0] != "instalaciones" or len(partes) != 2:

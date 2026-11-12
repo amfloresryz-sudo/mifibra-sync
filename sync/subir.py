@@ -19,6 +19,7 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,6 +30,11 @@ LOTE = 250            # filas por escritura (lotes chicos: Supabase gratuito res
 LOTE_BORRADO = 400    # ids por borrado
 SIN_HUELLA = ("sincronizado_en", "huella", "cajas_cerca", "detalle_os", "zona_tap")   # zona_tap: TAP para el tablero FFTT (no fuerza reescribir la base)   # detalle_os solo sirve para calcular «detalle» (que sí cuenta): así no se reescribe toda la base
 ESTADO_VERSION = 2
+# Tableros grandes → archivo comprimido en Supabase Storage (bucket «tableros»), no dentro de la base: reescribirlos en
+# la tabla cada 10 min agotaba el disco del plan gratuito (la base se ponía lenta y la web no cargaba). En la tabla
+# queda solo un puntero {_st: ruta, _v: versión}; el portal (api/_supabase.js) lo resuelve. Los chicos siguen en la tabla.
+BUCKET_TAB = "tableros"
+UMBRAL_ST = 40_000    # bytes de JSON a partir de los cuales el tablero va a Storage
 
 
 # ---------------------------------------------------------------- utilidades HTTP
@@ -208,8 +214,16 @@ def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str, 
 
     def uno(x):
         clave, datos, h = x
+        cuerpo = json.dumps(datos, ensure_ascii=False, separators=(",", ":"), default=str).encode()
+        en_tabla = datos
+        if len(cuerpo) > UMBRAL_ST:
+            _asegurar_bucket()
+            ruta = ruta_st(clave)
+            _pedir("POST", _st_url(ruta), f"Tablero {clave} (Storage)", data=gzip.compress(cuerpo, 6),
+                   headers=_cabeceras({"Content-Type": "application/gzip", "x-upsert": "true", "cache-control": "max-age=0"}))
+            en_tabla = {"_st": ruta, "_v": h, "_n": len(cuerpo)}
         _pedir("POST", _url("tableros") + "?on_conflict=clave", f"Tablero {clave}",
-               json={"clave": clave, "datos": datos, "actualizado": actualizado},
+               json={"clave": clave, "datos": en_tabla, "actualizado": actualizado},
                headers=_cabeceras({"Prefer": "resolution=merge-duplicates,return=minimal"}))
         return clave, h
 
@@ -228,11 +242,44 @@ def guardar_tableros(tableros: dict[str, dict], estado: dict, actualizado: str, 
     return n
 
 
+def ruta_st(clave: str) -> str:
+    """Nombre del archivo del tablero en Storage: instalaciones:LA LIBERTAD:2026-10 → instalaciones_LA_LIBERTAD_2026-10.json.gz"""
+    return re.sub(r"[^A-Za-z0-9_-]", "_", clave) + ".json.gz"
+
+
+def _st_url(ruta: str) -> str:
+    return f"{os.environ['SUPABASE_URL'].rstrip('/')}/storage/v1/object/{BUCKET_TAB}/{ruta}"
+
+
+_bucket_listo = False
+
+
+def _asegurar_bucket() -> None:
+    """Crea el bucket privado «tableros» la primera vez (si ya existe, Supabase responde «already exists» y se sigue)."""
+    global _bucket_listo
+    if _bucket_listo:
+        return
+    r = requests.post(f"{os.environ['SUPABASE_URL'].rstrip('/')}/storage/v1/bucket", timeout=120, headers=_cabeceras(),
+                      json={"id": BUCKET_TAB, "name": BUCKET_TAB, "public": False})
+    if r.status_code >= 300 and not any(w in r.text.lower() for w in ("exist", "duplicate")):
+        raise RuntimeError(f"No se pudo crear el bucket de tableros: {r.status_code} {r.text[:200]}")
+    _bucket_listo = True
+
+
+def resolver_tablero(datos):
+    """Si el tablero está en Storage (puntero {_st}), lo baja y descomprime; si no, lo devuelve tal cual."""
+    if isinstance(datos, dict) and datos.get("_st"):
+        r = _pedir("GET", _st_url(datos["_st"]) + f"?v={datos.get('_v', '')}", f"Tablero {datos['_st']} (Storage)",
+                   headers=_cabeceras())
+        return json.loads(gzip.decompress(r.content).decode("utf-8"))
+    return datos
+
+
 def leer_tablero(clave: str) -> dict:
-    """Datos de un tablero guardado en Supabase ({} si no existe)."""
+    """Datos de un tablero guardado en Supabase ({} si no existe), esté en la tabla o en Storage."""
     r = _pedir("GET", _url("tableros") + f"?select=datos&clave=eq.{clave}", f"Lectura del tablero {clave}", headers=_cabeceras())
     d = r.json()
-    return (d[0].get("datos") or {}) if d else {}
+    return (resolver_tablero(d[0].get("datos")) or {}) if d else {}
 
 
 def registrar_corrida(modo: str, filas: int | None, ok: bool, mensaje: str, inicio: str, fin: str) -> None:
