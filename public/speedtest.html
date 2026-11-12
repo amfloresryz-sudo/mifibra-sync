@@ -284,7 +284,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <div><div class="cols" id="g-mes"></div><div class="meses" id="g-mes-x"></div></div>
     </section>
     <section class="sec" aria-labelledby="t-fil">
-      <div class="fil-cab"><h3 id="t-fil">Cumplimiento por filial</h3><span class="fil-rango" id="fil-rango" title="Fechas de atención que se están evaluando"></span></div><div><p class="sub" id="fil-sub">Instalaciones con medición válida en el equipo del cliente, de cada 100 · solo filiales con 5 o más instalaciones.</p></div>
+      <div class="fil-cab"><h3 id="t-fil">Cumplimiento por filial</h3><span class="fil-rango" id="fil-rango" title="Fechas de atención que se están evaluando"></span></div><div><p class="sub" id="fil-sub">Instalaciones con medición válida en el equipo del cliente, de cada 100 · todas las filiales con instalaciones.</p></div>
       <div id="g-fil"></div>
     </section>
   </div>
@@ -513,13 +513,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     // Todas las filiales: una barra por filial · con una filial elegida: una barra por EECC de esa filial
     const porEcF = fset().length === 1, LF = porEcF ? L : O.filter(o => sel(o, 'filial')), claves = porEcF ? [...new Set(L.map(o => o.e))] : filiales;
     // Cumplimiento (como «Qué pasó con cada 100 instalaciones» y el Control Operativo): instalaciones válidas ÷ instalaciones
-    const porFil = claves.map(f => [f, sum(LF.filter(o => (porEcF ? o.e : o.f) === f))]).filter(([, s]) => s.ins >= 5).map(([f, s]) => [f, s.v / s.ins * 100, s]).sort((x, y) => y[1] - x[1] || y[2].ins - x[2].ins);
+    const porFil = claves.map(f => [f, sum(LF.filter(o => (porEcF ? o.e : o.f) === f))]).filter(([, s]) => s.ins > 0).map(([f, s]) => [f, s.v / s.ins * 100, s]).sort((x, y) => y[1] - x[1] || y[2].ins - x[2].ins);
     const fmax = Math.max(0.1, ...porFil.map(x => x[1]));
     $('t-fil').textContent = porEcF ? `Cumplimiento por EECC de ${F.filial}` : 'Cumplimiento por filial';
     // Fechas evaluadas (de las instalaciones del gráfico): un día o el rango «del … al …»
     const dsF = LF.filter(o => claves.includes(porEcF ? o.e : o.f)).map(o => o.d).sort(), d0 = dsF[0], d1 = dsF[dsF.length - 1];
     $('fil-rango').textContent = d0 ? (d0 === d1 ? dmy(d0) : `${dmy(d0)} al ${dmy(d1)}`) : '';
-    $('fil-sub').textContent = `Instalaciones con medición válida en el equipo del cliente, de cada 100 · solo ${porEcF ? 'EECC' : 'filiales'} con 5 o más instalaciones · clic en una barra para ver sus AB.`;
+    $('fil-sub').textContent = `Instalaciones con medición válida en el equipo del cliente, de cada 100 · todas las ${porEcF ? 'EECC' : 'filiales'} con instalaciones (igual que «Qué pasó con cada 100 instalaciones») · clic en una barra para ver sus AB.`;
     // Diseño: posición · nombre con «X de Y pruebas» · barra (con línea del promedio) · % ; sobre el promedio en fucsia, debajo en rosado
     // Meta: 80% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
     const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.ins ? tG.v / tG.ins * 100 : 0;
