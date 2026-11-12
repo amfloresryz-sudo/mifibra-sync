@@ -280,7 +280,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <div><div class="cols" id="g-mes"></div><div class="meses" id="g-mes-x"></div></div>
     </section>
     <section class="sec" aria-labelledby="t-fil">
-      <div><h3 id="t-fil">Pruebas en dispositivo del cliente, por filial</h3><p class="sub" id="fil-sub">Solo se listan filiales con 5 o más pruebas registradas.</p></div>
+      <div><h3 id="t-fil">Cumplimiento por filial</h3><p class="sub" id="fil-sub">Instalaciones con medición válida en el equipo del cliente, de cada 100 · solo filiales con 5 o más instalaciones.</p></div>
       <div id="g-fil"></div>
     </section>
   </div>
@@ -508,17 +508,18 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     // Barras por filial (sin el filtro de filial)
     // Todas las filiales: una barra por filial · con una filial elegida: una barra por EECC de esa filial
     const porEcF = fset().length === 1, LF = porEcF ? L : O.filter(o => sel(o, 'filial')), claves = porEcF ? [...new Set(L.map(o => o.e))] : filiales;
-    const porFil = claves.map(f => [f, sum(LF.filter(o => (porEcF ? o.e : o.f) === f))]).filter(([, s]) => s.pr >= 5).map(([f, s]) => [f, s.c / s.pr * 100, s]).sort((x, y) => y[1] - x[1]);
+    // Cumplimiento (como «Qué pasó con cada 100 instalaciones» y el Control Operativo): instalaciones válidas ÷ instalaciones
+    const porFil = claves.map(f => [f, sum(LF.filter(o => (porEcF ? o.e : o.f) === f))]).filter(([, s]) => s.ins >= 5).map(([f, s]) => [f, s.v / s.ins * 100, s]).sort((x, y) => y[1] - x[1] || y[2].ins - x[2].ins);
     const fmax = Math.max(0.1, ...porFil.map(x => x[1]));
-    $('t-fil').textContent = porEcF ? `Pruebas en dispositivo del cliente, por EECC de ${F.filial}` : 'Pruebas en dispositivo del cliente, por filial';
-    $('fil-sub').textContent = `Solo se listan ${porEcF ? 'EECC' : 'filiales'} con 5 o más pruebas registradas · clic en una barra para ver sus AB con medición.`;
+    $('t-fil').textContent = porEcF ? `Cumplimiento por EECC de ${F.filial}` : 'Cumplimiento por filial';
+    $('fil-sub').textContent = `Instalaciones con medición válida en el equipo del cliente, de cada 100 · solo ${porEcF ? 'EECC' : 'filiales'} con 5 o más instalaciones · clic en una barra para ver sus AB.`;
     // Diseño: posición · nombre con «X de Y pruebas» · barra (con línea del promedio) · % ; sobre el promedio en fucsia, debajo en rosado
     // Meta: 80% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
-    const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.pr ? tG.c / tG.pr * 100 : 0;
-    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw l"></i><b>Meta ${pc(OBJ_CLI)}</b></span><span><i class="sw a"></i>Cumple</span><span><i class="sw b"></i>No cumple</span><span>Total ${pc(prom)} (${n(tG.c)} de ${n(tG.pr)}) · ${n(porFil.filter(x => x[1] >= OBJ_CLI).length)} de ${n(porFil.length)} cumplen</span></div>`
-      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CLI ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus pruebas en el equipo del cliente<br>${n(s.c)} de ${n(s.pr)} pruebas · meta ${pc(OBJ_CLI)}${v >= OBJ_CLI ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.pr * OBJ_CLI / 100) - s.c)} pruebas del cliente)`}">
-        <span class="pos">${k + 1}</span><span class="nom"><b>${esc(f)}</b><small>${n(s.c)} de ${n(s.pr)} pruebas</small></span>
-        <span class="tr"><i style="width:${Math.min(100, v)}%"></i><em style="left:${OBJ_CLI}%"></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin pruebas con estos filtros.</p>';
+    const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.ins ? tG.v / tG.ins * 100 : 0;
+    $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw l"></i><b>Meta ${pc(OBJ_CUMP)}</b></span><span><i class="sw a"></i>Cumple</span><span><i class="sw b"></i>No cumple</span><span>Total ${pc(prom)} (${n(tG.v)} de ${n(tG.ins)} instalaciones) · ${n(porFil.filter(x => x[1] >= OBJ_CUMP).length)} de ${n(porFil.length)} cumplen</span></div>`
+      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CUMP ? ' sobre' : ''}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus instalaciones con medición válida en el equipo del cliente<br>${n(s.v)} de ${n(s.ins)} instalaciones · meta ${pc(OBJ_CUMP)}${v >= OBJ_CUMP ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.ins * OBJ_CUMP / 100) - s.v)} instalaciones válidas)`}">
+        <span class="pos">${k + 1}</span><span class="nom"><b>${esc(f)}</b><small>${n(s.v)} de ${n(s.ins)} instalaciones</small></span>
+        <span class="tr"><i style="width:${Math.min(100, v)}%"></i><em style="left:${OBJ_CUMP}%"></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin instalaciones con estos filtros.</p>';
     // Tabla por EECC
     const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
     // g = 'ec|EECC' o 'tec|EECC|TÉCNICO': cada número abre la lista de sus AB
