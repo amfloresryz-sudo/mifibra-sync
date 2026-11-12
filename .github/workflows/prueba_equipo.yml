@@ -1,0 +1,19 @@
+name: Prueba equipo Speed Test (no escribe)
+# PRUEBA de solo lectura: datos públicos de speedtest.net para una muestra de pruebas con equipo conocido. Sin claves.
+on:
+  push:
+    branches: [prueba-st-equipo]
+    paths: [".github/workflows/prueba_equipo.yml", ".github/prueba/st_equipo.py", ".github/prueba/ids_equipo.csv"]
+permissions:
+  contents: read
+jobs:
+  probar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python -u .github/prueba/st_equipo.py .github/prueba/ids_equipo.csv
