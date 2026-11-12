@@ -74,7 +74,7 @@ MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "
 # #AGENDA ATC dd/mm h1-h2# y también #AGENDA MCD dd/mm h1-h2# (misma forma y detalle); la fecha puede ir con / o con - (23/10 o 23-10)
 _RE_AGENDA = re.compile(r"#\s*AGENDA(?:\s+(?:ATC|MCD))?\s+(\d{1,2})\s*[/-]\s*(\d{1,2})\s+(\d{1,2})\s*-\s*(\d{1,2})\s*#", re.I)
 _RE_VISITA = re.compile(r"agenda|(?:primera|segunda)\s*vis", re.I)
-_RE_HORA = re.compile(r"^(\d{1,2}):(\d{2})")
+_RE_HORA = re.compile(r"^(\d{1,2}):(\d{1,2})(?!\d)")   # ScordSoft a veces escribe la hora sin el cero del minuto: «13:7» = 13:07
 _RE_DMY = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?")
 
 
@@ -163,7 +163,7 @@ def _agenda(obs) -> dict:
 
 def _hora(v) -> str | None:
     m = _RE_HORA.match(str(_texto(v) or "").strip())
-    return f"{int(m[1]):02d}:{m[2]}" if m else None
+    return f"{int(m[1]):02d}:{int(m[2]):02d}" if m else None
 
 
 _RE_VISITA_TEC = re.compile(r"#\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*(?:(\d{1,2}):?(\d{2})\d?)?\s*(?:#|%(?=\s))?\s*(?:%([^%]*)%\s*)?(.*?)\s*(?:%([^%]*)%|(?=#\s*\d{1,2}/)|$)", re.S)
