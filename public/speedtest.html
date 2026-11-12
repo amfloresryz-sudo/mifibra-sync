@@ -597,8 +597,13 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     g += evoDias.map(([d, s], k) => { const x = xC(k), y = yI(s.ins); return `<rect class="bar${selD === d ? ' sel' : ''}" x="${x - bw / 2}" y="${y}" width="${bw}" height="${mt + ch - y}" rx="3"/>${s.ins && paso >= 18 && !(s.ins && etqPct && Math.abs(yP(s.v / s.ins * 100) - 9 - (y - 5)) < 13) ? `<text class="bn" x="${x}" y="${y - 5}" text-anchor="middle">${n(s.ins)}</text>` : ''}`; }).join('');
     g += `<line class="obj" x1="${ml}" x2="${ml + cw}" y1="${yP(OBJ_CUMP)}" y2="${yP(OBJ_CUMP)}"/><text class="objt" x="${ml + cw + 6}" y="${yP(OBJ_CUMP) + 4}">${OBJ_CUMP}%</text>`;
     // la línea se corta en los días sin instalaciones
-    let tramo = [], camino = ''; const cerrar = () => { if (tramo.length > 1) camino += 'M' + tramo.join('L'); tramo = []; };
-    evoDias.forEach(([, s], k) => { if (s.ins) tramo.push(`${xC(k).toFixed(1)},${yP(s.v / s.ins * 100).toFixed(1)}`); else cerrar(); }); cerrar();
+    // línea suavizada (curvas que pasan por cada punto sin pasarse de los valores de sus vecinos)
+    const f1 = (v) => v.toFixed(1), suave = (P) => { let d = `M${f1(P[0][0])},${f1(P[0][1])}`;
+      for (let i = 0; i < P.length - 1; i++) { const a = P[i - 1] || P[i], p = P[i], q = P[i + 1], b = P[i + 2] || q, lo = Math.min(p[1], q[1]), hi = Math.max(p[1], q[1]), cl = (y) => Math.max(lo, Math.min(hi, y));
+        d += `C${f1(p[0] + (q[0] - a[0]) / 6)},${f1(cl(p[1] + (q[1] - a[1]) / 6))} ${f1(q[0] - (b[0] - p[0]) / 6)},${f1(cl(q[1] - (b[1] - p[1]) / 6))} ${f1(q[0])},${f1(q[1])}`; }
+      return d; };
+    let tramo = [], camino = ''; const cerrar = () => { if (tramo.length > 1) camino += suave(tramo); tramo = []; };
+    evoDias.forEach(([, s], k) => { if (s.ins) tramo.push([xC(k), yP(s.v / s.ins * 100)]); else cerrar(); }); cerrar();
     g += `<path class="ln" d="${camino}"/>`;
     g += evoDias.map(([, s], k) => { if (!s.ins) return ''; const v = s.v / s.ins * 100, x = xC(k), y = yP(v); return `<circle class="pt${v >= OBJ_CUMP ? ' ok' : ''}" cx="${x}" cy="${y}" r="${mob ? 3.2 : 4}"/>${etqPct ? `<text class="pv" x="${x}" y="${y - 9}" text-anchor="middle">${Math.round(v)}%</text>` : ''}`; }).join('');
     g += evoDias.map(([d], k) => k % cada ? '' : rot ? `<text x="${xC(k)}" y="${H - mb + 12}" text-anchor="end" font-size="10.5" transform="rotate(-55 ${xC(k)} ${H - mb + 12})">${d.slice(8, 10)}/${d.slice(5, 7)}</text>` : `<text x="${xC(k)}" y="${H - mb + 16}" text-anchor="middle">${d.slice(8, 10)}/${d.slice(5, 7)}</text>`).join('');
