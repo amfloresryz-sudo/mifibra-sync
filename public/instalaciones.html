@@ -628,7 +628,7 @@ tr.pdet td { background: #FBFBFC; padding: 8px 10px 12px; } .pbox { text-align: 
 .titular { font-size: clamp(20px, 2.4vw, 28px); font-weight: 800; letter-spacing: -.3px; }
 #t-pres { font-size: clamp(15px, 1.75vw, 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) { #t-pres { white-space: normal; } }
-.titular .n { color: var(--magenta-txt); } .titular .w { color: var(--mid); } .titular .ok { color: var(--ok); } .titular .mal { color: var(--mal); }
+.titular .n { color: var(--magenta-txt); } .titular .wm { color: var(--mid); }   /* antes «.w», que chocaba con el contenedor .w y partía el titular en 2 líneas */ .titular .ok { color: var(--ok); } .titular .mal { color: var(--mal); }
 /* Consolidado mensual / diario */
 .cs > div { display: flex; flex-direction: column; gap: 16px; }
 .cs-cab { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -2241,7 +2241,7 @@ function pintarResumenPend(P) {
   const ind = indicadoresPend;
   const T = ind(P, L, I), nEc = new Set(P.map(p => p.ec)).size;
   const cDisp = T.disp == null ? '' : T.disp <= CFG.meta_disp ? 'ok' : T.disp <= CFG.meta_disp * 1.5 ? 'mid' : 'mal';
-  $('t-pres').innerHTML = `Hay <span class="n">${n(T.n)}</span> ${esInst() ? 'abonados pendientes' : 'órdenes pendientes de ' + esc(TOS_TXT().toLowerCase())} en ${nEc} EECC; <span class="${cDisp === 'ok' ? 'ok' : cDisp === 'mid' ? 'w' : 'mal'}">${dec(T.disp)}%</span> lleva más de 48 h, frente a la meta de ${CFG.meta_disp}%.`;
+  $('t-pres').innerHTML = `Hay <span class="n">${n(T.n)}</span> ${esInst() ? 'abonados pendientes' : 'órdenes pendientes de ' + esc(TOS_TXT().toLowerCase())} en ${nEc} EECC; <span class="${cDisp === 'ok' ? 'ok' : cDisp === 'mid' ? 'wm' : 'mal'}">${dec(T.disp)}%</span> lleva más de 48 h, frente a la meta de ${CFG.meta_disp}%.`;
   const br = (pc, meta) => `<div class="br"><i style="width:${Math.min(100, pc || 0).toFixed(1)}%${meta != null ? ';background:currentColor' : ''}"></i>${meta != null ? `<b style="left:${Math.min(100, meta)}%"></b>` : ''}</div>`;
   const cel = (l, v, s, cls = '', barra = '') => `<div><span class="l">${l}</span><span class="v ${cls}">${v}</span>${barra}<span class="s">${s}</span></div>`;
   const cdb = T.db == null ? '' : T.db <= CFG.meta_db ? 'ok' : T.db <= CFG.meta_db * 1.5 ? 'mid' : 'mal';
