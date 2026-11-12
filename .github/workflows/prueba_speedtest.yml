@@ -1,0 +1,31 @@
+name: Prueba Speed Test (solo lectura)
+
+# Calcula el % de Speed Test de una filial y un día con distintas reglas, para comparar. No escribe nada.
+on:
+  workflow_dispatch:
+    inputs:
+      filial:
+        default: "LIMA"
+        type: string
+      dia:
+        default: "2026-11-11"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prueba:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Calcular
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m sync.prueba_st "${{ inputs.filial }}" "${{ inputs.dia }}"
