@@ -151,6 +151,12 @@ th[aria-sort="ascending"] .th-i::before { content: '▲'; font-size: 8px; color:
 .hb2.sobre .tr i { background: var(--ok); }
 .hb2 .tr em.et::after { content: attr(data-m); position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); font: 800 11px var(--f-disp); color: var(--fg); white-space: nowrap; }
 .hb2.pri { padding-top: 22px; }
+.fil-der { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.fil-acc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; } .fil-acc .btn-out { min-height: 32px; padding: 5px 12px; font-size: 12.5px; }
+#fil-marcar[aria-pressed="true"] { background: var(--mal); border-color: var(--mal); color: #fff; }
+.fil-aviso { font-size: 12px; font-weight: 700; color: var(--ok); }
+.hb2 { position: relative; } .hb2 .aro { position: absolute; inset: 1px; border: 3px solid #E11D48; border-radius: 12px; pointer-events: none; }
+#g-fil.marcando .hb2 { cursor: crosshair; } #g-fil.marcando .hb2:hover { background: #FFE4E9; }
 .fil-cab { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 16px; }
 .fil-rango { font: 700 12.5px var(--f-txt); color: var(--fg-2); background: var(--pista); border: 1px solid var(--borde); border-radius: 999px; padding: 4px 12px; white-space: nowrap; font-variant-numeric: tabular-nums; } .hb2 .tr em { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--fg); border-radius: 1px; }
 .hb2 .pct { text-align: right; font: 800 16px var(--f-disp); font-variant-numeric: tabular-nums; } .hb2:not(.sobre) .pct { color: var(--magenta-txt); } .hb2.sobre .pct { color: var(--ok); }
@@ -284,7 +290,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       <div><div class="cols" id="g-mes"></div><div class="meses" id="g-mes-x"></div></div>
     </section>
     <section class="sec" aria-labelledby="t-fil">
-      <div class="fil-cab"><h3 id="t-fil">Cumplimiento por filial</h3><span class="fil-rango" id="fil-rango" title="Fechas de atención que se están evaluando"></span></div><div><p class="sub" id="fil-sub">Instalaciones con medición válida en el equipo del cliente, de cada 100 · todas las filiales con instalaciones.</p></div>
+      <div class="fil-cab"><h3 id="t-fil">Cumplimiento por filial</h3><span class="fil-der"><span class="fil-rango" id="fil-rango" title="Fechas de atención que se están evaluando"></span><span class="fil-acc" data-html2canvas-ignore><span class="fil-aviso" id="fil-aviso" role="status"></span><button type="button" class="btn-out" id="fil-marcar" aria-pressed="false" title="Activa y toca las filas que quieras encerrar en rojo; vuelve a tocarlas para quitarlas">◯ Encerrar filas</button><button type="button" class="btn-out" id="fil-quitar" hidden>Quitar marcas</button><button type="button" class="btn-out" id="fil-copiar" title="Copia el gráfico completo (con las filas encerradas) como imagen en alta resolución">Copiar imagen</button></span></span></div><div><p class="sub" id="fil-sub">Instalaciones con medición válida en el equipo del cliente, de cada 100 · todas las filiales con instalaciones.</p></div>
       <div id="g-fil"></div>
     </section>
   </div>
@@ -336,6 +342,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   const dmy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   const OBJ_CLI = 80;   // meta: % de pruebas hechas en el equipo del cliente (la del Control Operativo SpeedTest)
   const OBJ_CUMP = 80;  // meta de Cumplimiento: instalaciones con medición válida en el equipo del cliente (Control Operativo)
+  const MARCAS = new Set(); let marcando = false;   // filas encerradas en el gráfico de cumplimiento (y modo marcar)
   const OBJ_MED = 100;  // meta: instalaciones con medición registrada
   const PLANES = ['Hasta 1.000 Mbps', 'Más de 1.000 Mbps', 'Sin plan identificado'];
   const tokenPortal = () => { try { return sessionStorage.getItem('mifibra_portal_token') || ''; } catch { return ''; } };
@@ -524,9 +531,10 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     // Meta: 80% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
     const tG = sum(LF.filter(o => claves.includes(porEcF ? o.e : o.f))), prom = tG.ins ? tG.v / tG.ins * 100 : 0;
     $('g-fil').innerHTML = porFil.length ? `<div class="hb2-ley"><span><i class="sw l"></i><b>Meta ${pc(OBJ_CUMP)}</b></span><span><i class="sw a"></i>Cumple</span><span><i class="sw b"></i>No cumple</span><span>Total ${pc(prom)} (${n(tG.v)} de ${n(tG.ins)} instalaciones) · ${n(porFil.filter(x => x[1] >= OBJ_CUMP).length)} de ${n(porFil.length)} cumplen</span></div>`
-      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CUMP ? ' sobre' : ''}${k ? '' : ' pri'}" tabindex="0" role="button" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus instalaciones con medición válida en el equipo del cliente<br>${n(s.v)} de ${n(s.ins)} instalaciones · meta ${pc(OBJ_CUMP)}${v >= OBJ_CUMP ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.ins * OBJ_CUMP / 100) - s.v)} instalaciones válidas)`}">
+      + porFil.map(([f, v, s], k) => `<div class="hb2${v >= OBJ_CUMP ? ' sobre' : ''}${k ? '' : ' pri'}" tabindex="0" role="button" data-g="${esc(f)}" data-lista="${porEcF ? 'ec' : 'fil'}|${esc(f)}" data-tip="<b>${esc(f)}</b><br>${pc(v)} de sus instalaciones con medición válida en el equipo del cliente<br>${n(s.v)} de ${n(s.ins)} instalaciones · meta ${pc(OBJ_CUMP)}${v >= OBJ_CUMP ? ' (cumple)' : ` (le faltan ${n(Math.ceil(s.ins * OBJ_CUMP / 100) - s.v)} instalaciones válidas)`}">
         <span class="pos">${k + 1}</span><span class="nom"><b>${esc(f)}</b><small>${n(s.v)} de ${n(s.ins)} instalaciones</small></span>
-        <span class="tr"><i style="width:${Math.min(100, v)}%"></i><em style="left:${OBJ_CUMP}%"${k ? '' : ` class="et" data-m="${OBJ_CUMP}%"`}></em></span><span class="pct">${pc(v)}</span></div>`).join('') : '<p class="vacio">Sin instalaciones con estos filtros.</p>';
+        <span class="tr"><i style="width:${Math.min(100, v)}%"></i><em style="left:${OBJ_CUMP}%"${k ? '' : ` class="et" data-m="${OBJ_CUMP}%"`}></em></span><span class="pct">${pc(v)}</span>${MARCAS.has(f) ? '<span class="aro"></span>' : ''}</div>`).join('') : '<p class="vacio">Sin instalaciones con estos filtros.</p>';
+    $('fil-quitar').hidden = !MARCAS.size;
     // Tabla por EECC
     const porEc = {}; L.forEach(o => { (porEc[o.e] = porEc[o.e] || []).push(o); });
     // g = 'ec|EECC' o 'tec|EECC|TÉCNICO': cada número abre la lista de sus AB
@@ -822,6 +830,31 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
       if (tipo === 'all') return listaAB(`Total · ${Q[q][0]}`, per, base.filter(Q[q][1]));
       return listaAB(`${tipo === 'tec' ? tec : ec} · ${Q[q][0]}`, per, base.filter(Q[q][1])); }
   }
+  /* Cumplimiento por EECC/filial: encerrar filas (en rojo) y copiar el gráfico como imagen */
+  const filAviso = (t, mal) => { const a = $('fil-aviso'); a.textContent = t; a.style.color = mal ? 'var(--mal)' : 'var(--ok)'; clearTimeout(a._t); a._t = setTimeout(() => a.textContent = '', 5000); };
+  const aroDe = (r) => { const on = MARCAS.has(r.dataset.g); let x = r.querySelector('.aro'); if (on && !x) { x = document.createElement('span'); x.className = 'aro'; r.appendChild(x); } else if (!on && x) x.remove(); };
+  window.addEventListener('click', (e) => {   // en modo marcar, tocar una fila la encierra (y no abre la lista)
+    if (!marcando) return; const r = e.target.closest('#g-fil .hb2'); if (!r) return;
+    e.stopPropagation(); e.preventDefault(); const g = r.dataset.g; MARCAS.has(g) ? MARCAS.delete(g) : MARCAS.add(g); aroDe(r); $('fil-quitar').hidden = !MARCAS.size;
+  }, true);
+  document.addEventListener('click', async (e) => {
+    const id = e.target.closest('button')?.id;
+    if (id === 'fil-marcar') { marcando = !marcando; e.target.closest('button').setAttribute('aria-pressed', String(marcando)); $('g-fil').classList.toggle('marcando', marcando); if (marcando) filAviso('Toca las filas que quieras encerrar.'); }
+    else if (id === 'fil-quitar') { MARCAS.clear(); document.querySelectorAll('#g-fil .hb2').forEach(aroDe); $('fil-quitar').hidden = true; }
+    else if (id === 'fil-copiar') {
+      const b = $('fil-copiar'), sec = b.closest('section'), t0 = b.textContent; b.disabled = true; b.textContent = 'Armando imagen…';
+      try {
+        const blob = (async () => { await cargarLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+          const w = sec.offsetWidth, h = sec.offsetHeight, k = Math.max(1, Math.min(6, 3840 / w, 32000 / h, Math.sqrt(250e6 / (w * h))));
+          const fondo = getComputedStyle(sec).backgroundColor || '#FFFFFF';
+          const cv = await html2canvas(sec, { backgroundColor: fondo, scale: k, logging: false }); return await new Promise(r => cv.toBlob(r, 'image/png')); })();
+        try { if (!navigator.clipboard || !window.ClipboardItem) throw 0; await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); filAviso('Imagen copiada. Pégala con Ctrl+V.'); }
+        catch { const a = document.createElement('a'); a.href = URL.createObjectURL(await blob); a.download = 'cumplimiento-speedtest.png'; document.body.appendChild(a); a.click(); a.remove(); filAviso('No se pudo copiar; se descargó la imagen.'); }
+      } catch { filAviso('No se pudo armar la imagen. Inténtalo de nuevo.', true); }
+      finally { b.disabled = false; b.textContent = t0; }
+    }
+  });
+  const libsSt = {}; function cargarLib(url) { if (!libsSt[url]) libsSt[url] = new Promise((r, m) => { const sc = document.createElement('script'); sc.src = url; sc.onload = r; sc.onerror = () => { delete libsSt[url]; m(new Error('No se pudo cargar')); }; document.head.appendChild(sc); }); return libsSt[url]; }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-lista]'); if (b) { e.stopPropagation(); abrirLista(b.dataset.lista); } }, true);
   document.addEventListener('click', (e) => { if (!e.target.closest('[data-ir-rep]')) return; const b = document.querySelector('.tabs-st [data-tab="rep"]'); b.click(); $('t-det').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.col[data-lista], .hbar[data-lista], .hb2[data-lista], .hit[data-lista], .q100[data-lista], .q100 .bar span[data-lista]')) { e.preventDefault(); abrirLista(e.target.dataset.lista); } });
