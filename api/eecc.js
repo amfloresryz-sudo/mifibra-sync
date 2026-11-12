@@ -127,6 +127,10 @@ const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Americ
 async function asistencia() {
   const { datos } = await consultar(`ajustes?select=datos&clave=eq.${encodeURIComponent(CLAVE_ASIS)}`);
   const a = (datos[0] && datos[0].datos) || {};
+  if (a.fecha && a.fecha !== hoyLima() && a.ec && Object.keys(a.ec).length) {
+    // Antes de descartar la asistencia de un día anterior, se asegura en el historial (las que no llegaron a guardarse)
+    try { await pasarAlHist(a.fecha, a.ec); } catch (e) { console.error('Historial de asistencia (día anterior):', e.message); }
+  }
   return a.fecha === hoyLima() ? { fecha: a.fecha, ec: a.ec || {} } : { fecha: hoyLima(), ec: {} };
 }
 
@@ -136,6 +140,15 @@ const claveHist = (fecha) => 'asistencia:HIST:' + fecha.slice(0, 7);
 async function leerHist(fecha) {
   const { datos } = await consultar(`ajustes?select=datos&clave=eq.${encodeURIComponent(claveHist(fecha))}`);
   return (datos[0] && datos[0].datos) || { d: {} };
+}
+// Copia al historial las EECC del día que aún no están (asistencias marcadas antes de existir el historial, o si falló su guardado)
+async function pasarAlHist(fecha, ec) {
+  const h = await leerHist(fecha), dia = h.d[fecha] || (h.d[fecha] = {});
+  let cambia = false;
+  Object.entries(ec || {}).forEach(([k, v]) => { if (dia[k] || !v || !v.en) return; cambia = true;
+    dia[k] = { p: v.en, u: v.en, por: v.por, n: (v.tecs || []).length, r: v.rutas, tecs: v.tecs || [] }; });
+  if (cambia) await guardar('ajustes', [{ clave: claveHist(fecha), datos: h, actualizado: new Date().toISOString() }], 'clave');
+  return h;
 }
 async function guardarHist(fecha, eecc, reg) {
   const h = await leerHist(fecha), dia = h.d[fecha] || (h.d[fecha] = {}), prev = dia[eecc];
@@ -199,9 +212,9 @@ module.exports = async (req, res) => {
       // en el historial (las marcadas antes de que existiera el historial: se toma su última hora como la del registro).
       if (!interno) return responder(res, 403, { error: 'Solo para el equipo interno.' });
       const hoy = hoyLima(), mes = /^\d{4}-\d{2}$/.test(q.get('mes') || '') ? q.get('mes') : hoy.slice(0, 7);
-      const h = await leerHist(mes + '-01');
-      if (mes === hoy.slice(0, 7)) { const a = await asistencia(), dia = h.d[hoy] || (h.d[hoy] = {});
-        Object.entries(a.ec).forEach(([k, v]) => { if (!dia[k]) dia[k] = { p: v.en, u: v.en, por: v.por, n: (v.tecs || []).length, r: v.rutas, tecs: v.tecs || [] }; }); }
+      let h;
+      if (mes === hoy.slice(0, 7)) { const a = await asistencia(); h = await pasarAlHist(hoy, a.ec); }   // lo de hoy queda GUARDADO, no solo mostrado
+      else h = await leerHist(mes + '-01');
       return responder(res, 200, { mes, d: h.d });
     }
     if (req.method === 'GET' && accion === 'con_evidencia') {

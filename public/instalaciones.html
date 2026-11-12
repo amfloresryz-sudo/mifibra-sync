@@ -488,7 +488,8 @@ table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabula
 #tb-ah td.ah { line-height: 1.2; border-left: 1px solid var(--borde); } #tb-ah td.ah b { display: block; font: 800 13px Montserrat, sans-serif; }
 #tb-ah td.ah small { font-size: 11px; color: var(--texto-3, #555); } #tb-ah td.ah.tar b { color: var(--mal); } #tb-ah td.ah.ok b { color: var(--ok); }
 #tb-ah td.ah .bajo { color: var(--mal); font-weight: 700; } #tb-ah td.ah.sin b { color: var(--texto-4); font-weight: 600; } #tb-ah td.ah.hoy { background: #FFF4F9; }
-#tb-ah td.res { background: var(--gris-bg); font-weight: 700; } .lg.ah-ok { background: var(--ok); } .lg.ah-tar { background: var(--mal); }
+#tb-ah td.ah .ah-i1 { display: block; margin-top: 2px; font-style: normal; font-size: 10.5px; font-weight: 700; color: #4A3AA8; } #tb-ah td.ah .ah-i1.tar { color: var(--mal); }
+#tb-ah td.res { background: var(--gris-bg); font-weight: 700; } #tb-ah td.res.bajo { color: var(--mal); } .lg.ah-ok { background: var(--ok); } .lg.ah-tar { background: var(--mal); }
 .sup-t th { font: 700 10.5px Montserrat, sans-serif; letter-spacing: .4px; text-transform: uppercase; color: var(--magenta-oscuro); background: var(--rosa); padding: 9px 6px; white-space: nowrap; text-align: center; }
 .sup-t td { padding: 8px 6px; border-bottom: 1px solid var(--borde); text-align: center; white-space: nowrap; }
 .sup-t th:first-child, .sup-t td:first-child { text-align: left; }
@@ -1352,9 +1353,9 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div class="ah-fil no-img"><span class="seg-t">Fechas</span>
         <button type="button" class="chip" data-ah-r="sem">Esta semana</button><button type="button" class="chip" data-ah-r="ant">Semana pasada</button><button type="button" class="chip" data-ah-r="mes">Todo el mes</button>
         <label>Desde <input type="date" class="aj-in" id="ah-desde"></label><label>Hasta <input type="date" class="aj-in" id="ah-hasta"></label></div>
-      <p class="sub">Por EECC y día: <b>hora en que registró la asistencia</b> (la primera vez; en rojo si fue después de las 08:00) y <b>técnicos con al menos una alta al cierre del día</b> de los que marcó en la asistencia. Los días sin asistencia guardada muestran solo cuántos técnicos hicieron alta.</p>
+      <p class="sub">Por EECC y día: <b>hora en que registró la asistencia</b> (la primera vez; en rojo si fue después de las 08:00) y <b>técnicos con al menos una alta al cierre del día</b> de los que marcó en la asistencia. Debajo, el <b>promedio del inicio de la 1.ª alta</b> de sus técnicos (todos los días, con o sin asistencia guardada). Los días sin asistencia guardada muestran cuántos técnicos hicieron alta.</p>
       <div class="tabla-scroll"><table class="sup-t" id="tb-ah"></table></div>
-      <div class="sup-ley"><span><i class="lg ah-ok"></i>Registró hasta las 08:00</span><span><i class="lg ah-tar"></i>Registró después de las 08:00</span><span><b>12/14 · 86 %</b> = 12 de los 14 técnicos de la asistencia hicieron al menos una alta</span><span><b style="color:var(--mal)">%</b> menos del 80 %</span></div>
+      <div class="sup-ley"><span><i class="lg ah-ok"></i>Registró hasta las 08:00</span><span><i class="lg ah-tar"></i>Registró después de las 08:00</span><span><b>12/14 · 86 %</b> = 12 de los 14 técnicos de la asistencia hicieron al menos una alta</span><span><b style="color:var(--mal)">%</b> menos del 80 %</span><span><b style="color:#4A3AA8">1.ª alta 08:45</b> = promedio del inicio de la 1.ª alta de sus técnicos ese día (en rojo después de las 09:00)</span></div>
     </section>
     <p class="sub">Reglas: <b>En meta</b> lleva lo esperado a esta hora o más · <b>En riesgo</b> entre 80 % y 99 % de lo esperado · <b>Crítico</b> menos del 80 % de lo esperado o más del 20 % de faltas. Lo esperado = objetivo del día (% del Avance sobre la base inicial) × parte de la jornada 8:00–19:00 que ya pasó.</p>
   </div>
@@ -4525,6 +4526,7 @@ let ASI = null, asiEn = 0, raFr = new Set(), raAg = new Set();   // raAg = tipo 
 /* Historial de asistencia (Supervisión): EECC en filas, días del mes (lun–sáb) en columnas agrupados por semana.
    Cada celda: hora del primer registro de la asistencia y técnicos de esa asistencia con al menos una alta ese día. */
 const ASIS_TARDE = 8 * 60;   // después de las 08:00 cuenta como tarde
+const ASIS_I1_TARDE = 9 * 60;   // 1.ª alta: inicio después de las 09:00 en rojo
 const ahR = { d: null, h: null };   // rango elegido (AAAA-MM-DD)
 // rangos rápidos dentro del mes cargado: semana en curso (lun–hoy), semana pasada (lun–sáb) y todo el mes
 function ahRangos() {
@@ -4572,29 +4574,34 @@ async function pintarSupHist() {
   document.querySelectorAll('[data-ah-r]').forEach(b => { const x = rr[b.dataset.ahR]; b.setAttribute('aria-pressed', String(!!x && x[0] === ahR.d && x[1] === ahR.h)); });
   const DIAS = []; for (let d = dD; d <= dHs; d++) if (!diaInfo(d).fin) DIAS.push(d);
   // técnicos con al menos una alta por día (nombre normalizado) y por EECC
-  const conAlta = {}, porEc = {};
+  // y la hora de INICIO de su 1.ª alta de cada día (la más temprana de sus altas liquidadas): por EECC se promedia entre sus técnicos
+  const conAlta = {}, porEc = {}, ini1 = {};
   D.liq.filter(ok).forEach(x => { if (!x.tec) return; const k = tecNk(x.tec); (conAlta[x.d] || (conAlta[x.d] = new Set())).add(k);
-    const e = asiNorm(x.ec || ''); if (!e || /^(POR ASIGNAR|SIN EECC)$/.test(e)) return; ((porEc[e] || (porEc[e] = {}))[x.d] || (porEc[e][x.d] = new Set())).add(k); });
+    const e = asiNorm(x.ec || ''); if (!e || /^(POR ASIGNAR|SIN EECC)$/.test(e)) return; ((porEc[e] || (porEc[e] = {}))[x.d] || (porEc[e][x.d] = new Set())).add(k);
+    const m = hmMin(x.hi); if (m == null) return; const t = ((ini1[e] || (ini1[e] = {}))[x.d] || (ini1[e][x.d] = {})); if (t[k] == null || m < t[k]) t[k] = m; });
+  const i1De = (e, d) => { const v = Object.values((ini1[e] || {})[d] || {}); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null; };
+  const i1Tx = (e, d) => { const m = i1De(e, d), n = Object.keys((ini1[e] || {})[d] || {}).length; return m == null ? '' : `<em class="ah-i1${m > ASIS_I1_TARDE ? ' tar' : ''}" title="Promedio del inicio de la 1.ª alta de sus ${n} técnicos con alta">1.ª alta ${minHm(m)}</em>`; };
   const ecs = new Set(Object.keys(porEc)); Object.values(H).forEach(dia => Object.keys(dia).forEach(e => ecs.add(asiNorm(e))));
   const regDe = (e, d) => { const dia = H[isoDia(d)] || {}, k = Object.keys(dia).find(x => asiNorm(x) === e); return k ? dia[k] : null; };
   const filas = [...ecs].sort().map(e => {
-    let sh = 0, nh = 0, tar = 0, sa = 0, sn = 0;
+    let sh = 0, nh = 0, tar = 0, sa = 0, sn = 0, si = 0, ni = 0;
+    DIAS.forEach(d => { const m = i1De(e, d); if (m != null) { si += m; ni++; } });
     const celdas = DIAS.map(d => {
       const r = regDe(e, d), iso = isoDia(d), hoy = iso === hoyD, A = conAlta[d] || new Set();
-      if (!r) { const n0 = porEc[e]?.[d]?.size || 0; return `<td class="ah sin${hoy ? ' hoy' : ''}" title="Sin asistencia guardada ese día"><b>—</b><small>${n0 ? n0 + ' con alta' : ''}</small></td>`; }
+      if (!r) { const n0 = porEc[e]?.[d]?.size || 0; return `<td class="ah sin${hoy ? ' hoy' : ''}" title="Sin asistencia guardada ese día"><b>—</b><small>${n0 ? n0 + ' con alta' : ''}</small>${i1Tx(e, d)}</td>`; }
       const h = hmL(r.p), u = hmL(r.u), tecs = (r.tecs || []).map(tecNk), a = tecs.filter(t => A.has(t)).length, n = tecs.length || r.n || 0, pc = n ? Math.round(a / n * 100) : null;
       const esTar = h != null && h > ASIS_TARDE; if (h != null) { sh += h; nh++; if (esTar) tar++; } if (!hoy && n) { sa += a; sn += n; }
       const sinAlta = (r.tecs || []).filter(t => !A.has(tecNk(t)));
       const tt = `Registró ${r.por || ''} a las ${minHm(h)}${u != null && u !== h ? ' · último cambio ' + minHm(u) : ''} · ${n} técnicos de ${r.r || '—'} rutas${sinAlta.length ? '\nSin alta' + (hoy ? ' aún' : '') + ': ' + sinAlta.join(' · ') : ''}`;
-      return `<td class="ah ${esTar ? 'tar' : 'ok'}${hoy ? ' hoy' : ''}" title="${esc(tt)}"><b>${minHm(h)}</b><small>${a}/${n}${pc != null ? ` · <span class="${!hoy && pc < 80 ? 'bajo' : ''}">${pc} %</span>` : ''}${hoy ? ' · en curso' : ''}</small></td>`;
+      return `<td class="ah ${esTar ? 'tar' : 'ok'}${hoy ? ' hoy' : ''}" title="${esc(tt)}"><b>${minHm(h)}</b><small>${a}/${n}${pc != null ? ` · <span class="${!hoy && pc < 80 ? 'bajo' : ''}">${pc} %</span>` : ''}${hoy ? ' · en curso' : ''}</small>${i1Tx(e, d)}</td>`;
     }).join('');
     const pcT = sn ? Math.round(sa / sn * 100) : null;
-    return `<tr><td>${esc(e)}</td>${celdas}<td class="res">${nh ? minHm(Math.round(sh / nh)) : '—'}</td><td class="res">${nh ? tar + ' de ' + nh : '—'}</td><td class="res${pcT != null && pcT < 80 ? ' bajo' : ''}">${pcT != null ? pcT + ' %' : '—'}</td></tr>`;
+    return `<tr><td>${esc(e)}</td>${celdas}<td class="res">${nh ? minHm(Math.round(sh / nh)) : '—'}</td><td class="res${ni && si / ni > ASIS_I1_TARDE ? ' bajo' : ''}">${ni ? minHm(Math.round(si / ni)) : '—'}</td><td class="res">${nh ? tar + ' de ' + nh : '—'}</td><td class="res${pcT != null && pcT < 80 ? ' bajo' : ''}">${pcT != null ? pcT + ' %' : '—'}</td></tr>`;
   }).join('');
   // cabecera: semanas (1–7, 8–14, 15–21, 22–28, 29–fin) y días
   const sem = (d) => Math.min(5, Math.ceil(d / 7)), grp = []; DIAS.forEach(d => { const g = grp[grp.length - 1]; if (g && g.s === sem(d)) g.n++; else grp.push({ s: sem(d), n: 1 }); });
-  tb.innerHTML = `<thead><tr><th rowspan="2">EECC</th>${grp.map(g => `<th class="sem" colspan="${g.n}">Semana ${g.s}</th>`).join('')}<th rowspan="2" title="Promedio de la hora de registro">Hora prom.</th><th rowspan="2" title="Días que registró después de las 08:00">Tarde</th><th rowspan="2" title="Técnicos de la asistencia con al menos una alta, días cerrados">% con alta</th></tr>
-    <tr>${DIAS.map(d => `<th>${d}<small>${diaInfo(d).wd}</small></th>`).join('')}</tr></thead><tbody>${filas || `<tr><td colspan="${DIAS.length + 4}">Aún no hay datos.</td></tr>`}</tbody>`;
+  tb.innerHTML = `<thead><tr><th rowspan="2">EECC</th>${grp.map(g => `<th class="sem" colspan="${g.n}">Semana ${g.s}</th>`).join('')}<th rowspan="2" title="Promedio de la hora de registro de la asistencia">Hora prom.<small>asistencia</small></th><th rowspan="2" title="Promedio, de los días del rango, del inicio de la 1.ª alta de sus técnicos">1.ª alta prom.<small>inicio</small></th><th rowspan="2" title="Días que registró después de las 08:00">Tarde</th><th rowspan="2" title="Técnicos de la asistencia con al menos una alta, días cerrados">% con alta</th></tr>
+    <tr>${DIAS.map(d => `<th>${d}<small>${diaInfo(d).wd}</small></th>`).join('')}</tr></thead><tbody>${filas || `<tr><td colspan="${DIAS.length + 5}">Aún no hay datos.</td></tr>`}</tbody>`;
 }
 async function traerAsistencia() {
   if (ASI && Date.now() - asiEn < 60e3) return ASI;
