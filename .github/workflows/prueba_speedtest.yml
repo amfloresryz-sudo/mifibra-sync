@@ -44,6 +44,7 @@ jobs:
           echo "Reporte base: $base"; ls -la "$base"
           mkdir -p out; cp "$base"/*.xlsx "$RUNNER_TEMP/"
           corte=$(date -u +%Y-%m-%dT%H:%M:%S+00:00)
+          ( cd nuevo && ESTADO_ROBOT="$RUNNER_TEMP/est/robot.json.gz" python -u .github/prueba/st_enlaces.py 2026-11-01,2026-11-02,2026-11-10 "$corte" $(ls "$RUNNER_TEMP"/*.xlsx) ) 2>&1 | grep -E "altas\.|=====|B64:|Error|Traceback"
           ( cd nuevo && ESTADO_ROBOT="$RUNNER_TEMP/est/robot.json.gz" python -u .github/prueba/st_capturar.py "$GITHUB_WORKSPACE/out/cap.pkl" LIMA 2026-11-10 "$corte" $(ls "$RUNNER_TEMP"/*.xlsx) ) 2>&1 | tail -15
           ( cd nuevo && python -u .github/prueba/st_comparar.py "$GITHUB_WORKSPACE/out/cap.pkl" "$GITHUB_WORKSPACE/out/cache.json" "$GITHUB_WORKSPACE/out/nuevo.json" )
           ( cd actual && python -u ../nuevo/.github/prueba/st_comparar.py "$GITHUB_WORKSPACE/out/cap.pkl" "$GITHUB_WORKSPACE/out/cache.json" "$GITHUB_WORKSPACE/out/actual.json" )
