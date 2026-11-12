@@ -4626,11 +4626,11 @@ const asiNorm = (e) => { const k = String(e || '').toUpperCase().trim(); return 
    El técnico de cada observada es el escrito entre %…% en su comentario (el robot lo toma del último %nombre%) y su EECC la de ese técnico. */
 let OBSH = null, obsHEn = 0, obsHFil = '';
 /* Averías del día (tablero de Averías de la filial): para contar las averías que cada técnico liquidó hoy y dibujarlas en su línea del tiempo.
-   Si el usuario no tiene el módulo de Averías o falla, se sigue sin ellas. */
+   Con ?para=sup basta tener Instalaciones (la API da solo las de hoy); si falla, se sigue sin ellas. */
 let AVH = null, avhEn = 0, avhFil = '';
 async function traerAvHoy() {
   const f = filialSel(); if (AVH && avhFil === f && Date.now() - avhEn < 120e3) return AVH;
-  try { const r = await fetch('/api/averias?filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); AVH = r.ok ? await r.json() : null; }
+  try { const r = await fetch('/api/averias?para=sup&filial=' + encodeURIComponent(f), { headers: { 'x-portal-token': tokenPortal() }, cache: 'no-store' }); AVH = r.ok ? await r.json() : null; }
   catch { AVH = AVH || null; }
   avhEn = Date.now(); avhFil = f; return AVH;
 }
