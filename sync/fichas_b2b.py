@@ -7,22 +7,40 @@ Privacidad (igual que procesar.py): solo se leen abonados del segmento B2B con i
 los datos van directo a la tabla protegida `b2b_scord_clientes` (solo la ven los usuarios autorizados de la web B2B).
 Nunca se imprimen en el registro (los registros de GitHub de este repositorio son públicos) ni se guardan capturas.
 
+Pantallas (leídas de ScordSoft el 13/11/2026):
+  Búsqueda  /CTecnico/TECMantOrdenServicio.aspx   (se abre con el postback del menú)
+  Ficha     /CTecnico/TECOrdenServicioInstalacionEdicion.aspx   (botón Consultar: solo lectura, nunca se graba)
+
 Uso:
-  python -m sync.fichas_b2b --explorar     # reconocimiento: anota SOLO los nombres de los campos, no lee ni graba datos
+  python -m sync.fichas_b2b                  # lee las fichas pendientes una vez y termina
+  python -m sync.fichas_b2b --vigilar 325    # revisa Supabase cada 10 min durante 325 min (turno del robot)
+  python -m sync.fichas_b2b --explorar       # reconocimiento: anota SOLO los nombres de los campos (sin datos)
 """
 from __future__ import annotations
 
 import argparse
 import os
 import re
-from datetime import date, timedelta
+import time
+from datetime import date, datetime, timedelta, timezone
 
 from playwright.sync_api import Page, sync_playwright
 
-from .descargar import _env, iniciar_sesion
-from .subir import _cabeceras, _pedir
+from .descargar import ErrorRobot, _env, iniciar_sesion
+from .subir import _cabeceras, _pedir, _url
 
 MENU = "Registro Ordenes Servicio"
+BUSQUEDA = "TECMantOrdenServicio.aspx"
+GRILLA = "#MainContent_tabForm_tpaReportados_grvResultado"
+CAMPOS = {   # campo de la ficha → dato
+    "nombre": "#MainContent_txtnombreabonado",
+    "domicilio": "#MainContent_txtdireccionabonado",
+    "referencia": "#MainContent_txtrefdireccionAbonado",
+    "celular1": "#MainContent_viewAbonado_txtCelular1",
+    "celular2": "#MainContent_viewAbonado_txtCelular2",
+    "celular3": "#MainContent_viewAbonado_txtCelular3",
+    "telefono": "#MainContent_viewAbonado_txtTelefono",
+}
 
 
 def pendientes(limite: int = 30) -> list[dict]:
@@ -165,12 +183,148 @@ def explorar() -> None:
         nav.close()
 
 
+
+# ----------------------------------------------------------------------------------------------- lectura real
+
+def _abrir_busqueda(page: Page, base: str) -> None:
+    if BUSQUEDA in page.url and page.locator("#MainContent_txtNroAbonado").count():
+        return
+    if not page.locator("a").filter(has_text=re.compile(r"Registro\s+Ordenes\s+Servicio", re.I)).count():
+        page.goto(f"{base}/Default.aspx", wait_until="networkidle")
+    with page.expect_navigation(wait_until="networkidle", timeout=60_000):
+        page.evaluate("""(t) => { const n = s => (s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim().toUpperCase();
+            const a = [...document.querySelectorAll('a')].find(a => n(a.innerText || a.textContent) === n(t)); if (a) a.click(); }""", MENU)
+    page.wait_for_selector("#MainContent_txtNroAbonado", timeout=60_000)
+
+
+def _limpio(v: str | None) -> str | None:
+    v = re.sub(r"\s+", " ", (v or "")).strip(" -.")
+    return v or None
+
+
+def _celular(*vals: str | None) -> str | None:
+    for v in vals:
+        d = re.sub(r"\D", "", v or "")
+        if d.startswith("51") and len(d) == 11:
+            d = d[2:]
+        if len(d) >= 7 and not re.fullmatch(r"0+|9{9}|1{7,}", d):
+            return d
+    return None
+
+
+def leer_ficha(page: Page, base: str, c: dict) -> dict:
+    """Busca el abonado en Registro Ordenes Servicio, abre Consultar y devuelve sus datos (sin imprimirlos)."""
+    _abrir_busqueda(page, base)
+    ab = str(int(c["abonado_codigo"]))
+    filial = page.evaluate("""(t) => { const n = s => (s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toUpperCase();
+        const o = [...document.querySelector('#MainContent_cboFilial').options].find(o => n(o.text) === n(t)); return o ? o.value : null; }""", c.get("filial") or "")
+    if not filial:
+        raise ErrorRobot("filial no encontrada en ScordSoft")
+    if page.input_value("#MainContent_cboFilial") != filial:   # cambiar la filial recarga la página
+        page.select_option("#MainContent_cboFilial", filial)
+        _esperar(page, 1500)
+        page.wait_for_selector("#MainContent_txtNroAbonado", timeout=60_000)
+    page.evaluate("""([ab, ini]) => { const v = (id, x) => { const e = document.getElementById(id); if (e) e.value = x; };
+        v('MainContent_txtNroOrdenServicio', ''); v('MainContent_txtNroAbonado', ab); v('MainContent_txtFechaInicio', ini); }""",
+        [ab, (date.today() - timedelta(days=365)).strftime("%d/%m/%Y")])
+    page.click("#MainContent_btnBuscar")
+    page.wait_for_timeout(1500)
+    page.wait_for_function("""(g) => document.querySelector(g + ' input[type=radio]') || /TOTAL DE REGISTROS:?\\s*0\\b/.test(document.body.innerText)""",
+                           arg=GRILLA, timeout=60_000)
+    # Fila cuyo «N° DE ABONADO» es exactamente el abonado (se compara la celda, no el texto de la fila)
+    radio = page.evaluate("""([g, ab]) => { const t = document.querySelector(g); if (!t) return null;
+        const cab = [...t.rows[0].cells].map(c => c.innerText.trim().toUpperCase()); const i = cab.findIndex(x => /ABONADO/.test(x) && /N/.test(x));
+        const f = [...t.rows].slice(1).find(r => r.querySelector('input[type=radio]') && i >= 0 && r.cells[i] && r.cells[i].innerText.trim().replace(/^0+/, '') === ab);
+        return f ? f.querySelector('input[type=radio]').id : null; }""", [GRILLA, ab])
+    if not radio:
+        raise ErrorRobot("el abonado no aparece en Registro Ordenes Servicio")
+    page.check(f"#{radio}")
+    page.wait_for_timeout(500)
+    with page.expect_navigation(wait_until="networkidle", timeout=60_000):
+        page.click("#MainContent_btnConsultar")
+    page.wait_for_selector(CAMPOS["nombre"], timeout=60_000)
+    num = page.input_value("#MainContent_txtNumAbonado").strip().lstrip("0") if page.locator("#MainContent_txtNumAbonado").count() else ""
+    if num != ab:
+        raise ErrorRobot("la ficha abierta no es del abonado buscado")
+    v = {k: (page.input_value(sel) if page.locator(sel).count() else "") for k, sel in CAMPOS.items()}
+    domicilio, ref = _limpio(v["domicilio"]), _limpio(v["referencia"])
+    return {
+        "abonado_codigo": int(ab),
+        "razon_social": _limpio(v["nombre"]),
+        "telefono": _celular(v["celular1"], v["celular2"], v["celular3"], v["telefono"]),
+        "direccion": domicilio if not ref or (domicilio and ref.upper() in domicilio.upper()) else f"{domicilio or ''} (Ref.: {ref})".strip(),
+    }
+
+
+def guardar(fila: dict) -> None:
+    # Los vacíos no se envían: así nunca se borra lo que un usuario escribió a mano en la web B2B
+    fila = {**{k: v for k, v in fila.items() if v is not None}, "actualizado": datetime.now(timezone.utc).isoformat()}
+    _pedir("POST", _url("b2b_scord_clientes"), "Guardar datos de cliente B2B",
+           headers=_cabeceras({"Prefer": "resolution=merge-duplicates,return=minimal"}),
+           params={"on_conflict": "abonado_codigo"}, json=fila)
+
+
+def procesar(limite: int = 30, probar: bool = False) -> int:
+    lista = pendientes(limite)
+    if not lista:
+        return 0
+    base = _env("SCORDSOFT_URL", "https://mifibra.scordsoft.net").rstrip("/")
+    ok = 0
+    print(f"{datetime.now(timezone(timedelta(hours=-5))):%H:%M} · {len(lista)} abonado(s) B2B sin datos de contacto: se leen sus fichas", flush=True)
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch()
+        page = nav.new_page(viewport={"width": 1500, "height": 1000})
+        page.set_default_timeout(60_000)
+        iniciar_sesion(page, base)
+        _esperar(page)
+        for n, c in enumerate(lista, 1):
+            try:
+                fila = leer_ficha(page, base, c)
+                if not probar:
+                    guardar(fila)
+                ok += 1
+                # Nunca se imprimen los datos: solo si se encontraron
+                print(f"   {n}/{len(lista)} · ficha leída (nombre {'sí' if fila['razon_social'] else 'no'}, "
+                      f"celular {'sí' if fila['telefono'] else 'no'}, dirección {'sí' if fila['direccion'] else 'no'})", flush=True)
+            except Exception as e:  # noqa: BLE001 - una ficha fallida no frena las demás
+                msg = str(e).splitlines()[0][:120] if isinstance(e, ErrorRobot) else type(e).__name__
+                print(f"   {n}/{len(lista)} · no se pudo leer: {msg}", flush=True)
+                try:   # se marca para no reintentar en cada vuelta (se vuelve a intentar al día siguiente)
+                    if not probar:
+                        guardar({"abonado_codigo": int(c["abonado_codigo"])})
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
+                    page.goto(f"{base}/Default.aspx", wait_until="networkidle")
+                except Exception:  # noqa: BLE001
+                    pass
+        nav.close()
+    return ok
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--explorar", action="store_true", help="solo anota los nombres de los campos (sin datos)")
+    ap.add_argument("--vigilar", type=int, default=0, help="minutos revisando Supabase cada 10 min")
+    ap.add_argument("--probar", type=int, default=0, metavar="N", help="lee N fichas SIN guardar nada (para revisar)")
     a = ap.parse_args()
     if a.explorar:
         explorar()
+        return
+    if a.probar:
+        print(f"Modo prueba: se leen hasta {a.probar} fichas y NO se guarda nada.", flush=True)
+        procesar(a.probar, probar=True)
+        return
+    fin = time.time() + a.vigilar * 60
+    while True:
+        h = datetime.now(timezone(timedelta(hours=-5))).hour
+        if 7 <= h <= 22:   # solo en horario de oficina de ScordSoft
+            try:
+                procesar()
+            except Exception as e:  # noqa: BLE001 - el vigía no debe caerse por un error pasajero
+                print(f"Fichas B2B: {type(e).__name__}: {str(e).splitlines()[0][:150] if str(e) else ''}", flush=True)
+        if time.time() + 600 > fin:
+            break
+        time.sleep(600)
 
 
 if __name__ == "__main__":
