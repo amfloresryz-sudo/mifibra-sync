@@ -121,30 +121,47 @@ def explorar() -> None:
             return
         page.click(f"#{ids['buscar']}")
         _esperar(page, 2500)
-        # 3) Grilla de resultados: solo estructura (encabezados, n.º de filas y controles de la 1.ª fila)
-        grilla = page.evaluate("""() => { const t = [...document.querySelectorAll('table[id]')].filter(t => t.rows.length > 1)
+        # 3) Grilla de resultados (pestaña «Reportados»): solo estructura, nunca el texto de las celdas de datos
+        grilla = page.evaluate("""() => { const t = [...document.querySelectorAll('table[id*=tpaReportados]')].filter(t => t.rows.length > 1)
               .sort((a, b) => b.rows.length - a.rows.length)[0];
             if (!t) return null;
             const filas = [...t.rows], cab = filas[0];
-            const f1 = filas.find((r, i) => i > 0 && r.cells.length === cab.cells.length) || filas[1];
-            return { id: t.id, filas: filas.length - 1, encabezados: [...cab.cells].map(c => c.innerText.trim()).slice(0, 30),
-                     controles_fila1: [...f1.querySelectorAll('input,a,select')].map(e => (e.id || '') + ':' + (e.type || e.tagName)).slice(0, 15),
-                     total: (document.body.innerText.match(/TOTAL DE REGISTROS:?\\s*\\d+/i) || [''])[0] }; }""")
+            const datos = filas.slice(1).filter(r => r.cells.length >= Math.max(3, cab.cells.length - 1));
+            const f1 = datos[0] || filas[1];
+            return { id: t.id, filas: datos.length, encabezados: [...cab.cells].map(c => c.innerText.trim()).slice(0, 40),
+                     controles_fila1: [...f1.querySelectorAll('input,a,select')].map(e => (e.id || '(sin id)') + ':' + (e.type || e.tagName) + (e.getAttribute('onclick') ? ':onclick' : '') + (e.getAttribute('href') && e.getAttribute('href') !== '#' ? ':href=' + e.getAttribute('href').slice(0, 60) : '')).slice(0, 20),
+                     fila_onclick: (f1.getAttribute('onclick') || '').slice(0, 120) }; }""")
         print(f"Grilla: {grilla}", flush=True)
         if not grilla or not ids.get("consultar"):
+            nav.close()
             return
-        # 4) Elegir la 1.ª fila (radio/checkbox si hay; si no, clic en la fila) → Consultar
-        elegido = page.evaluate("""(g) => { const t = document.getElementById(g); const f = [...t.rows].slice(1)
-              .find(r => r.querySelector('input[type=radio],input[type=checkbox]')) || t.rows[1];
+        dialogos = []
+        page.on("dialog", lambda d: (dialogos.append(d.message[:120]), d.accept()))
+        # 4) Elegir la 1.ª fila (radio/checkbox; si no, un enlace «Select»; si no, clic en la fila) → Consultar
+        elegido = page.evaluate("""(g) => { const t = document.getElementById(g); const f = [...t.rows].slice(1).find(r => r.cells.length >= 3);
             const x = f.querySelector('input[type=radio],input[type=checkbox]');
-            if (x) { x.click(); return 'control ' + x.type; } f.click(); return 'clic en la fila'; }""", grilla["id"])
+            if (x) { x.click(); return 'control ' + x.type + ' ' + x.id; }
+            const a = f.querySelector('a[href*=Select], a[href*=__doPostBack], input[type=image], input[type=submit]');
+            if (a) { a.click(); return 'enlace/botón ' + (a.id || a.getAttribute('href').slice(0, 60)); }
+            f.click(); f.cells[1] && f.cells[1].click(); return 'clic en la fila'; }""", grilla["id"])
         print(f"Selección de la fila: {elegido}", flush=True)
-        _esperar(page, 1500)
+        _esperar(page, 2000)
+        antes = len(page.context.pages)
         page.click(f"#{ids['consultar']}")
-        _esperar(page, 3000)
-        print(f"Tras Consultar: {page.url.split('?')[0].replace(base, '')} · ¿hay «Datos Del Abonado»? "
-              f"{'sí' if page.get_by_text('Datos Del Abonado').count() else 'no'}", flush=True)
-        _imprimir("Ficha (después de Consultar)", [o for o in page.evaluate(_INVENTARIO, "form") if o["id"].startswith("MainContent")])
+        _esperar(page, 4000)
+        paginas = page.context.pages
+        print(f"Tras Consultar: ventanas {antes}→{len(paginas)} · "
+              f"{[p.url.split('?')[0].replace(base, '') for p in paginas]} · diálogos {dialogos}", flush=True)
+        ficha = next((p for p in reversed(paginas) if p.get_by_text("Datos Del Abonado").count()), None)
+        if not ficha:
+            ficha = next((p for p in reversed(paginas) if "Edicion" in p.url), page)
+            try:
+                ficha.wait_for_load_state("networkidle", timeout=30_000)
+            except Exception:  # noqa: BLE001
+                pass
+        print(f"Ficha en: {ficha.url.split('?')[0].replace(base, '')} · ¿«Datos Del Abonado»? "
+              f"{'sí' if ficha.get_by_text('Datos Del Abonado').count() else 'no'}", flush=True)
+        _imprimir("Ficha", [o for o in ficha.evaluate(_INVENTARIO, "form") if o["id"].startswith("MainContent")])
         nav.close()
 
 
