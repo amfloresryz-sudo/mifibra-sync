@@ -1,0 +1,30 @@
+name: Prueba modelo Speed Test (no escribe)
+# PRUEBA de solo lectura: vuelca los enlaces de speedtest (con título) de las altas del 1-oct al 12-nov para calibrar
+# quién hizo la prueba contra el Control Operativo. Usa el último reporte guardado; sin claves de ScordSoft ni Supabase.
+on:
+  push:
+    branches: [prueba-st-modelo]
+    paths: [".github/workflows/prueba_modelo.yml", ".github/prueba/st_enlaces.py"]
+permissions:
+  contents: read
+jobs:
+  probar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Recuperar estado del robot (solo lectura)
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado
+          key: robot-estado-prueba-modelo-${{ github.run_id }}
+          restore-keys: robot-estado-
+      - run: |
+          base=$(ls -d .estado/base/*/ | sort | tail -1); base=${base%/}; echo "Base: $base"
+          cp "$base"/*.xlsx "$RUNNER_TEMP/"
+          ESTADO_ROBOT="$RUNNER_TEMP/est/robot.json.gz" python -u .github/prueba/st_enlaces.py 2026-10-01:2026-11-12 "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" $(ls "$RUNNER_TEMP"/*.xlsx) 2>&1 | grep -E "altas\.|=====|B64:|Error|Traceback"
