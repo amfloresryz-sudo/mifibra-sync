@@ -99,6 +99,8 @@ main .w { padding-block: 26px 64px; display: flex; flex-direction: column; gap: 
 #g-evo .bar { fill: var(--gris-bg); } #g-evo .bar.sel { fill: var(--borde-2); } #g-evo .bn { fill: var(--fg-3); font-weight: 600; font-size: 10.5px; }
 #g-evo .ln { fill: none; stroke: var(--magenta); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
 #g-evo .pt { fill: var(--sup); stroke: var(--magenta); stroke-width: 2; } #g-evo .pt.ok { fill: var(--magenta); }
+#g-evo .pt.est { fill: var(--sup); stroke: #8A5A00; stroke-dasharray: 2 2; } #g-evo .pv.est { fill: #8A5A00; } #g-evo .bar.est { fill: #FFF2D2; }
+.k4-est { grid-column: 1 / -1; margin: 0; padding: 7px 12px; border-radius: 10px; background: #FFF2D2; color: #8A5A00; font-size: 12.5px; }
 #g-evo .pv { fill: var(--magenta-txt); font-weight: 800; font-size: 11px; } #g-evo .obj { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 5 4; } #g-evo .objt { fill: var(--fg); font-weight: 700; }
 #g-evo .grid { stroke: var(--borde); stroke-width: 1; } #g-evo .hit { fill: transparent; cursor: pointer; } #g-evo .hit:hover, #g-evo .hit:focus-visible { fill: var(--rosa); fill-opacity: .35; outline: none; }
 .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; }
@@ -279,7 +281,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
 
   <section class="sec" aria-labelledby="t-evo">
     <div class="sec-cab"><div><h3 id="t-evo">Evolución diaria · cumplimiento</h3><p class="sub" id="evo-sub"></p></div>
-      <div class="evo-ley"><span><i class="b"></i>Instalaciones liquidadas</span><span><i class="l"></i>% cumplimiento (instalaciones válidas)</span><span><i class="o"></i>Meta 80%</span></div></div>
+      <div class="evo-ley"><span><i class="b"></i>Instalaciones liquidadas</span><span><i class="l"></i>% cumplimiento (instalaciones válidas)</span><span><i class="o"></i>Meta 80%</span><span title="Días que Ookla aún no envía: quién hizo cada prueba es estimado">≈ estimado</span></div></div>
     <div id="g-evo"></div>
   </section>
 
@@ -367,7 +369,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   }
   // fila: [filial, día, eecc, técnico, plan, ab, os, cliente, técnico_n, sin_identificar, repetidos]
   // pn = plan contratado tal como viene en la tarifa («500 Mbps», «2000 Mbps»…); si el tablero aún no lo trae, se usa el rango
-  const O = D.o.map((x, i) => ({ i, f: D.f[x[0]], d: x[1], e: D.e[x[2]], t: D.k[x[3]], p: x[4], ab: x[5], os: x[6], c: x[7], tn: x[8], s: x[9], r: x[10], pn: D.pn && x[11] != null ? D.pn[x[11]] : PLANES[x[4]] }));
+  const O = D.o.map((x, i) => ({ i, f: D.f[x[0]], d: x[1], e: D.e[x[2]], t: D.k[x[3]], p: x[4], ab: x[5], os: x[6], c: x[7], tn: x[8], s: x[9], r: x[10], est: x[13] === 1, pn: D.pn && x[11] != null ? D.pn[x[11]] : PLANES[x[4]] }));
   // Enlaces sin etiqueta (aunque sean 2 o más) cuentan como prueba del técnico: ya no hay «Sin identificar»
   O.forEach(o => { o.sid = o.s; o.tn += o.s; o.s = 0; o.pr = o.c + o.tn;
     // Velocidad de cada prueba (el robot la lee en speedtest.net): [quién C/T/«», bajada, subida, estado v/b/n/p]
@@ -431,8 +433,8 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
   document.addEventListener('focusin', (e) => { const el = e.target.closest('[data-tip]'); if (el) ver(el, el.dataset.tip); });
   document.addEventListener('focusout', () => { flot.hidden = true; });
 
-  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0, sid: 0, cli: 0, v: 0, cb: 0, mt: 0, nf: 0, tec: 0, pe: 0, sin: 0, pv: 0, pbj: 0, pnc: 0, ppe: 0, pnf: 0, av: 0, ab: 0, ae: 0, an: 0, nfp: 0 };
-    L.forEach(o => { a.sid += o.sid || 0; if (o.c > 0) a.cli++; a[o.k]++; a.pv += o.pv; a.pbj += o.pbj; a.pnc += o.pnc; a.av += o.av; a.ab += o.ab; a.ae += o.ae; a.an += o.an; a.ppe += o.ppe; a.pnf += o.pnf || 0; });
+  const sum = (L) => { const a = { ins: L.length, med: 0, pr: 0, c: 0, tn: 0, s: 0, r: 0, sid: 0, cli: 0, v: 0, cb: 0, mt: 0, nf: 0, tec: 0, pe: 0, sin: 0, pv: 0, pbj: 0, pnc: 0, ppe: 0, pnf: 0, av: 0, ab: 0, ae: 0, an: 0, nfp: 0, est: 0 };
+    L.forEach(o => { if (o.est) a.est++; a.sid += o.sid || 0; if (o.c > 0) a.cli++; a[o.k]++; a.pv += o.pv; a.pbj += o.pbj; a.pnc += o.pnc; a.av += o.av; a.ab += o.ab; a.ae += o.ae; a.an += o.an; a.ppe += o.ppe; a.pnf += o.pnf || 0; });
     L.forEach(o => { if (o.pr) a.med++; a.pr += o.pr; a.c += o.c; a.tn += o.tn; a.s += o.s; a.r += o.r; }); return a; };
   let tab = 'sin', L = [], abiertos = new Set();
 
@@ -456,6 +458,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     const dMed = ant(x => x.ins ? x.med / x.ins * 100 : null), dCli = ant(x => x.pr ? x.c / x.pr * 100 : null), dMv = ant(x => x.av + x.ab + x.ae + x.an ? x.av / (x.av + x.ab + x.ae + x.an) * 100 : null);
     // Las 4 tarjetas del Control Operativo SpeedTest: Cumplimiento (meta 80%) · Instalaciones del tramo · con medición · medidas en el equipo del cliente
     const dVal = ant(x => x.ins ? x.v / x.ins * 100 : null), dCliI = ant(x => x.ins ? x.cli / x.ins * 100 : null), enMeta = pVal >= OBJ_CUMP;
+    const notaEst = a.est ? `<p class="k4-est" title="Ookla envía sus datos con un día de atraso: para esos días, quién hizo cada prueba (cliente/técnico) se estima con lo que Ookla resolvió en enlaces parecidos los últimos 30 días, calibrado por EECC. Se reemplaza solo por el dato real cuando llega.">≈ Incluye ${n(a.est)} instalaciones <b>estimadas</b> (días que Ookla aún no envía)</p>` : '';
     $('k4').innerHTML = `
       <div class="k4c hero"><span class="t">Cumplimiento</span><span class="estado ${enMeta ? 'ok' : 'no'}">${enMeta ? 'En meta' : 'Fuera de meta'}</span>
         <div class="fila"><button type="button" class="nb big" data-lista="g-val|kpi|" title="Ver las instalaciones válidas">${pc(pVal)}</button>
@@ -470,7 +473,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
         <p class="s">${n(a.med)} de ${n(a.ins)} · <button type="button" class="nb" data-lista="sin|">${n(a.ins - a.med)}</button> pendientes de medir · meta ${OBJ_MED}%</p>${chispa(S.map(x => x.ins ? x.med / x.ins * 100 : null), lab, OBJ_MED)}</div>
       <div class="k4c"><div class="k4h"><span class="t">Instalaciones medidas en el equipo del cliente</span>${dCliI != null ? chip(pp(pCliI - dCliI)) : ''}</div>
         <button type="button" class="nb big2" data-lista="g-cli|kpi|">${pc(pCliI)}</button>
-        <p class="s">${n(a.cli)} de ${n(a.ins)} · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> bajo el mínimo del plan (no cumplen) · <button type="button" class="nb" data-lista="g-val|kpi|">${n(a.v)}</button> válidas</p>${chispa(S.map(x => x.ins ? x.cli / x.ins * 100 : null), lab)}</div>`;
+        <p class="s">${n(a.cli)} de ${n(a.ins)} · <button type="button" class="nb" data-lista="g-cb|kpi|">${n(a.cb)}</button> bajo el mínimo del plan (no cumplen) · <button type="button" class="nb" data-lista="g-val|kpi|">${n(a.v)}</button> válidas</p>${chispa(S.map(x => x.ins ? x.cli / x.ins * 100 : null), lab)}</div>${notaEst}`;
   }
   function pintar() {
     L = O.filter(o => sel(o));
@@ -525,7 +528,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     $('t-fil').textContent = porEcF ? `Cumplimiento por EECC de ${F.filial}` : 'Cumplimiento por filial';
     // Fechas evaluadas (de las instalaciones del gráfico): un día o el rango «del … al …»
     const dsF = LF.filter(o => claves.includes(porEcF ? o.e : o.f)).map(o => o.d).sort(), d0 = dsF[0], d1 = dsF[dsF.length - 1];
-    $('fil-rango').textContent = d0 ? (d0 === d1 ? dmy(d0) : `${dmy(d0)} al ${dmy(d1)}`) : '';
+    const nEstF = LF.filter(o => o.est && claves.includes(porEcF ? o.e : o.f)).length;
+    $('fil-rango').textContent = d0 ? (d0 === d1 ? dmy(d0) : `${dmy(d0)} al ${dmy(d1)}`) + (nEstF ? ' · ≈ incluye estimado' : '') : '';
+    $('fil-rango').title = nEstF ? `${n(nEstF)} instalaciones de días que Ookla aún no envía: quién hizo la prueba es estimado` : 'Fechas de atención que se están evaluando';
     $('fil-sub').textContent = `Instalaciones con medición válida en el equipo del cliente, de cada 100 · todas las ${porEcF ? 'EECC' : 'filiales'} con instalaciones (igual que «Qué pasó con cada 100 instalaciones») · clic en una barra para ver sus AB.`;
     // Diseño: posición · nombre con «X de Y pruebas» · barra (con línea del promedio) · % ; sobre el promedio en fucsia, debajo en rosado
     // Meta: 80% de las pruebas en el dispositivo del cliente (línea negra). Cumple = fucsia; no cumple = rosado. Escala de 0 a 100%.
@@ -594,7 +599,7 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     let g = '';
     for (let v = 0; v <= topI; v += tic) g += `<line class="grid" x1="${ml}" x2="${ml + cw}" y1="${yI(v)}" y2="${yI(v)}"/><text x="${ml - 6}" y="${yI(v) + 4}" text-anchor="end">${n(v)}</text>`;
     [0, 50, 100].forEach(v => { g += `<text x="${ml + cw + 6}" y="${yP(v) + 4}">${v}%</text>`; });
-    g += evoDias.map(([d, s], k) => { const x = xC(k), y = yI(s.ins); return `<rect class="bar${selD === d ? ' sel' : ''}" x="${x - bw / 2}" y="${y}" width="${bw}" height="${mt + ch - y}" rx="3"/>${s.ins && paso >= 18 && !(s.ins && etqPct && Math.abs(yP(s.v / s.ins * 100) - 9 - (y - 5)) < 13) ? `<text class="bn" x="${x}" y="${y - 5}" text-anchor="middle">${n(s.ins)}</text>` : ''}`; }).join('');
+    g += evoDias.map(([d, s], k) => { const x = xC(k), y = yI(s.ins); return `<rect class="bar${selD === d ? ' sel' : ''}${s.est ? ' est' : ''}" x="${x - bw / 2}" y="${y}" width="${bw}" height="${mt + ch - y}" rx="3"/>${s.ins && paso >= 18 && !(s.ins && etqPct && Math.abs(yP(s.v / s.ins * 100) - 9 - (y - 5)) < 13) ? `<text class="bn" x="${x}" y="${y - 5}" text-anchor="middle">${n(s.ins)}</text>` : ''}`; }).join('');
     g += `<line class="obj" x1="${ml}" x2="${ml + cw}" y1="${yP(OBJ_CUMP)}" y2="${yP(OBJ_CUMP)}"/><text class="objt" x="${ml + cw + 6}" y="${yP(OBJ_CUMP) + 4}">${OBJ_CUMP}%</text>`;
     // la línea se corta en los días sin instalaciones
     // línea suavizada (curvas que pasan por cada punto sin pasarse de los valores de sus vecinos)
@@ -605,9 +610,9 @@ tr.tec td { background: var(--bg); font-size: 14px; color: var(--fg-2); } tr.tec
     let tramo = [], camino = ''; const cerrar = () => { if (tramo.length > 1) camino += suave(tramo); tramo = []; };
     evoDias.forEach(([, s], k) => { if (s.ins) tramo.push([xC(k), yP(s.v / s.ins * 100)]); else cerrar(); }); cerrar();
     g += `<path class="ln" d="${camino}"/>`;
-    g += evoDias.map(([, s], k) => { if (!s.ins) return ''; const v = s.v / s.ins * 100, x = xC(k), y = yP(v); return `<circle class="pt${v >= OBJ_CUMP ? ' ok' : ''}" cx="${x}" cy="${y}" r="${mob ? 3.2 : 4}"/>${etqPct ? `<text class="pv" x="${x}" y="${y - 9}" text-anchor="middle">${Math.round(v)}%</text>` : ''}`; }).join('');
+    g += evoDias.map(([, s], k) => { if (!s.ins) return ''; const v = s.v / s.ins * 100, x = xC(k), y = yP(v); return `<circle class="pt${s.est ? ' est' : v >= OBJ_CUMP ? ' ok' : ''}" cx="${x}" cy="${y}" r="${mob ? 3.2 : 4}"/>${etqPct ? `<text class="pv${s.est ? ' est' : ''}" x="${x}" y="${y - 9}" text-anchor="middle">${s.est ? '≈' : ''}${Math.round(v)}%</text>` : ''}`; }).join('');
     g += evoDias.map(([d], k) => k % cada ? '' : rot ? `<text x="${xC(k)}" y="${H - mb + 12}" text-anchor="end" font-size="10.5" transform="rotate(-55 ${xC(k)} ${H - mb + 12})">${d.slice(8, 10)}/${d.slice(5, 7)}</text>` : `<text x="${xC(k)}" y="${H - mb + 16}" text-anchor="middle">${d.slice(8, 10)}/${d.slice(5, 7)}</text>`).join('');
-    g += evoDias.map(([d, s], k) => `<rect class="hit" tabindex="0" role="button" aria-label="${dmy(d)}: ${s.ins} instalaciones" data-lista="dia|${d}" x="${ml + paso * k}" y="${mt - 18}" width="${paso}" height="${ch + 18}" rx="4" data-tip="<b>${DSEM[new Date(d + 'T12:00:00Z').getUTCDay()]} ${dmy(d)}</b><br>${n(s.ins)} instalaciones liquidadas<br>${s.ins ? `<b>Cumplimiento ${pc(s.v / s.ins * 100)}</b> (${n(s.v)} válidas)<br>` : ''}${n(s.med)} con medición · ${n(s.pr)} pruebas<br>${s.pr ? `<b>${n(s.c)}</b> del cliente (${pc(s.c / s.pr * 100)}) · ${n(s.tn + s.s)} del técnico` : 'sin pruebas registradas'}"/>`).join('');
+    g += evoDias.map(([d, s], k) => `<rect class="hit" tabindex="0" role="button" aria-label="${dmy(d)}: ${s.ins} instalaciones" data-lista="dia|${d}" x="${ml + paso * k}" y="${mt - 18}" width="${paso}" height="${ch + 18}" rx="4" data-tip="<b>${DSEM[new Date(d + 'T12:00:00Z').getUTCDay()]} ${dmy(d)}</b><br>${n(s.ins)} instalaciones liquidadas<br>${s.ins ? `<b>Cumplimiento ${s.est ? '≈ ' : ''}${pc(s.v / s.ins * 100)}</b> (${n(s.v)} válidas)<br>` : ''}${s.est ? `<i>Estimado: Ookla aún no envía ${s.est === s.ins ? 'este día' : n(s.est) + ' de estas instalaciones'}</i><br>` : ''}${n(s.med)} con medición · ${n(s.pr)} pruebas<br>${s.pr ? `<b>${n(s.c)}</b> del cliente (${pc(s.c / s.pr * 100)}) · ${n(s.tn + s.s)} del técnico` : 'sin pruebas registradas'}"/>`).join('');
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Evolución diaria de instalaciones y % de cumplimiento">${g}</svg>`;
   }
   let evoT; window.addEventListener('resize', () => { clearTimeout(evoT); evoT = setTimeout(pintarEvo, 150); });
