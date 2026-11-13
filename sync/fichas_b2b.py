@@ -87,17 +87,11 @@ def explorar() -> None:
         print(f"Menú «{MENU}»: {menu['del_menu']}", flush=True)
         print(f"Enlaces a /CTecnico: {menu['ctec']}", flush=True)
         print(f"Enlaces con «Orden»: {menu['html']}", flush=True)
-        href = next((m['href'] for m in menu['del_menu'] if m['href'] and m['href'] != '#'), None)
-        if not href:
-            cand = [h for h in menu['ctec'] + menu['html'] if re.search(r'OrdenServicioInstalacion(?!Edicion)', h, re.I)]
-            href = cand[0] if cand else None
-        if href and not href.startswith('http') and not href.startswith('/') and '.aspx' in href:
-            href = '/' + re.sub(r'^(\.\./|~/)+', '', href)
-        print(f"Se usará: {href}", flush=True)
-        if not href:   # la ficha es TECOrdenServicioInstalacionEdicion.aspx: la lista suele ser la misma sin «Edicion»
-            href = "/CTecnico/TECOrdenServicioInstalacion.aspx"
-            print(f"No se encontró el enlace del menú; se prueba {href}", flush=True)
-        page.goto(href if href.startswith("http") else f"{base}/{href.lstrip('/')}", wait_until="networkidle")
+        # El menú usa __doPostBack (href «#»): se pulsa el mismo enlace y se espera la pantalla nueva.
+        with page.expect_navigation(wait_until="networkidle", timeout=60_000):
+            page.evaluate("""(t) => { const n = s => (s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim().toUpperCase();
+                [...document.querySelectorAll('a')].find(a => n(a.innerText || a.textContent) === n(t)).click(); }""", MENU)
+        _esperar(page, 1500)
         print(f"Pantalla de búsqueda: {page.url.split('?')[0].replace(base, '')}", flush=True)
         _imprimir("Pantalla de búsqueda", [o for o in page.evaluate(_INVENTARIO, "form") if o["id"].startswith("MainContent")])
         if not lista:
