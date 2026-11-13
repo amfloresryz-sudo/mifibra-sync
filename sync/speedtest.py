@@ -215,6 +215,17 @@ def _referencia() -> dict:
             ref.update(json.loads(p.read_text(encoding="utf-8")).get("o") or {})
         except Exception as e:  # noqa: BLE001
             print(f"Aviso: no se pudo leer {p.name}: {e}", flush=True)
+    # Envío automático diario del Control Operativo (lo guarda /api/speedtest?accion=control): manda sobre los archivos
+    try:
+        from . import subir
+        r = subir._pedir("GET", subir._url("ajustes") + "?select=datos&clave=eq.speedtest:control", "Control Operativo (envío diario)",
+                         headers=subir._cabeceras())
+        d = (r.json() or [{}])[0].get("datos") or {}
+        if d.get("o"):
+            ref.update(d["o"])
+            print(f"  Speed Test: envío del Control Operativo recibido {d.get('recibido', '')[:16]} ({len(d['o'])} instalaciones).", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"Aviso: no se pudo leer el envío del Control Operativo: {e}", flush=True)
     return ref
 
 

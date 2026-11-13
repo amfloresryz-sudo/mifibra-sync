@@ -4,7 +4,8 @@
 // POST /api/speedtest?accion=vel (solo el robot, con firma): respaldo para leer velocidades en speedtest.net desde Vercel
 // cuando speedtest.net no responde a los servidores de GitHub. Cuerpo {claves: [...]} → {r: {clave: [bajada, subida, red Mi Fibra 1/0, fecha] | [-1] | null}}.
 const crypto = require('crypto');
-const { consultar, leerTableros, autorizado, responder, puedeVer, permitidas, puedeModulo } = require('./_supabase');
+const zlib = require('zlib');
+const { consultar, leerTableros, autorizado, responder, puedeVer, permitidas, puedeModulo, guardar } = require('./_supabase');
 
 // Firma del robot: HMAC-SHA256 con la clave de Supabase (la tienen el robot y Vercel) sobre «speedtest-vel:AAAA-MM-DD» (hoy o ayer, UTC)
 function firmaOk(req) {
@@ -37,7 +38,57 @@ async function tablero() {
   MEM = { en: Date.now(), d: datos[0] || null }; return MEM.d;
 }
 
+/* ---------- POST /api/speedtest?accion=control · datos del Control Operativo SpeedTest (envío automático diario) ----------
+   Lo llama el proceso diario del Control Operativo con la cabecera «x-clave-control» (= variable CONTROL_ST_TOKEN de Vercel).
+   Cuerpo: JSON {ordenes: "<ordenes.csv>", pruebas: "<pruebas.csv>", meta: {...}} — puede ir comprimido en gzip
+   (Content-Encoding: gzip o Content-Type: application/gzip). Se guarda, por instalación de los 2 últimos meses,
+   «FILIAL|N.º OS» → [[quién C/T, bajada, subida, estado v/b/e/n]] en ajustes («speedtest:control»); el robot lo usa como
+   archivo de control en su siguiente pasada (manda sobre los enlaces). */
+function claveControlOk(req) {
+  const k = process.env.CONTROL_ST_TOKEN || '', f = String(req.headers['x-clave-control'] || '');
+  if (k.length < 16 || f.length !== k.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(k), Buffer.from(f));
+}
+async function cuerpoGrande(req) {
+  let buf;
+  if (Buffer.isBuffer(req.body)) buf = req.body;
+  else if (req.body && typeof req.body === 'object') return req.body;
+  else if (typeof req.body === 'string') buf = Buffer.from(req.body);
+  else { const P = []; let n = 0; for await (const c of req) { n += c.length; if (n > 4.4e6) throw new Error('Envío demasiado grande (máx. 4,4 MB comprimido)'); P.push(c); } buf = Buffer.concat(P); }
+  if (buf.length > 1 && buf[0] === 0x1f && buf[1] === 0x8b) buf = zlib.gunzipSync(buf, { maxOutputLength: 80e6 });
+  return JSON.parse(buf.toString('utf8') || '{}');
+}
+function leerCsv(t) {   // CSV con comillas (los nombres traen coma): → lista de objetos por encabezado
+  t = String(t || '').replace(/^\uFEFF/, ''); const filas = []; let f = [], c = '', q = false;
+  for (let i = 0; i < t.length; i++) { const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
+    else if (ch === '"') q = true; else if (ch === ',') { f.push(c); c = ''; } else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; f.push(c); c = ''; if (f.length > 1 || f[0]) filas.push(f); f = []; } else c += ch; }
+  if (c || f.length) { f.push(c); filas.push(f); }
+  const cab = (filas.shift() || []).map(x => x.trim()); return filas.map(r => Object.fromEntries(cab.map((k, i) => [k, r[i] ?? ''])));
+}
+async function recibirControl(req, res) {
+  if (!claveControlOk(req)) return responder(res, 401, { error: 'No autorizado' });
+  try {
+    const b = await cuerpoGrande(req), O = leerCsv(b.ordenes), T = leerCsv(b.pruebas);
+    if (!O.length || !('id_orden' in O[0]) || !('nro_orden' in O[0])) return responder(res, 400, { error: 'Falta ordenes.csv (con id_orden, filial, nro_orden, mes, tipo).' });
+    if (T.length && !('equipo' in T[0])) return responder(res, 400, { error: 'pruebas.csv sin la columna equipo.' });
+    const EST = { 'Válida': 'v', 'La red no entregó': 'b', 'Equipo del técnico insuficiente': 'e', 'Prueba no certificable': 'n' };
+    const meses = [...new Set(O.map(o => o.mes))].sort().slice(-2);   // como el robot: 2 meses
+    const tb = {}; T.forEach(t => { if (t.tipo === 'Instalación') (tb[t.id_orden] = tb[t.id_orden] || []).push(t); });
+    const o = {}; let n = 0, desde = '', hasta = '';
+    O.forEach(r => { if (r.tipo !== 'Instalación' || !meses.includes(r.mes)) return; const k = `${r.filial}|${parseInt(r.nro_orden, 10)}`;
+      o[k] = (tb[r.id_orden] || []).sort((a, z) => String(a.fecha_hora_lima).localeCompare(String(z.fecha_hora_lima)))
+        .map(t => [t.equipo === 'Cliente' ? 'C' : 'T', Math.round(+t.descarga_mbps || 0), Math.round(+t.subida_mbps || 0), EST[t.resultado_origen] || (+t.descarga_mbps > +r.umbral_mbps ? 'v' : 'n')]);
+      n++; if (!desde || r.fecha_atencion < desde) desde = r.fecha_atencion; if (r.fecha_atencion > hasta) hasta = r.fecha_atencion; });
+    const meta = b.meta && typeof b.meta === 'object' ? b.meta : {};
+    const datos = { fuente: `Control Operativo SpeedTest · envío automático · instalaciones del ${desde} al ${hasta}${meta.generado ? ' · generado ' + meta.generado : ''}`, recibido: new Date().toISOString(), meta, o };
+    await guardar('ajustes', [{ clave: 'speedtest:control', datos, actualizado: datos.recibido }], 'clave');
+    return responder(res, 200, { ok: true, instalaciones: n, desde, hasta, pruebas: T.length });
+  } catch (e) { return responder(res, 400, { error: String(e.message || e).slice(0, 300) }); }
+}
+
 module.exports = async (req, res) => {
+  if (req.method === 'POST' && new URL(req.url, 'http://x').searchParams.get('accion') === 'control') return recibirControl(req, res);
   if (req.method === 'POST' && new URL(req.url, 'http://x').searchParams.get('accion') === 'vel') {
     if (!firmaOk(req)) return responder(res, 401, { error: 'No autorizado' });
     try {
