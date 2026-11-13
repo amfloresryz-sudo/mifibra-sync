@@ -1,0 +1,25 @@
+name: Prueba enlace Control Operativo (no escribe)
+# PRUEBA de solo lectura: ¿se puede leer sin iniciar sesión la página publicada del Control Operativo SpeedTest?
+on:
+  push:
+    branches: [prueba-st-enlace]
+    paths: [".github/workflows/prueba_enlace.yml"]
+permissions:
+  contents: read
+jobs:
+  probar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+          for u in "https://claude.ai/artifact/LPovdENFQxf1WjiuvVrByY" \
+                   "https://9d0cea6f-dbb6-45e0-b88f-962d3f9d893f.frame.claudeusercontent.com/" \
+                   "https://9d0cea6f-dbb6-45e0-b88f-962d3f9d893f.frame.claudeusercontent.com/index.html" \
+                   "https://claude.ai/code/artifact/9d0cea6f-dbb6-45e0-b88f-962d3f9d893f"; do
+            code=$(curl -sS -L -A "$UA" -o p.html -w "%{http_code} %{content_type} %{size_download}" "$u" || echo fallo)
+            echo "== $u -> $code"
+            echo "  tiene ENC: $(grep -c 'ENC' p.html 2>/dev/null) · tiene bus.json: $(grep -c 'bus.json' p.html 2>/dev/null) · title: $(grep -o '<title>[^<]*' p.html | head -1)"
+            grep -o 'src="[^"]*"' p.html | head -8
+            grep -oE 'https://[a-z0-9.-]*claudeusercontent[^"'"'"' ]*' p.html | sort -u | head -5
+          done
