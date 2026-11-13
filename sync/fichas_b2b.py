@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from datetime import date, timedelta
 
 from playwright.sync_api import Page, sync_playwright
@@ -75,29 +76,44 @@ def explorar() -> None:
         iniciar_sesion(page, base)
         _esperar(page)
         # 1) Enlace del menú «Registro Ordenes Servicio» (se lee el href en vez de pasar el mouse por el menú)
-        href = page.evaluate("""(t) => { const n = s => s.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim().toUpperCase();
-            const a = [...document.querySelectorAll('a')].find(a => n(a.innerText || a.textContent) === n(t)); return a ? a.getAttribute('href') : null; }""", MENU)
-        print(f"Menú «{MENU}» → {href}", flush=True)
+        menu = page.evaluate("""(t) => { const n = s => (s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/\\s+/g,' ').trim().toUpperCase();
+            const todos = [...document.querySelectorAll('a')];
+            const del_menu = todos.filter(a => n(a.innerText || a.textContent) === n(t))
+              .map(a => ({href: a.getAttribute('href'), onclick: (a.getAttribute('onclick') || '').slice(0, 200)}));
+            const ctec = [...new Set(todos.map(a => a.getAttribute('href') || '').filter(h => /CTecnico/i.test(h)))].slice(0, 40);
+            const html = [...document.querySelectorAll('[onclick*=aspx i], [href*=aspx i]')].map(e => (e.getAttribute('href') || e.getAttribute('onclick') || '').slice(0, 150))
+              .filter(x => /Orden/i.test(x)).slice(0, 30);
+            return {del_menu, ctec, html}; }""", MENU)
+        print(f"Menú «{MENU}»: {menu['del_menu']}", flush=True)
+        print(f"Enlaces a /CTecnico: {menu['ctec']}", flush=True)
+        print(f"Enlaces con «Orden»: {menu['html']}", flush=True)
+        href = next((m['href'] for m in menu['del_menu'] if m['href'] and m['href'] != '#'), None)
         if not href:
-            print("No se encontró el enlace del menú.", flush=True)
-            return
+            cand = [h for h in menu['ctec'] + menu['html'] if re.search(r'OrdenServicioInstalacion(?!Edicion)', h, re.I)]
+            href = cand[0] if cand else None
+        if href and not href.startswith('http') and not href.startswith('/') and '.aspx' in href:
+            href = '/' + re.sub(r'^(\.\./|~/)+', '', href)
+        print(f"Se usará: {href}", flush=True)
+        if not href:   # la ficha es TECOrdenServicioInstalacionEdicion.aspx: la lista suele ser la misma sin «Edicion»
+            href = "/CTecnico/TECOrdenServicioInstalacion.aspx"
+            print(f"No se encontró el enlace del menú; se prueba {href}", flush=True)
         page.goto(href if href.startswith("http") else f"{base}/{href.lstrip('/')}", wait_until="networkidle")
         print(f"Pantalla de búsqueda: {page.url.split('?')[0].replace(base, '')}", flush=True)
-        _imprimir("Pantalla de búsqueda", page.evaluate(_INVENTARIO, "form"))
+        _imprimir("Pantalla de búsqueda", [o for o in page.evaluate(_INVENTARIO, "form") if o["id"].startswith("MainContent")])
         if not lista:
             return
         c = lista[0]
         # 2) Filial + Nº abonado + fecha inicio de hace un año → Buscar (ids buscados por nombre, no fijos)
-        ids = page.evaluate("""() => { const q = re => [...document.querySelectorAll('input,select')].find(e => e.id && re.test(e.id));
+        ids = page.evaluate("""() => { const q = re => [...document.querySelectorAll('[id^=MainContent] input, [id^=MainContent] select, input[id^=MainContent], select[id^=MainContent]')].find(e => e.id && re.test(e.id));
             const g = re => (q(re) || {}).id || null;
             return { filial: g(/filial/i), abonado: g(/abonado/i), ini: g(/fecha.*(ini|reg)|ini.*fecha/i), os: g(/n(u|ú)mero.?os|nro.?os|numeroos/i),
-                     buscar: ([...document.querySelectorAll('input[type=submit],input[type=button],button,a')].find(b => /buscar/i.test(b.value || b.innerText || b.id)) || {}).id || null,
-                     consultar: ([...document.querySelectorAll('input[type=submit],input[type=button],button,a')].find(b => /consultar/i.test(b.value || b.innerText || b.id)) || {}).id || null }; }""")
+                     buscar: ([...document.querySelectorAll('input[type=submit],input[type=button],button,a')].filter(b => /^MainContent/.test(b.id)).find(b => /buscar/i.test(b.value || b.innerText || b.id)) || {}).id || null,
+                     consultar: ([...document.querySelectorAll('input[type=submit],input[type=button],button,a')].filter(b => /^MainContent/.test(b.id)).find(b => /consultar/i.test(b.value || b.innerText || b.id)) || {}).id || null }; }""")
         print(f"Campos detectados: {ids}", flush=True)
         if ids.get("filial"):
             valor = page.evaluate("""([id, t]) => { const n = s => s.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toUpperCase();
                 const o = [...document.getElementById(id).options].find(o => n(o.text) === n(t)); return o ? o.value : null; }""", [ids["filial"], c["filial"] or ""])
-            if valor and page.input_value(f"#{ids['filial']}") != valor:
+            if valor and page.input_value(f"#{ids['filial']}") != valor and page.is_visible(f"#{ids['filial']}"):
                 page.select_option(f"#{ids['filial']}", valor)
                 _esperar(page, 1500)
             print(f"Filial elegida: {'sí' if valor else 'NO encontrada'}", flush=True)
@@ -134,7 +150,7 @@ def explorar() -> None:
         _esperar(page, 3000)
         print(f"Tras Consultar: {page.url.split('?')[0].replace(base, '')} · ¿hay «Datos Del Abonado»? "
               f"{'sí' if page.get_by_text('Datos Del Abonado').count() else 'no'}", flush=True)
-        _imprimir("Ficha (después de Consultar)", page.evaluate(_INVENTARIO, "form"))
+        _imprimir("Ficha (después de Consultar)", [o for o in page.evaluate(_INVENTARIO, "form") if o["id"].startswith("MainContent")])
         nav.close()
 
 
