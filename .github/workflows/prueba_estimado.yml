@@ -1,0 +1,31 @@
+name: Prueba estimado Speed Test (no escribe)
+# PRUEBA: arma Speed Test con la estimación de días sin datos de Ookla y la compara con lo real. Supabase solo se LEE.
+on:
+  push:
+    branches: [vista-previa-st-estimado]
+    paths: [".github/workflows/prueba_estimado.yml", ".github/prueba/st_estimado.py", "sync/speedtest.py"]
+permissions:
+  contents: read
+jobs:
+  probar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Recuperar estado del robot (solo lectura)
+        uses: actions/cache/restore@v4
+        with:
+          path: .estado
+          key: robot-estado-prueba-est-${{ github.run_id }}
+          restore-keys: robot-estado-
+      - env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          base=$(ls -d .estado/base/*/ | sort | tail -1); base=${base%/}; cp "$base"/*.xlsx "$RUNNER_TEMP/"
+          ESTADO_ROBOT="$RUNNER_TEMP/est/robot.json.gz" python -u .github/prueba/st_estimado.py "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" $(ls "$RUNNER_TEMP"/*.xlsx) 2>&1 | grep -E "captura|caché|Speed Test:|=====|B64:|Error|Traceback|File \"" 
