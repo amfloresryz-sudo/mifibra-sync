@@ -1,0 +1,41 @@
+name: Prueba fichas B2B (solo reconocimiento)
+
+# Corre SOLO en la rama de prueba: entra a ScordSoft y anota los NOMBRES de los campos de la ficha del abonado.
+# No lee ni graba datos de clientes y no sube capturas (los registros de este repositorio son públicos).
+on:
+  push:
+    branches: [prueba-fichas-b2b]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  explorar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          for i in 1 2 3; do python -m playwright install chromium && break; sleep 20; done
+          timeout 180 python -m playwright install-deps chromium || true
+      - name: Reconocer la ficha del abonado
+        env:
+          SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
+          SCORDSOFT_USUARIO: ${{ secrets.SCORDSOFT_USUARIO }}
+          SCORDSOFT_CLAVE: ${{ secrets.SCORDSOFT_CLAVE }}
+          SCORDSOFT_TOTP_SECRETO: ${{ secrets.SCORDSOFT_TOTP_SECRETO }}
+          SCORDSOFT_SEL_USUARIO: ${{ vars.SCORDSOFT_SEL_USUARIO }}
+          SCORDSOFT_SEL_CLAVE: ${{ vars.SCORDSOFT_SEL_CLAVE }}
+          SCORDSOFT_SEL_INGRESAR: ${{ vars.SCORDSOFT_SEL_INGRESAR }}
+          SCORDSOFT_SEL_CODIGO: ${{ vars.SCORDSOFT_SEL_CODIGO }}
+          SCORDSOFT_SEL_VERIFICAR: ${{ vars.SCORDSOFT_SEL_VERIFICAR }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -u -m sync.fichas_b2b --explorar
