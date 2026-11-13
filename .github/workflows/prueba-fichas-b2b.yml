@@ -25,7 +25,7 @@ jobs:
           pip install -r requirements.txt
           for i in 1 2 3; do python -m playwright install chromium && break; sleep 20; done
           timeout 180 python -m playwright install-deps chromium || true
-      - name: Leer fichas B2B (prueba, sin guardar)
+      - name: Leer fichas B2B (una vez)
         env:
           SCORDSOFT_URL: ${{ vars.SCORDSOFT_URL || 'https://mifibra.scordsoft.net' }}
           SCORDSOFT_USUARIO: ${{ secrets.SCORDSOFT_USUARIO }}
@@ -38,4 +38,4 @@ jobs:
           SCORDSOFT_SEL_VERIFICAR: ${{ vars.SCORDSOFT_SEL_VERIFICAR }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python -u -m sync.fichas_b2b --probar 5
+        run: python -u -m sync.fichas_b2b
