@@ -16,6 +16,7 @@ Se guarda compacto en la tabla `tableros`, clave "speedtest": tablas de nombres 
 """
 from __future__ import annotations
 
+import math
 import re
 import time
 from collections import defaultdict
@@ -90,7 +91,7 @@ def construir(df: pd.DataFrame, links: dict[int, list], tec_contrata: dict[str, 
         ab = int(r.abonado_codigo) if pd.notna(r.abonado_codigo) else None
         os_ = int(r.nro_os) if pd.notna(r.nro_os) else None
         filas.append([fi, dia, ei, ki, plan_clase(r.tarifa_servicio), ab, os_, cli, tec_n, sid, n_rep, ix("pn", plan_nombre(r.tarifa_servicio)),
-                      [[l[0], l[2] or ""] for l in validos]])   # [12] enlaces válidos; velocidades() los cambia por [quién, bajada, subida, estado]
+                      [[l[0], l[2] or "", next((x[2] or "" for x in ls if x[0] == l[0]), "")] for l in validos]])   # [12] enlaces válidos [clave, quién, título original]; velocidades() los cambia por [quién, bajada, subida, estado]
         for clave, url, _ in ls:
             if veces[rid(clave)] > 1:
                 rep[clave].append([len(filas) - 1, url])
@@ -217,6 +218,113 @@ def _referencia() -> dict:
     return ref
 
 
+# ---------- Estimación para los días que el Control Operativo (Ookla) aún no envía ----------
+# Quién hizo cada prueba (cliente/técnico) solo lo sabe Ookla. Para los días sin su archivo se ESTIMA con lo que Ookla
+# resolvió los últimos 30 días en enlaces parecidos (tipo de enlace, título, si el AB trae además una app, historial del
+# técnico) y se calibra por EECC con los últimos 7 días. Prueba del 4 al 11/11: error del día (todas las filiales) ~4 pp.
+_lg = lambda p: math.log(min(1 - 1e-4, max(1e-4, p)) / (1 - min(1 - 1e-4, max(1e-4, p))))
+_ex = lambda x: 1 / (1 + math.exp(-x))
+
+
+def _num_prueba(clave: str) -> str | None:
+    m = re.findall(r"(\d{8,13})", clave or "")
+    return m[-1] if m else None
+
+
+def _grupo(clave: str, tit: str, enl: list) -> tuple:
+    t = _tipo_enlace(clave)
+    app = any(_tipo_enlace(x[0]) in ("d", "a", "m", "u") for x in enl if x[0] != clave)
+    return (t, tit or "", app if t == "p" else None)
+
+
+def _modelo_equipo(filas, fil, tecs, ecs, ref, cache) -> dict | None:
+    dias_ref = sorted({f[1] for f in filas if len(f) > 12 and f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}" in ref})
+    if not dias_ref:
+        return None
+    hasta = dias_ref[-1]
+    desde = (datetime.strptime(hasta, "%Y-%m-%d") - timedelta(days=30)).strftime("%Y-%m-%d")
+    G, PT, ok = defaultdict(lambda: [0, 0]), defaultdict(lambda: [0, 0]), [0, 0]
+    entren = []
+    for f in filas:
+        if len(f) <= 12 or not (desde <= f[1] <= hasta):
+            continue
+        P = ref.get(f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}")
+        if P is None:
+            continue
+        por_id = {str(p[5]): p for p in P if len(p) > 5}
+        entren.append((f, P))
+        for x in f[12]:
+            p = por_id.get(_num_prueba(x[0]) or "-")
+            if not p:
+                continue
+            y = 1 if p[0] == "C" else 0
+            g = _grupo(x[0], x[2] if len(x) > 2 else x[1], f[12])
+            G[g][0] += y; G[g][1] += 1; ok[0] += y; ok[1] += 1
+            if g[2] is not None:   # enlaces de navegador: historial del técnico
+                PT[f[3]][0] += y; PT[f[3]][1] += 1
+    if ok[1] < 200:
+        return None
+    m = {"hasta": hasta, "G": G, "PT": PT, "glob": ok[0] / ok[1],
+         "gp": sum(v[0] for v in PT.values()) / max(1, sum(v[1] for v in PT.values())), "k": {}}
+    # Calibración por filial+EECC: válidas reales (Ookla) ÷ esperadas por el modelo, en los últimos 7 días con datos
+    d7 = (datetime.strptime(hasta, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+    K = defaultdict(lambda: [0.0, 0.0])
+    for f, P in entren:
+        if f[1] <= d7:
+            continue
+        minimo = 1200 if f[4] == 1 else 600
+        real = any(p[0] == "C" and p[3] == "v" for p in P)
+        pv = 1.0
+        for x in f[12]:
+            v = cache.get(x[0])
+            p = next((p for p in P if len(p) > 5 and str(p[5]) == _num_prueba(x[0])), None)
+            vel = p[1] if p else (v[0] if v and v[0] >= 0 else None)
+            if vel is not None and vel > minimo:
+                pv *= 1 - _p_cliente(m, x[0], x[2] if len(x) > 2 else x[1], f[12], f)
+        K[(f[0], f[2])][0] += real; K[(f[0], f[2])][1] += 1 - pv
+    m["k"] = {g: (r + 5 * 1) / (e + 5) if e else 1.0 for g, (r, e) in K.items()}
+    return m
+
+
+def _p_cliente(m, clave, tit, enl, f) -> float:
+    if "my-result" in clave and not _num_prueba(clave):
+        return 0.01   # app de escritorio del técnico (my-result/d/…): Ookla la da como técnico en el 99 % de los casos
+    g = _grupo(clave, tit, enl)
+    s, n = m["G"].get(g, [0, 0])
+    base = (s + 1) / (n + 2) if n else m["glob"]
+    if g[2] is None:
+        return base
+    s, n = m["PT"].get(f[3], [0, 0])
+    pr = (s + 4 * m["gp"]) / (n + 4)
+    return _ex(_lg(base) + 0.5 * (_lg(pr) - _lg(m["gp"])))
+
+
+def _repartir_estimado(estim, m, fil, ecs) -> None:
+    """Por filial+EECC+día: válidas esperadas = Σ P(válida) × calibración; se marcan como válidas (una prueba del cliente)
+    las instalaciones con mayor probabilidad hasta completar ese número. Así los totales cuadran con lo esperado."""
+    grupos = defaultdict(list)
+    for e in estim:
+        grupos[(e[0][0], e[0][2], e[0][1])].append(e)
+    n_est = 0
+    for (fi, ei, _), L in grupos.items():
+        cuota = round(min(len(L), sum(e[2] for e in L) * m["k"].get((fi, ei), 1.0)))
+        L.sort(key=lambda e: -e[2])
+        for k, (f, ps, pval) in enumerate(L):
+            out = f[12]
+            for p in out:
+                p[0] = "T"
+            if k < cuota and ps:
+                validas = [(p, i) for i, p in ps if out[i][3] == "v"]
+                if validas:
+                    out[max(validas)[1]][0] = "C"
+            f[7] = sum(1 for p in out if p[0] == "C"); f[8] = len(out) - f[7]; f[9] = 0
+            while len(f) < 14:
+                f.append(0)
+            f[13] = 1
+            n_est += 1
+    print(f"  Speed Test: {n_est} instalaciones de días sin datos de Ookla (después del {m['hasta']}) con quién hizo la prueba ESTIMADO.", flush=True)
+
+
 def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) -> None:
     """Completa cada prueba del tablero con su velocidad: fila[12] = [[quién, bajada, subida, estado], …] (estado: v/b/n/p).
     Primero el mes en curso (del día más nuevo al más antiguo) y después los meses anteriores; lo ya leído queda en la
@@ -231,7 +339,7 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     enlaces = {}
     for f in filas:
         if len(f) > 12 and f[12]:
-            enlaces[f"{fil0[f[0]] if f[0] < len(fil0) else ''}|{f[6]}"] = [f[1], [[c, q] for c, q in f[12]]]
+            enlaces[f"{fil0[f[0]] if f[0] < len(fil0) else ''}|{f[6]}"] = [f[1], [[x[0], x[1]] for x in f[12]]]
     tab["_enlaces"] = enlaces
     ref = _referencia()
     fil = tab.get("f") or []
@@ -240,14 +348,14 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
     falta, vistos, mes_claves = [], set(), set()
     completar = []   # ya leídas antes solo con velocidad: se vuelven a pedir una vez para guardar todos sus datos públicos
     for f in sorted(filas, key=lambda x: (x[1][:7] == mes, x[1]), reverse=True):
-        for clave, _ in (f[12] if len(f) > 12 else []):
+        for clave, *_ in (f[12] if len(f) > 12 else []):
             v = cache.get(clave)
             if v and v[0] >= 0 and len(v) == 4 and clave not in vistos:
                 vistos.add(clave)
                 completar.append(clave)
         if en_ref(f):   # ya viene en un archivo de control: no hace falta leerla en speedtest.net
             continue
-        for clave, _ in (f[12] if len(f) > 12 else []):
+        for clave, *_ in (f[12] if len(f) > 12 else []):
             if clave not in cache and clave not in vistos and _tipo_enlace(clave) not in SIN_PUBLICO:
                 vistos.add(clave)
                 falta.append(clave)
@@ -294,10 +402,13 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
               f"{fallas} sin respuesta (se reintentan) · {max(0, len(falta) - leidos)} pendientes ({del_mes} del mes en curso) · "
               f"{completadas} ya leídas completadas con todos sus datos ({max(0, len(completar) - completadas)} por completar).", flush=True)
     n_ref = 0
+    mod = _modelo_equipo(filas, fil, tab.get("k") or [], tab.get("e") or [], ref, cache)
+    estim = []   # filas de días sin datos de Ookla: [fila, [prob. de cada prueba], P(válida)]
     for f in filas:
         if len(f) <= 12:
             continue
         clave_ref = f"{fil[f[0]] if f[0] < len(fil) else ''}|{f[6]}"
+        enl = f[12]
         if clave_ref in ref:   # el archivo de control manda: sus pruebas, quién la hizo (dato de Ookla) y su resultado
             P = ref[clave_ref]
             f[7], f[8], f[9] = sum(1 for p in P if p[0] == "C"), sum(1 for p in P if p[0] != "C"), 0
@@ -307,7 +418,8 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
         minimo = 1200 if f[4] == 1 else 600
         dia = datetime.strptime(f[1], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() + 5 * 3600   # 00:00 de Lima
         out = []
-        for clave, q in f[12]:
+        probs = []
+        for clave, q, *tit in f[12]:
             v, t = cache.get(clave), _tipo_enlace(clave)   # [4] = tipo de enlace (para comparar cliente vs técnico)
             # Regla del Excel del Control Operativo (base de Ookla): solo existen pruebas con velocidad hechas en la red Mi Fibra.
             # Un enlace que no abre o una prueba de otra red NO es prueba (no suma en ningún cálculo).
@@ -328,7 +440,19 @@ def velocidades(tab: dict, cache: dict, limite: int = 800, segundos: int = 150) 
                 # Bajo el mínimo: speedtest.net no da el dato de enlace del equipo → «no certificable (sin dato de enlace)».
                 e = "v" if v[0] > minimo else "n"
                 out.append([q, v[0], v[1], e, t])
+                probs.append((len(out) - 1, clave, tit[0] if tit else q))
         f[12] = out
+        if mod and f[1] > mod["hasta"]:   # día que el Control Operativo aún no envía: se estima quién hizo cada prueba
+            ps = [(i, _p_cliente(mod, clave, ti, enl, f)) for i, clave, ti in probs]
+            pv = 1.0
+            for i, p in ps:
+                if out[i][3] == "v":
+                    pv *= 1 - p
+            estim.append([f, ps, 1 - pv])
+    if estim:
+        _repartir_estimado(estim, mod, fil, tab.get("e") or [])
     if ref:
         print(f"  Speed Test: {n_ref} instalaciones tomadas de los archivos de control (sync/ref).", flush=True)
     tab["cols"][-1] = "pruebas"
+    if "estimado" not in tab["cols"]:
+        tab["cols"].append("estimado")   # [13] = 1: quién hizo las pruebas es ESTIMADO (día que el Control Operativo aún no envía)
