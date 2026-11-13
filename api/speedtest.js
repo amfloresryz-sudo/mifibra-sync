@@ -78,7 +78,8 @@ async function recibirControl(req, res) {
     const o = {}; let n = 0, desde = '', hasta = '';
     O.forEach(r => { if (r.tipo !== 'Instalación' || !meses.includes(r.mes)) return; const k = `${r.filial}|${parseInt(r.nro_orden, 10)}`;
       o[k] = (tb[r.id_orden] || []).sort((a, z) => String(a.fecha_hora_lima).localeCompare(String(z.fecha_hora_lima)))
-        .map(t => [t.equipo === 'Cliente' ? 'C' : 'T', Math.round(+t.descarga_mbps || 0), Math.round(+t.subida_mbps || 0), EST[t.resultado_origen] || (+t.descarga_mbps > +r.umbral_mbps ? 'v' : 'n')]);
+        .map(t => { const id = String(t.id_resultado_speedtest || ''); return [t.equipo === 'Cliente' ? 'C' : 'T', Math.round(+t.descarga_mbps || 0), Math.round(+t.subida_mbps || 0), EST[t.resultado_origen] || (+t.descarga_mbps > +r.umbral_mbps ? 'v' : 'n'),
+          id.length === 9 ? 'd' : id.length === 10 ? 'i' : /^1[12]/.test(id) ? 'a' : 'p', id]; });
       n++; if (!desde || r.fecha_atencion < desde) desde = r.fecha_atencion; if (r.fecha_atencion > hasta) hasta = r.fecha_atencion; });
     const meta = b.meta && typeof b.meta === 'object' ? b.meta : {};
     const datos = { fuente: `Control Operativo SpeedTest · envío automático · instalaciones del ${desde} al ${hasta}${meta.generado ? ' · generado ' + meta.generado : ''}`, recibido: new Date().toISOString(), meta, o };
