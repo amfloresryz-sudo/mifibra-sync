@@ -2049,7 +2049,10 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
   altasP[tbId] = P;
   // Responsable: por zona en Lima (se edita con la clave master); en Provincias, por filial = los gestores que cada provincia
   // asignó a sus EECC en «Metas, EECC y gestores» (primero el que tiene más pendientes)
-  const pvT = provTodas(), lima = (D.filial || 'LIMA') === 'LIMA' || pvT, RESP = pvT ? {} : (AJ && AJ.responsables) || {};
+  // Una provincia sola (sin zonas): las filas se agrupan por EECC y la columna Responsable muestra su gestor
+  const pvT = provTodas(), porEc = !pvT && (D.filial || 'LIMA') !== 'LIMA', lima = (D.filial || 'LIMA') === 'LIMA' || pvT || porEc, RESP = pvT || porEc ? {} : (AJ && AJ.responsables) || {};
+  P0.forEach(p => { p._g = porEc ? (p.ec || 'POR ASIGNAR') : p.z; });
+  if (porEc) P0.forEach(p => { const g = gestorDe(p); if (!RESP[p._g] && g && g !== 'SIN GESTOR') RESP[p._g] = g; });
   if (pvT) { const cnt = {}; P0.forEach(p => { const g = gestorDe(p); if (g && g !== 'SIN GESTOR') { const c = cnt[p.z] || (cnt[p.z] = {}); c[g] = (c[g] || 0) + 1; } });
     Object.keys(cnt).forEach(z => { RESP[z] = Object.keys(cnt[z]).sort((a, b) => cnt[z][b] - cnt[z][a] || a.localeCompare(b)).join(' / '); });
     Object.entries(AJ.prov || {}).forEach(([f, a]) => { if (!RESP[f]) { const g = [...new Set(Object.values(a.gestores || {}).filter(Boolean))]; if (g.length) RESP[f] = g.join(' / '); } }); }
@@ -2058,7 +2061,7 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
   if (!P.length) { $(matId).innerHTML = '<p class="nota">No hay pendientes con este filtro.</p>'; return; }
   const f10 = (p) => p.rec.slice(0, 10), fechas = [...new Set(P.map(f10))].sort();
   const cls = (f) => { const e = edadDias(f); return e >= 8 ? 'e3' : e >= 4 ? 'e2' : e >= 3 ? 'e1' : ''; };
-  const zonas = {}; P.forEach(p => { const z = zonas[p.z] || (zonas[p.z] = {}); (z[p.di] || (z[p.di] = [])).push(p); });
+  const zonas = {}; P.forEach(p => { const z = zonas[p._g] || (zonas[p._g] = {}); (z[p.di] || (z[p.di] = [])).push(p); });
   // número clicable: abre los AB de esa zona/distrito y fecha (solo en la tabla plegable de Ingresos)
   const num = (v, k, f) => !v ? '' : plegable ? `<button type="button" class="al-n" data-altas="${tbId}|${esc(k)}|${f}" title="Ver los ${v} AB">${v}</button>` : v;
   const fila = (nom, L, clase, k, z) => { const ant = L.filter(p => edadDias(f10(p)) >= 3).length;
@@ -2066,10 +2069,11 @@ function pintarAltas(segsId, matId, subId, kEc, kTp, tbId, plegable = false) {
       ? `<button type="button" class="al-z" data-al-zona="${esc(z)}" aria-expanded="${abierta}">${esc(nom)}</button>` : esc(nom);
     return `<tr class="${clase}"${plegable && clase === 'distr' ? ` data-de="${esc(z)}"${abierta ? '' : ' hidden'}` : ''}><td>${cab}</td>${lima ? `<td class="resp-c">${clase === 'zona' ? esc(RESP[z] || '—') : ''}</td>` : ''}${fechas.map(f => { const v = L.filter(p => f10(p) === f).length; return `<td class="${v ? cls(f) : ''}${edadDias(f) === 0 ? ' hoy-c' : ''}">${num(v, k, f)}</td>`; }).join('')}<td class="t-col">${num(L.length, k, 'ALL')}</td><td class="ant-c">${Math.round(ant / L.length * 100)}%</td></tr>`; };
   let body = '';
-  Object.keys(zonas).sort((a, b) => zIdx(a) - zIdx(b)).forEach(z => { const ds = zonas[z]; body += fila(z, Object.values(ds).flat(), 'zona', 'Z:' + z, z);
+  const nZ = (z) => Object.values(zonas[z]).flat().length;
+  Object.keys(zonas).sort((a, b) => porEc ? (a === 'POR ASIGNAR') - (b === 'POR ASIGNAR') || nZ(b) - nZ(a) || (a < b ? -1 : 1) : zIdx(a) - zIdx(b)).forEach(z => { const ds = zonas[z]; body += fila(z, Object.values(ds).flat(), 'zona', 'Z:' + z, z);
     Object.keys(ds).sort((a, b) => ds[b].length - ds[a].length || (a < b ? -1 : 1)).forEach(d => body += fila(d, ds[d], 'distr', 'DI:' + z + ':' + d, z)); });
   const antT = P.filter(p => edadDias(f10(p)) >= 3).length;
-  $(matId).innerHTML = `<table class="mat altas" id="${tbId}"><thead><tr><th>Zona / distrito</th>${lima ? '<th>Responsable</th>' : ''}${fechas.map(f => `<th class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${fIso(f)}</th>`).join('')}<th>Total general</th><th class="ant-h">% antiguas</th></tr></thead><tbody>${body}</tbody>
+  $(matId).innerHTML = `<table class="mat altas" id="${tbId}"><thead><tr><th>${porEc ? 'EECC / distrito' : 'Zona / distrito'}</th>${lima ? `<th>${porEc ? 'Gestor' : 'Responsable'}</th>` : ''}${fechas.map(f => `<th class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${fIso(f)}</th>`).join('')}<th>Total general</th><th class="ant-h">% antiguas</th></tr></thead><tbody>${body}</tbody>
     <tfoot><tr><td>Total general</td>${lima ? '<td></td>' : ''}${fechas.map(f => `<td class="${edadDias(f) === 0 ? 'hoy-c' : ''}">${num(P.filter(p => f10(p) === f).length, 'T', f)}</td>`).join('')}<td>${num(P.length, 'T', 'ALL')}</td><td class="ant-c">${Math.round(antT / P.length * 100)}%</td></tr></tfoot></table>`;
 }
 
@@ -2169,9 +2173,10 @@ const edadB = (rec) => { const e = edadDias(rec); return e == null ? '' : `<span
 function abrirListaAltas(clave) {
   const [tbId, k, f] = clave.split('|'), P = altasP[tbId] || [];
   const [tz, z, ...dr] = k.split(':'), di = dr.join(':');
-  const L = P.filter(p => (f === 'ALL' || p.rec.slice(0, 10) === f) && (tz === 'T' || (tz === 'Z' ? p.z === z : p.z === z && p.di === di)))
+  const gz = (p) => p._g ?? p.z;
+  const L = P.filter(p => (f === 'ALL' || p.rec.slice(0, 10) === f) && (tz === 'T' || (tz === 'Z' ? gz(p) === z : gz(p) === z && p.di === di)))
     .sort((a, b) => msIso(a.rec) - msIso(b.rec));
-  const nom = tz === 'T' ? 'Total general' : tz === 'Z' ? 'Zona ' + z : di;
+  const nom = tz === 'T' ? 'Total general' : tz === 'Z' ? (P.some(p => p._g !== undefined && p._g !== p.z) ? z : 'Zona ' + z) : di;
   const cab = ['AB', 'Distrito', 'EECC', 'Gestor', 'F. Recep', 'Agenda', 'F. AG', 'Franja', 'Gestión'];
   const filas = L.map(p => `<tr><td data-v="${p.ab}"><button type="button" class="lnk num" data-altas-ab="${p.os}" title="Ver ficha del AB · OS ${p.os}">${p.ab}</button></td><td title="${esc(p.di)}">${esc(p.di || '—')}</td><td>${esc(p.ec)}</td><td>${esc(gestorDe(p) === 'SIN GESTOR' ? '—' : gestorDe(p))}</td>
     <td data-v="${msIso(p.rec)}" style="white-space:nowrap">${fechaHora(p.rec)} ${edadB(p.rec)}</td><td>${AGENDA_B(p)}</td>${estAg(p) === 'SIN AGENDA' ? '<td data-v="">—</td>' : `<td data-v="${esc(p.fp || '')}"${cOs(fpOs(p, p.fp), 'Coincide con la Fecha Asignacion de la OS')}>${p.fp ? fIso(p.fp) : '—'}</td>`}<td${cOs(conFranja(p) && frOs(p), 'Coincide con la franja de la OS')}>${conFranja(p) ? esc(p.fr) : '—'}${cfrB(p)}</td>
