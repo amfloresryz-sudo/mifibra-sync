@@ -232,7 +232,7 @@ def _referencia() -> dict:
 # ---------- Estimación para los días que el Control Operativo (Ookla) aún no envía ----------
 # Quién hizo cada prueba (cliente/técnico) solo lo sabe Ookla. Para los días sin su archivo se ESTIMA con lo que Ookla
 # resolvió los últimos 30 días en enlaces parecidos (tipo de enlace, título, si el AB trae además una app, historial del
-# técnico) y se calibra por EECC con los últimos 7 días. Prueba del 4 al 11/11: error del día (todas las filiales) ~4 pp.
+# técnico) y se calibra por EECC con los últimos 5 días. Prueba del 4 al 11/11: error del día (todas las filiales) ~4 pp.
 _lg = lambda p: math.log(min(1 - 1e-4, max(1e-4, p)) / (1 - min(1 - 1e-4, max(1e-4, p))))
 _ex = lambda x: 1 / (1 + math.exp(-x))
 
@@ -278,8 +278,8 @@ def _modelo_equipo(filas, fil, tecs, ecs, ref, cache) -> dict | None:
     m = {"hasta": hasta, "G": G, "PT": PT, "glob": ok[0] / ok[1],
          "gp": sum(v[0] for v in PT.values()) / max(1, sum(v[1] for v in PT.values())), "k": {}}
     # Calibración por filial+EECC: válidas reales (Ookla) ÷ esperadas por el modelo, en los últimos 7 días con datos
-    d7 = (datetime.strptime(hasta, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
-    K = defaultdict(lambda: [0.0, 0.0])
+    d7 = (datetime.strptime(hasta, "%Y-%m-%d") - timedelta(days=5)).strftime("%Y-%m-%d")   # últimos 5 días: sigue la tendencia
+    K, KF = defaultdict(lambda: [0.0, 0.0]), defaultdict(lambda: [0.0, 0.0])
     for f, P in entren:
         if f[1] <= d7:
             continue
@@ -293,7 +293,9 @@ def _modelo_equipo(filas, fil, tecs, ecs, ref, cache) -> dict | None:
             if vel is not None and vel > minimo:
                 pv *= 1 - _p_cliente(m, x[0], x[2] if len(x) > 2 else x[1], f[12], f)
         K[(f[0], f[2])][0] += real; K[(f[0], f[2])][1] += 1 - pv
-    m["k"] = {g: (r + 5 * 1) / (e + 5) if e else 1.0 for g, (r, e) in K.items()}
+        KF[f[0]][0] += real; KF[f[0]][1] += 1 - pv
+    m["kf"] = {fi: (r + 5) / (e + 5) for fi, (r, e) in KF.items()}   # por filial (la EECC chica se acerca a la de su filial)
+    m["k"] = {g: (r + 5 * m["kf"].get(g[0], 1.0)) / (e + 5) for g, (r, e) in K.items()}
     return m
 
 
@@ -318,7 +320,7 @@ def _repartir_estimado(estim, m, fil, ecs) -> None:
         grupos[(e[0][0], e[0][2], e[0][1])].append(e)
     n_est = 0
     for (fi, ei, _), L in grupos.items():
-        cuota = round(min(len(L), sum(e[2] for e in L) * m["k"].get((fi, ei), 1.0)))
+        cuota = round(min(len(L), sum(e[2] for e in L) * m["k"].get((fi, ei), m.get("kf", {}).get(fi, 1.0))))
         L.sort(key=lambda e: -e[2])
         for k, (f, ps, pval) in enumerate(L):
             out = f[12]

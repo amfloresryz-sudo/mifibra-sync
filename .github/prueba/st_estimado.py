@@ -33,9 +33,12 @@ def resumen(tab):
             r = R[(f[1], g)]; r[0] += 1; r[1] += v; r[2] += (len(f) > 13 and f[13] == 1)
     return {f"{d}|{g}": x for (d, g), x in R.items()}
 ta = copy.deepcopy(tab0); ST.velocidades(ta, dict(cache), limite=0, segundos=0); ra = resumen(ta)
-ocultar = {f"{fil[f[0]]}|{f[6]}" for f in tab0["o"] if f[1] >= "2026-11-10"}
-ST._referencia = lambda: {k: v for k, v in ref_full.items() if k not in ocultar}
-tb = copy.deepcopy(tab0); ST.velocidades(tb, dict(cache), limite=0, segundos=0); rb = resumen(tb)
+def ciego(desde):
+    ocultar = {f"{fil[f[0]]}|{f[6]}" for f in tab0["o"] if f[1] >= desde}
+    ST._referencia = lambda: {k: v for k, v in ref_full.items() if k not in ocultar}
+    t = copy.deepcopy(tab0); ST.velocidades(t, dict(cache), limite=0, segundos=0); return t
+tb = ciego("2026-11-10"); rb = resumen(tb)
+tc = ciego("2026-11-11"); rc = resumen(tc)
 ec = defaultdict(lambda: [0, 0, 0, 0])
 for fa, fb in zip(ta["o"], tb["o"]):
     if fa[1] in ("2026-11-10", "2026-11-11") and fil[fa[0]] == "LIMA":
@@ -43,7 +46,7 @@ for fa, fb in zip(ta["o"], tb["o"]):
         e[1] += any(p[0] == "C" and p[3] == "v" for p in fa[12]); e[2] += any(p[0] == "C" and p[3] == "v" for p in fb[12])
 lima = {"f": ta["f"], "e": ta["e"], "k": ta["k"], "pn": ta["pn"], "rep": [], "actualizado": corte,
         "o": [f for f in ta["o"] if ta["f"][f[0]] == "LIMA" and f[1] >= "2026-11-01"]}
-out = {"a": ra, "b": rb, "ec": ec, "lima": lima}
+out = {"a": ra, "b": rb, "c": rc, "ec": ec, "lima": lima}
 b = base64.b64encode(gzip.compress(json.dumps(out, ensure_ascii=False).encode())).decode()
 print("=====INICIO estimado.json")
 for i in range(0, len(b), 3000): print("B64:" + b[i:i + 3000])
