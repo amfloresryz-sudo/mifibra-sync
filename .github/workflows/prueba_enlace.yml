@@ -1,5 +1,5 @@
 name: Prueba enlace Control Operativo (no escribe)
-# PRUEBA de solo lectura: ¿se puede leer sin iniciar sesión la página publicada del Control Operativo SpeedTest?
+# PRUEBA de solo lectura: abrir con un navegador la página publicada del Control Operativo y ver si sus datos (cifrados) se pueden leer.
 on:
   push:
     branches: [prueba-st-enlace]
@@ -9,17 +9,22 @@ permissions:
 jobs:
   probar:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
+      - run: npm i playwright@1.48.2 >/dev/null 2>&1 && npx playwright install chromium >/dev/null 2>&1 && echo listo
       - run: |
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
-          for u in "https://claude.ai/artifact/LPovdENFQxf1WjiuvVrByY" \
-                   "https://9d0cea6f-dbb6-45e0-b88f-962d3f9d893f.frame.claudeusercontent.com/" \
-                   "https://9d0cea6f-dbb6-45e0-b88f-962d3f9d893f.frame.claudeusercontent.com/index.html" \
-                   "https://claude.ai/code/artifact/9d0cea6f-dbb6-45e0-b88f-962d3f9d893f"; do
-            code=$(curl -sS -L -A "$UA" -o p.html -w "%{http_code} %{content_type} %{size_download}" "$u" || echo fallo)
-            echo "== $u -> $code"
-            echo "  tiene ENC: $(grep -c 'ENC' p.html 2>/dev/null) · tiene bus.json: $(grep -c 'bus.json' p.html 2>/dev/null) · title: $(grep -o '<title>[^<]*' p.html | head -1)"
-            grep -o 'src="[^"]*"' p.html | head -8
-            grep -oE 'https://[a-z0-9.-]*claudeusercontent[^"'"'"' ]*' p.html | sort -u | head -5
-          done
+          cat > p.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const b = await chromium.launch(); const p = await b.newPage();
+          const reqs = []; p.on('request', r => { const u = r.url(); if (!/assets-proxy|\.woff2|\.png|\.svg/.test(u)) reqs.push(r.method() + ' ' + u.slice(0, 160)); });
+          await p.goto('https://claude.ai/artifact/LPovdENFQxf1WjiuvVrByY', { waitUntil: 'networkidle', timeout: 60000 }).catch(e => console.log('goto', e.message));
+          await p.waitForTimeout(8000);
+          console.log('PETICIONES:'); reqs.slice(0, 40).forEach(x => console.log('  ' + x));
+          for (const f of p.frames()) {
+            let info = {};
+            try { info = await f.evaluate(() => ({ t: document.title, n: document.documentElement.outerHTML.length, enc: typeof ENC !== 'undefined' ? Object.keys(ENC) : null, txt: document.body ? document.body.innerText.slice(0, 200) : '' })); } catch (e) { info = { err: e.message.slice(0, 120) }; }
+            console.log('FRAME', f.url().slice(0, 160), JSON.stringify(info));
+          }
+          await b.close();
+          JS
+          node p.mjs
