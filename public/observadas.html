@@ -1037,8 +1037,8 @@ function pivote(tid, recs, colDe, cols, cab, opc = {}) {
 const TS = Object.fromEntries(['pl', 'di', 'ab', 'mo'].map(t => [t, { m: new Set(), z: new Set() }]));
 const HF = { pl: {}, di: {}, ab: {}, mo: {} };
 const zonaDe = (r) => r.z || 'SIN ZONA';
-const HFV = { pl: { mot: r => r.g, col: zonaDe }, ab: { mot: r => r.g, col: r => r.f }, mo: { mot: r => r.g, col: r => r.f }, di: { z: zonaDe, d: r => r.di } };
-const HFT = { pl: { mot: 'Motivo', col: 'Zona' }, ab: { mot: 'Motivo', col: 'Día' }, mo: { mot: 'Motivo', col: 'Día' }, di: { z: 'Zona', d: 'Distrito' } };
+const HFV = { pl: { mot: r => r.g, col: zonaDe }, ab: { mot: r => r.g, col: r => r.f }, mo: { mot: r => r.g, col: r => r.f, dis: r => r.di || 'SIN DISTRITO' }, di: { z: zonaDe, d: r => r.di } };
+const HFT = { pl: { mot: 'Motivo', col: 'Zona' }, ab: { mot: 'Motivo', col: 'Día' }, mo: { mot: 'Motivo', col: 'Día', dis: 'Distrito' }, di: { z: 'Zona', d: 'Distrito' } };
 const hfTxt = (tid, k, v) => k === 'col' && tid !== 'pl' ? diaCorto(v) : v;
 const tsOk = (tid, r, sin = '') => (sin === 'm' || !TS[tid].m.size || TS[tid].m.has(r.m)) && (sin === 'z' || !TS[tid].z.size || TS[tid].z.has(zonaDe(r)));
 const hfOk = (tid, r, sin = '') => Object.entries(HF[tid]).every(([k, S]) => k === sin || S.has(HFV[tid][k](r)));
@@ -1052,7 +1052,9 @@ function pintarTS(tid, base) {
   const zs = [...new Set([...Object.keys(cz), ...TS[tid].z])].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
   const nf = Object.keys(HF[tid]).length;
   $('ts-' + tid).innerHTML = `<div class="g"><span class="seg-t">Motivo</span>${chip('m', '', 'Todos')}${['COMERCIAL', 'TÉCNICO'].map(m => chip('m', m, m === 'TÉCNICO' ? 'Técnico' : 'Comercial', cm[m] || 0)).join('')}</div>
-    <div class="g"><span class="seg-t">Zona</span>${chip('z', '', 'Todas')}${zs.map(z => chip('z', z, z, cz[z] || 0)).join('')}</div>${nf ? `<button type="button" class="mas" data-hf-limpiar="${tid}">Quitar ${nf} filtro${nf === 1 ? '' : 's'} de encabezado</button>` : ''}`;
+    <div class="g"><span class="seg-t">Zona</span>${chip('z', '', 'Todas')}${zs.map(z => chip('z', z, z, cz[z] || 0)).join('')}</div>${tid === 'mo' ? (() => {   // Distrito: lista con buscador (varios a la vez)
+      const D = HF.mo.dis, txt = !D ? 'Todos' : D.size === 1 ? [...D][0] : `${D.size} distritos`;
+      return `<div class="g"><span class="seg-t">Distrito</span><button type="button" class="chip" data-hf="mo|dis" aria-pressed="${!!D}" aria-haspopup="dialog" title="Elegir y buscar distritos">${esc(txt)} ▾</button></div>`; })() : ''}${nf ? `<button type="button" class="mas" data-hf-limpiar="${tid}">Quitar ${nf} filtro${nf === 1 ? '' : 's'}</button>` : ''}`;
 }
 document.addEventListener('click', (e) => {
   const c = e.target.closest('[data-ts]'); if (c) { const [tid, k, v] = c.dataset.ts.split('|'), S = TS[tid][k]; if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v); pintar(); return; }
@@ -1077,7 +1079,8 @@ function abrirHF(btn) {
   pinta(); q.addEventListener('input', pinta);
   lista.addEventListener('change', (e) => { const i = e.target; if (i.dataset.todo !== undefined) vis().forEach(v => i.checked ? sel.add(v) : sel.delete(v)); else i.checked ? sel.add(i.value) : sel.delete(i.value); pinta(); });
   pop.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return;
-    if (b.dataset.f === 'limpiar' || sel.size === vals.length) delete HF[tid][k]; else HF[tid][k] = sel; cerrarHF(); pintar(); });
+    if (k === 'dis' && b.dataset.f === 'ok' && q.value.trim()) { const V = new Set(vis()); [...sel].forEach(v => { if (!V.has(v)) sel.delete(v); }); }   // Distrito: con búsqueda, aplica solo lo encontrado (como Excel)
+    if (b.dataset.f === 'limpiar' || sel.size === vals.length || (k === 'dis' && !sel.size)) delete HF[tid][k]; else HF[tid][k] = sel; cerrarHF(); pintar(); });
   pop.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); cerrarHF(); btn.focus(); } });
   document.body.appendChild(pop);
   const r = btn.getBoundingClientRect(), w = pop.offsetWidth;
