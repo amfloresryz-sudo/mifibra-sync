@@ -809,6 +809,8 @@ td.os-ok { color: var(--ok); font-weight: 700; background: var(--ok-bg); }
       <div><label class="seg-t" for="filial" style="display:block;color:#B9BCCB;margin-bottom:6px">Filial</label><select id="filial" class="sel-filial"><option>LIMA</option><option value="PROVINCIAS">PROVINCIAS</option><option>ANCASH</option><option>AREQUIPA</option><option>CAJAMARCA</option><option>HUANUCO</option><option>LA LIBERTAD</option><option>LAMBAYEQUE</option><option>PIURA</option></select></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Canal de atención</div><div class="chips" role="group" aria-label="Canal de atención" id="canales"></div></div>
       <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Mes (F. observación)</div><div class="chips meses" role="group" aria-label="Mes de observación" id="meses"></div></div>
+      <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px" id="zonas-t">Zona</div><div class="chips" role="group" aria-labelledby="zonas-t" id="zonas"></div></div>
+      <div><div class="seg-t" style="color:#B9BCCB;margin-bottom:6px">Distrito</div><div class="chips" id="dis-cab"></div></div>
     </div>
   </div>
 </div></section>
@@ -971,8 +973,23 @@ let canal = 'TODOS'; const okCn = (r) => canal === 'TODOS' || r.cn === canal;
 $('canales').innerHTML = CANALES.map(([k, t]) => `<button type="button" class="chip" data-cn="${k}" aria-pressed="${k === canal}">${t}</button>`).join('');
 $('canales').addEventListener('click', (e) => { const b = e.target.closest('[data-cn]'); if (!b || b.dataset.cn === canal) return; canal = b.dataset.cn;
   $('canales').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); pintar(); });
-const delMes = () => D.obs.filter(r => !r.rc && r.f.slice(0, 7) === mes && okCn(r));
-const recMes = () => D.obs.filter(r => r.rc && r.f.slice(0, 7) === mes && okCn(r));   // recuperadas: observadas (con motivo de observación) que hoy están DESCARGADAS
+// Zona (segmentador) y Distrito (filtro con buscador) de la cabecera: aplican a toda la página
+const zonaCab = new Set(); const okZ = (r) => !zonaCab.size || zonaCab.has(r.z || 'SIN ZONA');
+const okDi = (r) => !HF.cab.dis || HF.cab.dis.has(r.di || 'SIN DISTRITO'), okCab = (r) => okZ(r) && okDi(r);
+const delMes = () => D.obs.filter(r => !r.rc && r.f.slice(0, 7) === mes && okCn(r) && okCab(r));
+const recMes = () => D.obs.filter(r => r.rc && r.f.slice(0, 7) === mes && okCn(r) && okCab(r));
+function pintarCab() {
+  const M = D.obs.filter(r => !r.rc && r.f.slice(0, 7) === mes && okCn(r));
+  const cz = {}; M.filter(okDi).forEach(r => { const z = r.z || 'SIN ZONA'; cz[z] = (cz[z] || 0) + 1; });
+  const zs = [...new Set([...Object.keys(cz), ...zonaCab])].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
+  $('zonas-t').textContent = provTodas() ? 'Filial' : 'Zona';
+  $('zonas').innerHTML = `<button type="button" class="chip" data-zc="" aria-pressed="${!zonaCab.size}">Todas</button>` + zs.map(z => `<button type="button" class="chip" data-zc="${esc(z)}" aria-pressed="${zonaCab.has(z)}">${esc(z)} (${cz[z] || 0})</button>`).join('');
+  baseTabla.cab = M.filter(okZ);
+  const S = HF.cab.dis, txt = !S ? 'Todos' : S.size === 1 ? [...S][0] : `${S.size} distritos`;
+  $('dis-cab').innerHTML = `<button type="button" class="chip" data-hf="cab|dis" aria-pressed="${!!S}" aria-haspopup="dialog" title="Elegir y buscar distritos">${esc(txt)} ▾</button>`;
+}
+$('zonas').addEventListener('click', (e) => { const b = e.target.closest('[data-zc]'); if (!b) return; const v = b.dataset.zc;
+  if (!v) zonaCab.clear(); else zonaCab.has(v) ? zonaCab.delete(v) : zonaCab.add(v); pintar(); });   // recuperadas: observadas (con motivo de observación) que hoy están DESCARGADAS
 const ZORD = ['NORTE', 'SUR', 'ESTE', 'OESTE', 'PREMIUM'], zIdx = (z) => { const i = ZORD.indexOf(z); return i < 0 ? 99 : i; };
 const pasa = (r, sin = '', conSeg = true) => SEGS.every(([k, , f]) => k === sin || (k === 'seg' && !conSeg) || !sel[k].size || sel[k].has(f(r)));
 function pintarSegs() {
@@ -987,6 +1004,8 @@ function pintarSegs() {
   }).join('');
   const act = SEGS.flatMap(([k, t]) => [...sel[k]].map(v => `${t}: ${k === 'tec' ? tecCorto(v) : v}`));
   $('act-f').innerHTML = ''; $('act-f2').innerHTML = act.map(a => `<span>${esc(a)}</span>`).join('');
+  if (zonaCab.size) act.unshift(...[...zonaCab].map(z => 'Zona: ' + z)); if (HF.cab.dis) act.unshift(`Distrito: ${HF.cab.dis.size === 1 ? [...HF.cab.dis][0] : HF.cab.dis.size + ' distritos'}`);
+  $('act-f2').innerHTML = act.map(a => `<span>${esc(a)}</span>`).join('');
   $('limpiar').hidden = !act.length;
 }
 $('segs').addEventListener('click', (e) => {
@@ -995,7 +1014,7 @@ $('segs').addEventListener('click', (e) => {
   if (!v) S.clear(); else S.has(v) ? S.delete(v) : S.add(v);
   pintar();
 });
-$('limpiar').addEventListener('click', () => { Object.values(sel).forEach(S => S.clear()); pintar(); });
+$('limpiar').addEventListener('click', () => { Object.values(sel).forEach(S => S.clear()); zonaCab.clear(); HF.cab = {}; pintar(); });
 $('meses').addEventListener('click', (e) => { const b = e.target.closest('[data-mes]'); if (!b || b.dataset.mes === mes) return; mes = b.dataset.mes;
   $('meses').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b))); pintar(); });
 $('filial').addEventListener('change', (e) => { guardarFilial(e.target.value); Object.values(sel).forEach(S => S.clear()); cargarTodo(e.target.value); });
@@ -1034,11 +1053,11 @@ function pivote(tid, recs, colDe, cols, cab, opc = {}) {
     <tr>${cols.map(c => `<th>${esc(opc.colTxt ? opc.colTxt(c) : c)}</th>`).join('')}</tr></thead><tbody>${body}</tbody><tfoot>${pie}</tfoot></table>`;
 }
 /* ---------- Segmentadores de cada tabla (Motivo y Zona) y filtros en los encabezados ---------- */
-const TS = Object.fromEntries(['pl', 'di', 'ab', 'mo'].map(t => [t, { m: new Set(), z: new Set() }]));
-const HF = { pl: {}, di: {}, ab: {}, mo: {} };
+const TS = Object.fromEntries(['cab', 'pl', 'di', 'ab', 'mo'].map(t => [t, { m: new Set(), z: new Set() }]));
+const HF = { cab: {}, pl: {}, di: {}, ab: {}, mo: {} };
 const zonaDe = (r) => r.z || 'SIN ZONA';
-const HFV = { pl: { mot: r => r.g, col: zonaDe }, ab: { mot: r => r.g, col: r => r.f }, mo: { mot: r => r.g, col: r => r.f, dis: r => r.di || 'SIN DISTRITO' }, di: { z: zonaDe, d: r => r.di } };
-const HFT = { pl: { mot: 'Motivo', col: 'Zona' }, ab: { mot: 'Motivo', col: 'Día' }, mo: { mot: 'Motivo', col: 'Día', dis: 'Distrito' }, di: { z: 'Zona', d: 'Distrito' } };
+const HFV = { cab: { dis: r => r.di || 'SIN DISTRITO' }, pl: { mot: r => r.g, col: zonaDe }, ab: { mot: r => r.g, col: r => r.f }, mo: { mot: r => r.g, col: r => r.f, dis: r => r.di || 'SIN DISTRITO' }, di: { z: zonaDe, d: r => r.di } };
+const HFT = { cab: { dis: 'Distrito' }, pl: { mot: 'Motivo', col: 'Zona' }, ab: { mot: 'Motivo', col: 'Día' }, mo: { mot: 'Motivo', col: 'Día', dis: 'Distrito' }, di: { z: 'Zona', d: 'Distrito' } };
 const hfTxt = (tid, k, v) => k === 'col' && tid !== 'pl' ? diaCorto(v) : v;
 const tsOk = (tid, r, sin = '') => (sin === 'm' || !TS[tid].m.size || TS[tid].m.has(r.m)) && (sin === 'z' || !TS[tid].z.size || TS[tid].z.has(zonaDe(r)));
 const hfOk = (tid, r, sin = '') => Object.entries(HF[tid]).every(([k, S]) => k === sin || S.has(HFV[tid][k](r)));
@@ -1169,6 +1188,7 @@ const coincide = (r) => [r.ab, r.os, r.tec, r.di, r.ge, r.ecN, r.pl, r.m, r.s].s
 
 /* ---------- pintar ---------- */
 function pintar() {
+  pintarCab();
   pintarSegs();
   pintarFlujo();
   document.querySelectorAll('.mes-txt').forEach(e => e.textContent = mesTxt(mes));
@@ -1193,8 +1213,8 @@ function pintar() {
     ['Tasa de recuperación', tasa == null ? '—' : `<button type="button" class="kv-btn" id="tasa-ver" title="Ver la lista de AB y sus comentarios">${d1(tasa)}%</button>`, `${n(nRec)} recuperadas de ${n(nRec + B.length)} observadas<br><span class="meta-r ${tasa != null && tasa >= meta ? 'ok' : 'mal'}">Meta ${d1(meta)}%</span> <button type="button" class="lnk-meta" id="meta-ed">✎ Modificar meta</button>`],
   ].map(([l, v, s], i) => `<div class="kpi${i === 3 ? ' k-mot' : ''}"><span class="l">${l}</span><span class="kv"${i === 3 ? ' hidden' : i === 6 && tasa != null ? ` style="color:var(--${tasa >= meta ? 'ok' : 'mal'})"` : ''}>${v}</span><span class="s">${s}</span></div>`).join('');
   $('res-sub').textContent = `OS que siguen en estado OBSERVADA, observadas en ${mesTxt(mes)} (fecha_observación) · solo altas de internet, una por abonado y servicio${canal === 'TODOS' ? '' : ' · canal ' + CANALES.find(c => c[0] === canal)[1].toLowerCase()}`;
-  baseTabla = { pl: B, di: B, ab: B, mo: Bs };
-  Object.keys(baseTabla).forEach(t => pintarTS(t, baseTabla[t]));
+  baseTabla = { cab: baseTabla.cab, pl: B, di: B, ab: B, mo: Bs };
+  ['pl', 'di', 'ab', 'mo'].forEach(t => pintarTS(t, baseTabla[t]));
   const sinDatos = vacio(`No hay observadas en ${mesTxt(mes)} con estos filtros.`);
   const Bpl = deTabla('pl', B), Bdi = deTabla('di', B), Bab = deTabla('ab', B);
   const zs = [...new Set(Bpl.map(zonaDe))].sort((a, b) => zIdx(a) - zIdx(b) || a.localeCompare(b));
