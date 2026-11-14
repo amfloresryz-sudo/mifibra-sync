@@ -1270,9 +1270,12 @@ async function traerIngresos() {
   else { const r = await fetch(url(f), { headers: { 'x-portal-token': tokenPortal() } }); j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `Error ${r.status}`); }
   ING = j; ingClave = clave; return j;
 }
+// Ingresos: la Zona y el Distrito de la cabecera también aplican (zona según el distrito, como en Instalaciones)
+const zonaIng = (T, x) => provTodas() ? (x.fi || (D && D.filial) || 'SIN ZONA') : ((T.zonas || {})[String(x.di || '').toUpperCase().trim()] || ((D && D.obs) || []).find(r => r.di === x.di && r.z)?.z || 'SIN ZONA');
+const okIng = (T, x) => okCn(x) && okZ({ z: zonaIng(T, x) }) && okDi(x);
 async function pintarFlujo() {
   let T; try { T = await traerIngresos(); } catch (e) { $('flu-graf').innerHTML = `<p class="nota">No se pudieron cargar los ingresos: ${esc(e.message)}</p>`; return; }
-  const I = (T.ing || []).filter(okCn), anio = T.anio, m = T.mes, dias = T.dias || new Date(anio, m, 0).getDate();
+  const I = (T.ing || []).filter(x => okIng(T, x)), anio = T.anio, m = T.mes, dias = T.dias || new Date(anio, m, 0).getDate();
   const info = (d) => { const w = new Date(anio, m - 1, d).getDay(); return { wd: WD[w], fin: w === 0 }; };
   const col = (c) => c.startsWith('--') ? css(c) : c, MIN = 18, ALT = 200;
   const sem = []; { let ini = 1; for (let d = 1; d <= dias; d++) { if (new Date(anio, m - 1, d).getDay() === 0 || d === dias) { sem.push([ini, d]); ini = d + 1; } } }
@@ -1297,7 +1300,7 @@ $('flu-vistas').addEventListener('click', (e) => { const b = e.target.closest('[
 $('flu-graf').addEventListener('click', (e) => {
   const b = e.target.closest('[data-flu]'); if (!b || !ING) return;
   const [rg, k] = b.dataset.flu.split('|'), [a, z] = rg.split('-').map(Number), NOMF = { D: 'Instalaciones', O: 'Observadas', A: 'Anuladas', R: 'Pendientes', ALL: 'Ingresos' };
-  const L = (ING.ing || []).filter(okCn).filter(x => x.d >= a && x.d <= z && (k === 'ALL' || x.e === k)).sort((p, q) => String(p.rec).localeCompare(String(q.rec)));
+  const L = (ING.ing || []).filter(x => okIng(ING, x)).filter(x => x.d >= a && x.d <= z && (k === 'ALL' || x.e === k)).sort((p, q) => String(p.rec).localeCompare(String(q.rec)));
   const fd = (d) => `${String(d).padStart(2, '0')}-${MESC[ING.mes - 1]}.`, fh = (iso) => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.slice(11, 16)}` : '—';
   const cab = ['AB', 'OS', 'Recepción', 'Zona', 'Distrito', 'Segmento', 'Planta', 'EECC', 'Técnico', 'Estado OS'];
   const filas = L.map(x => `<tr><td>${x.ab}</td><td>${x.os}</td><td>${fh(x.rec)}</td><td>${esc(x.z || '—')}</td><td>${esc(x.di || '—')}</td><td>${esc(x.seg || '—')}</td><td>${esc(x.pl || '—')}</td><td>${esc(x.ec || '—')}</td><td title="${esc(x.tec || '')}">${esc(tecCorto(x.tec))}</td><td>${EST_F[x.e] || x.e}</td></tr>`).join('');
